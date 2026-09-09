@@ -1,0 +1,55 @@
+### CMake build trees ###
+build/
+build-*/
+cmake-build-*/
+out/
+
+### In-source configure (a mistake, but do not commit the wreckage) ###
+CMakeCache.txt
+CMakeFiles/
+CMakeScripts/
+CTestTestfile.cmake
+cmake_install.cmake
+Testing/
+install_manifest.txt
+_deps/
+*.cmake.bak
+
+### Compilation database and C++ tooling caches ###
+compile_commands.json
+.cache/
+.clangd/
+.ccls-cache/
+*.ccls-cache
+
+### Compiler and linker output ###
+*.o
+*.obj
+*.a
+*.lib
+*.so
+*.so.*
+*.dylib
+*.dll
+*.exe
+*.d
+*.gcda
+*.gcno
+*.profraw
+*.profdata
+
+### Debug symbols ###
+*.dSYM/
+*.pdb
+*.ilk
+
+### ccache / sccache ###
+.ccache/
+.sccache/
+
+### Sanitizer and profiler output ###
+*.asan
+*.tsan
+*.ubsan
+callgrind.out.*
+perf.data*

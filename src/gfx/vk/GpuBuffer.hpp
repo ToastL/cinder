@@ -1,0 +1,38 @@
+#pragma once
+
+#include <volk.h>
+
+#include <vk_mem_alloc.h>
+
+#include <cstddef>
+
+namespace cinder::gfx::vk {
+
+class VkCtx;
+
+class GpuBuffer {
+public:
+    GpuBuffer(const VkCtx& ctx, VkDeviceSize size, VkBufferUsageFlags usage, bool hostVisible);
+    ~GpuBuffer();
+
+    GpuBuffer(const GpuBuffer&) = delete;
+    GpuBuffer& operator=(const GpuBuffer&) = delete;
+    GpuBuffer(GpuBuffer&& other) noexcept;
+    GpuBuffer& operator=(GpuBuffer&& other) noexcept;
+
+    VkBuffer handle() const { return handle_; }
+    VmaAllocation allocation() const { return allocation_; }
+    void* mapped() const { return mapped_; }
+    VkDeviceSize size() const { return size_; }
+
+private:
+    void release();
+
+    const VkCtx* ctx_ = nullptr;
+    VkBuffer handle_ = VK_NULL_HANDLE;
+    VmaAllocation allocation_ = nullptr;
+    void* mapped_ = nullptr;
+    VkDeviceSize size_ = 0;
+};
+
+}

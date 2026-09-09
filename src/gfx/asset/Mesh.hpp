@@ -1,0 +1,28 @@
+#pragma once
+
+#include "gfx/vk/GpuBuffer.hpp"
+
+#include <memory>
+#include <vector>
+
+namespace cinder::gfx::asset {
+
+class Mesh {
+public:
+    static constexpr uint32_t VERTEX_STRIDE = 12 * sizeof(float);
+
+    Mesh(const cinder::gfx::vk::VkCtx& ctx, const std::vector<float>& vertices,
+         const std::vector<uint32_t>& indices);
+
+    static Mesh cube(const cinder::gfx::vk::VkCtx& ctx, float r, float g, float b);
+
+    void bind(VkCommandBuffer cmd) const;
+    uint32_t indexCount() const { return indexCount_; }
+
+private:
+    std::unique_ptr<cinder::gfx::vk::GpuBuffer> vertexBuffer_;
+    std::unique_ptr<cinder::gfx::vk::GpuBuffer> indexBuffer_;
+    uint32_t indexCount_ = 0;
+};
+
+}

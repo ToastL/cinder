@@ -1,0 +1,49 @@
+#pragma once
+
+#include "core/GameConfig.hpp"
+#include "gfx/Renderer.hpp"
+#include "gfx/vk/VkCtx.hpp"
+#include "platform/Input.hpp"
+#include "platform/Window.hpp"
+#include "scene/Components.hpp"
+#include "scene/Scene.hpp"
+#include "script/LuaHost.hpp"
+
+#include <memory>
+
+namespace cinder::core {
+
+class Engine {
+public:
+    explicit Engine(const GameConfig& config);
+    ~Engine();
+
+    Engine(const Engine&) = delete;
+    Engine& operator=(const Engine&) = delete;
+
+    bool running() const;
+    bool minimized() const;
+
+    void beginFrame();
+    void update(float dt);
+    void render(float alpha);
+    void quit() { quit_ = true; }
+
+    cinder::platform::Window& window() { return window_; }
+    cinder::platform::Input& input() { return input_; }
+    cinder::gfx::Renderer& renderer() { return renderer_; }
+    cinder::scene::Scene& scene() { return scene_; }
+    cinder::scene::Components& types() { return types_; }
+
+private:
+    cinder::platform::Window window_;
+    cinder::platform::Input input_;
+    cinder::gfx::vk::VkCtx ctx_;
+    cinder::gfx::Renderer renderer_;
+    cinder::scene::Components types_;
+    cinder::scene::Scene scene_{types_};
+    std::unique_ptr<cinder::script::LuaHost> script_;
+    bool quit_ = false;
+};
+
+}

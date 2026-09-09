@@ -1,0 +1,42 @@
+#pragma once
+
+#include "scene/Component.hpp"
+
+namespace cinder::components {
+
+class Camera final : public cinder::scene::Component {
+public:
+    enum class Projection { Perspective, Orthographic };
+
+    Projection projection() const { return projection_; }
+    float fov() const { return fov_; }
+    float nearClip() const { return near_; }
+    float farClip() const { return far_; }
+    float zoom() const { return zoom_; }
+
+    Camera& setProjection(Projection projection) { projection_ = projection; return *this; }
+    Camera& setFov(float degrees) { fov_ = degrees; return *this; }
+    Camera& setZoom(float zoom) { zoom_ = zoom; return *this; }
+    Camera& setClip(float near, float far) { near_ = near; far_ = far; return *this; }
+
+    void onRender(float alpha, cinder::scene::DrawList& draws) override;
+
+    CINDER_COMPONENT(Camera, cinder::scene::Component) {
+        CINDER_PROP(projection_);
+        CINDER_PROP_S(fov_, 1.0f, 179.0f, 1.0f);
+        CINDER_PROP(near_);
+        CINDER_PROP(far_);
+        CINDER_PROP_R(zoom_, 0.05f, 20.0f);
+    }
+
+private:
+    Projection projection_ = Projection::Perspective;
+    float fov_ = 60.0f;
+    float near_ = 0.1f;
+    float far_ = 500.0f;
+    float zoom_ = 1.0f;
+};
+
+}
+
+CINDER_ENUM_NAMES(cinder::components::Camera::Projection, "perspective", "orthographic")

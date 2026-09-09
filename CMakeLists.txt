@@ -1,0 +1,54 @@
+cmake_minimum_required(VERSION 3.24)
+project(cinder VERSION 0.1.0 LANGUAGES CXX C)
+
+set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_EXTENSIONS OFF)
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+
+if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
+    set(CMAKE_BUILD_TYPE Debug CACHE STRING "" FORCE)
+endif()
+
+set(CINDER_ASSETS_DIR "${CMAKE_CURRENT_SOURCE_DIR}/assets")
+
+include(cmake/Dependencies.cmake)
+include(cmake/Shaders.cmake)
+
+cinder_compile_shaders(shaders)
+
+file(GLOB_RECURSE ENGINE_SOURCES CONFIGURE_DEPENDS
+    src/components/*.cpp
+    src/core/*.cpp
+    src/gfx/*.cpp
+    src/lua/*.cpp
+    src/platform/*.cpp
+    src/reflect/*.cpp
+    src/scene/*.cpp
+    src/script/*.cpp
+    src/serial/*.cpp)
+
+add_library(engine STATIC ${ENGINE_SOURCES})
+add_dependencies(engine shaders)
+
+target_include_directories(engine PUBLIC src)
+target_link_libraries(engine PUBLIC volk glfw glm::glm lua vma_impl stb)
+target_compile_definitions(engine PUBLIC
+    GLFW_INCLUDE_NONE
+    GLM_FORCE_DEPTH_ZERO_TO_ONE
+    GLM_ENABLE_EXPERIMENTAL
+    CINDER_ASSETS_DEFAULT="${CINDER_ASSETS_DIR}")
+target_compile_options(engine PRIVATE -Wall -Wextra -Wno-unused-parameter)
+
+add_executable(game src/game/main.cpp)
+target_link_libraries(game PRIVATE engine)
+
+add_executable(editor src/editor/main.cpp)
+target_link_libraries(editor PRIVATE engine)
+
+enable_testing()
+
+file(GLOB TEST_SOURCES CONFIGURE_DEPENDS tests/*.cpp)
+add_executable(tests ${TEST_SOURCES})
+target_link_libraries(tests PRIVATE engine doctest::doctest)
+add_test(NAME unit COMMAND tests)
