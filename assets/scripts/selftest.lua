@@ -58,8 +58,9 @@ sprite.size = vec2(12, 34)
 check("vec2 prop rt",   sprite.size == vec2(12, 34))
 sprite.color = rgba(0.5, 0.25, 0.125, 1)
 check("vec4 prop rt",   near(sprite.color.r, 0.5) and near(sprite.color.b, 0.125))
-sprite.texture = 0
-check("int prop rt",    sprite.texture == 0)
+sprite.texture = "none.png"
+check("string prop rt", sprite.texture == "none.png")
+sprite.texture = ""
 check("bool prop rt",   sprite.enabled == true)
 sprite.enabled = false
 check("bool prop write", sprite.enabled == false)

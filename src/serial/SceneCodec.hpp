@@ -22,7 +22,8 @@ class Archive;
 
 class SceneCodec {
 public:
-    static constexpr int VERSION = 1;
+    static constexpr int VERSION = 2;
+    static constexpr int OLDEST = 2;
 
     static std::string save(cinder::scene::Scene& scene);
     static void load(const std::string& source, cinder::scene::Scene& scene);

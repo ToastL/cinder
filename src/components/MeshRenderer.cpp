@@ -6,7 +6,9 @@
 namespace cinder::components {
 
 void MeshRenderer::onRender(float alpha, cinder::scene::DrawList& draws) {
-    draws.mesh(mesh_, texture_, transform().world());
+    if (meshHandle_ < 0) meshHandle_ = draws.meshHandle(mesh_);
+    if (textureHandle_ < 0) textureHandle_ = draws.textureHandle(texture_);
+    draws.mesh(meshHandle_, textureHandle_, transform().world());
 }
 
 }

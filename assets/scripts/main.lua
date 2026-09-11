@@ -1,9 +1,10 @@
-engine.setClearColor(0.05, 0.05, 0.08)
-engine.setVirtualSize(640, 360)
 engine.log("wasd/arrows pan, scroll zooms, click spawns")
 
 local camera = scene:spawn("Camera")
-camera:add("Camera").projection = "orthographic"
+local lens = camera:add("Camera")
+lens.projection = "orthographic"
+lens.clearColor = rgba(0.05, 0.05, 0.08, 1)
+lens.virtualSize = vec2(640, 360)
 camera:behaviour("assets/scripts/behaviours/camera2d.lua")
 
 local spawner = scene:spawn("Spawner")

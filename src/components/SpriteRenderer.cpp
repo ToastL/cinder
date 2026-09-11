@@ -9,6 +9,8 @@
 namespace cinder::components {
 
 void SpriteRenderer::onRender(float alpha, cinder::scene::DrawList& draws) {
+    if (textureHandle_ < 0) textureHandle_ = draws.textureHandle(texture_);
+
     const glm::mat4& world = transform().world();
 
     const glm::vec3 position(world[3]);
@@ -18,7 +20,7 @@ void SpriteRenderer::onRender(float alpha, cinder::scene::DrawList& draws) {
     const float w = size_.x * scaleX;
     const float h = size_.y * scaleY;
 
-    draws.sprite(texture_,
+    draws.sprite(textureHandle_,
                  position.x - w * 0.5f, position.y - h * 0.5f, w, h,
                  std::atan2(world[0][1], world[0][0]),
                  color_.x, color_.y, color_.z, color_.w);

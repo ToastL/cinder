@@ -1,6 +1,7 @@
 #pragma once
 
 #include "scene/Component.hpp"
+#include "scene/PropValue.hpp"
 
 #include <lua.hpp>
 
@@ -8,7 +9,7 @@
 
 namespace cinder::script {
 
-class Behaviour final : public cinder::scene::Component {
+class Behaviour final : public cinder::scene::Component, public cinder::scene::PropBag {
 public:
     static const char* BOOTSTRAP;
 
@@ -20,6 +21,9 @@ public:
     void onUpdate(float dt) override;
     void onDestroy() override;
 
+    cinder::scene::PropRec readBag() const override;
+    void writeBag(const cinder::scene::PropRec& values) override;
+
     const std::string& script() const { return script_; }
     void reload();
 
@@ -27,7 +31,8 @@ public:
 
 private:
     int instantiate(int data);
-    int snapshot();
+    int snapshot() const;
+    cinder::scene::PropRec readRef(int ref) const;
     void release();
 
     lua_State* state_;

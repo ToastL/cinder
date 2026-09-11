@@ -3,11 +3,13 @@
 #include "scene/Actor.hpp"
 #include "scene/Component.hpp"
 #include "scene/Components.hpp"
+#include "scene/DrawList.hpp"
 #include "scene/Scene.hpp"
 
 using cinder::scene::Actor;
 using cinder::scene::Component;
 using cinder::scene::Components;
+using cinder::scene::DrawList;
 using cinder::scene::Scene;
 
 namespace {
@@ -15,13 +17,30 @@ namespace {
 struct Counter : Component {
     int starts = 0;
     int updates = 0;
+    int renders = 0;
     int destroys = 0;
 
     void onStart() override { starts++; }
     void onUpdate(float dt) override { updates++; }
+    void onRender(float alpha, DrawList& draws) override { renders++; }
     void onDestroy() override { destroys++; }
 
     CINDER_COMPONENT(Counter, Component) {}
+};
+
+struct NullDraws : DrawList {
+    int textureHandle(std::string_view path) override { return WHITE; }
+    int meshHandle(std::string_view name) override { return 0; }
+    void background(float r, float g, float b) override {}
+    void sprite(int texture, float x, float y, float w, float h, float rot,
+                float r, float g, float b, float a) override {}
+    void spriteRegion(int texture, float x, float y, float w, float h,
+                      float sx, float sy, float sw, float sh, float rot,
+                      float r, float g, float b, float a) override {}
+    void mesh(int mesh, int texture, const glm::mat4& model) override {}
+    void camera3d(const glm::mat4& world, float fovDegrees, float near, float far) override {}
+    void camera2d(float x, float y, float zoom, float rotation,
+                  float virtualWidth, float virtualHeight) override {}
 };
 
 struct Suicide : Component {
@@ -58,6 +77,26 @@ TEST_CASE("start runs once before the first update") {
     f.scene.update(0.1f);
     CHECK(counter->starts == 1);
     CHECK(counter->updates == 2);
+}
+
+TEST_CASE("components render before they start") {
+    Fixture f;
+    Counter* counter = f.scene.spawn("a")->add<Counter>();
+    NullDraws draws;
+
+    f.scene.render(0.0f, draws);
+    CHECK(counter->starts == 0);
+    CHECK(counter->renders == 1);
+}
+
+TEST_CASE("disabled components do not render") {
+    Fixture f;
+    Counter* counter = f.scene.spawn("a")->add<Counter>();
+    counter->setEnabled(false);
+    NullDraws draws;
+
+    f.scene.render(0.0f, draws);
+    CHECK(counter->renders == 0);
 }
 
 TEST_CASE("components added during update start on the next frame") {

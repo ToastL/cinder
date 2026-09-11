@@ -38,13 +38,6 @@ struct Host {
 
 Host& host(lua_State* state) { return *LuaApi::context<Host>(state); }
 
-int setClearColor(lua_State* state) {
-    host(state).renderer->setClearColor(static_cast<float>(lua_tonumber(state, 1)),
-                                        static_cast<float>(lua_tonumber(state, 2)),
-                                        static_cast<float>(lua_tonumber(state, 3)));
-    return 0;
-}
-
 int time(lua_State* state) {
     lua_pushnumber(state, cinder::platform::Glfw::time());
     return 1;
@@ -63,7 +56,8 @@ int logMessage(lua_State* state) {
 }
 
 int loadTexture(lua_State* state) {
-    lua_pushinteger(state, host(state).renderer->assets().load(lua_tostring(state, 1)));
+    const std::string path = cinder::platform::resolveAsset(luaL_checkstring(state, 1)).string();
+    lua_pushinteger(state, host(state).renderer->assets().load(path));
     return 1;
 }
 
@@ -208,7 +202,6 @@ void LuaHost::registerApi() {
 
     LuaApi api(state_, &hostContext);
 
-    api.bind("setClearColor", setClearColor);
     api.bind("time", time);
     api.bind("quit", quit);
     api.bind("log", logMessage);

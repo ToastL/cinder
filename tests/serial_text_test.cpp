@@ -21,11 +21,20 @@ using cinder::serial::SceneCodec;
 
 namespace {
 
+struct Tally : cinder::scene::Component {
+    int count_ = 0;
+
+    CINDER_COMPONENT(Tally, cinder::scene::Component) { CINDER_PROP(count_); }
+};
+
 struct Fixture {
     Components types;
     Scene scene{types};
 
-    Fixture() { cinder::components::registerBuiltins(types); }
+    Fixture() {
+        cinder::components::registerBuiltins(types);
+        types.add<Tally>("Tally");
+    }
 };
 
 bool contains(const std::string& text, std::string_view needle) {
@@ -50,9 +59,16 @@ TEST_CASE("fractional floats use the shortest round trip") {
 
 TEST_CASE("int props emit as integers") {
     Fixture f;
-    f.scene.spawn("A")->add<SpriteRenderer>()->setTexture(3);
+    f.scene.spawn("A")->add<Tally>()->count_ = 3;
 
-    CHECK(contains(SceneCodec::save(f.scene), "texture 3"));
+    CHECK(contains(SceneCodec::save(f.scene), "count 3"));
+}
+
+TEST_CASE("asset paths emit quoted") {
+    Fixture f;
+    f.scene.spawn("A")->add<SpriteRenderer>()->setTexture("tiles/grass.png");
+
+    CHECK(contains(SceneCodec::save(f.scene), "texture \"tiles/grass.png\""));
 }
 
 TEST_CASE("enums emit lowercase") {
@@ -85,7 +101,7 @@ TEST_CASE("non-finite floats become zero") {
 
 TEST_CASE("empty collections are omitted") {
     Fixture f;
-    CHECK(SceneCodec::save(f.scene) == "version 1\n");
+    CHECK(SceneCodec::save(f.scene) == "version 2\n");
 }
 
 TEST_CASE("output is independent of the default locale") {

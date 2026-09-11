@@ -53,7 +53,7 @@ Renderer::Renderer(const VkCtx& ctx, cinder::platform::Window& window,
     auto spritePass = std::make_unique<cinder::gfx::pass::SpritePass>(
             ctx, *assets_, *spritePipeline_, FRAMES_IN_FLIGHT);
 
-    draws_ = std::make_unique<RendererDrawList>(*meshPass, *spritePass);
+    draws_ = std::make_unique<RendererDrawList>(*this, *meshPass, *spritePass);
 
     passes_.push_back(std::move(meshPass));
     passes_.push_back(std::move(spritePass));

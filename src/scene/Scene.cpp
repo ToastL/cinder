@@ -78,7 +78,7 @@ void Scene::render(Actor& actor, float alpha, DrawList& draws) {
     std::vector<std::unique_ptr<Component>>& components = actor.components();
     for (std::size_t i = 0; i < components.size(); ++i) {
         Component& component = *components[i];
-        if (component.started() && component.isEnabled()) component.onRender(alpha, draws);
+        if (component.isEnabled()) component.onRender(alpha, draws);
     }
 
     std::vector<Actor*>& children = actor.children();

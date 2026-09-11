@@ -34,8 +34,9 @@ void SpritePass::drawRegion(int texture, float x, float y, float w, float h,
 }
 
 void SpritePass::setVirtualSize(float width, float height) {
-    virtualSizeExplicit_ = true;
-    camera_.setVirtualSize(width, height);
+    virtualSizeExplicit_ = width > 0.0f && height > 0.0f;
+    if (virtualSizeExplicit_) camera_.setVirtualSize(width, height);
+    else camera_.setVirtualSize(viewWidth_, viewHeight_);
 }
 
 glm::vec3 SpritePass::screenToWorld(float screenX, float screenY) {

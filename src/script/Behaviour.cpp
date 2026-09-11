@@ -3,6 +3,7 @@
 #include "lua/LuaCalls.hpp"
 #include "platform/Log.hpp"
 #include "scene/Actor.hpp"
+#include "script/LuaProps.hpp"
 
 #include <utility>
 
@@ -10,6 +11,16 @@ namespace cinder::script {
 
 const char* Behaviour::BOOTSTRAP = R"lua(
 local protos = {}
+local axes = { "x", "y", "z", "w" }
+
+local function coerce(default, value)
+    local n = vecSize(default)
+    if n == nil or type(value) ~= "table" or getmetatable(value) ~= nil then return value end
+    local v = {}
+    for i = 1, n do v[axes[i]] = value[i] or 0 end
+    return setmetatable(v, getmetatable(default))
+end
+
 function __behaviourNew(path, actor, data)
     local proto = protos[path]
     if proto == nil then
@@ -18,7 +29,7 @@ function __behaviourNew(path, actor, data)
     end
     local t = { actor = __actor(actor) }
     for k, v in pairs(proto) do t[k] = v end
-    if data then for k, v in pairs(data) do t[k] = v end end
+    if data then for k, v in pairs(data) do t[k] = coerce(proto[k], v) end end
     if t.start then
         local inner = t.start
         t.start = function(self) task.spawn(inner, self) end
@@ -68,7 +79,7 @@ int Behaviour::instantiate(int data) {
     return ref;
 }
 
-int Behaviour::snapshot() {
+int Behaviour::snapshot() const {
     const int top = lua_gettop(state_);
 
     lua_getglobal(state_, "__behaviourFields");
@@ -85,6 +96,32 @@ int Behaviour::snapshot() {
     const int fields = luaL_ref(state_, LUA_REGISTRYINDEX);
     lua_settop(state_, top);
     return fields;
+}
+
+cinder::scene::PropRec Behaviour::readRef(int ref) const {
+    if (ref == LUA_NOREF) return {};
+
+    lua_rawgeti(state_, LUA_REGISTRYINDEX, ref);
+    cinder::scene::PropRec values = readRec(state_, -1);
+    lua_pop(state_, 1);
+    return values;
+}
+
+cinder::scene::PropRec Behaviour::readBag() const {
+    if (ref_ == LUA_NOREF) return readRef(data_);
+
+    const int fields = snapshot();
+    cinder::scene::PropRec values = readRef(fields);
+    luaL_unref(state_, LUA_REGISTRYINDEX, fields);
+    return values;
+}
+
+void Behaviour::writeBag(const cinder::scene::PropRec& values) {
+    release();
+    if (values.empty()) return;
+
+    pushRec(state_, values);
+    data_ = luaL_ref(state_, LUA_REGISTRYINDEX);
 }
 
 void Behaviour::reload() {

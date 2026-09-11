@@ -2,6 +2,7 @@
 
 #include "components/Builtins.hpp"
 #include "components/Camera.hpp"
+#include "components/MeshRenderer.hpp"
 #include "components/SpriteRenderer.hpp"
 #include "scene/Actor.hpp"
 #include "scene/Components.hpp"
@@ -11,6 +12,7 @@
 #include <string>
 
 using cinder::components::Camera;
+using cinder::components::MeshRenderer;
 using cinder::components::SpriteRenderer;
 using cinder::scene::Actor;
 using cinder::scene::Components;
@@ -53,7 +55,7 @@ TEST_CASE("the emitted format is pinned byte for byte") {
     f.populate();
 
     const std::string golden =
-        "version 1\n"
+        "version 2\n"
         "actors {\n"
         "    actor {\n"
         "        id 7\n"
@@ -189,7 +191,7 @@ TEST_CASE("components come back attached") {
 TEST_CASE("an unknown component type is skipped") {
     Fixture f;
     SceneCodec::load(
-        "version 1\n"
+        "version 2\n"
         "actors {\n"
         "    actor {\n"
         "        id 4\n"
@@ -219,10 +221,38 @@ TEST_CASE("a missing version is rejected") {
     CHECK_THROWS_AS(SceneCodec::load("actors {\n}\n", f.scene), std::runtime_error);
 }
 
+TEST_CASE("a version 1 file is rejected") {
+    Fixture f;
+    CHECK_THROWS_AS(SceneCodec::load("version 1\nactors {\n}\n", f.scene), std::runtime_error);
+}
+
+TEST_CASE("asset references survive by name") {
+    Fixture f;
+    f.scene.spawn(1, "Box", nullptr)->add<MeshRenderer>()->setMesh("sphere").setTexture("crate.png");
+    f.scene.spawn(2, "Tile", nullptr)->add<SpriteRenderer>()->setTexture("tile.png");
+    SceneCodec::load(SceneCodec::save(f.scene), f.scene);
+
+    CHECK(f.scene.byId(1)->get<MeshRenderer>()->mesh() == "sphere");
+    CHECK(f.scene.byId(1)->get<MeshRenderer>()->texture() == "crate.png");
+    CHECK(f.scene.byId(2)->get<SpriteRenderer>()->texture() == "tile.png");
+}
+
+TEST_CASE("camera render settings survive") {
+    Fixture f;
+    f.scene.spawn(1, "Camera", nullptr)->add<Camera>()->setClearColor(0.05f, 0.06f, 0.09f, 1)
+            .setVirtualSize(640, 360);
+    SceneCodec::load(SceneCodec::save(f.scene), f.scene);
+
+    const Camera* camera = f.scene.byId(1)->get<Camera>();
+    CHECK(camera->clearColor().z == doctest::Approx(0.09f));
+    CHECK(camera->virtualSize().x == doctest::Approx(640));
+    CHECK(camera->virtualSize().y == doctest::Approx(360));
+}
+
 TEST_CASE("duplicate ids in a file do not abort the load") {
     Fixture f;
     SceneCodec::load(
-        "version 1\n"
+        "version 2\n"
         "actors {\n"
         "    actor {\n"
         "        id 5\n"
@@ -241,7 +271,7 @@ TEST_CASE("duplicate ids in a file do not abort the load") {
 TEST_CASE("camera zoom beyond its range is clamped on load") {
     Fixture f;
     SceneCodec::load(
-        "version 1\n"
+        "version 2\n"
         "actors {\n"
         "    actor {\n"
         "        id 1\n"

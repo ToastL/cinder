@@ -34,7 +34,7 @@ void SceneCodec::load(const std::string& source, Scene& scene) {
     TextLoad archive = TextLoad::parse(source);
 
     const int version = archive.integer("version", 0, 0);
-    if (version < 1 || version > VERSION) {
+    if (version < OLDEST || version > VERSION) {
         throw std::runtime_error("scene version " + std::to_string(version)
                                  + " is not supported (this build writes "
                                  + std::to_string(VERSION) + ")");

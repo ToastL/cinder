@@ -55,6 +55,12 @@ MeshPass::MeshPass(const cinder::gfx::vk::VkCtx& ctx, cinder::gfx::asset::Assets
     : ctx_(ctx), assets_(assets), pipeline_(pipeline),
       drawMesh_(MAX_DRAWS), drawTexture_(MAX_DRAWS), drawModel_(MAX_DRAWS, glm::mat4(1.0f)) {
     meshes_.push_back(Mesh::cube(ctx, 1.0f, 1.0f, 1.0f));
+    named_.emplace("cube", 0);
+}
+
+int MeshPass::meshNamed(std::string_view name) const {
+    auto found = named_.find(std::string(name));
+    return found == named_.end() ? -1 : found->second;
 }
 
 void MeshPass::beginFrame() { drawCount_ = 0; }
