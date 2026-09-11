@@ -46,11 +46,25 @@ add_library(engine_dev STATIC ${DEV_SOURCES})
 target_link_libraries(engine_dev PUBLIC engine imgui)
 target_compile_options(engine_dev PRIVATE -Wall -Wextra -Wno-unused-parameter)
 
-add_executable(game src/game/main.cpp)
-target_link_libraries(game PRIVATE engine)
-
 add_executable(editor src/editor/main.cpp)
 target_link_libraries(editor PRIVATE engine_dev)
+
+add_executable(player EXCLUDE_FROM_ALL src/player/main.cpp)
+target_link_libraries(player PRIVATE engine)
+
+set(CINDER_PACKAGE_PROJECT "${CMAKE_CURRENT_SOURCE_DIR}/samples/sandbox2d" CACHE PATH
+    "Project folder the package_game target stages next to the player")
+get_filename_component(CINDER_PACKAGE_NAME "${CINDER_PACKAGE_PROJECT}" NAME)
+
+add_custom_target(package_game
+    COMMAND ${CMAKE_COMMAND}
+        -DPLAYER=$<TARGET_FILE:player>
+        -DENGINE_DIR=${CINDER_ENGINE_DIR}
+        -DPROJECT_DIR=${CINDER_PACKAGE_PROJECT}
+        -DOUT_DIR=${CMAKE_BINARY_DIR}/dist/${CINDER_PACKAGE_NAME}
+        -P ${CMAKE_CURRENT_SOURCE_DIR}/cmake/PackageGame.cmake
+    VERBATIM)
+add_dependencies(package_game player shaders)
 
 enable_testing()
 
@@ -60,6 +74,11 @@ target_link_libraries(tests PRIVATE engine doctest::doctest)
 target_compile_definitions(tests PRIVATE CINDER_SOURCE_DIR="${CMAKE_CURRENT_SOURCE_DIR}")
 add_test(NAME unit COMMAND tests)
 
+add_test(NAME build_player COMMAND ${CMAKE_COMMAND}
+    --build ${CMAKE_BINARY_DIR} --target player --config $<CONFIG>)
+set_tests_properties(build_player PROPERTIES FIXTURES_SETUP player)
+
 add_test(NAME shipping_binary_is_clean COMMAND ${CMAKE_COMMAND}
-    -DEXE=$<TARGET_FILE:game>
+    -DEXE=$<TARGET_FILE:player>
     -P ${CMAKE_CURRENT_SOURCE_DIR}/cmake/AssertNoDevTools.cmake)
+set_tests_properties(shipping_binary_is_clean PROPERTIES FIXTURES_REQUIRED player)
