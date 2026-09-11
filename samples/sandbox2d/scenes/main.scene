@@ -10,7 +10,7 @@ actors {
                 virtualSize 640 360
             }
             Behaviour {
-                script "assets/scripts/behaviours/camera2d.lua"
+                script "scripts/camera2d.lua"
             }
         }
     }
@@ -19,7 +19,7 @@ actors {
         name "Spawner"
         components {
             Behaviour {
-                script "assets/scripts/behaviours/spawner.lua"
+                script "scripts/spawner.lua"
             }
         }
     }
@@ -31,7 +31,7 @@ actors {
                 size 6 6
             }
             Behaviour {
-                script "assets/scripts/behaviours/cursor.lua"
+                script "scripts/cursor.lua"
             }
         }
     }

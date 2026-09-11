@@ -1,5 +1,5 @@
 return {
-    script = "assets/scripts/behaviours/riser.lua",
+    script = "scripts/riser.lua",
     minSize = 4,
     maxSize = 18,
     lifetime = 6,

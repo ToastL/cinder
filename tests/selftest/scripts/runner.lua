@@ -89,7 +89,7 @@ return {
         local delayed = false
         task.delay(0.15, function() delayed = true end)
 
-        scene:spawn("Spawned"):behaviour("assets/scripts/behaviours/selftest.lua", { mark = 7 })
+        scene:spawn("Spawned"):behaviour("scripts/marker.lua", { mark = 7 })
 
         task.delay(0.4, function()
             local marks = _G.selftestMarks or {}

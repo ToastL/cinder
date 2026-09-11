@@ -5,7 +5,7 @@ actors {
         name "SelfTest"
         components {
             Behaviour {
-                script "assets/scripts/selftest.lua"
+                script "scripts/runner.lua"
             }
         }
     }
@@ -14,7 +14,7 @@ actors {
         name "Behaved"
         components {
             Behaviour {
-                script "assets/scripts/behaviours/selftest.lua"
+                script "scripts/marker.lua"
                 data {
                     mark 42
                 }

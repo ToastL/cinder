@@ -1,6 +1,6 @@
 #include "core/Engine.hpp"
-#include "core/GameConfig.hpp"
 #include "core/GameLoop.hpp"
+#include "core/ProjectConfig.hpp"
 #include "dev/Console.hpp"
 #include "dev/ImGuiLayer.hpp"
 #include "dev/PlaySession.hpp"
@@ -16,8 +16,8 @@
 #include <string>
 
 using cinder::core::Engine;
-using cinder::core::GameConfig;
 using cinder::core::GameLoop;
+using cinder::core::ProjectConfig;
 using cinder::dev::Console;
 using cinder::dev::PlaySession;
 using cinder::dev::Toolbar;
@@ -25,16 +25,16 @@ using cinder::platform::Glfw;
 
 int main(int argc, char** argv) {
     std::setvbuf(stdout, nullptr, _IOLBF, 0);
+    cinder::platform::locateExecutable(argv[0]);
 
     int frameLimit = 0;
     bool play = false;
     std::string capture;
     std::string scene;
+    std::string project;
 
     for (int i = 1; i < argc; ++i) {
-        if (std::strcmp(argv[i], "--assets") == 0 && i + 1 < argc) {
-            cinder::platform::setAssetRoot(argv[++i]);
-        } else if (std::strcmp(argv[i], "--frames") == 0 && i + 1 < argc) {
+        if (std::strcmp(argv[i], "--frames") == 0 && i + 1 < argc) {
             frameLimit = std::atoi(argv[++i]);
         } else if (std::strcmp(argv[i], "--capture") == 0 && i + 1 < argc) {
             capture = argv[++i];
@@ -42,13 +42,22 @@ int main(int argc, char** argv) {
             scene = argv[++i];
         } else if (std::strcmp(argv[i], "--play") == 0) {
             play = true;
+        } else if (argv[i][0] != '-' && project.empty()) {
+            project = argv[i];
         }
     }
 
+    if (project.empty()) {
+        cinder::platform::logError(
+                "usage: editor <project> [--scene path] [--play] [--frames n] [--capture png]\n");
+        return 2;
+    }
+
     try {
-        GameConfig config = GameConfig::load(cinder::platform::assetPath("game.lua"));
+        cinder::platform::setProjectRoot(project);
+        ProjectConfig config = ProjectConfig::load(cinder::platform::projectPath("project.lua"));
         if (!scene.empty()) config.scene = scene;
-        const std::filesystem::path scenePath = cinder::platform::resolveAsset(config.scene);
+        const std::filesystem::path scenePath = cinder::platform::projectPath(config.scene);
 
         Glfw::acquire();
         {

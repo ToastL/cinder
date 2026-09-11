@@ -1,6 +1,6 @@
 #include "core/Engine.hpp"
-#include "core/GameConfig.hpp"
 #include "core/GameLoop.hpp"
+#include "core/ProjectConfig.hpp"
 #include "platform/Assets.hpp"
 #include "platform/Glfw.hpp"
 #include "platform/Log.hpp"
@@ -8,40 +8,46 @@
 #include <cstdio>
 #include <cstring>
 #include <exception>
+#include <filesystem>
 #include <string>
 
 using cinder::core::Engine;
-using cinder::core::GameConfig;
 using cinder::core::GameLoop;
+using cinder::core::ProjectConfig;
 using cinder::platform::Glfw;
 
 int main(int argc, char** argv) {
     std::setvbuf(stdout, nullptr, _IOLBF, 0);
+    cinder::platform::locateExecutable(argv[0]);
 
     int frameLimit = 0;
     std::string capture;
     std::string scene;
+    std::string project;
 
     for (int i = 1; i < argc; ++i) {
-        if (std::strcmp(argv[i], "--assets") == 0 && i + 1 < argc) {
-            cinder::platform::setAssetRoot(argv[++i]);
-        } else if (std::strcmp(argv[i], "--frames") == 0 && i + 1 < argc) {
+        if (std::strcmp(argv[i], "--frames") == 0 && i + 1 < argc) {
             frameLimit = std::atoi(argv[++i]);
         } else if (std::strcmp(argv[i], "--capture") == 0 && i + 1 < argc) {
             capture = argv[++i];
         } else if (std::strcmp(argv[i], "--scene") == 0 && i + 1 < argc) {
             scene = argv[++i];
+        } else if (argv[i][0] != '-' && project.empty()) {
+            project = argv[i];
         }
     }
 
     try {
-        GameConfig config = GameConfig::load(cinder::platform::assetPath("game.lua"));
+        cinder::platform::setProjectRoot(project.empty()
+                ? cinder::platform::executableDir() / "project"
+                : std::filesystem::path(project));
+        ProjectConfig config = ProjectConfig::load(cinder::platform::projectPath("project.lua"));
         if (!scene.empty()) config.scene = scene;
 
         Glfw::acquire();
         {
             Engine engine(config);
-            engine.openScene(cinder::platform::resolveAsset(config.scene));
+            engine.openScene(cinder::platform::projectPath(config.scene));
             GameLoop loop(config.fixedHz);
 
             int frames = 0;

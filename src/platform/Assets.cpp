@@ -1,50 +1,62 @@
 #include "platform/Assets.hpp"
 
 #include <cstdlib>
+#include <system_error>
 
-#ifndef CINDER_ASSETS_DEFAULT
-#define CINDER_ASSETS_DEFAULT "assets"
+#ifndef CINDER_ENGINE_DEFAULT
+#define CINDER_ENGINE_DEFAULT "engine"
 #endif
 
 namespace cinder::platform {
 namespace {
 
-std::filesystem::path root;
-bool resolved = false;
+std::filesystem::path exeDir;
+std::filesystem::path engine;
+std::filesystem::path project;
+bool engineResolved = false;
 
-std::filesystem::path resolve() {
-    if (const char* env = std::getenv("CINDER_ASSETS"); env != nullptr && *env != '\0') return env;
+std::filesystem::path resolveEngine() {
+    if (const char* env = std::getenv("CINDER_ENGINE"); env != nullptr && *env != '\0') return env;
 
-    const std::filesystem::path baked(CINDER_ASSETS_DEFAULT);
+    if (!exeDir.empty() && std::filesystem::exists(exeDir / "engine")) return exeDir / "engine";
+
+    const std::filesystem::path baked(CINDER_ENGINE_DEFAULT);
     if (std::filesystem::exists(baked)) return baked;
 
-    return std::filesystem::path("assets");
+    return std::filesystem::path("engine");
+}
+
+std::filesystem::path under(const std::filesystem::path& root, std::string_view relative) {
+    if (relative.starts_with("./")) relative.remove_prefix(2);
+    return root / std::filesystem::path(relative);
 }
 
 }
 
-void setAssetRoot(const std::filesystem::path& value) {
-    root = value;
-    resolved = true;
+void locateExecutable(const char* argv0) {
+    if (argv0 == nullptr || *argv0 == '\0') return;
+
+    std::error_code error;
+    const std::filesystem::path path = std::filesystem::weakly_canonical(argv0, error);
+    if (!error) exeDir = path.parent_path();
 }
 
-const std::filesystem::path& assetRoot() {
-    if (!resolved) {
-        root = resolve();
-        resolved = true;
+const std::filesystem::path& executableDir() { return exeDir; }
+
+const std::filesystem::path& engineRoot() {
+    if (!engineResolved) {
+        engine = resolveEngine();
+        engineResolved = true;
     }
-    return root;
+    return engine;
 }
 
-std::filesystem::path assetPath(std::string_view relative) {
-    return assetRoot() / std::filesystem::path(relative);
-}
+std::filesystem::path enginePath(std::string_view relative) { return under(engineRoot(), relative); }
 
-std::filesystem::path resolveAsset(std::string_view path) {
-    std::string_view trimmed = path;
-    if (trimmed.starts_with("./")) trimmed.remove_prefix(2);
-    if (trimmed.starts_with("assets/")) trimmed.remove_prefix(7);
-    return assetRoot() / std::filesystem::path(trimmed);
-}
+void setProjectRoot(const std::filesystem::path& root) { project = std::filesystem::absolute(root); }
+
+const std::filesystem::path& projectRoot() { return project; }
+
+std::filesystem::path projectPath(std::string_view relative) { return under(project, relative); }
 
 }

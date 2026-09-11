@@ -10,7 +10,7 @@ if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
     set(CMAKE_BUILD_TYPE Debug CACHE STRING "" FORCE)
 endif()
 
-set(CINDER_ASSETS_DIR "${CMAKE_CURRENT_SOURCE_DIR}/assets")
+set(CINDER_ENGINE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/engine")
 
 include(cmake/Dependencies.cmake)
 include(cmake/Shaders.cmake)
@@ -36,8 +36,8 @@ target_link_libraries(engine PUBLIC volk glfw glm::glm lua vma_impl stb)
 target_compile_definitions(engine PUBLIC
     GLFW_INCLUDE_NONE
     GLM_FORCE_DEPTH_ZERO_TO_ONE
-    GLM_ENABLE_EXPERIMENTAL
-    CINDER_ASSETS_DEFAULT="${CINDER_ASSETS_DIR}")
+    GLM_ENABLE_EXPERIMENTAL)
+target_compile_definitions(engine PRIVATE CINDER_ENGINE_DEFAULT="${CINDER_ENGINE_DIR}")
 target_compile_options(engine PRIVATE -Wall -Wextra -Wno-unused-parameter)
 
 file(GLOB_RECURSE DEV_SOURCES CONFIGURE_DEPENDS src/dev/*.cpp)
@@ -57,6 +57,7 @@ enable_testing()
 file(GLOB TEST_SOURCES CONFIGURE_DEPENDS tests/*.cpp)
 add_executable(tests ${TEST_SOURCES})
 target_link_libraries(tests PRIVATE engine doctest::doctest)
+target_compile_definitions(tests PRIVATE CINDER_SOURCE_DIR="${CMAKE_CURRENT_SOURCE_DIR}")
 add_test(NAME unit COMMAND tests)
 
 add_test(NAME shipping_binary_is_clean COMMAND ${CMAKE_COMMAND}

@@ -14,7 +14,7 @@ namespace cinder::gfx {
 int RendererDrawList::textureHandle(std::string_view path) {
     if (path.empty()) return WHITE;
 
-    const std::string key = cinder::platform::resolveAsset(path).string();
+    const std::string key = cinder::platform::projectPath(path).string();
     if (missingTextures_.count(key) != 0) return WHITE;
 
     try {

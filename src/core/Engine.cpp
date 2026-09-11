@@ -5,9 +5,9 @@
 
 namespace cinder::core {
 
-Engine::Engine(const GameConfig& config) : Engine(config, {}) {}
+Engine::Engine(const ProjectConfig& config) : Engine(config, {}) {}
 
-Engine::Engine(const GameConfig& config, const cinder::gfx::OverlayFactory& overlay)
+Engine::Engine(const ProjectConfig& config, const cinder::gfx::OverlayFactory& overlay)
     : window_(config.title, config.width, config.height),
       input_(window_),
       ctx_(window_),

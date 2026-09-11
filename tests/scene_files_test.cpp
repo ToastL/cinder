@@ -1,7 +1,6 @@
 #include <doctest/doctest.h>
 
 #include "components/Builtins.hpp"
-#include "platform/Assets.hpp"
 #include "scene/Components.hpp"
 #include "scene/Scene.hpp"
 #include "script/Behaviour.hpp"
@@ -23,6 +22,8 @@ using cinder::serial::SceneCodec;
 
 namespace {
 
+const std::filesystem::path SOURCE(CINDER_SOURCE_DIR);
+
 std::string read(const std::filesystem::path& path) {
     std::ifstream in(path, std::ios::binary);
     std::ostringstream buffer;
@@ -32,9 +33,10 @@ std::string read(const std::filesystem::path& path) {
 
 std::vector<std::filesystem::path> shippedScenes() {
     std::vector<std::filesystem::path> out;
-    for (const auto& entry :
-         std::filesystem::recursive_directory_iterator(cinder::platform::assetRoot())) {
-        if (entry.path().extension() == ".scene") out.push_back(entry.path());
+    for (const std::filesystem::path& root : {SOURCE / "samples", SOURCE / "tests" / "selftest"}) {
+        for (const auto& entry : std::filesystem::recursive_directory_iterator(root)) {
+            if (entry.path().extension() == ".scene") out.push_back(entry.path());
+        }
     }
     return out;
 }
@@ -50,10 +52,10 @@ TEST_CASE("every shipped scene is canonical") {
         Scene scene{types};
 
         const std::vector<std::filesystem::path> scenes = shippedScenes();
-        CHECK_FALSE(scenes.empty());
+        CHECK(scenes.size() >= 3);
 
         for (const std::filesystem::path& path : scenes) {
-            const std::string name = path.filename().string();
+            const std::string name = path.lexically_relative(SOURCE).string();
             CAPTURE(name);
             const std::string text = read(path);
             SceneCodec::load(text, scene);

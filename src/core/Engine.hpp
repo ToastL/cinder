@@ -1,6 +1,6 @@
 #pragma once
 
-#include "core/GameConfig.hpp"
+#include "core/ProjectConfig.hpp"
 #include "gfx/Overlay.hpp"
 #include "gfx/Renderer.hpp"
 #include "gfx/vk/VkCtx.hpp"
@@ -18,8 +18,8 @@ namespace cinder::core {
 
 class Engine {
 public:
-    explicit Engine(const GameConfig& config);
-    Engine(const GameConfig& config, const cinder::gfx::OverlayFactory& overlay);
+    explicit Engine(const ProjectConfig& config);
+    Engine(const ProjectConfig& config, const cinder::gfx::OverlayFactory& overlay);
     ~Engine();
 
     Engine(const Engine&) = delete;
