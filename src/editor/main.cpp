@@ -2,9 +2,11 @@
 #include "core/GameLoop.hpp"
 #include "core/ProjectConfig.hpp"
 #include "dev/Console.hpp"
+#include "dev/Dockspace.hpp"
 #include "dev/ImGuiLayer.hpp"
 #include "dev/PlaySession.hpp"
 #include "dev/Toolbar.hpp"
+#include "dev/Viewport.hpp"
 #include "platform/Assets.hpp"
 #include "platform/Glfw.hpp"
 #include "platform/Log.hpp"
@@ -21,6 +23,7 @@ using cinder::core::ProjectConfig;
 using cinder::dev::Console;
 using cinder::dev::PlaySession;
 using cinder::dev::Toolbar;
+using cinder::dev::Viewport;
 using cinder::platform::Glfw;
 
 int main(int argc, char** argv) {
@@ -65,8 +68,11 @@ int main(int argc, char** argv) {
             PlaySession session(engine);
             Console console(engine.script());
             Toolbar toolbar(session, engine, scenePath);
-            engine.renderer().setOverlayDraw([&toolbar, &console] {
+            Viewport viewport(session, engine);
+            engine.renderer().setOverlayDraw([&toolbar, &viewport, &console] {
                 toolbar.draw();
+                cinder::dev::drawDockspace();
+                viewport.draw();
                 console.draw();
             });
 

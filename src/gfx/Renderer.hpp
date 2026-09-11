@@ -32,6 +32,7 @@ public:
     Renderer& operator=(const Renderer&) = delete;
 
     void setClearColor(float r, float g, float b);
+    void setViewportSize(int width, int height);
     void beginFrame();
     void drawFrame();
     void capture(const std::string& path);
@@ -41,13 +42,12 @@ public:
     cinder::scene::DrawList& draws();
 
     void setOverlayDraw(std::function<void()> draw) { overlayDraw_ = std::move(draw); }
-    bool hasOverlay() const { return overlay_ != nullptr; }
-    bool overlayCapturesMouse() const;
-    bool overlayCapturesKeyboard() const;
 
     void registerApi(cinder::lua::LuaApi& api);
 
 private:
+    bool embedded() const { return viewportWidth_ > 0; }
+    VkExtent2D targetExtent() const;
     void createTargets();
     void destroyTargets();
     void createCommandBuffers();
@@ -67,6 +67,7 @@ private:
 
     std::unique_ptr<cinder::gfx::vk::Swapchain> swapchain_;
     std::vector<std::unique_ptr<RenderTarget>> targets_;
+    std::vector<VkDescriptorSet> viewportTextures_;
     std::vector<VkCommandBuffer> commandBuffers_;
     std::unique_ptr<cinder::gfx::vk::FrameSync> sync_;
     std::unique_ptr<cinder::gfx::asset::Assets> assets_;
@@ -79,6 +80,8 @@ private:
     std::function<void()> overlayDraw_;
 
     uint32_t lastFrame_ = 0;
+    int viewportWidth_ = 0;
+    int viewportHeight_ = 0;
 
     float clearR_ = 0.02f;
     float clearG_ = 0.02f;

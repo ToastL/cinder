@@ -65,7 +65,7 @@ void Console::draw() {
     if (!open_) return;
 
     ImGui::SetNextWindowSize(ImVec2(720, 300), ImGuiCond_FirstUseEver);
-    if (!ImGui::Begin("Console", &open_)) {
+    if (!ImGui::Begin(TITLE, &open_, ImGuiWindowFlags_NoFocusOnAppearing)) {
         ImGui::End();
         return;
     }

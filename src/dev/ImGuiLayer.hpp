@@ -24,9 +24,8 @@ public:
     void record(VkCommandBuffer cmd) override;
     void discardFrame() override;
     void setMinImageCount(uint32_t minImageCount) override;
-
-    bool capturesMouse() const override;
-    bool capturesKeyboard() const override;
+    VkDescriptorSet addTexture(VkImageView view) override;
+    void removeTexture(VkDescriptorSet texture) override;
 
 private:
     const cinder::gfx::vk::VkCtx& ctx_;

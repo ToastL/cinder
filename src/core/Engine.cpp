@@ -43,14 +43,7 @@ void Engine::saveScene(const std::filesystem::path& path) {
     cinder::serial::SceneCodec::saveToFile(path, scene_);
 }
 
-void Engine::beginFrame() {
-    script_->poll();
-
-    if (!renderer_.hasOverlay()) return;
-    const bool locked = input_.cursorLocked();
-    input_.setSuppressed(!locked && renderer_.overlayCapturesKeyboard(),
-                         !locked && renderer_.overlayCapturesMouse());
-}
+void Engine::beginFrame() { script_->poll(); }
 
 void Engine::update(float dt) {
     script_->update(dt);

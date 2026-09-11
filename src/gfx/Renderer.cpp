@@ -14,6 +14,7 @@
 #include <stb_image_write.h>
 
 #include <algorithm>
+#include <cmath>
 #include <cstring>
 #include <limits>
 
@@ -39,6 +40,7 @@ Renderer::Renderer(const VkCtx& ctx, cinder::platform::Window& window,
 
     textureLayout_ = createTextureLayout();
     createTargets();
+    swapchain_->createFramebuffers(presentRenderPass_);
     createCommandBuffers();
 
     sync_ = std::make_unique<FrameSync>(ctx, FRAMES_IN_FLIGHT, swapchain_->imageCount());
@@ -84,17 +86,37 @@ VkDescriptorSetLayout Renderer::createTextureLayout() {
     return layout;
 }
 
+VkExtent2D Renderer::targetExtent() const {
+    if (!embedded()) return {swapchain_->width(), swapchain_->height()};
+
+    const float scale = static_cast<float>(window_.width())
+            / static_cast<float>(std::max(1, window_.logicalWidth()));
+    const auto pixels = [scale](int points) {
+        return static_cast<uint32_t>(std::max(1L, std::lround(static_cast<float>(points) * scale)));
+    };
+    return {pixels(viewportWidth_), pixels(viewportHeight_)};
+}
+
 void Renderer::createTargets() {
-    targets_.clear();
+    destroyTargets();
+    const VkExtent2D extent = targetExtent();
     for (uint32_t i = 0; i < FRAMES_IN_FLIGHT; ++i) {
         targets_.push_back(std::make_unique<RenderTarget>(
                 ctx_, sceneRenderPass_, textureLayout_, swapchain_->format(), depthFormat_,
-                swapchain_->width(), swapchain_->height()));
+                extent.width, extent.height));
+        if (embedded() && overlay_ != nullptr) {
+            viewportTextures_.push_back(overlay_->addTexture(targets_.back()->view()));
+        }
     }
-    swapchain_->createFramebuffers(presentRenderPass_);
 }
 
-void Renderer::destroyTargets() { targets_.clear(); }
+void Renderer::destroyTargets() {
+    if (overlay_ != nullptr) {
+        for (VkDescriptorSet texture : viewportTextures_) overlay_->removeTexture(texture);
+    }
+    viewportTextures_.clear();
+    targets_.clear();
+}
 
 void Renderer::createCommandBuffers() {
     commandBuffers_.resize(FRAMES_IN_FLIGHT);
@@ -110,8 +132,8 @@ void Renderer::createCommandBuffers() {
 }
 
 void Renderer::resizePasses() {
-    const int width = window_.logicalWidth();
-    const int height = window_.logicalHeight();
+    const int width = embedded() ? viewportWidth_ : window_.logicalWidth();
+    const int height = embedded() ? viewportHeight_ : window_.logicalHeight();
     for (const std::unique_ptr<DrawPass>& pass : passes_) pass->resize(width, height);
 }
 
@@ -119,6 +141,16 @@ void Renderer::setClearColor(float r, float g, float b) {
     clearR_ = r;
     clearG_ = g;
     clearB_ = b;
+}
+
+void Renderer::setViewportSize(int width, int height) {
+    if (width == viewportWidth_ && height == viewportHeight_) return;
+
+    ctx_.waitIdle();
+    viewportWidth_ = width;
+    viewportHeight_ = height;
+    createTargets();
+    resizePasses();
 }
 
 void Renderer::beginFrame() {
@@ -130,15 +162,8 @@ void Renderer::beginFrame() {
 }
 
 VkDescriptorSet Renderer::viewport() const {
-    return targets_[sync_->frame()]->descriptorSet();
-}
-
-bool Renderer::overlayCapturesMouse() const {
-    return overlay_ != nullptr && overlay_->capturesMouse();
-}
-
-bool Renderer::overlayCapturesKeyboard() const {
-    return overlay_ != nullptr && overlay_->capturesKeyboard();
+    if (viewportTextures_.empty()) return VK_NULL_HANDLE;
+    return viewportTextures_[sync_->frame()];
 }
 
 void Renderer::registerApi(cinder::lua::LuaApi& api) {
@@ -200,7 +225,7 @@ void Renderer::recordCommandBuffer(VkCommandBuffer cmd, uint32_t imageIndex) {
 
     vkCmdBeginRenderPass(cmd, &present, VK_SUBPASS_CONTENTS_INLINE);
     setViewport(cmd, swapchain_->width(), swapchain_->height());
-    compositePipeline_->draw(cmd, target.descriptorSet());
+    if (!embedded()) compositePipeline_->draw(cmd, target.descriptorSet());
     if (overlay_ != nullptr) overlay_->record(cmd);
     vkCmdEndRenderPass(cmd);
 
@@ -287,6 +312,7 @@ void Renderer::recreateSwapchain() {
     }
 
     createTargets();
+    swapchain_->createFramebuffers(presentRenderPass_);
     resizePasses();
     sync_->resize(swapchain_->imageCount());
     if (overlay_ != nullptr) overlay_->setMinImageCount(swapchain_->imageCount());

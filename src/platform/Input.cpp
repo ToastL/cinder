@@ -167,6 +167,11 @@ void Input::setSuppressed(bool keyboard, bool mouse) {
     mouseSuppressed_ = mouse;
 }
 
+void Input::setViewportOrigin(double x, double y) {
+    originX_ = x;
+    originY_ = y;
+}
+
 void Input::setCursorLocked(bool locked) {
     if (locked == cursorLocked_) return;
     cursorLocked_ = locked;

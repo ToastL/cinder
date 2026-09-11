@@ -32,8 +32,9 @@ ctest --test-dir build --output-on-failure
 ./build/editor samples/sandbox2d
 ```
 
-`editor` is the **dev build** — the same engine plus the ImGui overlay, the console and the play
-toolbar. It opens a project in **Edit mode**: the scene is loaded and drawn, and no game code runs.
+`editor` is the **dev build** — the same engine plus the ImGui overlay: a dockspace holding the Scene
+viewport and the console, with the play toolbar in the main menu bar. It opens a project in **Edit
+mode**: the scene is loaded and drawn, and no game code runs.
 Play/Pause/Step/Stop are on the toolbar and on ⌘P, ⌘⇧P and ⌘⌥P; ⌘S saves the scene. It takes
 `--scene <path>` (project-relative), `--play` (start in Play), `--frames <n>` and `--capture <png>`.
 The last two make it scriptable: `--frames 90 --capture out.png` runs headless-ish and writes a
@@ -54,7 +55,8 @@ cmake --build build --target package_game
 Stages a runnable game in `build/dist/<project>/` — see *Projects and packaging*.
 
 Note that `--capture` reads back the **scene render target**, not the swapchain, so an overlay would
-never appear in a capture anyway. That is deliberate: it is the game's picture, not the editor's.
+never appear in a capture anyway. That is deliberate: it is the game's picture, not the editor's. In
+the editor that target is the size of the Scene panel, not the window.
 
 The first configure fetches every dependency and needs network — glfw, glm, lua, VMA, stb, volk,
 Vulkan-Headers, Dear ImGui and doctest, all pinned in `cmake/Dependencies.cmake`. Nothing needs
@@ -101,7 +103,7 @@ cinder/
     scene/ serial/ components/       the world model
     gfx/ gfx/vk/ gfx/asset/ gfx/pass/  the renderer
     script/ core/                    the Lua host and the engine
-    dev/                             ImGui, console, play session, toolbar; NOT part of `engine`
+    dev/                             ImGui, panels, dockspace, play session; NOT part of `engine`
     player/ editor/                  the two executables
   tests/
     selftest/                        a project whose scene runs the Lua smoke test
@@ -131,8 +133,8 @@ dev                        -> core and all of the above (a separate target, see 
 ```
 
 Everything down to `core` is the `engine` library. **`dev` is not** — it is its own target,
-`engine_dev`, and it holds everything editor-only: ImGui, the console, the play session and the
-toolbar. It is the only place ImGui may be mentioned. `player` links `engine`; `editor` links
+`engine_dev`, and it holds everything editor-only: ImGui, the console, the Scene viewport, the
+dockspace, the play session and the toolbar. It is the only place ImGui may be mentioned. `player` links `engine`; `editor` links
 `engine_dev`. If a `#include <imgui.h>` ever appears outside `src/dev/`, the split is broken.
 
 **`platform` is the one leaf everything may reach for**, because `platform/Log.hpp` lives there and
@@ -229,9 +231,20 @@ triangle (`CompositePipeline`) sampling that target into the swapchain framebuff
 descriptor pool and descriptor set — deliberately *not* routed through `Assets`, whose pool has no
 `FREE_DESCRIPTOR_SET` flag and would leak a set per resize. There is one target **per frame in
 flight**; a single one would be cleared by frame N+1 while frame N's composite still sampled it.
-`Renderer::viewport()` returns the current frame's descriptor set — that is the editor viewport
-handle. The target uses `swapchain.format()` (sRGB) so the encode/decode round trip is identity; a
-UNORM target would visibly brighten everything.
+The target uses `swapchain.format()` (sRGB) so the encode/decode round trip is identity; a UNORM
+target would visibly brighten everything.
+
+**The target follows the window unless the host embeds it.** `setViewportSize(w, h)`, in window
+points, detaches it: both targets are rebuilt at `w × h` times the framebuffer scale, the passes are
+resized to `w × h`, and the present pass stops drawing the composite triangle — the overlay shows
+the target instead. While embedded, `createTargets` registers each target's image view with the
+overlay through `Overlay::addTexture`, and `Renderer::viewport()` returns the current frame's
+registration. The target's own descriptor set cannot stand in for it: ImGui's Vulkan backend binds
+user textures as `SAMPLED_IMAGE` sets with its own sampler, and validation rejects a
+combined-image-sampler set there. `destroyTargets` removes the registrations, and every rebuild sits
+behind a `vkDeviceWaitIdle`, so no set is freed while a frame still reads it. A size change rebuilds
+on the spot, so the set the panel draws with in that same frame is already the new one. `player`
+never calls it and composites exactly as before.
 
 The scene pass carries a second subpass dependency (`0 -> EXTERNAL`, color-write -> fragment-read)
 that orders the composite's sample after the scene's writes. Any new pass that reads a previous
@@ -279,20 +292,22 @@ per-frame feature.
 build/player | grep -i imgui` returns nothing. There is no `--dev`: to get the tools, run `editor`.
 
 The seam is [`gfx/Overlay.hpp`](src/gfx/Overlay.hpp) — a pure interface (`beginFrame`, `record`,
-`discardFrame`, `setMinImageCount`, `capturesMouse`, `capturesKeyboard`) plus an `OverlayFactory`
-typedef. `gfx` knows only that. `dev/ImGuiLayer` is the only implementation; it owns the ImGui
-context and both backends, and draws **inside the present pass, after the composite triangle** — so
-it sits on top of the finished scene image and never touches the scene render target.
+`discardFrame`, `setMinImageCount`, `addTexture`, `removeTexture`) plus an `OverlayFactory` typedef.
+`gfx` knows only that.
+`dev/ImGuiLayer` is the only implementation; it owns the ImGui context and both backends, and draws
+**inside the present pass**, where the player draws the composite triangle. It samples the scene
+render target and never writes it.
 
 `Renderer`'s constructor takes an `OverlayFactory`. `player` passes nothing and the pointer stays
 null; `editor` passes `cinder::dev::overlayFactory()`. Panels are a second, separate hook —
 `setOverlayDraw(std::function<void()>)`, called from `beginFrame()` between `ImGui::NewFrame` and the
 `ImGui::Render` that happens during command recording. `editor/main.cpp` sets it to draw
-`dev/Toolbar` and `dev/Console`. The two hooks together are what keep `gfx` free of both ImGui and
-`script`.
+`dev/Toolbar`, `dev/Dockspace`, `dev/Viewport` and `dev/Console`, in that order — the dockspace has
+to be submitted before the windows it hosts. The two hooks together are what keep `gfx` free of both
+ImGui and `script`.
 
-What remains in the shipping binary is a null `unique_ptr`, an empty `std::function`, and two null
-checks per frame. That is the whole cost of the seam.
+What remains in the shipping binary is a null `unique_ptr`, an empty `std::function`, a zero
+viewport size, and three branches per frame. That is the whole cost of the seam.
 
 Three things about the ImGui frame lifecycle are load-bearing:
 
@@ -307,13 +322,40 @@ Three things about the ImGui frame lifecycle are load-bearing:
   `VkCtx` has already called `volkLoadInstance` and `volkLoadDevice` by the time the layer is built.
 
 ImGui creates its own descriptor pool via `DescriptorPoolSize`, for the same reason `RenderTarget`
-does not route through `Assets`: that pool has no `FREE_DESCRIPTOR_SET` flag.
+does not route through `Assets`: that pool has no `FREE_DESCRIPTOR_SET` flag. ImGui's does, which is
+what lets `removeTexture` free the Scene panel's sets on every resize.
 
 `io.IniFilename` is `nullptr`, so no `imgui.ini` is written yet. Turning it on is the "editor layout
 persisted between runs" item in `TODO.md`.
 
-The toolbar's shortcuts use `ImGui::Shortcut` with `ImGuiInputFlags_RouteGlobal`, so they work while
+The toolbar is the main menu bar, not a window, so it takes no dock slot and the dockspace sits
+below it. Its shortcuts use `ImGui::Shortcut` with `ImGuiInputFlags_RouteGlobal`, so they work while
 the cursor is locked by the game. `ImGuiMod_Ctrl` is ⌘ on macOS.
+
+### The Scene viewport
+
+`dev/Viewport` is the "Scene" window. Each frame it measures its content region, hands the size to
+`Renderer::setViewportSize` and the region's top-left to `Input::setViewportOrigin`, then draws
+`Renderer::viewport()` over an `InvisibleButton` covering the region — the button is what stops a
+click on the scene from dragging the window. The order is load-bearing: `setViewportSize` may
+rebuild the targets, so `viewport()` is read after it.
+
+`Input::mouseX`/`mouseY` subtract that origin, so `engine.mousePosition()` and `screenToWorld` work
+in the panel's own points, top-left at zero, exactly as they do across the player's whole window.
+
+The viewport also owns input routing, through `Input::setSuppressed`. The game gets the **keyboard
+while the Scene window is focused** and the **mouse while the image is hovered**, or while a press that
+started on it is held. A locked cursor gives the game both and sets `ImGuiConfigFlags_NoMouse`: GLFW
+still reports a virtual cursor while disabled, and ImGui would otherwise click whatever panel it
+wanders over. Entering `Playing` focuses the window, so Play and Resume hand the game the keyboard
+without a click on the scene first. The console opens with `NoFocusOnAppearing`: every new window
+takes focus on its first frame, and the console is submitted after the Scene, so without the flag
+`editor --play` would start with the keyboard in the console. The flags are set while building
+frame N's overlay and read by frame N+1's updates.
+
+`dev/Dockspace` builds the default layout — Scene above, Console below — with the `DockBuilder`
+API from `imgui_internal.h`, once, when the dockspace node does not exist yet. With no ini file,
+that is every launch.
 
 ### Logging and the console
 
@@ -331,10 +373,8 @@ else, with `[console]` as the chunk name. In Edit mode that state holds the prel
 so the console can build a scene — `scene:spawn`, `actor:behaviour(path, data)` — without starting
 any of it, and Save writes the result.
 
-`Engine::beginFrame` feeds `io.WantCaptureKeyboard` / `WantCaptureMouse` into `Input::setSuppressed`,
-so typing in the console does not also drive the game — unless the cursor is locked, in which case
-the game keeps everything. The flags are read one frame late, since ImGui's `NewFrame` for the
-current frame has not run yet.
+Typing in the console does not also drive the game, because the console has focus and the Scene
+window does not — see *The Scene viewport*.
 
 ## Scripting
 
@@ -504,4 +544,5 @@ stages `build/dist/<project>/` as `player`, `engine/shaders/*.spv`, `engine/lua/
 - Sizes and view dimensions come in two flavours and they are not interchangeable: the swapchain and
   render target are in **framebuffer pixels**, while cameras, `resize()` and `screenToWorld` are in
   **window points**. On a Retina display these differ by 2x. GLFW reports cursor positions in points,
-  which is why the cameras use them.
+  which is why the cameras use them. In the editor the view is the Scene panel rather than the
+  window, and `setViewportSize` takes points and converts to pixels itself.

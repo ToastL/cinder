@@ -19,9 +19,8 @@ public:
     virtual void record(VkCommandBuffer cmd) = 0;
     virtual void discardFrame() = 0;
     virtual void setMinImageCount(uint32_t minImageCount) = 0;
-
-    virtual bool capturesMouse() const = 0;
-    virtual bool capturesKeyboard() const = 0;
+    virtual VkDescriptorSet addTexture(VkImageView view) = 0;
+    virtual void removeTexture(VkDescriptorSet texture) = 0;
 };
 
 using OverlayFactory = std::function<std::unique_ptr<Overlay>(

@@ -16,6 +16,7 @@ namespace cinder::dev {
 class Console {
 public:
     static constexpr std::size_t MAX_LINES = 2000;
+    static constexpr const char* TITLE = "Console";
 
     explicit Console(cinder::script::LuaHost& script);
     ~Console();

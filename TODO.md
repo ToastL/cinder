@@ -10,13 +10,14 @@ reload — per-file for behaviours, carrying instance fields across the swap. An
 with a prop system that feeds the serializer and the script bindings from one declaration. A
 bidirectional `Archive` with a text backend, and games that are `.scene` files in project folders
 rather than scripts in the engine. Dear ImGui is up in a separate `engine_dev` target, with a
-console, a live Lua REPL and a play toolbar — `player` ships without a byte of it. The editor opens
-a project in Edit mode; Play serializes the scene into a fresh Lua state and Stop restores it.
-83 headless test cases and a 44-check Lua selftest.
+dockspace holding the Scene viewport and a console with a live Lua REPL, and a play toolbar in the
+main menu bar — `player` ships without a byte of it. The editor opens a project in Edit mode; Play
+serializes the scene into a fresh Lua state and Stop restores it. 83 headless test cases and a
+44-check Lua selftest.
 
 Foundations, the scene model, the scripting ergonomics, serialization and the Edit/Play split are
-done. The editor shell is underway — ImGui, the console and the toolbar have landed; the viewport,
-hierarchy and inspector are next.
+done. The editor shell is underway — ImGui, the console, the toolbar and the Scene viewport have
+landed; the hierarchy and inspector are next.
 
 ---
 
@@ -24,11 +25,13 @@ hierarchy and inspector are next.
 
 - [x] Add Dear ImGui with its Vulkan backend. `gfx/vk` was kept free of engine concepts precisely so
       the backend can build on it without dragging in passes or assets. Lives in `src/dev`, behind
-      the abstract `gfx::Overlay`, drawn inside the present pass after the composite. `editor` is
-      the dev build; `player` links `engine` and contains no ImGui symbols at all.
-- [ ] Docking layout: viewport, hierarchy, inspector, console, asset browser
-- [ ] **Viewport** — the offscreen target as an ImGui image. `Renderer::viewport()` already returns
-      the descriptor set; it needs resizing to the panel, not the window.
+      the abstract `gfx::Overlay`, drawn inside the present pass. `editor` is the dev build;
+      `player` links `engine` and contains no ImGui symbols at all.
+- [ ] Docking layout: viewport, hierarchy, inspector, console, asset browser. `dev/Dockspace` is up
+      with Scene above Console; the other panels dock into it as they land.
+- [x] **Viewport** — `dev/Viewport`, the "Scene" window. The target is sized to the panel through
+      `Renderer::setViewportSize` and registered with ImGui through `Overlay::addTexture`, and
+      `engine.mousePosition()` is relative to the panel's top-left.
 - [ ] **Hierarchy** — tree of actors, drag to reparent, multi-select
 - [ ] **Inspector** — iterate `props<T>()`, one widget per field type (`float`, `int`, `bool`,
       `std::string`, `glm::vec3`, color, asset reference, enum). `PropDef` already carries `label`,
@@ -41,7 +44,7 @@ hierarchy and inspector are next.
 - [ ] **Undo/redo** — command stack recording `(component, field, old, new)`
 - [x] Console panel — every print routes through `platform/Log`, and `dev/Console` installs the
       sink. REPL line evaluates against the live `lua_State`, with history on up/down.
-- [x] Toolbar — Play / Pause / Step / Stop and Save, on ⌘P / ⌘⇧P / ⌘⌥P / ⌘S
+- [x] Toolbar — Play / Pause / Step / Stop and Save, on ⌘P / ⌘⇧P / ⌘⌥P / ⌘S, in the main menu bar
 - [ ] Console: click a `file:line` to open it in `$EDITOR`; filter by level; search
 - [ ] Editor layout + window state persisted between runs — `io.IniFilename` is currently `nullptr`
 - [ ] Project picker and new-project template — the editor takes the project folder on the
@@ -65,9 +68,8 @@ sugar, never the primary surface.
 - [x] Editor keeps rendering while paused — `GameLoop::idle`
 - [x] Game code never runs in Edit mode — there is no entry script, and behaviours only start from
       `Scene::update`, which Edit mode never calls
-- [ ] Input routing — the game gets input only when the viewport is focused. Half of this exists:
-      `Engine::beginFrame` already feeds ImGui's `WantCapture*` into `Input::setSuppressed`. What is
-      missing is the viewport panel itself to focus.
+- [x] Input routing — `dev/Viewport` gives the game the keyboard while the Scene window is focused
+      and the mouse while its image is hovered; a locked cursor keeps both. Play focuses the Scene.
 - [ ] Dirty tracking — mark the scene modified and warn before closing it with unsaved changes.
       Entering Play no longer risks edits, since Stop restores them.
 - [ ] Keep a change made during Play — Unity's "copy component values" escape hatch
@@ -154,6 +156,13 @@ sugar, never the primary surface.
 - [ ] Fixed caps with no growth path: `MAX_QUADS = 10000`, `MAX_DRAWS = 4096`, `MAX_TEXTURES = 256`
 - [ ] **`Renderer::capture` stalls the device** and reads the target back synchronously. It is a
       debug tool; do not call it per frame. `RenderTarget` carries `TRANSFER_SRC_BIT` only for it.
+- [ ] **Resizing the Scene panel stalls the device.** `Renderer::setViewportSize` calls
+      `vkDeviceWaitIdle` and rebuilds both targets on every size change, so dragging a dock splitter
+      stalls once per frame. Rebuilding each target when its own fence comes round would avoid it,
+      but the ImGui registration already recorded for that frame would have to survive the rebuild.
+- [ ] **ImGui blends the Scene image by its alpha.** The mesh pipeline writes `albedo.a` unblended,
+      so a translucent mesh lets the panel background through in the editor, while the player's
+      opaque swapchain ignores it. Sprites are fine — their alpha factors keep the target at 1.
 - [ ] **The layer graph is convention, not enforced.** See the Layering section of `CLAUDE.md`.
       `#include` cycles are invisible in a way package cycles are not, so this is worth re-checking
       by eye when adding a subdirectory.

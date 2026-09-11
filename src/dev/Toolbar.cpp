@@ -37,32 +37,23 @@ void Toolbar::draw() {
     if (pressed(ImGuiMod_Ctrl | ImGuiMod_Alt | ImGuiKey_P)) session_.step();
     if (pressed(ImGuiMod_Ctrl | ImGuiKey_S) && editing) save();
 
-    ImGui::SetNextWindowPos(ImVec2(10.0f, 10.0f), ImGuiCond_FirstUseEver);
-    if (!ImGui::Begin("Toolbar", nullptr,
-                      ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoCollapse)) {
-        ImGui::End();
-        return;
-    }
+    if (!ImGui::BeginMainMenuBar()) return;
 
     if (ImGui::Button(editing ? "Play" : "Stop")) session_.togglePlay();
-    ImGui::SameLine();
 
     ImGui::BeginDisabled(editing);
     if (ImGui::Button(state == PlaySession::State::Paused ? "Resume" : "Pause")) {
         session_.togglePause();
     }
-    ImGui::SameLine();
     if (ImGui::Button("Step")) session_.step();
     ImGui::EndDisabled();
-    ImGui::SameLine();
 
     ImGui::BeginDisabled(!editing);
     if (ImGui::Button("Save")) save();
     ImGui::EndDisabled();
-    ImGui::SameLine();
 
     ImGui::TextDisabled("%s  %s", label(state), scene_.filename().string().c_str());
-    ImGui::End();
+    ImGui::EndMainMenuBar();
 }
 
 void Toolbar::save() {
