@@ -1,8 +1,9 @@
 #include "serial/TextSave.hpp"
 
+#include "platform/Log.hpp"
+
 #include <charconv>
 #include <cmath>
-#include <cstdio>
 
 namespace cinder::serial {
 namespace {
@@ -133,7 +134,7 @@ void TextSave::indent() { out_.append(static_cast<std::size_t>(depth_) * 4, ' ')
 
 std::string TextSave::number(float value) {
     if (!std::isfinite(value)) {
-        std::fprintf(stderr, "[serial] non-finite value written as 0\n");
+        cinder::platform::logError("[serial] non-finite value written as 0\n");
         return "0";
     }
 

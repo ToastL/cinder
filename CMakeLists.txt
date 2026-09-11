@@ -40,11 +40,17 @@ target_compile_definitions(engine PUBLIC
     CINDER_ASSETS_DEFAULT="${CINDER_ASSETS_DIR}")
 target_compile_options(engine PRIVATE -Wall -Wextra -Wno-unused-parameter)
 
+file(GLOB_RECURSE DEV_SOURCES CONFIGURE_DEPENDS src/dev/*.cpp)
+
+add_library(engine_dev STATIC ${DEV_SOURCES})
+target_link_libraries(engine_dev PUBLIC engine imgui)
+target_compile_options(engine_dev PRIVATE -Wall -Wextra -Wno-unused-parameter)
+
 add_executable(game src/game/main.cpp)
 target_link_libraries(game PRIVATE engine)
 
 add_executable(editor src/editor/main.cpp)
-target_link_libraries(editor PRIVATE engine)
+target_link_libraries(editor PRIVATE engine_dev)
 
 enable_testing()
 
@@ -52,3 +58,7 @@ file(GLOB TEST_SOURCES CONFIGURE_DEPENDS tests/*.cpp)
 add_executable(tests ${TEST_SOURCES})
 target_link_libraries(tests PRIVATE engine doctest::doctest)
 add_test(NAME unit COMMAND tests)
+
+add_test(NAME shipping_binary_is_clean COMMAND ${CMAKE_COMMAND}
+    -DEXE=$<TARGET_FILE:game>
+    -P ${CMAKE_CURRENT_SOURCE_DIR}/cmake/AssertNoDevTools.cmake)

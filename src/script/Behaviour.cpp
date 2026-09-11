@@ -1,9 +1,9 @@
 #include "script/Behaviour.hpp"
 
 #include "lua/LuaCalls.hpp"
+#include "platform/Log.hpp"
 #include "scene/Actor.hpp"
 
-#include <cstdio>
 #include <utility>
 
 namespace cinder::script {
@@ -25,6 +25,18 @@ function __behaviourNew(path, actor, data)
     end
     return t
 end
+
+function __behaviourForget(path)
+    protos[path] = nil
+end
+
+function __behaviourFields(instance)
+    local fields = {}
+    for k, v in pairs(instance) do
+        if k ~= "actor" and type(v) ~= "function" then fields[k] = v end
+    end
+    return fields
+end
 )lua";
 
 Behaviour::Behaviour(lua_State* state) : state_(state) {}
@@ -32,7 +44,7 @@ Behaviour::Behaviour(lua_State* state) : state_(state) {}
 Behaviour::Behaviour(lua_State* state, std::string script, int data)
     : state_(state), script_(std::move(script)), data_(data) {}
 
-int Behaviour::instantiate() {
+int Behaviour::instantiate(int data) {
     if (script_.empty()) return LUA_NOREF;
 
     const int top = lua_gettop(state_);
@@ -40,22 +52,51 @@ int Behaviour::instantiate() {
     lua_getglobal(state_, "__behaviourNew");
     lua_pushstring(state_, script_.c_str());
     lua_pushinteger(state_, actor()->id());
-    if (data_ == LUA_NOREF) lua_pushnil(state_);
-    else lua_rawgeti(state_, LUA_REGISTRYINDEX, data_);
+    if (data == LUA_NOREF) lua_pushnil(state_);
+    else lua_rawgeti(state_, LUA_REGISTRYINDEX, data);
 
     if (lua_pcall(state_, 3, 1, 0) != LUA_OK) {
         const char* message = lua_tostring(state_, -1);
-        std::fprintf(stderr, "[lua] %s: %s\n", script_.c_str(),
-                     message != nullptr ? message : "unknown error");
+        cinder::platform::logError("[lua] %s: %s\n", script_.c_str(),
+                                   message != nullptr ? message : "unknown error");
         lua_settop(state_, top);
-        release();
         return LUA_NOREF;
     }
 
     const int ref = luaL_ref(state_, LUA_REGISTRYINDEX);
     lua_settop(state_, top);
-    release();
     return ref;
+}
+
+int Behaviour::snapshot() {
+    const int top = lua_gettop(state_);
+
+    lua_getglobal(state_, "__behaviourFields");
+    lua_rawgeti(state_, LUA_REGISTRYINDEX, ref_);
+
+    if (lua_pcall(state_, 1, 1, 0) != LUA_OK) {
+        const char* message = lua_tostring(state_, -1);
+        cinder::platform::logError("[lua] %s: %s\n", script_.c_str(),
+                                   message != nullptr ? message : "unknown error");
+        lua_settop(state_, top);
+        return LUA_NOREF;
+    }
+
+    const int fields = luaL_ref(state_, LUA_REGISTRYINDEX);
+    lua_settop(state_, top);
+    return fields;
+}
+
+void Behaviour::reload() {
+    if (ref_ == LUA_NOREF) return;
+
+    const int fields = snapshot();
+    const int next = instantiate(fields);
+    luaL_unref(state_, LUA_REGISTRYINDEX, fields);
+    if (next == LUA_NOREF) return;
+
+    luaL_unref(state_, LUA_REGISTRYINDEX, ref_);
+    ref_ = next;
 }
 
 void Behaviour::release() {
@@ -65,7 +106,8 @@ void Behaviour::release() {
 }
 
 void Behaviour::onStart() {
-    ref_ = instantiate();
+    ref_ = instantiate(data_);
+    release();
     if (ref_ != LUA_NOREF) cinder::lua::callMethod(state_, ref_, "start");
 }
 

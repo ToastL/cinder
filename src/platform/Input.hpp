@@ -26,11 +26,13 @@ public:
     double mouseY() const { return mouseY_; }
     double mouseDeltaX() const { return mouseX_ - lastMouseX_; }
     double mouseDeltaY() const { return mouseY_ - lastMouseY_; }
-    double scrollX() const { return scrollX_; }
-    double scrollY() const { return scrollY_; }
+    double scrollX() const { return mouseSuppressed_ ? 0.0 : scrollX_; }
+    double scrollY() const { return mouseSuppressed_ ? 0.0 : scrollY_; }
 
     void setCursorLocked(bool locked);
     bool cursorLocked() const { return cursorLocked_; }
+
+    void setSuppressed(bool keyboard, bool mouse);
 
     void consume();
 
@@ -62,6 +64,8 @@ private:
 
     bool cursorLocked_ = false;
     bool firstCursorEvent_ = true;
+    bool keyboardSuppressed_ = false;
+    bool mouseSuppressed_ = false;
 };
 
 }

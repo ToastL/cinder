@@ -1,12 +1,12 @@
 #include "script/SceneApi.hpp"
 
 #include "lua/LuaApi.hpp"
+#include "platform/Log.hpp"
 #include "scene/Actor.hpp"
 #include "scene/Components.hpp"
 #include "scene/Scene.hpp"
 #include "script/Behaviour.hpp"
 
-#include <cstdio>
 #include <string>
 
 namespace cinder::script {
@@ -248,7 +248,7 @@ int addComponent(lua_State* state) {
     const char* type = lua_tostring(state, 2);
     auto component = type == nullptr ? nullptr : sceneOf(state).types().create(type);
     if (component == nullptr) {
-        std::fprintf(stderr, "[lua] unknown component type: %s\n", type != nullptr ? type : "nil");
+        cinder::platform::logError("[lua] unknown component type: %s\n", type != nullptr ? type : "nil");
         return 0;
     }
 
@@ -276,8 +276,8 @@ int setProp(lua_State* state) {
 
     const PropDef* prop = propOf(*component, lua_tostring(state, 3));
     if (prop == nullptr) {
-        std::fprintf(stderr, "[lua] %s has no prop %s\n", lua_tostring(state, 2),
-                     lua_tostring(state, 3));
+        cinder::platform::logError("[lua] %s has no prop %s\n", lua_tostring(state, 2),
+                                   lua_tostring(state, 3));
         return 0;
     }
 

@@ -6,19 +6,23 @@ hit Play, hit Stop, and land back where you started.
 **Where we are:** a Vulkan renderer driving an ordered pass list into an offscreen target,
 composited to the swapchain by a fullscreen triangle. Sprite batch with atlas support, mesh pipeline
 with one directional light, per-pass cameras, edge-triggered input, Lua scripting with file-watch hot
-reload. An actor/component scene with a prop system that feeds the serializer and the script
-bindings from one declaration. A bidirectional `Archive` with a text backend. ~7,300 lines, 65
+reload — per-file for behaviours, carrying instance fields across the swap. An actor/component scene
+with a prop system that feeds the serializer and the script bindings from one declaration. A
+bidirectional `Archive` with a text backend. Dear ImGui is up in a separate `engine_dev` target,
+with a console panel and a live Lua REPL — `game` ships without a byte of it. ~8,000 lines, 73
 headless test cases, and a 44-check Lua selftest.
 
-Foundations, the scene model, the scripting ergonomics and serialization are done. The editor is
-next.
+Foundations, the scene model, the scripting ergonomics and serialization are done. The editor shell
+is underway — ImGui and the console have landed; the viewport, hierarchy and inspector are next.
 
 ---
 
 ## Editor shell
 
-- [ ] Add Dear ImGui with its Vulkan backend. `gfx/vk` was kept free of engine concepts precisely so
-      the backend can build on it without dragging in passes or assets.
+- [x] Add Dear ImGui with its Vulkan backend. `gfx/vk` was kept free of engine concepts precisely so
+      the backend can build on it without dragging in passes or assets. Lives in `src/dev`, behind
+      the abstract `gfx::Overlay`, drawn inside the present pass after the composite. `editor` is
+      the dev build; `game` links `engine` and contains no ImGui symbols at all.
 - [ ] Docking layout: viewport, hierarchy, inspector, console, asset browser
 - [ ] **Viewport** — the offscreen target as an ImGui image. `Renderer::viewport()` already returns
       the descriptor set; it needs resizing to the panel, not the window.
@@ -30,17 +34,26 @@ next.
 - [ ] Mouse picking — click the viewport to select (id buffer or CPU raycast)
 - [ ] Editor camera, independent of the game camera
 - [ ] **Undo/redo** — command stack recording `(component, field, old, new)`
-- [ ] Console panel — route the `[engine]`/`[lua]`/`[gfx]` prints into it
-- [ ] Editor layout + window state persisted between runs
+- [x] Console panel — every print routes through `platform/Log`, and `dev/Console` installs the
+      sink. REPL line evaluates against the live `lua_State`, with history on up/down.
+- [ ] Console: click a `file:line` to open it in `$EDITOR`; filter by level; search
+- [ ] Editor layout + window state persisted between runs — `io.IniFilename` is currently `nullptr`
 
 **Done when:** adding `CINDER_PROP(bounciness_)` to any component makes it appear in the inspector, save
 to disk, and become undoable — with zero editor code.
+
+**Script editing is external, by decision.** Scripts are plain files on disk, so the editor's job is
+the round trip — watch, reload per file, preserve state, report errors with a real `file:line` — not
+a text buffer that competes with VS Code and loses. An embedded editor for quick tweaks is optional
+sugar, never the primary surface.
 
 ## Play mode
 
 - [ ] Play / Pause / Step / Stop
 - [ ] Serialize scene on Play, restore on Stop
-- [ ] Input routing — the game gets input only when the viewport is focused
+- [ ] Input routing — the game gets input only when the viewport is focused. Half of this exists:
+      `Engine::beginFrame` already feeds ImGui's `WantCapture*` into `Input::setSuppressed`. What is
+      missing is the viewport panel itself to focus.
 - [ ] Editor keeps rendering while paused
 - [ ] Warn on unsaved changes when entering play mode
 
@@ -80,7 +93,8 @@ to disk, and become undoable — with zero editor code.
 
 ## Ship a game
 
-- [ ] Build target: package the runtime + cooked assets with no editor
+- [ ] Build target: package the runtime + cooked assets with no editor. The code split is done —
+      `game` links `engine`, `editor` links `engine_dev`. What is left is the packaging.
 - [ ] Asset bundling into an archive, not loose files
 - [ ] Settings/save-data location per OS
 - [ ] Crash handler + log file
@@ -111,11 +125,15 @@ to disk, and become undoable — with zero editor code.
       bindless.
 - [ ] **No sorting anywhere**, in either pass. Submission order only.
 - [ ] **`endSingleTime` does a full `vkQueueWaitIdle`** per texture upload.
-- [ ] **Lua hot reload discards all state** — a reload rebuilds the whole `lua_State`. Behaviours are
-      named files with a per-path prototype cache, so `poll()` could reload one changed file and
-      re-instantiate its behaviours instead of tearing down the world. Needs the watch to cover
-      `assets/scripts/behaviours/`, not just the entry script.
-- [ ] **`poll()` stats the entry script every frame** — move to a watch service, or throttle.
+- [ ] **Editing the entry script still discards all state** — it rebuilds the whole `lua_State` and
+      clears the scene, because a game script builds the world in top-level code. This stops being a
+      problem once the scene loads from a `.scene` file and the entry script is only bootstrap.
+- [ ] **A behaviour reload leaks the old instance's coroutines** — `task.spawn` tracks no owner, so a
+      loop started by the pre-reload table keeps running against it. Needs threads tagged with the
+      instance that spawned them, and dropped on reload and destroy.
+- [ ] **The prelude is not watched** — editing `types.lua`, `scene.lua` or `task.lua` needs a restart.
+- [ ] **`poll()` stats the entry script and every loaded behaviour every frame** — move to a watch
+      service, or throttle.
 - [ ] Fixed caps with no growth path: `MAX_QUADS = 10000`, `MAX_DRAWS = 4096`, `MAX_TEXTURES = 256`
 - [ ] **`Renderer::capture` stalls the device** and reads the target back synchronously. It is a
       debug tool; do not call it per frame. `RenderTarget` carries `TRANSFER_SRC_BIT` only for it.

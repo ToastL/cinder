@@ -7,14 +7,17 @@
 #include "platform/Assets.hpp"
 #include "platform/Glfw.hpp"
 #include "platform/Input.hpp"
+#include "platform/Log.hpp"
+#include "scene/Actor.hpp"
 #include "scene/Components.hpp"
 #include "scene/Scene.hpp"
 #include "script/Behaviour.hpp"
 #include "script/SceneApi.hpp"
 
-#include <cstdio>
+#include <memory>
 #include <string>
 #include <utility>
+#include <vector>
 
 namespace cinder::script {
 namespace {
@@ -35,19 +38,6 @@ struct Host {
 
 Host& host(lua_State* state) { return *LuaApi::context<Host>(state); }
 
-int behaviourRead(lua_State* state) {
-    const char* path = lua_tostring(state, 1);
-    if (path == nullptr) return luaL_error(state, "__behaviourRead expects a path");
-
-    try {
-        const std::string source = cinder::lua::readSource(cinder::platform::resolveAsset(path));
-        lua_pushlstring(state, source.data(), source.size());
-        return 1;
-    } catch (const std::exception& e) {
-        return luaL_error(state, "%s", e.what());
-    }
-}
-
 int setClearColor(lua_State* state) {
     host(state).renderer->setClearColor(static_cast<float>(lua_tonumber(state, 1)),
                                         static_cast<float>(lua_tonumber(state, 2)),
@@ -67,7 +57,7 @@ int quit(lua_State* state) {
 
 int logMessage(lua_State* state) {
     const char* message = luaL_tolstring(state, 1, nullptr);
-    std::printf("[game] %s\n", message != nullptr ? message : "nil");
+    cinder::platform::logInfo("[game] %s\n", message != nullptr ? message : "nil");
     lua_pop(state, 1);
     return 0;
 }
@@ -153,9 +143,29 @@ LuaHost::LuaHost(std::filesystem::path source, cinder::scene::Scene& scene,
     : source_(std::move(source)), scene_(scene), input_(input), renderer_(renderer),
       quit_(std::move(quit)) {}
 
+int LuaHost::behaviourRead(lua_State* state) {
+    const char* path = lua_tostring(state, 1);
+    if (path == nullptr) return luaL_error(state, "__behaviourRead expects a path");
+
+    try {
+        const std::string source = cinder::lua::readSource(cinder::platform::resolveAsset(path));
+        LuaApi::context<LuaHost>(state)->watch(path);
+        lua_pushlstring(state, source.data(), source.size());
+        return 1;
+    } catch (const std::exception& e) {
+        return luaL_error(state, "%s", e.what());
+    }
+}
+
 void LuaHost::load() {
     scene_.clear();
+    boot();
+    runEntry();
+}
+
+void LuaHost::boot() {
     close();
+    watched_.clear();
 
     state_ = luaL_newstate();
     luaL_openlibs(state_);
@@ -163,24 +173,28 @@ void LuaHost::load() {
     registerScripts();
     registerApi();
     loadPrelude();
+}
 
+void LuaHost::runEntry() {
     const std::string source = cinder::lua::readSource(source_);
     lastModified_ = cinder::lua::modifiedMillis(source_, lastModified_);
 
-    if (luaL_dostring(state_, source.c_str()) != LUA_OK) {
-        std::fprintf(stderr, "[lua] load error: %s\n", lua_tostring(state_, -1));
+    const std::string chunk = "@" + source_.string();
+    if (!cinder::lua::runChunk(state_, source, chunk.c_str())) {
+        cinder::platform::logError("[lua] load error: %s\n", lua_tostring(state_, -1));
         lua_pop(state_, 1);
         return;
     }
-    std::printf("[lua] loaded %s\n", source_.string().c_str());
+    cinder::platform::logInfo("[lua] loaded %s\n", source_.string().c_str());
 }
 
 void LuaHost::registerScripts() {
-    lua_pushcfunction(state_, behaviourRead);
+    lua_pushlightuserdata(state_, this);
+    lua_pushcclosure(state_, behaviourRead, 1);
     lua_setglobal(state_, "__behaviourRead");
 
-    if (luaL_dostring(state_, Behaviour::BOOTSTRAP) != LUA_OK) {
-        std::fprintf(stderr, "[lua] bootstrap: %s\n", lua_tostring(state_, -1));
+    if (!cinder::lua::runChunk(state_, Behaviour::BOOTSTRAP, "=[behaviour bootstrap]")) {
+        cinder::platform::logError("[lua] bootstrap: %s\n", lua_tostring(state_, -1));
         lua_pop(state_, 1);
     }
 
@@ -226,19 +240,95 @@ void LuaHost::loadPrelude() {
         const std::filesystem::path path = cinder::platform::assetPath(relative);
         try {
             const std::string source = cinder::lua::readSource(path);
-            if (luaL_dostring(state_, source.c_str()) != LUA_OK) {
-                std::fprintf(stderr, "[lua] prelude %s: %s\n", relative,
-                             lua_tostring(state_, -1));
+            const std::string chunk = "@" + path.string();
+            if (!cinder::lua::runChunk(state_, source, chunk.c_str())) {
+                cinder::platform::logError("[lua] prelude %s: %s\n", relative,
+                                           lua_tostring(state_, -1));
                 lua_pop(state_, 1);
             }
         } catch (const std::exception& e) {
-            std::fprintf(stderr, "[lua] prelude %s: %s\n", relative, e.what());
+            cinder::platform::logError("[lua] prelude %s: %s\n", relative, e.what());
         }
     }
 }
 
+void LuaHost::watch(const char* path) {
+    const std::filesystem::path file = cinder::platform::resolveAsset(path);
+    watched_.insert({path, Watch{file, cinder::lua::modifiedMillis(file, 0)}});
+}
+
 void LuaHost::poll() {
-    if (cinder::lua::modifiedMillis(source_, lastModified_) != lastModified_) load();
+    if (cinder::lua::modifiedMillis(source_, lastModified_) != lastModified_) {
+        load();
+        return;
+    }
+
+    std::vector<std::string> changed;
+    for (auto& [path, entry] : watched_) {
+        const std::int64_t modified = cinder::lua::modifiedMillis(entry.file, entry.modified);
+        if (modified == entry.modified) continue;
+        entry.modified = modified;
+        changed.push_back(path);
+    }
+
+    for (const std::string& path : changed) reloadBehaviour(path);
+}
+
+void LuaHost::reloadBehaviour(const std::string& path) {
+    const int top = lua_gettop(state_);
+    lua_getglobal(state_, "__behaviourForget");
+    lua_pushstring(state_, path.c_str());
+    if (lua_pcall(state_, 1, 0, 0) != LUA_OK) {
+        cinder::platform::logError("[lua] reload %s: %s\n", path.c_str(), lua_tostring(state_, -1));
+        lua_settop(state_, top);
+        return;
+    }
+    lua_settop(state_, top);
+
+    int count = 0;
+    for (cinder::scene::Actor* root : scene_.roots()) count += reloadIn(*root, path);
+    cinder::platform::logInfo("[lua] reloaded %s (%d)\n", path.c_str(), count);
+}
+
+int LuaHost::reloadIn(cinder::scene::Actor& actor, const std::string& path) {
+    int count = 0;
+
+    for (const std::unique_ptr<cinder::scene::Component>& component : actor.components()) {
+        auto* behaviour = dynamic_cast<Behaviour*>(component.get());
+        if (behaviour == nullptr || behaviour->script() != path) continue;
+        behaviour->reload();
+        ++count;
+    }
+
+    for (cinder::scene::Actor* child : actor.children()) count += reloadIn(*child, path);
+    return count;
+}
+
+void LuaHost::eval(const std::string& source) {
+    if (state_ == nullptr) return;
+
+    const std::string expression = "return " + source;
+    if (luaL_loadbuffer(state_, expression.data(), expression.size(), "=[console]") != LUA_OK) {
+        lua_pop(state_, 1);
+        if (luaL_loadbuffer(state_, source.data(), source.size(), "=[console]") != LUA_OK) {
+            cinder::platform::logError("[lua] %s\n", lua_tostring(state_, -1));
+            lua_pop(state_, 1);
+            return;
+        }
+    }
+
+    const int top = lua_gettop(state_) - 1;
+    if (lua_pcall(state_, 0, LUA_MULTRET, 0) != LUA_OK) {
+        cinder::platform::logError("[lua] %s\n", lua_tostring(state_, -1));
+        lua_settop(state_, top);
+        return;
+    }
+
+    for (int i = top + 1; i <= lua_gettop(state_); ++i) {
+        cinder::platform::logInfo("[lua] %s\n", luaL_tolstring(state_, i, nullptr));
+        lua_pop(state_, 1);
+    }
+    lua_settop(state_, top);
 }
 
 void LuaHost::update(float dt) {

@@ -3,6 +3,7 @@
 #include "core/GameLoop.hpp"
 #include "platform/Assets.hpp"
 #include "platform/Glfw.hpp"
+#include "platform/Log.hpp"
 
 #include <cstdio>
 #include <cstring>
@@ -53,7 +54,7 @@ int main(int argc, char** argv) {
         Glfw::release();
         return 0;
     } catch (const std::exception& e) {
-        std::fprintf(stderr, "[fatal] %s\n", e.what());
+        cinder::platform::logError("[fatal] %s\n", e.what());
         return 1;
     }
 }

@@ -28,7 +28,9 @@ using cinder::gfx::vk::VkCtx;
 using cinder::gfx::vk::check;
 namespace renderPasses = cinder::gfx::vk::renderPasses;
 
-Renderer::Renderer(const VkCtx& ctx, cinder::platform::Window& window) : ctx_(ctx), window_(window) {
+Renderer::Renderer(const VkCtx& ctx, cinder::platform::Window& window,
+                   const OverlayFactory& overlay)
+    : ctx_(ctx), window_(window) {
     swapchain_ = std::make_unique<Swapchain>(ctx, window);
     depthFormat_ = DepthBuffer::chooseFormat(ctx.physicalDevice());
 
@@ -57,6 +59,11 @@ Renderer::Renderer(const VkCtx& ctx, cinder::platform::Window& window) : ctx_(ct
     passes_.push_back(std::move(spritePass));
 
     resizePasses();
+
+    if (overlay) {
+        overlay_ = overlay(ctx, window, presentRenderPass_, swapchain_->imageCount(),
+                           swapchain_->imageCount());
+    }
 }
 
 VkDescriptorSetLayout Renderer::createTextureLayout() {
@@ -116,10 +123,22 @@ void Renderer::setClearColor(float r, float g, float b) {
 
 void Renderer::beginFrame() {
     for (const std::unique_ptr<DrawPass>& pass : passes_) pass->beginFrame();
+
+    if (overlay_ == nullptr) return;
+    overlay_->beginFrame();
+    if (overlayDraw_) overlayDraw_();
 }
 
 VkDescriptorSet Renderer::viewport() const {
     return targets_[sync_->frame()]->descriptorSet();
+}
+
+bool Renderer::overlayCapturesMouse() const {
+    return overlay_ != nullptr && overlay_->capturesMouse();
+}
+
+bool Renderer::overlayCapturesKeyboard() const {
+    return overlay_ != nullptr && overlay_->capturesKeyboard();
 }
 
 void Renderer::registerApi(cinder::lua::LuaApi& api) {
@@ -182,6 +201,7 @@ void Renderer::recordCommandBuffer(VkCommandBuffer cmd, uint32_t imageIndex) {
     vkCmdBeginRenderPass(cmd, &present, VK_SUBPASS_CONTENTS_INLINE);
     setViewport(cmd, swapchain_->width(), swapchain_->height());
     compositePipeline_->draw(cmd, target.descriptorSet());
+    if (overlay_ != nullptr) overlay_->record(cmd);
     vkCmdEndRenderPass(cmd);
 
     check(vkEndCommandBuffer(cmd), "vkEndCommandBuffer");
@@ -196,6 +216,7 @@ void Renderer::drawFrame() {
                                             sync_->imageAvailable(), VK_NULL_HANDLE, &imageIndex);
 
     if (result == VK_ERROR_OUT_OF_DATE_KHR) {
+        if (overlay_ != nullptr) overlay_->discardFrame();
         recreateSwapchain();
         return;
     }
@@ -268,6 +289,7 @@ void Renderer::recreateSwapchain() {
     createTargets();
     resizePasses();
     sync_->resize(swapchain_->imageCount());
+    if (overlay_ != nullptr) overlay_->setMinImageCount(swapchain_->imageCount());
 
     window_.clearResized();
 }
@@ -331,6 +353,7 @@ void Renderer::capture(const std::string& path) {
 cinder::scene::DrawList& Renderer::draws() { return *draws_; }
 
 Renderer::~Renderer() {
+    overlay_.reset();
     draws_.reset();
     passes_.clear();
     compositePipeline_.reset();

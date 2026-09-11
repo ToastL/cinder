@@ -1,5 +1,6 @@
 #include "serial/SceneCodec.hpp"
 
+#include "platform/Log.hpp"
 #include "reflect/Reflect.hpp"
 #include "scene/Actor.hpp"
 #include "scene/Component.hpp"
@@ -9,7 +10,6 @@
 #include "serial/TextLoad.hpp"
 #include "serial/TextSave.hpp"
 
-#include <cstdio>
 #include <fstream>
 #include <sstream>
 #include <stdexcept>
@@ -90,7 +90,7 @@ Actor* SceneCodec::spawn(int id, const std::string& name, Actor* parent) {
     try {
         return scene_.spawn(id, name, parent);
     } catch (const std::runtime_error&) {
-        std::fprintf(stderr, "[serial] duplicate actor id %d\n", id);
+        cinder::platform::logError("[serial] duplicate actor id %d\n", id);
         return scene_.spawn(name, parent);
     }
 }
@@ -116,8 +116,8 @@ void SceneCodec::component(Archive& ar, Actor& actor, Component* existing,
                            std::string_view type, int version) {
     const Component* base = types_.fallback(type);
     if (base == nullptr) {
-        std::fprintf(stderr, "[serial] unknown component type: %.*s\n",
-                     static_cast<int>(type.size()), type.data());
+        cinder::platform::logError("[serial] unknown component type: %.*s\n",
+                                   static_cast<int>(type.size()), type.data());
         return;
     }
 

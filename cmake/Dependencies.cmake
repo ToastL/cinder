@@ -43,7 +43,12 @@ FetchContent_Declare(doctest
     GIT_TAG v2.5.3
     GIT_SHALLOW TRUE)
 
-FetchContent_MakeAvailable(glfw glm vulkan_headers vma stb doctest)
+FetchContent_Declare(imgui
+    GIT_REPOSITORY https://github.com/ocornut/imgui.git
+    GIT_TAG v1.92.9b-docking
+    GIT_SHALLOW TRUE)
+
+FetchContent_MakeAvailable(glfw glm vulkan_headers vma stb doctest imgui)
 
 set(VOLK_PULL_IN_VULKAN OFF CACHE BOOL "" FORCE)
 FetchContent_MakeAvailable(volk)
@@ -55,6 +60,19 @@ endif()
 
 add_library(stb INTERFACE)
 target_include_directories(stb SYSTEM INTERFACE ${stb_SOURCE_DIR})
+
+add_library(imgui STATIC
+    ${imgui_SOURCE_DIR}/imgui.cpp
+    ${imgui_SOURCE_DIR}/imgui_draw.cpp
+    ${imgui_SOURCE_DIR}/imgui_tables.cpp
+    ${imgui_SOURCE_DIR}/imgui_widgets.cpp
+    ${imgui_SOURCE_DIR}/backends/imgui_impl_glfw.cpp
+    ${imgui_SOURCE_DIR}/backends/imgui_impl_vulkan.cpp)
+target_include_directories(imgui SYSTEM PUBLIC
+    ${imgui_SOURCE_DIR}
+    ${imgui_SOURCE_DIR}/backends)
+target_link_libraries(imgui PUBLIC volk glfw)
+target_compile_definitions(imgui PUBLIC IMGUI_IMPL_VULKAN_USE_VOLK GLFW_INCLUDE_NONE)
 
 add_library(vma_impl STATIC ${CMAKE_CURRENT_LIST_DIR}/vma_impl.cpp)
 target_link_libraries(vma_impl PUBLIC GPUOpen::VulkanMemoryAllocator volk)

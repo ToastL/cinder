@@ -7,10 +7,12 @@
 #include <cstdint>
 #include <filesystem>
 #include <functional>
+#include <string>
+#include <unordered_map>
 
 namespace cinder::gfx { class Renderer; }
 namespace cinder::platform { class Input; }
-namespace cinder::scene { class Scene; }
+namespace cinder::scene { class Actor; class Scene; }
 
 namespace cinder::script {
 
@@ -28,10 +30,24 @@ public:
     void update(float dt) override;
     void render(float alpha) override;
 
+    void eval(const std::string& source);
+
 private:
+    struct Watch {
+        std::filesystem::path file;
+        std::int64_t modified;
+    };
+
+    static int behaviourRead(lua_State* state);
+
+    void boot();
+    void runEntry();
     void registerScripts();
     void registerApi();
     void loadPrelude();
+    void watch(const char* path);
+    void reloadBehaviour(const std::string& path);
+    int reloadIn(cinder::scene::Actor& actor, const std::string& path);
     void close();
 
     std::filesystem::path source_;
@@ -42,6 +58,7 @@ private:
 
     lua_State* state_ = nullptr;
     std::int64_t lastModified_ = 0;
+    std::unordered_map<std::string, Watch> watched_;
 };
 
 }

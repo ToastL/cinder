@@ -1,11 +1,11 @@
 #include "gfx/vk/VkCtx.hpp"
 
 #include "gfx/vk/VkUtil.hpp"
+#include "platform/Log.hpp"
 #include "platform/Window.hpp"
 
 #include <GLFW/glfw3.h>
 
-#include <cstdio>
 #include <cstring>
 #include <set>
 #include <stdexcept>
@@ -65,7 +65,7 @@ VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(VkDebugUtilsMessageSeverityFlagBits
                                              VkDebugUtilsMessageTypeFlagsEXT types,
                                              const VkDebugUtilsMessengerCallbackDataEXT* data,
                                              void* user) {
-    std::fprintf(stderr, "[vk] %s\n", data->pMessage);
+    cinder::platform::logError("[vk] %s\n", data->pMessage);
     return VK_FALSE;
 }
 
@@ -76,7 +76,7 @@ VkCtx::VkCtx(cinder::platform::Window& window) {
     validation_ = layerAvailable(VALIDATION_LAYER)
             && has(available, VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
     if (!validation_) {
-        std::printf("[vk] validation unavailable (install the Vulkan SDK to enable)\n");
+        cinder::platform::logInfo("[vk] validation unavailable (install the Vulkan SDK to enable)\n");
     }
 
     createInstance();
@@ -134,7 +134,8 @@ void VkCtx::createInstance() {
         info.ppEnabledLayerNames = &VALIDATION_LAYER;
 
         if (vkCreateInstance(&info, nullptr, &instance_) != VK_SUCCESS) {
-            std::printf("[vk] validation layer enumerated but would not load; continuing without it\n");
+            cinder::platform::logInfo(
+                    "[vk] validation layer enumerated but would not load; continuing without it\n");
             validation_ = false;
             info.enabledLayerCount = 0;
             info.ppEnabledLayerNames = nullptr;
@@ -182,7 +183,7 @@ void VkCtx::pickPhysicalDevice() {
         physicalDevice_ = candidate;
         VkPhysicalDeviceProperties properties{};
         vkGetPhysicalDeviceProperties(candidate, &properties);
-        std::printf("[vk] using %s\n", properties.deviceName);
+        cinder::platform::logInfo("[vk] using %s\n", properties.deviceName);
         return;
     }
 

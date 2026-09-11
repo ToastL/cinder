@@ -1,11 +1,11 @@
 #include "platform/Input.hpp"
 
+#include "platform/Log.hpp"
 #include "platform/Window.hpp"
 
 #include <GLFW/glfw3.h>
 
 #include <cctype>
-#include <cstdio>
 #include <set>
 #include <string>
 #include <unordered_map>
@@ -65,7 +65,7 @@ int lookup(const std::unordered_map<std::string, int>& table, std::string_view n
 
     static std::set<std::string> warned;
     if (warned.insert(std::string(kind) + ":" + lowered).second) {
-        std::fprintf(stderr, "[input] unknown %s \"%s\"\n", kind, lowered.c_str());
+        logError("[input] unknown %s \"%s\"\n", kind, lowered.c_str());
     }
     return -1;
 }
@@ -133,27 +133,38 @@ void Input::onScroll(double x, double y) {
 }
 
 bool Input::keyDown(std::string_view name) const {
+    if (keyboardSuppressed_) return false;
     return query(keyDown_.data(), KEY_COUNT, lookup(keyNames(), name, "key"));
 }
 
 bool Input::keyPressed(std::string_view name) const {
+    if (keyboardSuppressed_) return false;
     return query(keyPressed_.data(), KEY_COUNT, lookup(keyNames(), name, "key"));
 }
 
 bool Input::keyReleased(std::string_view name) const {
+    if (keyboardSuppressed_) return false;
     return query(keyReleased_.data(), KEY_COUNT, lookup(keyNames(), name, "key"));
 }
 
 bool Input::mouseDown(std::string_view name) const {
+    if (mouseSuppressed_) return false;
     return query(buttonDown_.data(), BUTTON_COUNT, lookup(buttonNames(), name, "mouse button"));
 }
 
 bool Input::mousePressed(std::string_view name) const {
+    if (mouseSuppressed_) return false;
     return query(buttonPressed_.data(), BUTTON_COUNT, lookup(buttonNames(), name, "mouse button"));
 }
 
 bool Input::mouseReleased(std::string_view name) const {
+    if (mouseSuppressed_) return false;
     return query(buttonReleased_.data(), BUTTON_COUNT, lookup(buttonNames(), name, "mouse button"));
+}
+
+void Input::setSuppressed(bool keyboard, bool mouse) {
+    keyboardSuppressed_ = keyboard;
+    mouseSuppressed_ = mouse;
 }
 
 void Input::setCursorLocked(bool locked) {

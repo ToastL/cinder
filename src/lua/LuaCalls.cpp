@@ -1,13 +1,14 @@
 #include "lua/LuaCalls.hpp"
 
-#include <cstdio>
+#include "platform/Log.hpp"
+
 
 namespace cinder::lua {
 namespace {
 
 void report(const char* name, lua_State* state) {
     const char* message = lua_tostring(state, -1);
-    std::fprintf(stderr, "[lua] %s: %s\n", name, message != nullptr ? message : "unknown error");
+    cinder::platform::logError("[lua] %s: %s\n", name, message != nullptr ? message : "unknown error");
     lua_pop(state, 1);
 }
 
@@ -51,6 +52,11 @@ void method(lua_State* state, int ref, const char* name, const double* argument)
     lua_settop(state, top);
 }
 
+}
+
+bool runChunk(lua_State* state, std::string_view source, const char* chunkname) {
+    if (luaL_loadbuffer(state, source.data(), source.size(), chunkname) != LUA_OK) return false;
+    return lua_pcall(state, 0, 0, 0) == LUA_OK;
 }
 
 void callGlobal(lua_State* state, const char* name) { global(state, name, nullptr); }

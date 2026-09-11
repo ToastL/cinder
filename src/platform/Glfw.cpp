@@ -1,10 +1,11 @@
 #include "platform/Glfw.hpp"
 
+#include "platform/Log.hpp"
+
 #include <volk.h>
 
 #include <GLFW/glfw3.h>
 
-#include <cstdio>
 #include <stdexcept>
 
 #if defined(__APPLE__) || defined(__linux__)
@@ -36,7 +37,7 @@ constexpr const char* LOADER_CANDIDATES[] = {
 #endif
 
 void errorCallback(int code, const char* description) {
-    std::fprintf(stderr, "[glfw] %d: %s\n", code, description);
+    logError("[glfw] %d: %s\n", code, description);
 }
 
 PFN_vkGetInstanceProcAddr findLoader() {

@@ -26,13 +26,27 @@ ctest --test-dir build --output-on-failure
 `game` takes `--assets <dir>`, `--script <path>`, `--frames <n>` and `--capture <png>`. The last two
 make it scriptable: `--frames 90 --capture out.png` runs headless-ish and writes a screenshot.
 
+```bash
+./build/editor
+```
+
+`editor` is the **dev build** — the same engine plus the ImGui overlay and the console. It takes
+`--assets`, `--script` and `--frames`. See *The dev overlay* below for why this is a second
+executable rather than a flag on the first.
+
+Note that `--capture` reads back the **scene render target**, not the swapchain, so an overlay would
+never appear in a capture anyway. That is deliberate: it is the game's picture, not the editor's.
+
 The first configure fetches every dependency and needs network — glfw, glm, lua, VMA, stb, volk,
-Vulkan-Headers and doctest, all pinned in `cmake/Dependencies.cmake`. Nothing needs installing.
+Vulkan-Headers, Dear ImGui and doctest, all pinned in `cmake/Dependencies.cmake`. Nothing needs
+installing.
 `glslangValidator` is the one exception: it is a *build tool*, found with `find_program`, and it
 compiles `assets/shaders/*.{vert,frag}` to `.spv`. Editing a shader needs a rebuild, not just a
 restart. `brew install glslang` if it is missing.
 
-`editor` builds and prints a placeholder. It exists so the editor can own its own loop later.
+`game/main.cpp` and `editor/main.cpp` duplicate their arg parsing and loop on purpose. They are about
+to diverge — the editor's loop grows play/pause/step, the game's never will — and `GameLoop::tick`
+is the shared part already. Do not factor the duplication back into `core`.
 
 ## Vulkan on Apple Silicon
 
@@ -65,6 +79,7 @@ cinder/
     scene/ serial/ components/       the world model
     gfx/ gfx/vk/ gfx/asset/ gfx/pass/  the renderer
     script/ core/                    the Lua host and the engine
+    dev/                             ImGui + console; NOT part of `engine`
     game/ editor/                    the two executables
   tests/
 ```
@@ -79,30 +94,41 @@ The layer graph is **acyclic and strictly layered**. Keep it that way — this i
 depend on `scene` + `reflect` without dragging in Vulkan or Lua.
 
 ```
-reflect, lua, platform     -> leaves (no engine includes)
+reflect, platform          -> leaves (no engine includes)
+lua                        -> platform
 scene                      -> reflect
-serial                     -> scene, reflect
+serial                     -> scene, reflect, platform
 components                 -> scene, reflect
 gfx/vk                     -> platform
 gfx/asset                  -> gfx/vk, scene
-gfx/pass                   -> gfx/asset, gfx/vk, scene, lua
+gfx/pass                   -> gfx/asset, gfx/vk, scene, lua, platform
 gfx                        -> gfx/pass, gfx/asset, gfx/vk, scene, platform, lua
 script                     -> scene, reflect, gfx, platform, lua
 core                       -> all of the above
+dev                        -> core and all of the above (a separate target, see below)
 ```
 
-`gfx` is split four ways and the seam that matters is `gfx/vk`: it knows Vulkan and knows nothing
-about this engine, so an ImGui Vulkan backend can build on it without dragging in passes or assets.
-`gfx/asset` is what you draw with (`Assets`, `Texture`, `Mesh`), `gfx/pass` is how you draw it
-(`DrawPass` and its implementations, their pipelines and cameras), and `gfx` itself is only the
-orchestrator — `Renderer`, `RenderTarget`, `CompositePipeline`, `RendererDrawList`. Nothing in a
-subdirectory includes its parent.
+Everything down to `core` is the `engine` library. **`dev` is not** — it is its own target,
+`engine_dev`, and it is the only place ImGui may be mentioned. `game` links `engine`; `editor` links
+`engine_dev`. If a `#include <imgui.h>` ever appears outside `src/dev/`, the split is broken.
 
-Four placements are load-bearing and were each chosen to kill a cycle: `Glfw`/`Window`/`Input` live
+**`platform` is the one leaf everything may reach for**, because `platform/Log.hpp` lives there and
+every layer logs. That is the only reason `serial` and `lua` have an edge to it — `Log.hpp` includes
+nothing but `<functional>` and `<string_view>`, so the edge costs nothing and creates no cycle.
+
+`gfx` is split four ways and the seam that matters is `gfx/vk`: it knows Vulkan and knows nothing
+about this engine, which is what let `dev/ImGuiLayer` build the ImGui Vulkan backend on it without
+dragging in passes or assets. `gfx/asset` is what you draw with (`Assets`, `Texture`, `Mesh`),
+`gfx/pass` is how you draw it (`DrawPass` and its implementations, their pipelines and cameras), and
+`gfx` itself is only the orchestrator — `Renderer`, `RenderTarget`, `CompositePipeline`,
+`RendererDrawList`. Nothing in a subdirectory includes its parent.
+
+Five placements are load-bearing and were each chosen to kill a cycle: `Glfw`/`Window`/`Input` live
 in `platform`, not next to `Engine`; `DrawList` lives in `scene`, so the scene graph never includes
 `gfx`; `LuaApi` lives in `lua`, so a pass can bind its own functions without including the script
-host; and `PropBag`/`PropValue` live in `scene`, not `serial`, so `Behaviour` can expose its
-Lua-side fields without `script` gaining an edge to the serializer.
+host; `PropBag`/`PropValue` live in `scene`, not `serial`, so `Behaviour` can expose its Lua-side
+fields without `script` gaining an edge to the serializer; and `Overlay` is an abstract interface in
+`gfx` with its only implementation in `dev`, so the renderer can host an ImGui layer it cannot name.
 
 `LuaHost` takes `(path, Scene&, Input&, Renderer&, quit)` — never `Engine&` — for the same reason.
 
@@ -172,6 +198,65 @@ Conventions used throughout, follow them:
 `Renderer::capture(path)` reads the target back to a PNG. It stalls the device — a debug tool, not a
 per-frame feature.
 
+## The dev overlay
+
+**The dev tools are a separate link target, not a runtime flag.** `game` links `engine` and `editor`
+links `engine_dev`, so ImGui is physically absent from the shipping binary — `nm build/game | grep -i
+imgui` returns nothing, and `game` is ~1.9 MB smaller than `editor`. There is no `--dev`: to get the
+tools, run `editor`.
+
+The seam is [`gfx/Overlay.hpp`](src/gfx/Overlay.hpp) — a pure interface (`beginFrame`, `record`,
+`discardFrame`, `setMinImageCount`, `capturesMouse`, `capturesKeyboard`) plus an `OverlayFactory`
+typedef. `gfx` knows only that. `dev/ImGuiLayer` is the only implementation; it owns the ImGui
+context and both backends, and draws **inside the present pass, after the composite triangle** — so
+it sits on top of the finished scene image and never touches the scene render target.
+
+`Renderer`'s constructor takes an `OverlayFactory`. `game` passes nothing and the pointer stays null;
+`editor` passes `cinder::dev::overlayFactory()`. Panels are a second, separate hook —
+`setOverlayDraw(std::function<void()>)`, called from `beginFrame()` between `ImGui::NewFrame` and the
+`ImGui::Render` that happens during command recording. `editor/main.cpp` sets it. The two hooks
+together are what keep `gfx` free of both ImGui and `script`.
+
+What remains in the shipping binary is a null `unique_ptr`, an empty `std::function`, and two null
+checks per frame. That is the whole cost of the seam.
+
+Three things about the ImGui frame lifecycle are load-bearing:
+
+- `NewFrame` and `Render` must pair exactly once per frame. `drawFrame()` can bail out early on
+  `VK_ERROR_OUT_OF_DATE_KHR` without recording, so that path calls `discardFrame()` — otherwise the
+  next `NewFrame` asserts.
+- `Input` installs its GLFW callbacks in its constructor, and `Engine` declares `input_` **before**
+  `renderer_`. ImGui's GLFW backend therefore installs second and chains to `Input`'s callbacks.
+  Swapping that declaration order silently breaks engine input.
+- volk is handled by `IMGUI_IMPL_VULKAN_USE_VOLK`, set on the `imgui` target. The backend then uses
+  volk's loaded pointers directly and no `ImGui_ImplVulkan_LoadFunctions` shim is needed, because
+  `VkCtx` has already called `volkLoadInstance` and `volkLoadDevice` by the time the layer is built.
+
+ImGui creates its own descriptor pool via `DescriptorPoolSize`, for the same reason `RenderTarget`
+does not route through `Assets`: that pool has no `FREE_DESCRIPTOR_SET` flag.
+
+`io.IniFilename` is `nullptr`, so no `imgui.ini` is written yet. Turning it on is the "editor layout
+persisted between runs" item in `TODO.md`.
+
+### Logging and the console
+
+Everything prints through `platform/Log.hpp` — `logInfo` / `logError`, printf-style and
+`__attribute__((format))`-checked. Both always write to stdout/stderr, and additionally to a
+`LogSink` if one is installed. `dev/Console` installs that sink in its constructor and clears it in
+its destructor, which is how `[lua]`/`[vk]`/`[serial]` output reaches the panel. The sink receives
+the line **without its trailing newline**. `Log` itself stays in `engine`: the sink is the seam a
+shipping build will use for a crash log file, so it is not a dev-only facility.
+
+The console's input line runs `LuaHost::eval` against the live `lua_State`. It tries `return <text>`
+first and falls back to the raw text, so `1 + 1` prints `2` and a multi-statement chunk still runs.
+Results and errors both go back through `logInfo`/`logError`, so they land in the panel like anything
+else, with `[console]` as the chunk name.
+
+`Engine::beginFrame` feeds `io.WantCaptureKeyboard` / `WantCaptureMouse` into `Input::setSuppressed`,
+so typing in the console does not also drive the game — unless the cursor is locked, in which case
+the game keeps everything. The flags are read one frame late, since ImGui's `NewFrame` for the
+current frame has not run yet.
+
 ## Scripting
 
 `assets/game.lua` defines a global `game` table (`title`, `width`, `height`, `script`, `fixed_hz`)
@@ -231,9 +316,36 @@ not in `LuaHost`.
 `api.bind("name", fn, &receiver)`, read back with `LuaApi::context<T>(state)`. Use
 `LuaApi::optFloat`/`optInt` for optional numeric arguments.
 
-Hot reload rebuilds the entire `lua_State` and re-runs the game script, so **all script state is lost
-on reload**. `poll()` stats the entry script every frame and watches nothing else — a behaviour or
-prelude file can be edited without triggering a reload.
+### Hot reload
+
+There are two reload paths, and which one runs depends on which file changed.
+
+Editing the **entry script** rebuilds the whole `lua_State` and clears the scene — `LuaHost::load()`
+is `scene_.clear()`, then `boot()`, then `runEntry()`. It has to: a game script builds the world in
+top-level code, so re-running it without clearing would duplicate every actor. All script state is
+lost.
+
+Editing a **behaviour** reloads only that file. `__behaviourForget(path)` drops the cached prototype,
+then every live `Behaviour` whose `script()` matches re-instantiates through `__behaviourNew`,
+carrying its current fields across as the `data` overrides. `__behaviourFields` is what decides
+what "its current fields" means — everything that is not a function and not `actor`, the same
+split that makes a behaviour table serializable. The scene, the `lua_State`, and every other
+behaviour survive untouched.
+
+`__behaviourRead` is the single funnel every behaviour file is read through, so it is also where
+`LuaHost` records the path to watch. Nothing walks a directory; a behaviour is watched because it was
+loaded. `poll()` stats the entry script and each loaded behaviour every frame.
+
+Three things the behaviour path deliberately does **not** do:
+
+- It does not re-fire `start` or `destroy`. A reload is a code swap on a live object, not a lifecycle
+  event, and re-running `start` would clobber the fields just carried over.
+- It does not cancel coroutines the old instance spawned. `task.spawn` tracks no owner, so a loop
+  started by the old table keeps running against the old table.
+- A file that fails to load leaves the running instance alone — `Behaviour::reload` only swaps `ref_`
+  once the new instance exists, so a syntax error mid-edit costs nothing.
+
+The prelude is not watched; editing `types.lua`, `scene.lua` or `task.lua` needs a restart.
 
 ## Reflection
 
@@ -272,7 +384,7 @@ closed over.
 
 ## Conventions
 
-- **Zero comments.** ~7,300 lines with no comments or doc blocks, by choice. Match it; explain in
+- **Zero comments.** ~8,000 lines with no comments or doc blocks, by choice. Match it; explain in
   chat or in these docs.
 - Members carry a trailing underscore. `CINDER_PROP(position_)` strips it, so the wire key stays
   `position`. This is also why `Camera`'s clip planes are `near_`/`far_` — `near` and `far` are

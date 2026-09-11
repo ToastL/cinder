@@ -5,16 +5,19 @@
 
 namespace cinder::core {
 
-Engine::Engine(const GameConfig& config)
+Engine::Engine(const GameConfig& config) : Engine(config, {}) {}
+
+Engine::Engine(const GameConfig& config, const cinder::gfx::OverlayFactory& overlay)
     : window_(config.title, config.width, config.height),
       input_(window_),
       ctx_(window_),
-      renderer_(ctx_, window_) {
+      renderer_(ctx_, window_, overlay) {
     cinder::components::registerBuiltins(types_);
 
     script_ = std::make_unique<cinder::script::LuaHost>(
             cinder::platform::resolveAsset(config.script),
             scene_, input_, renderer_, [this] { quit(); });
+
     script_->load();
 }
 
@@ -22,7 +25,14 @@ bool Engine::running() const { return !quit_ && !window_.shouldClose(); }
 
 bool Engine::minimized() const { return window_.isMinimized(); }
 
-void Engine::beginFrame() { script_->poll(); }
+void Engine::beginFrame() {
+    script_->poll();
+
+    if (!renderer_.hasOverlay()) return;
+    const bool locked = input_.cursorLocked();
+    input_.setSuppressed(!locked && renderer_.overlayCapturesKeyboard(),
+                         !locked && renderer_.overlayCapturesMouse());
+}
 
 void Engine::update(float dt) {
     script_->update(dt);
@@ -39,6 +49,7 @@ void Engine::render(float alpha) {
 
 Engine::~Engine() {
     ctx_.waitIdle();
+    renderer_.setOverlayDraw(nullptr);
     scene_.clear();
     script_.reset();
 }

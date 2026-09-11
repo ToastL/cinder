@@ -1,6 +1,7 @@
 #pragma once
 
 #include "core/GameConfig.hpp"
+#include "gfx/Overlay.hpp"
 #include "gfx/Renderer.hpp"
 #include "gfx/vk/VkCtx.hpp"
 #include "platform/Input.hpp"
@@ -16,6 +17,7 @@ namespace cinder::core {
 class Engine {
 public:
     explicit Engine(const GameConfig& config);
+    Engine(const GameConfig& config, const cinder::gfx::OverlayFactory& overlay);
     ~Engine();
 
     Engine(const Engine&) = delete;
@@ -34,6 +36,7 @@ public:
     cinder::gfx::Renderer& renderer() { return renderer_; }
     cinder::scene::Scene& scene() { return scene_; }
     cinder::scene::Components& types() { return types_; }
+    cinder::script::LuaHost& script() { return *script_; }
 
 private:
     cinder::platform::Window window_;

@@ -5,10 +5,12 @@
 #include "gfx/asset/Assets.hpp"
 #include "gfx/pass/DrawPass.hpp"
 #include "gfx/pass/MeshPipeline.hpp"
+#include "gfx/Overlay.hpp"
 #include "gfx/pass/SpritePipeline.hpp"
 #include "gfx/vk/FrameSync.hpp"
 #include "gfx/vk/Swapchain.hpp"
 
+#include <functional>
 #include <memory>
 #include <string>
 #include <vector>
@@ -22,7 +24,8 @@ class Renderer {
 public:
     static constexpr uint32_t FRAMES_IN_FLIGHT = 2;
 
-    Renderer(const cinder::gfx::vk::VkCtx& ctx, cinder::platform::Window& window);
+    Renderer(const cinder::gfx::vk::VkCtx& ctx, cinder::platform::Window& window,
+             const OverlayFactory& overlay);
     ~Renderer();
 
     Renderer(const Renderer&) = delete;
@@ -36,6 +39,11 @@ public:
     cinder::gfx::asset::Assets& assets() { return *assets_; }
     VkDescriptorSet viewport() const;
     cinder::scene::DrawList& draws();
+
+    void setOverlayDraw(std::function<void()> draw) { overlayDraw_ = std::move(draw); }
+    bool hasOverlay() const { return overlay_ != nullptr; }
+    bool overlayCapturesMouse() const;
+    bool overlayCapturesKeyboard() const;
 
     void registerApi(cinder::lua::LuaApi& api);
 
@@ -67,6 +75,8 @@ private:
     std::unique_ptr<CompositePipeline> compositePipeline_;
     std::vector<std::unique_ptr<cinder::gfx::pass::DrawPass>> passes_;
     std::unique_ptr<cinder::scene::DrawList> draws_;
+    std::unique_ptr<Overlay> overlay_;
+    std::function<void()> overlayDraw_;
 
     uint32_t lastFrame_ = 0;
 
