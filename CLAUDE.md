@@ -9,30 +9,49 @@ target is a Unity/Unreal-shaped editor workflow — select an actor, edit its fi
 Stop, land back where you started. `TODO.md` is the authoritative roadmap; read it before proposing
 architectural work, since it records what is deliberately deferred and what is out of scope.
 
+The repo holds the engine only. A game is a **project folder** — a `project.lua`, its scenes and its
+scripts — that the editor opens and the player plays. `samples/` holds two example projects; nothing
+in them is compiled.
+
 ## Commands
 
 ```bash
 cmake -S . -B build -G Ninja && cmake --build build
 ```
 
+A plain build produces `engine`, `engine_dev`, `editor` and `tests` — **no game**. The runtime that
+plays a project, `player`, is `EXCLUDE_FROM_ALL` and only built on demand.
+
 ```bash
 ctest --test-dir build --output-on-failure
 ```
 
-```bash
-./build/game
-```
-
-`game` takes `--assets <dir>`, `--script <path>`, `--frames <n>` and `--capture <png>`. The last two
-make it scriptable: `--frames 90 --capture out.png` runs headless-ish and writes a screenshot.
+`ctest` builds `player` itself through a fixture, because `shipping_binary_is_clean` inspects it.
 
 ```bash
-./build/editor
+./build/editor samples/sandbox2d
 ```
 
-`editor` is the **dev build** — the same engine plus the ImGui overlay and the console. It takes
-`--assets`, `--script` and `--frames`. See *The dev overlay* below for why this is a second
-executable rather than a flag on the first.
+`editor` is the **dev build** — the same engine plus the ImGui overlay, the console and the play
+toolbar. It opens a project in **Edit mode**: the scene is loaded and drawn, and no game code runs.
+Play/Pause/Step/Stop are on the toolbar and on ⌘P, ⌘⇧P and ⌘⌥P; ⌘S saves the scene. It takes
+`--scene <path>` (project-relative), `--play` (start in Play), `--frames <n>` and `--capture <png>`.
+The last two make it scriptable: `--frames 90 --capture out.png` runs headless-ish and writes a
+screenshot. See *The dev overlay* below for why this is a second executable rather than a flag.
+
+```bash
+cmake --build build --target player && ./build/player samples/sandbox3d
+```
+
+`player` is the generic runtime: it opens a project and plays it at once. It takes the same
+`--scene`, `--frames` and `--capture`; with no project argument it looks for `project/` next to its
+own executable, which is the packaged layout.
+
+```bash
+cmake --build build --target package_game
+```
+
+Stages a runnable game in `build/dist/<project>/` — see *Projects and packaging*.
 
 Note that `--capture` reads back the **scene render target**, not the swapchain, so an overlay would
 never appear in a capture anyway. That is deliberate: it is the game's picture, not the editor's.
@@ -41,12 +60,13 @@ The first configure fetches every dependency and needs network — glfw, glm, lu
 Vulkan-Headers, Dear ImGui and doctest, all pinned in `cmake/Dependencies.cmake`. Nothing needs
 installing.
 `glslangValidator` is the one exception: it is a *build tool*, found with `find_program`, and it
-compiles `assets/shaders/*.{vert,frag}` to `.spv`. Editing a shader needs a rebuild, not just a
+compiles `engine/shaders/*.{vert,frag}` to `.spv`. Editing a shader needs a rebuild, not just a
 restart. `brew install glslang` if it is missing.
 
-`game/main.cpp` and `editor/main.cpp` duplicate their arg parsing and loop on purpose. They are about
-to diverge — the editor's loop grows play/pause/step, the game's never will — and `GameLoop::tick`
-is the shared part already. Do not factor the duplication back into `core`.
+`player/main.cpp` and `editor/main.cpp` duplicate their arg parsing on purpose, and their loops have
+diverged: the player only ever calls `GameLoop::tick`, while the editor calls `PlaySession::tick`,
+which picks `tick`, `idle` or `step`. `GameLoop` is the shared part. Do not factor the duplication
+back into `core`.
 
 ## Vulkan on Apple Silicon
 
@@ -62,7 +82,7 @@ default search path, and both volk and the Vulkan loader `dlopen` by leaf name.*
 To actually get validation, put the prefix on the dyld path:
 
 ```bash
-DYLD_LIBRARY_PATH=/opt/homebrew/lib ./build/game
+DYLD_LIBRARY_PATH=/opt/homebrew/lib ./build/editor samples/sandbox2d
 ```
 
 **Do this whenever touching the renderer.** Without it you are running unvalidated — it has already
@@ -73,20 +93,22 @@ caught a missing `TRANSFER_SRC_BIT` that no test would have.
 ```
 cinder/
   CMakeLists.txt
-  cmake/          dependency, Lua and shader-compilation modules
+  cmake/          dependency, Lua, shader-compilation and packaging modules
+  engine/         engine data: shaders/ (GLSL and the compiled .spv) and lua/ (the prelude)
+  samples/        sandbox2d/ and sandbox3d/ — example projects
   src/
     reflect/ lua/ platform/          leaves
     scene/ serial/ components/       the world model
     gfx/ gfx/vk/ gfx/asset/ gfx/pass/  the renderer
     script/ core/                    the Lua host and the engine
-    dev/                             ImGui + console; NOT part of `engine`
-    game/ editor/                    the two executables
+    dev/                             ImGui, console, play session, toolbar; NOT part of `engine`
+    player/ editor/                  the two executables
   tests/
+    selftest/                        a project whose scene runs the Lua smoke test
 ```
 
 `src/` is the only include root, so every include carries its layer: `#include "scene/Actor.hpp"`.
-Headers sit next to their sources. `assets/` holds the shaders, the Lua prelude and the demo
-scripts.
+Headers sit next to their sources.
 
 ## Layering
 
@@ -109,12 +131,14 @@ dev                        -> core and all of the above (a separate target, see 
 ```
 
 Everything down to `core` is the `engine` library. **`dev` is not** — it is its own target,
-`engine_dev`, and it is the only place ImGui may be mentioned. `game` links `engine`; `editor` links
+`engine_dev`, and it holds everything editor-only: ImGui, the console, the play session and the
+toolbar. It is the only place ImGui may be mentioned. `player` links `engine`; `editor` links
 `engine_dev`. If a `#include <imgui.h>` ever appears outside `src/dev/`, the split is broken.
 
 **`platform` is the one leaf everything may reach for**, because `platform/Log.hpp` lives there and
-every layer logs. That is the only reason `serial` and `lua` have an edge to it — `Log.hpp` includes
-nothing but `<functional>` and `<string_view>`, so the edge costs nothing and creates no cycle.
+every layer logs, and `platform/Assets.hpp` is the only thing that turns a name into a path. That is
+the only reason `serial`, `lua` and `gfx` have an edge to it, and neither header includes anything
+from the engine, so the edges cost nothing and create no cycle.
 
 `gfx` is split four ways and the seam that matters is `gfx/vk`: it knows Vulkan and knows nothing
 about this engine, which is what let `dev/ImGuiLayer` build the ImGui Vulkan backend on it without
@@ -130,27 +154,69 @@ host; `PropBag`/`PropValue` live in `scene`, not `serial`, so `Behaviour` can ex
 fields without `script` gaining an edge to the serializer; and `Overlay` is an abstract interface in
 `gfx` with its only implementation in `dev`, so the renderer can host an ImGui layer it cannot name.
 
-`LuaHost` takes `(path, Scene&, Input&, Renderer&, quit)` — never `Engine&` — for the same reason.
+`LuaHost` takes `(Scene&, Input&, Renderer&, quit)` — never `Engine&` — for the same reason.
 
 ## Frame flow
 
-`main` -> `Glfw::acquire()` -> `Engine(config)` -> `GameLoop::tick(engine)` per iteration:
+`main` -> `Glfw::acquire()` -> `Engine(config)` -> `engine.openScene(path)` -> a loop.
 
-1. `Glfw::pollEvents()`, then `engine.beginFrame()` -> `script->poll()` (Lua file-watch hot reload)
-2. minimized -> `Glfw::waitEvents()`, reset the clock, skip the frame
-3. `GameLoop::advance()` accumulates real time, clamped at `MAX_FRAME_TIME = 0.25s`
-4. `engine.update(fixedDt)` N times — fixed timestep; `script->update`, `scene.update`, then
-   `input.consume()`
-5. `engine.render(alpha())` once — `renderer.beginFrame()`, `script->render(alpha)`,
-   `scene.render(alpha, draws)`, `renderer.drawFrame()`
+`Engine`'s constructor boots Lua but **loads nothing and runs nothing**; the host decides what
+happens next. The player calls `GameLoop::tick` every iteration. The editor calls
+`PlaySession::tick`, which calls one of three `GameLoop` entry points:
+
+- **`tick`** — the simulation:
+  1. `Glfw::pollEvents()`, then `engine.beginFrame()` -> `script->poll()` (behaviour hot reload)
+  2. minimized -> `Glfw::waitEvents()`, reset the clock, skip the frame
+  3. `GameLoop::advance()` accumulates real time, clamped at `MAX_FRAME_TIME = 0.25s`
+  4. `engine.update(fixedDt)` N times — fixed timestep; `script->update`, `scene.update`, then
+     `input.consume()`
+  5. `engine.render(alpha())` once — `renderer.beginFrame()`, `script->render(alpha)`,
+     `scene.render(alpha, draws)`, `renderer.drawFrame()`
+- **`idle`** — Edit mode and Paused: steps 1–2, then it resets the clock, calls `input.consume()` and
+  renders. Consuming on idle frames is load-bearing: without it, the key that pressed Play, or an
+  Esc from Edit mode, would fire as `keyPressed` on the first play step.
+- **`step`** — exactly one fixed update, then render. The Step button.
 
 `Engine` is a library that gets ticked, not something that runs itself. **Do not move the loop into
 `Engine`.** `GameLoop::advance()` and `alpha()` are public precisely so the tests can drive them
 without a window; keep new loop logic in that shape.
 
 `ScriptHost::update` calls the Lua global `__step(dt)` with the fixed `dt`, and `render` calls
-`__render(alpha)`. Both live in `assets/scripts/lib/task.lua`, which steps the coroutine scheduler
-and fires the `stepped` and `rendered` signals.
+`__render(alpha)`. Both live in `engine/lua/task.lua`, which steps the coroutine scheduler and fires
+the `stepped` and `rendered` signals.
+
+## Edit mode and Play mode
+
+A game is a `.scene` file whose actors carry components — the Lua ones are `Behaviour`s. There is no
+entry script and no top-level game code.
+
+Nothing runs a behaviour until something calls `Scene::update`: `start` fires from
+`startPending()` at the top of the first update, and every `onUpdate` follows it. `Scene::render`
+does **not** wait for `start` — it draws every enabled component — so a scene that is never updated
+is still fully drawn. That split *is* Edit mode: built-in renderers and cameras draw, behaviours
+never instantiate.
+
+`dev/PlaySession` owns the editor's state, `Edit | Playing | Paused`:
+
+- **Play** saves the scene to text with `SceneCodec::save` and hands it to `Engine::loadScene`, which
+  is `scene.clear()`, then `LuaHost::boot()` — a fresh `lua_State` — then `SceneCodec::load`. Play
+  therefore takes exactly the path the player takes from disk. Every session starts with fresh
+  prototypes and no leftover coroutines, and a serialization bug shows up on Play rather than on
+  Stop.
+- **Stop** hands the same text to `loadScene` and releases a locked cursor. Play and Stop are one
+  operation; only whether the loop simulates afterwards differs.
+- **Pause** switches to `GameLoop::idle`; **Step** runs one `GameLoop::step`.
+
+The order inside `loadScene` is load-bearing: every `Behaviour` holds the `lua_State*` it was created
+with, so the scene must be cleared before `boot()` closes that state.
+
+Toolbar buttons and shortcuts only set a request, and `PlaySession::tick` applies it **between
+frames**. The toolbar draws inside `Engine::render`, and `stop()` closes the `lua_State`, which must
+never happen inside a Lua call. For the same reason, game code calling `engine.quit()` only sets a
+flag. The player ends on it; `PlaySession` turns it into Stop, the way Unity ignores
+`Application.Quit` in the editor.
+
+Save is disabled during Play: the scene on screen is the running game, not the document.
 
 ## Rendering
 
@@ -195,15 +261,22 @@ Conventions used throughout, follow them:
 `Assets` hands out `int` texture handles (`DrawList::WHITE == 0`), caches by path, and never frees;
 `MAX_TEXTURES = 256` is backed by a fixed-size descriptor pool.
 
+**Components never store those handles**, because a handle means nothing on the next run.
+`SpriteRenderer::texture` and `MeshRenderer::texture` / `mesh` are *names* — a project-relative path,
+or a primitive such as `"cube"` — resolved through `DrawList::textureHandle` / `meshHandle` on first
+draw and cached until `propChanged` says the name changed. A missing file logs once and draws white;
+an unknown mesh logs once and draws a cube. The clear colour and the 2D virtual size are `Camera`
+props, pushed to the renderer every frame through `DrawList::background` and `camera2d`, so a scene
+file carries them.
+
 `Renderer::capture(path)` reads the target back to a PNG. It stalls the device — a debug tool, not a
 per-frame feature.
 
 ## The dev overlay
 
-**The dev tools are a separate link target, not a runtime flag.** `game` links `engine` and `editor`
-links `engine_dev`, so ImGui is physically absent from the shipping binary — `nm build/game | grep -i
-imgui` returns nothing, and `game` is ~1.9 MB smaller than `editor`. There is no `--dev`: to get the
-tools, run `editor`.
+**The dev tools are a separate link target, not a runtime flag.** `player` links `engine` and
+`editor` links `engine_dev`, so ImGui is physically absent from the shipping binary — `nm
+build/player | grep -i imgui` returns nothing. There is no `--dev`: to get the tools, run `editor`.
 
 The seam is [`gfx/Overlay.hpp`](src/gfx/Overlay.hpp) — a pure interface (`beginFrame`, `record`,
 `discardFrame`, `setMinImageCount`, `capturesMouse`, `capturesKeyboard`) plus an `OverlayFactory`
@@ -211,11 +284,12 @@ typedef. `gfx` knows only that. `dev/ImGuiLayer` is the only implementation; it 
 context and both backends, and draws **inside the present pass, after the composite triangle** — so
 it sits on top of the finished scene image and never touches the scene render target.
 
-`Renderer`'s constructor takes an `OverlayFactory`. `game` passes nothing and the pointer stays null;
-`editor` passes `cinder::dev::overlayFactory()`. Panels are a second, separate hook —
+`Renderer`'s constructor takes an `OverlayFactory`. `player` passes nothing and the pointer stays
+null; `editor` passes `cinder::dev::overlayFactory()`. Panels are a second, separate hook —
 `setOverlayDraw(std::function<void()>)`, called from `beginFrame()` between `ImGui::NewFrame` and the
-`ImGui::Render` that happens during command recording. `editor/main.cpp` sets it. The two hooks
-together are what keep `gfx` free of both ImGui and `script`.
+`ImGui::Render` that happens during command recording. `editor/main.cpp` sets it to draw
+`dev/Toolbar` and `dev/Console`. The two hooks together are what keep `gfx` free of both ImGui and
+`script`.
 
 What remains in the shipping binary is a null `unique_ptr`, an empty `std::function`, and two null
 checks per frame. That is the whole cost of the seam.
@@ -238,6 +312,9 @@ does not route through `Assets`: that pool has no `FREE_DESCRIPTOR_SET` flag.
 `io.IniFilename` is `nullptr`, so no `imgui.ini` is written yet. Turning it on is the "editor layout
 persisted between runs" item in `TODO.md`.
 
+The toolbar's shortcuts use `ImGui::Shortcut` with `ImGuiInputFlags_RouteGlobal`, so they work while
+the cursor is locked by the game. `ImGuiMod_Ctrl` is ⌘ on macOS.
+
 ### Logging and the console
 
 Everything prints through `platform/Log.hpp` — `logInfo` / `logError`, printf-style and
@@ -250,7 +327,9 @@ shipping build will use for a crash log file, so it is not a dev-only facility.
 The console's input line runs `LuaHost::eval` against the live `lua_State`. It tries `return <text>`
 first and falls back to the raw text, so `1 + 1` prints `2` and a multi-statement chunk still runs.
 Results and errors both go back through `logInfo`/`logError`, so they land in the panel like anything
-else, with `[console]` as the chunk name.
+else, with `[console]` as the chunk name. In Edit mode that state holds the prelude and nothing else,
+so the console can build a scene — `scene:spawn`, `actor:behaviour(path, data)` — without starting
+any of it, and Save writes the result.
 
 `Engine::beginFrame` feeds `io.WantCaptureKeyboard` / `WantCaptureMouse` into `Input::setSuppressed`,
 so typing in the console does not also drive the game — unless the cursor is locked, in which case
@@ -259,17 +338,17 @@ current frame has not run yet.
 
 ## Scripting
 
-`assets/game.lua` defines a global `game` table (`title`, `width`, `height`, `script`, `fixed_hz`)
-parsed by `GameConfig::load` in a throwaway `lua_State`. Switch demos by pointing `script` at another
-file, or pass `--script`.
+A project's `project.lua` defines a global `project` table (`title`, `width`, `height`, `scene`,
+`fixed_hz`) parsed by `ProjectConfig::load` in a throwaway `lua_State`. `scene` is the scene both
+executables open; `--scene` overrides it.
 
-A game script is **plain top-level code** — it runs once when loaded, Roblox-style. There are no
-`on_load`/`on_update`/`on_render` globals; per-frame work belongs in a behaviour's `update`, in a
-`stepped:connect(fn)` handler, or in a coroutine. Lua errors are caught and printed, not propagated.
+There is **no entry script and no top-level game code**. Game code lives in behaviours: per-frame
+work belongs in a behaviour's `update`, in a `stepped:connect(fn)` handler, or in a coroutine started
+from `start`. Lua errors are caught and printed, not propagated.
 
 ### The prelude
 
-`LuaHost` loads three files from `assets/scripts/lib/` after `registerApi()` — order matters, since
+`LuaHost` loads three files from `engine/lua/` after `registerApi()` — order matters, since
 `scene.lua` and `task.lua` both need the `engine` table to exist:
 
 - **`types.lua`** — `vec2`/`vec3`/`vec4`/`rgba` built by one `vectype(keys)` factory, with
@@ -290,7 +369,8 @@ These contracts are load-bearing and must not drift:
 
 - `getProp` returns **1-4 values by arity**, and **zero** values when the actor or prop is missing.
 - `find` / `parent` return **`nil`**, never `0` or `-1`.
-- Actor ids and texture/mesh handles push as **integers**; prop values push as **floats**.
+- Actor ids and the handles `loadTexture`/`newCube` return push as **integers**; numeric prop values
+  push as **floats**, string and enum props as strings.
 - Edge-triggered input clears in `consume()` **per fixed step**, not per frame.
 - `screenToWorld` takes **window points**, matching `mousePosition`.
 
@@ -302,12 +382,19 @@ else is a serializable field with a default. `Behaviour::BOOTSTRAP` caches one p
 copies it per instance, applies the `data` overrides, wraps `start` in `task.spawn` so it can yield,
 and sets `self.actor` to an actor proxy.
 
-`assets/scripts/selftest.lua` is a 44-check smoke test for this whole layer — run it with
-`--script assets/scripts/selftest.lua` and it prints `ALL PASS` and quits. It needs a window, so it
-is not part of `ctest`.
+`Behaviour` is also a `PropBag`, so a scene saves its `data` overrides as a `data { ... }` block.
+Before `start` the bag is the pending `data` table; after it, `__behaviourFields`. `script/LuaProps`
+converts between Lua values and `PropValue` — scalars, arrays of scalars, string-keyed records, and
+vectors (detected by their metatable's `__vec`) as sequences of numbers. Functions, actor proxies and
+anything else with a metatable are skipped. On the way back in, `__behaviourNew` rebuilds a sequence
+into a vector when the prototype's default for that key is one — the prototype is the schema.
+
+`tests/selftest` is a project whose scene runs a 44-check smoke test for this whole layer from a
+behaviour's `start`. `./build/editor tests/selftest --play --frames 120` or `./build/player
+tests/selftest` prints `ALL PASS`. It needs a window, so it is not part of `ctest`.
 
 **Where to add a Lua function:** `LuaHost::registerApi()` builds the global `engine` table and binds
-the engine-wide calls (time, quit, log, input, textures, clear color), then hands the `LuaApi` to
+the engine-wide calls (time, quit, log, input, textures), then hands the `LuaApi` to
 `registerSceneApi` and to `renderer.registerApi()`, which forwards it to every pass. Bind a function
 in the class that owns the state it touches — draw and camera calls belong in `SpritePass`/`MeshPass`,
 not in `LuaHost`.
@@ -318,30 +405,25 @@ not in `LuaHost`.
 
 ### Hot reload
 
-There are two reload paths, and which one runs depends on which file changed.
-
-Editing the **entry script** rebuilds the whole `lua_State` and clears the scene — `LuaHost::load()`
-is `scene_.clear()`, then `boot()`, then `runEntry()`. It has to: a game script builds the world in
-top-level code, so re-running it without clearing would duplicate every actor. All script state is
-lost.
-
-Editing a **behaviour** reloads only that file. `__behaviourForget(path)` drops the cached prototype,
-then every live `Behaviour` whose `script()` matches re-instantiates through `__behaviourNew`,
-carrying its current fields across as the `data` overrides. `__behaviourFields` is what decides
-what "its current fields" means — everything that is not a function and not `actor`, the same
-split that makes a behaviour table serializable. The scene, the `lua_State`, and every other
-behaviour survive untouched.
+Only behaviours hot-reload. Editing a behaviour reloads only that file.
+`__behaviourForget(path)` drops the cached prototype, then every live `Behaviour` whose `script()`
+matches re-instantiates through `__behaviourNew`, carrying its current fields across as the `data`
+overrides. `__behaviourFields` is what decides what "its current fields" means — everything that is
+not a function and not `actor`, the same split that makes a behaviour table serializable. The scene,
+the `lua_State`, and every other behaviour survive untouched.
 
 `__behaviourRead` is the single funnel every behaviour file is read through, so it is also where
 `LuaHost` records the path to watch. Nothing walks a directory; a behaviour is watched because it was
-loaded. `poll()` stats the entry script and each loaded behaviour every frame.
+loaded. `poll()` stats each loaded behaviour every frame. In Edit mode nothing has been loaded, so
+nothing is watched — and Play reloads every prototype from disk anyway, so edits made while editing
+are picked up by the next Play.
 
-Three things the behaviour path deliberately does **not** do:
+Three things the reload deliberately does **not** do:
 
 - It does not re-fire `start` or `destroy`. A reload is a code swap on a live object, not a lifecycle
   event, and re-running `start` would clobber the fields just carried over.
 - It does not cancel coroutines the old instance spawned. `task.spawn` tracks no owner, so a loop
-  started by the old table keeps running against the old table.
+  started by the old table keeps running against the old table until Stop discards the state.
 - A file that fails to load leaves the running instance alone — `Behaviour::reload` only swaps `ref_`
   once the new instance exists, so a syntax error mid-edit costs nothing.
 
@@ -374,25 +456,49 @@ Four behaviours are easy to lose, and each has a test pinning it:
   write, and critically no notify. `CINDER_ENUM_NAMES` declares the table; comparison is ASCII-only, so
   locale independence is true by construction.
 - **`PropSink::propChanged`** fires after every successful write; `Transform` overrides it to
-  `dirty()`.
+  `dirty()`, and the renderers override it to drop a cached texture or mesh handle.
 
 `Components` is an instance owned by `Engine`, threaded to `Scene` -> `SceneCodec` / `SceneApi`. It
 keeps insertion-ordered iteration (a vector plus two indices) and caches a class-default instance per
 type for delta encoding. Re-binding a name keeps its slot — so iteration order is stable across a
-hot reload — and drops its cached default, so a `Behaviour` default cannot outlive the `lua_State` it
+reboot — and drops its cached default, so a `Behaviour` default cannot outlive the `lua_State` it
 closed over.
+
+`SceneCodec::VERSION` is 2 and `OLDEST` is 2: version 1 stored texture and mesh handles, which cannot
+be migrated. `tests/scene_files_test` loads and re-saves every `.scene` under `samples/` and
+`tests/selftest/` and requires the bytes to match, so shipped scenes stay canonical as the format
+moves.
+
+## Projects and packaging
+
+`platform/Assets` has two roots, and nothing else turns a name into a path:
+
+- **`enginePath`** — shaders and the prelude. `CINDER_ENGINE` if set; else `engine/` next to the
+  executable, if it exists, which is the packaged layout; else the source tree's `engine/`, baked in
+  at configure time as `CINDER_ENGINE_DEFAULT`.
+- **`projectPath`** — `project.lua`, scenes, behaviours and textures. Set from the executable's first
+  argument, made absolute; the player falls back to `project/` next to itself.
+
+Every path inside a project — a scene's `script "scripts/riser.lua"`, a `SpriteRenderer.texture` — is
+relative to the project root, so a project folder can live anywhere and runs from any working
+directory.
+
+`cmake --build build --target package_game` builds `player` and runs `cmake/PackageGame.cmake`, which
+stages `build/dist/<project>/` as `player`, `engine/shaders/*.spv`, `engine/lua/*.lua` and
+`project/`. The cache variable `CINDER_PACKAGE_PROJECT` picks the project, defaulting to
+`samples/sandbox2d`.
 
 ## Conventions
 
-- **Zero comments.** ~8,000 lines with no comments or doc blocks, by choice. Match it; explain in
-  chat or in these docs.
+- **Zero comments.** No comments or doc blocks anywhere, by choice. Match it; explain in chat or in
+  these docs.
 - Members carry a trailing underscore. `CINDER_PROP(position_)` strips it, so the wire key stays
   `position`. This is also why `Camera`'s clip planes are `near_`/`far_` — `near` and `far` are
   macros in `windef.h`.
 - `Glfw` is refcounted `acquire`/`release`. `Window` acquires in its constructor and releases in its
   destructor, and `main` holds an outer acquire across the whole run.
 - `Input` is edge-triggered: `keyPressed`/`keyReleased` are true for exactly one fixed update,
-  cleared by `input.consume()` at the end of `Engine::update`.
+  cleared by `input.consume()` at the end of `Engine::update` and on every `GameLoop::idle` frame.
 - **`std::to_chars` everywhere in `serial`** — never `printf` or `ostream`, which follow the locale.
   A test pins the output under a Turkish locale.
 - Sizes and view dimensions come in two flavours and they are not interchangeable: the swapchain and

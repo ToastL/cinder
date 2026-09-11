@@ -8,12 +8,15 @@ composited to the swapchain by a fullscreen triangle. Sprite batch with atlas su
 with one directional light, per-pass cameras, edge-triggered input, Lua scripting with file-watch hot
 reload — per-file for behaviours, carrying instance fields across the swap. An actor/component scene
 with a prop system that feeds the serializer and the script bindings from one declaration. A
-bidirectional `Archive` with a text backend. Dear ImGui is up in a separate `engine_dev` target,
-with a console panel and a live Lua REPL — `game` ships without a byte of it. ~8,000 lines, 73
-headless test cases, and a 44-check Lua selftest.
+bidirectional `Archive` with a text backend, and games that are `.scene` files in project folders
+rather than scripts in the engine. Dear ImGui is up in a separate `engine_dev` target, with a
+console, a live Lua REPL and a play toolbar — `player` ships without a byte of it. The editor opens
+a project in Edit mode; Play serializes the scene into a fresh Lua state and Stop restores it.
+83 headless test cases and a 44-check Lua selftest.
 
-Foundations, the scene model, the scripting ergonomics and serialization are done. The editor shell
-is underway — ImGui and the console have landed; the viewport, hierarchy and inspector are next.
+Foundations, the scene model, the scripting ergonomics, serialization and the Edit/Play split are
+done. The editor shell is underway — ImGui, the console and the toolbar have landed; the viewport,
+hierarchy and inspector are next.
 
 ---
 
@@ -22,22 +25,29 @@ is underway — ImGui and the console have landed; the viewport, hierarchy and i
 - [x] Add Dear ImGui with its Vulkan backend. `gfx/vk` was kept free of engine concepts precisely so
       the backend can build on it without dragging in passes or assets. Lives in `src/dev`, behind
       the abstract `gfx::Overlay`, drawn inside the present pass after the composite. `editor` is
-      the dev build; `game` links `engine` and contains no ImGui symbols at all.
+      the dev build; `player` links `engine` and contains no ImGui symbols at all.
 - [ ] Docking layout: viewport, hierarchy, inspector, console, asset browser
 - [ ] **Viewport** — the offscreen target as an ImGui image. `Renderer::viewport()` already returns
       the descriptor set; it needs resizing to the panel, not the window.
 - [ ] **Hierarchy** — tree of actors, drag to reparent, multi-select
 - [ ] **Inspector** — iterate `props<T>()`, one widget per field type (`float`, `int`, `bool`,
       `std::string`, `glm::vec3`, color, asset reference, enum). `PropDef` already carries `label`,
-      `min`, `max` and `step`; only `step` and `label` are currently unread.
+      `min`, `max` and `step`; only `step` and `label` are currently unread. A behaviour's fields are
+      its `PropBag`, not `props<T>()`, and need their own widget pass.
 - [ ] Gizmos — translate/rotate/scale handles, snapping
 - [ ] Mouse picking — click the viewport to select (id buffer or CPU raycast)
-- [ ] Editor camera, independent of the game camera
+- [ ] Editor camera, independent of the game camera. Edit mode currently looks through the scene's
+      own `Camera`.
 - [ ] **Undo/redo** — command stack recording `(component, field, old, new)`
 - [x] Console panel — every print routes through `platform/Log`, and `dev/Console` installs the
       sink. REPL line evaluates against the live `lua_State`, with history on up/down.
+- [x] Toolbar — Play / Pause / Step / Stop and Save, on ⌘P / ⌘⇧P / ⌘⌥P / ⌘S
 - [ ] Console: click a `file:line` to open it in `$EDITOR`; filter by level; search
 - [ ] Editor layout + window state persisted between runs — `io.IniFilename` is currently `nullptr`
+- [ ] Project picker and new-project template — the editor takes the project folder on the
+      command line
+- [ ] Scene switching — open, new and save-as. The editor edits the one scene named by
+      `project.lua` or `--scene`.
 
 **Done when:** adding `CINDER_PROP(bounciness_)` to any component makes it appear in the inspector, save
 to disk, and become undoable — with zero editor code.
@@ -49,13 +59,18 @@ sugar, never the primary surface.
 
 ## Play mode
 
-- [ ] Play / Pause / Step / Stop
-- [ ] Serialize scene on Play, restore on Stop
+- [x] Play / Pause / Step / Stop — `dev/PlaySession`, driven by `dev/Toolbar`
+- [x] Serialize scene on Play, restore on Stop — both are `Engine::loadScene` on one snapshot, so
+      every session also starts from a fresh `lua_State`
+- [x] Editor keeps rendering while paused — `GameLoop::idle`
+- [x] Game code never runs in Edit mode — there is no entry script, and behaviours only start from
+      `Scene::update`, which Edit mode never calls
 - [ ] Input routing — the game gets input only when the viewport is focused. Half of this exists:
       `Engine::beginFrame` already feeds ImGui's `WantCapture*` into `Input::setSuppressed`. What is
       missing is the viewport panel itself to focus.
-- [ ] Editor keeps rendering while paused
-- [ ] Warn on unsaved changes when entering play mode
+- [ ] Dirty tracking — mark the scene modified and warn before closing it with unsaved changes.
+      Entering Play no longer risks edits, since Stop restores them.
+- [ ] Keep a change made during Play — Unity's "copy component values" escape hatch
 
 ## Serialization — what is left
 
@@ -66,9 +81,10 @@ sugar, never the primary surface.
 
 ## Asset pipeline
 
-- [ ] GUIDs — a `.meta` sidecar per asset, stable across renames and moves
-- [ ] Asset database: GUID -> path -> loaded handle. `Assets`' int handles are already the right
-      shape; they just need GUID lookup in front.
+- [ ] GUIDs — a `.meta` sidecar per asset, stable across renames and moves. Scenes currently store
+      the project-relative path, which a rename breaks.
+- [ ] Asset database: GUID -> path -> loaded handle. `DrawList::textureHandle` / `meshHandle` are
+      already the lookup seam; they just need GUID lookup in front.
 - [ ] Import pipeline: source file -> cooked asset, cached, re-run on mtime change
 - [ ] Reference counting + **unload** — `Assets` never frees a texture until shutdown, and
       `MAX_TEXTURES = 256` is a hard cap with a fixed descriptor pool
@@ -93,8 +109,9 @@ sugar, never the primary surface.
 
 ## Ship a game
 
-- [ ] Build target: package the runtime + cooked assets with no editor. The code split is done —
-      `game` links `engine`, `editor` links `engine_dev`. What is left is the packaging.
+- [x] Build target — `player` is `EXCLUDE_FROM_ALL`, and `package_game` stages it with the engine
+      data and one project into `build/dist/<project>/`, runnable from any working directory
+- [ ] "Build Game" in the editor — run `package_game` for the open project
 - [ ] Asset bundling into an archive, not loose files
 - [ ] Settings/save-data location per OS
 - [ ] Crash handler + log file
@@ -125,15 +142,15 @@ sugar, never the primary surface.
       bindless.
 - [ ] **No sorting anywhere**, in either pass. Submission order only.
 - [ ] **`endSingleTime` does a full `vkQueueWaitIdle`** per texture upload.
-- [ ] **Editing the entry script still discards all state** — it rebuilds the whole `lua_State` and
-      clears the scene, because a game script builds the world in top-level code. This stops being a
-      problem once the scene loads from a `.scene` file and the entry script is only bootstrap.
 - [ ] **A behaviour reload leaks the old instance's coroutines** — `task.spawn` tracks no owner, so a
-      loop started by the pre-reload table keeps running against it. Needs threads tagged with the
-      instance that spawned them, and dropped on reload and destroy.
+      loop started by the pre-reload table keeps running against it until Stop discards the state.
+      Needs threads tagged with the instance that spawned them, and dropped on reload and destroy.
 - [ ] **The prelude is not watched** — editing `types.lua`, `scene.lua` or `task.lua` needs a restart.
-- [ ] **`poll()` stats the entry script and every loaded behaviour every frame** — move to a watch
-      service, or throttle.
+- [ ] **`poll()` stats every loaded behaviour every frame** — move to a watch service, or throttle.
+- [ ] **Behaviour bags skip what they cannot write** — functions, actor proxies and arrays of
+      tables. A field holding an actor is lost on save; it needs *Cross-actor references*.
+- [ ] **Runtime meshes cannot be named in a scene** — `MeshRenderer.mesh` names a primitive, and
+      `engine.newCube` hands back an anonymous handle. Mesh import is where named meshes come from.
 - [ ] Fixed caps with no growth path: `MAX_QUADS = 10000`, `MAX_DRAWS = 4096`, `MAX_TEXTURES = 256`
 - [ ] **`Renderer::capture` stalls the device** and reads the target back synchronously. It is a
       debug tool; do not call it per frame. `RenderTarget` carries `TRANSFER_SRC_BIT` only for it.
@@ -142,10 +159,9 @@ sugar, never the primary surface.
       by eye when adding a subdirectory.
 - [ ] **The points-vs-pixels split is implicit.** Cameras, `resize()` and `screenToWorld` are in
       window points; the swapchain and render target are in framebuffer pixels. 2x apart on Retina.
-      `cursor.lua` and `spawner.lua` depend on the current behaviour.
-- [ ] **The asset root is baked in at configure time.** `CINDER_ASSETS_DEFAULT` records the source
-      path; `--assets` and `CINDER_ASSETS` override it. A relocatable build wants the assets copied
-      next to the binary instead.
+      `cursor.lua` and `spawner.lua` in `samples/sandbox2d` depend on the current behaviour.
+- [ ] **The packaged player finds itself through `argv[0]`**, so launching it through a `PATH`
+      lookup rather than by path misses `engine/` and `project/` next to it
 - [ ] No CI
 
 ## Explicitly out of scope
