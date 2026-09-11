@@ -2,8 +2,8 @@ return {
     mark = 0,
 
     start = function(self)
-        _G.selftestMark = self.mark
-        _G.selftestActorName = self.actor.name
+        _G.selftestMarks = _G.selftestMarks or {}
+        _G.selftestMarks[self.actor.name] = self.mark
         task.wait(0.05)
         _G.selftestYielded = true
     end,

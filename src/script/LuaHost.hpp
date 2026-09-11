@@ -18,14 +18,14 @@ namespace cinder::script {
 
 class LuaHost : public ScriptHost {
 public:
-    LuaHost(std::filesystem::path source, cinder::scene::Scene& scene, cinder::platform::Input& input,
+    LuaHost(cinder::scene::Scene& scene, cinder::platform::Input& input,
             cinder::gfx::Renderer& renderer, std::function<void()> quit);
     ~LuaHost() override;
 
     LuaHost(const LuaHost&) = delete;
     LuaHost& operator=(const LuaHost&) = delete;
 
-    void load() override;
+    void boot() override;
     void poll() override;
     void update(float dt) override;
     void render(float alpha) override;
@@ -40,8 +40,6 @@ private:
 
     static int behaviourRead(lua_State* state);
 
-    void boot();
-    void runEntry();
     void registerScripts();
     void registerApi();
     void loadPrelude();
@@ -50,14 +48,12 @@ private:
     int reloadIn(cinder::scene::Actor& actor, const std::string& path);
     void close();
 
-    std::filesystem::path source_;
     cinder::scene::Scene& scene_;
     cinder::platform::Input& input_;
     cinder::gfx::Renderer& renderer_;
     std::function<void()> quit_;
 
     lua_State* state_ = nullptr;
-    std::int64_t lastModified_ = 0;
     std::unordered_map<std::string, Watch> watched_;
 };
 

@@ -1,6 +1,10 @@
 return {
     speed = 200,
 
+    start = function(self)
+        engine.log("wasd/arrows pan, scroll zooms, click spawns")
+    end,
+
     update = function(self, dt)
         if engine.keyPressed("escape") then engine.quit() end
 

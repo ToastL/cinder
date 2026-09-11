@@ -1,0 +1,1474 @@
+version 2
+actors {
+    actor {
+        id 1
+        name "Camera"
+        position 0 3 10
+        components {
+            Camera {
+                fov 70
+                clearColor 0.05 0.06 0.09 1
+            }
+            Behaviour {
+                script "assets/scripts/behaviours/flycam.lua"
+            }
+        }
+    }
+    actor {
+        id 2
+        name "Box"
+        position -6 0 -6
+        components {
+            MeshRenderer {
+            }
+            Spin {
+                speed 0 0.5 0
+            }
+            Behaviour {
+                script "assets/scripts/behaviours/bobber.lua"
+                data {
+                    phase -8
+                }
+            }
+        }
+    }
+    actor {
+        id 3
+        name "Box"
+        position -6 0 -4.5
+        components {
+            MeshRenderer {
+            }
+            Spin {
+                speed 0 0.5 0
+            }
+            Behaviour {
+                script "assets/scripts/behaviours/bobber.lua"
+                data {
+                    phase -7
+                }
+            }
+        }
+    }
+    actor {
+        id 4
+        name "Box"
+        position -6 0 -3
+        components {
+            MeshRenderer {
+            }
+            Spin {
+                speed 0 0.5 0
+            }
+            Behaviour {
+                script "assets/scripts/behaviours/bobber.lua"
+                data {
+                    phase -6
+                }
+            }
+        }
+    }
+    actor {
+        id 5
+        name "Box"
+        position -6 0 -1.5
+        components {
+            MeshRenderer {
+            }
+            Spin {
+                speed 0 0.5 0
+            }
+            Behaviour {
+                script "assets/scripts/behaviours/bobber.lua"
+                data {
+                    phase -5
+                }
+            }
+        }
+    }
+    actor {
+        id 6
+        name "Box"
+        position -6 0 0
+        components {
+            MeshRenderer {
+            }
+            Spin {
+                speed 0 0.5 0
+            }
+            Behaviour {
+                script "assets/scripts/behaviours/bobber.lua"
+                data {
+                    phase -4
+                }
+            }
+        }
+    }
+    actor {
+        id 7
+        name "Box"
+        position -6 0 1.5
+        components {
+            MeshRenderer {
+            }
+            Spin {
+                speed 0 0.5 0
+            }
+            Behaviour {
+                script "assets/scripts/behaviours/bobber.lua"
+                data {
+                    phase -3
+                }
+            }
+        }
+    }
+    actor {
+        id 8
+        name "Box"
+        position -6 0 3
+        components {
+            MeshRenderer {
+            }
+            Spin {
+                speed 0 0.5 0
+            }
+            Behaviour {
+                script "assets/scripts/behaviours/bobber.lua"
+                data {
+                    phase -2
+                }
+            }
+        }
+    }
+    actor {
+        id 9
+        name "Box"
+        position -6 0 4.5
+        components {
+            MeshRenderer {
+            }
+            Spin {
+                speed 0 0.5 0
+            }
+            Behaviour {
+                script "assets/scripts/behaviours/bobber.lua"
+                data {
+                    phase -1
+                }
+            }
+        }
+    }
+    actor {
+        id 10
+        name "Box"
+        position -6 0 6
+        components {
+            MeshRenderer {
+            }
+            Spin {
+                speed 0 0.5 0
+            }
+            Behaviour {
+                script "assets/scripts/behaviours/bobber.lua"
+                data {
+                    phase 0
+                }
+            }
+        }
+    }
+    actor {
+        id 11
+        name "Box"
+        position -4.5 0 -6
+        components {
+            MeshRenderer {
+            }
+            Spin {
+                speed 0 0.5 0
+            }
+            Behaviour {
+                script "assets/scripts/behaviours/bobber.lua"
+                data {
+                    phase -7
+                }
+            }
+        }
+    }
+    actor {
+        id 12
+        name "Box"
+        position -4.5 0 -4.5
+        components {
+            MeshRenderer {
+            }
+            Spin {
+                speed 0 0.5 0
+            }
+            Behaviour {
+                script "assets/scripts/behaviours/bobber.lua"
+                data {
+                    phase -6
+                }
+            }
+        }
+    }
+    actor {
+        id 13
+        name "Box"
+        position -4.5 0 -3
+        components {
+            MeshRenderer {
+            }
+            Spin {
+                speed 0 0.5 0
+            }
+            Behaviour {
+                script "assets/scripts/behaviours/bobber.lua"
+                data {
+                    phase -5
+                }
+            }
+        }
+    }
+    actor {
+        id 14
+        name "Box"
+        position -4.5 0 -1.5
+        components {
+            MeshRenderer {
+            }
+            Spin {
+                speed 0 0.5 0
+            }
+            Behaviour {
+                script "assets/scripts/behaviours/bobber.lua"
+                data {
+                    phase -4
+                }
+            }
+        }
+    }
+    actor {
+        id 15
+        name "Box"
+        position -4.5 0 0
+        components {
+            MeshRenderer {
+            }
+            Spin {
+                speed 0 0.5 0
+            }
+            Behaviour {
+                script "assets/scripts/behaviours/bobber.lua"
+                data {
+                    phase -3
+                }
+            }
+        }
+    }
+    actor {
+        id 16
+        name "Box"
+        position -4.5 0 1.5
+        components {
+            MeshRenderer {
+            }
+            Spin {
+                speed 0 0.5 0
+            }
+            Behaviour {
+                script "assets/scripts/behaviours/bobber.lua"
+                data {
+                    phase -2
+                }
+            }
+        }
+    }
+    actor {
+        id 17
+        name "Box"
+        position -4.5 0 3
+        components {
+            MeshRenderer {
+            }
+            Spin {
+                speed 0 0.5 0
+            }
+            Behaviour {
+                script "assets/scripts/behaviours/bobber.lua"
+                data {
+                    phase -1
+                }
+            }
+        }
+    }
+    actor {
+        id 18
+        name "Box"
+        position -4.5 0 4.5
+        components {
+            MeshRenderer {
+            }
+            Spin {
+                speed 0 0.5 0
+            }
+            Behaviour {
+                script "assets/scripts/behaviours/bobber.lua"
+                data {
+                    phase 0
+                }
+            }
+        }
+    }
+    actor {
+        id 19
+        name "Box"
+        position -4.5 0 6
+        components {
+            MeshRenderer {
+            }
+            Spin {
+                speed 0 0.5 0
+            }
+            Behaviour {
+                script "assets/scripts/behaviours/bobber.lua"
+                data {
+                    phase 1
+                }
+            }
+        }
+    }
+    actor {
+        id 20
+        name "Box"
+        position -3 0 -6
+        components {
+            MeshRenderer {
+            }
+            Spin {
+                speed 0 0.5 0
+            }
+            Behaviour {
+                script "assets/scripts/behaviours/bobber.lua"
+                data {
+                    phase -6
+                }
+            }
+        }
+    }
+    actor {
+        id 21
+        name "Box"
+        position -3 0 -4.5
+        components {
+            MeshRenderer {
+            }
+            Spin {
+                speed 0 0.5 0
+            }
+            Behaviour {
+                script "assets/scripts/behaviours/bobber.lua"
+                data {
+                    phase -5
+                }
+            }
+        }
+    }
+    actor {
+        id 22
+        name "Box"
+        position -3 0 -3
+        components {
+            MeshRenderer {
+            }
+            Spin {
+                speed 0 0.5 0
+            }
+            Behaviour {
+                script "assets/scripts/behaviours/bobber.lua"
+                data {
+                    phase -4
+                }
+            }
+        }
+    }
+    actor {
+        id 23
+        name "Box"
+        position -3 0 -1.5
+        components {
+            MeshRenderer {
+            }
+            Spin {
+                speed 0 0.5 0
+            }
+            Behaviour {
+                script "assets/scripts/behaviours/bobber.lua"
+                data {
+                    phase -3
+                }
+            }
+        }
+    }
+    actor {
+        id 24
+        name "Box"
+        position -3 0 0
+        components {
+            MeshRenderer {
+            }
+            Spin {
+                speed 0 0.5 0
+            }
+            Behaviour {
+                script "assets/scripts/behaviours/bobber.lua"
+                data {
+                    phase -2
+                }
+            }
+        }
+    }
+    actor {
+        id 25
+        name "Box"
+        position -3 0 1.5
+        components {
+            MeshRenderer {
+            }
+            Spin {
+                speed 0 0.5 0
+            }
+            Behaviour {
+                script "assets/scripts/behaviours/bobber.lua"
+                data {
+                    phase -1
+                }
+            }
+        }
+    }
+    actor {
+        id 26
+        name "Box"
+        position -3 0 3
+        components {
+            MeshRenderer {
+            }
+            Spin {
+                speed 0 0.5 0
+            }
+            Behaviour {
+                script "assets/scripts/behaviours/bobber.lua"
+                data {
+                    phase 0
+                }
+            }
+        }
+    }
+    actor {
+        id 27
+        name "Box"
+        position -3 0 4.5
+        components {
+            MeshRenderer {
+            }
+            Spin {
+                speed 0 0.5 0
+            }
+            Behaviour {
+                script "assets/scripts/behaviours/bobber.lua"
+                data {
+                    phase 1
+                }
+            }
+        }
+    }
+    actor {
+        id 28
+        name "Box"
+        position -3 0 6
+        components {
+            MeshRenderer {
+            }
+            Spin {
+                speed 0 0.5 0
+            }
+            Behaviour {
+                script "assets/scripts/behaviours/bobber.lua"
+                data {
+                    phase 2
+                }
+            }
+        }
+    }
+    actor {
+        id 29
+        name "Box"
+        position -1.5 0 -6
+        components {
+            MeshRenderer {
+            }
+            Spin {
+                speed 0 0.5 0
+            }
+            Behaviour {
+                script "assets/scripts/behaviours/bobber.lua"
+                data {
+                    phase -5
+                }
+            }
+        }
+    }
+    actor {
+        id 30
+        name "Box"
+        position -1.5 0 -4.5
+        components {
+            MeshRenderer {
+            }
+            Spin {
+                speed 0 0.5 0
+            }
+            Behaviour {
+                script "assets/scripts/behaviours/bobber.lua"
+                data {
+                    phase -4
+                }
+            }
+        }
+    }
+    actor {
+        id 31
+        name "Box"
+        position -1.5 0 -3
+        components {
+            MeshRenderer {
+            }
+            Spin {
+                speed 0 0.5 0
+            }
+            Behaviour {
+                script "assets/scripts/behaviours/bobber.lua"
+                data {
+                    phase -3
+                }
+            }
+        }
+    }
+    actor {
+        id 32
+        name "Box"
+        position -1.5 0 -1.5
+        components {
+            MeshRenderer {
+            }
+            Spin {
+                speed 0 0.5 0
+            }
+            Behaviour {
+                script "assets/scripts/behaviours/bobber.lua"
+                data {
+                    phase -2
+                }
+            }
+        }
+    }
+    actor {
+        id 33
+        name "Box"
+        position -1.5 0 0
+        components {
+            MeshRenderer {
+            }
+            Spin {
+                speed 0 0.5 0
+            }
+            Behaviour {
+                script "assets/scripts/behaviours/bobber.lua"
+                data {
+                    phase -1
+                }
+            }
+        }
+    }
+    actor {
+        id 34
+        name "Box"
+        position -1.5 0 1.5
+        components {
+            MeshRenderer {
+            }
+            Spin {
+                speed 0 0.5 0
+            }
+            Behaviour {
+                script "assets/scripts/behaviours/bobber.lua"
+                data {
+                    phase 0
+                }
+            }
+        }
+    }
+    actor {
+        id 35
+        name "Box"
+        position -1.5 0 3
+        components {
+            MeshRenderer {
+            }
+            Spin {
+                speed 0 0.5 0
+            }
+            Behaviour {
+                script "assets/scripts/behaviours/bobber.lua"
+                data {
+                    phase 1
+                }
+            }
+        }
+    }
+    actor {
+        id 36
+        name "Box"
+        position -1.5 0 4.5
+        components {
+            MeshRenderer {
+            }
+            Spin {
+                speed 0 0.5 0
+            }
+            Behaviour {
+                script "assets/scripts/behaviours/bobber.lua"
+                data {
+                    phase 2
+                }
+            }
+        }
+    }
+    actor {
+        id 37
+        name "Box"
+        position -1.5 0 6
+        components {
+            MeshRenderer {
+            }
+            Spin {
+                speed 0 0.5 0
+            }
+            Behaviour {
+                script "assets/scripts/behaviours/bobber.lua"
+                data {
+                    phase 3
+                }
+            }
+        }
+    }
+    actor {
+        id 38
+        name "Box"
+        position 0 0 -6
+        components {
+            MeshRenderer {
+            }
+            Spin {
+                speed 0 0.5 0
+            }
+            Behaviour {
+                script "assets/scripts/behaviours/bobber.lua"
+                data {
+                    phase -4
+                }
+            }
+        }
+    }
+    actor {
+        id 39
+        name "Box"
+        position 0 0 -4.5
+        components {
+            MeshRenderer {
+            }
+            Spin {
+                speed 0 0.5 0
+            }
+            Behaviour {
+                script "assets/scripts/behaviours/bobber.lua"
+                data {
+                    phase -3
+                }
+            }
+        }
+    }
+    actor {
+        id 40
+        name "Box"
+        position 0 0 -3
+        components {
+            MeshRenderer {
+            }
+            Spin {
+                speed 0 0.5 0
+            }
+            Behaviour {
+                script "assets/scripts/behaviours/bobber.lua"
+                data {
+                    phase -2
+                }
+            }
+        }
+    }
+    actor {
+        id 41
+        name "Box"
+        position 0 0 -1.5
+        components {
+            MeshRenderer {
+            }
+            Spin {
+                speed 0 0.5 0
+            }
+            Behaviour {
+                script "assets/scripts/behaviours/bobber.lua"
+                data {
+                    phase -1
+                }
+            }
+        }
+    }
+    actor {
+        id 42
+        name "Box"
+        components {
+            MeshRenderer {
+            }
+            Spin {
+                speed 0 0.5 0
+            }
+            Behaviour {
+                script "assets/scripts/behaviours/bobber.lua"
+                data {
+                    phase 0
+                }
+            }
+        }
+    }
+    actor {
+        id 43
+        name "Box"
+        position 0 0 1.5
+        components {
+            MeshRenderer {
+            }
+            Spin {
+                speed 0 0.5 0
+            }
+            Behaviour {
+                script "assets/scripts/behaviours/bobber.lua"
+                data {
+                    phase 1
+                }
+            }
+        }
+    }
+    actor {
+        id 44
+        name "Box"
+        position 0 0 3
+        components {
+            MeshRenderer {
+            }
+            Spin {
+                speed 0 0.5 0
+            }
+            Behaviour {
+                script "assets/scripts/behaviours/bobber.lua"
+                data {
+                    phase 2
+                }
+            }
+        }
+    }
+    actor {
+        id 45
+        name "Box"
+        position 0 0 4.5
+        components {
+            MeshRenderer {
+            }
+            Spin {
+                speed 0 0.5 0
+            }
+            Behaviour {
+                script "assets/scripts/behaviours/bobber.lua"
+                data {
+                    phase 3
+                }
+            }
+        }
+    }
+    actor {
+        id 46
+        name "Box"
+        position 0 0 6
+        components {
+            MeshRenderer {
+            }
+            Spin {
+                speed 0 0.5 0
+            }
+            Behaviour {
+                script "assets/scripts/behaviours/bobber.lua"
+                data {
+                    phase 4
+                }
+            }
+        }
+    }
+    actor {
+        id 47
+        name "Box"
+        position 1.5 0 -6
+        components {
+            MeshRenderer {
+            }
+            Spin {
+                speed 0 0.5 0
+            }
+            Behaviour {
+                script "assets/scripts/behaviours/bobber.lua"
+                data {
+                    phase -3
+                }
+            }
+        }
+    }
+    actor {
+        id 48
+        name "Box"
+        position 1.5 0 -4.5
+        components {
+            MeshRenderer {
+            }
+            Spin {
+                speed 0 0.5 0
+            }
+            Behaviour {
+                script "assets/scripts/behaviours/bobber.lua"
+                data {
+                    phase -2
+                }
+            }
+        }
+    }
+    actor {
+        id 49
+        name "Box"
+        position 1.5 0 -3
+        components {
+            MeshRenderer {
+            }
+            Spin {
+                speed 0 0.5 0
+            }
+            Behaviour {
+                script "assets/scripts/behaviours/bobber.lua"
+                data {
+                    phase -1
+                }
+            }
+        }
+    }
+    actor {
+        id 50
+        name "Box"
+        position 1.5 0 -1.5
+        components {
+            MeshRenderer {
+            }
+            Spin {
+                speed 0 0.5 0
+            }
+            Behaviour {
+                script "assets/scripts/behaviours/bobber.lua"
+                data {
+                    phase 0
+                }
+            }
+        }
+    }
+    actor {
+        id 51
+        name "Box"
+        position 1.5 0 0
+        components {
+            MeshRenderer {
+            }
+            Spin {
+                speed 0 0.5 0
+            }
+            Behaviour {
+                script "assets/scripts/behaviours/bobber.lua"
+                data {
+                    phase 1
+                }
+            }
+        }
+    }
+    actor {
+        id 52
+        name "Box"
+        position 1.5 0 1.5
+        components {
+            MeshRenderer {
+            }
+            Spin {
+                speed 0 0.5 0
+            }
+            Behaviour {
+                script "assets/scripts/behaviours/bobber.lua"
+                data {
+                    phase 2
+                }
+            }
+        }
+    }
+    actor {
+        id 53
+        name "Box"
+        position 1.5 0 3
+        components {
+            MeshRenderer {
+            }
+            Spin {
+                speed 0 0.5 0
+            }
+            Behaviour {
+                script "assets/scripts/behaviours/bobber.lua"
+                data {
+                    phase 3
+                }
+            }
+        }
+    }
+    actor {
+        id 54
+        name "Box"
+        position 1.5 0 4.5
+        components {
+            MeshRenderer {
+            }
+            Spin {
+                speed 0 0.5 0
+            }
+            Behaviour {
+                script "assets/scripts/behaviours/bobber.lua"
+                data {
+                    phase 4
+                }
+            }
+        }
+    }
+    actor {
+        id 55
+        name "Box"
+        position 1.5 0 6
+        components {
+            MeshRenderer {
+            }
+            Spin {
+                speed 0 0.5 0
+            }
+            Behaviour {
+                script "assets/scripts/behaviours/bobber.lua"
+                data {
+                    phase 5
+                }
+            }
+        }
+    }
+    actor {
+        id 56
+        name "Box"
+        position 3 0 -6
+        components {
+            MeshRenderer {
+            }
+            Spin {
+                speed 0 0.5 0
+            }
+            Behaviour {
+                script "assets/scripts/behaviours/bobber.lua"
+                data {
+                    phase -2
+                }
+            }
+        }
+    }
+    actor {
+        id 57
+        name "Box"
+        position 3 0 -4.5
+        components {
+            MeshRenderer {
+            }
+            Spin {
+                speed 0 0.5 0
+            }
+            Behaviour {
+                script "assets/scripts/behaviours/bobber.lua"
+                data {
+                    phase -1
+                }
+            }
+        }
+    }
+    actor {
+        id 58
+        name "Box"
+        position 3 0 -3
+        components {
+            MeshRenderer {
+            }
+            Spin {
+                speed 0 0.5 0
+            }
+            Behaviour {
+                script "assets/scripts/behaviours/bobber.lua"
+                data {
+                    phase 0
+                }
+            }
+        }
+    }
+    actor {
+        id 59
+        name "Box"
+        position 3 0 -1.5
+        components {
+            MeshRenderer {
+            }
+            Spin {
+                speed 0 0.5 0
+            }
+            Behaviour {
+                script "assets/scripts/behaviours/bobber.lua"
+                data {
+                    phase 1
+                }
+            }
+        }
+    }
+    actor {
+        id 60
+        name "Box"
+        position 3 0 0
+        components {
+            MeshRenderer {
+            }
+            Spin {
+                speed 0 0.5 0
+            }
+            Behaviour {
+                script "assets/scripts/behaviours/bobber.lua"
+                data {
+                    phase 2
+                }
+            }
+        }
+    }
+    actor {
+        id 61
+        name "Box"
+        position 3 0 1.5
+        components {
+            MeshRenderer {
+            }
+            Spin {
+                speed 0 0.5 0
+            }
+            Behaviour {
+                script "assets/scripts/behaviours/bobber.lua"
+                data {
+                    phase 3
+                }
+            }
+        }
+    }
+    actor {
+        id 62
+        name "Box"
+        position 3 0 3
+        components {
+            MeshRenderer {
+            }
+            Spin {
+                speed 0 0.5 0
+            }
+            Behaviour {
+                script "assets/scripts/behaviours/bobber.lua"
+                data {
+                    phase 4
+                }
+            }
+        }
+    }
+    actor {
+        id 63
+        name "Box"
+        position 3 0 4.5
+        components {
+            MeshRenderer {
+            }
+            Spin {
+                speed 0 0.5 0
+            }
+            Behaviour {
+                script "assets/scripts/behaviours/bobber.lua"
+                data {
+                    phase 5
+                }
+            }
+        }
+    }
+    actor {
+        id 64
+        name "Box"
+        position 3 0 6
+        components {
+            MeshRenderer {
+            }
+            Spin {
+                speed 0 0.5 0
+            }
+            Behaviour {
+                script "assets/scripts/behaviours/bobber.lua"
+                data {
+                    phase 6
+                }
+            }
+        }
+    }
+    actor {
+        id 65
+        name "Box"
+        position 4.5 0 -6
+        components {
+            MeshRenderer {
+            }
+            Spin {
+                speed 0 0.5 0
+            }
+            Behaviour {
+                script "assets/scripts/behaviours/bobber.lua"
+                data {
+                    phase -1
+                }
+            }
+        }
+    }
+    actor {
+        id 66
+        name "Box"
+        position 4.5 0 -4.5
+        components {
+            MeshRenderer {
+            }
+            Spin {
+                speed 0 0.5 0
+            }
+            Behaviour {
+                script "assets/scripts/behaviours/bobber.lua"
+                data {
+                    phase 0
+                }
+            }
+        }
+    }
+    actor {
+        id 67
+        name "Box"
+        position 4.5 0 -3
+        components {
+            MeshRenderer {
+            }
+            Spin {
+                speed 0 0.5 0
+            }
+            Behaviour {
+                script "assets/scripts/behaviours/bobber.lua"
+                data {
+                    phase 1
+                }
+            }
+        }
+    }
+    actor {
+        id 68
+        name "Box"
+        position 4.5 0 -1.5
+        components {
+            MeshRenderer {
+            }
+            Spin {
+                speed 0 0.5 0
+            }
+            Behaviour {
+                script "assets/scripts/behaviours/bobber.lua"
+                data {
+                    phase 2
+                }
+            }
+        }
+    }
+    actor {
+        id 69
+        name "Box"
+        position 4.5 0 0
+        components {
+            MeshRenderer {
+            }
+            Spin {
+                speed 0 0.5 0
+            }
+            Behaviour {
+                script "assets/scripts/behaviours/bobber.lua"
+                data {
+                    phase 3
+                }
+            }
+        }
+    }
+    actor {
+        id 70
+        name "Box"
+        position 4.5 0 1.5
+        components {
+            MeshRenderer {
+            }
+            Spin {
+                speed 0 0.5 0
+            }
+            Behaviour {
+                script "assets/scripts/behaviours/bobber.lua"
+                data {
+                    phase 4
+                }
+            }
+        }
+    }
+    actor {
+        id 71
+        name "Box"
+        position 4.5 0 3
+        components {
+            MeshRenderer {
+            }
+            Spin {
+                speed 0 0.5 0
+            }
+            Behaviour {
+                script "assets/scripts/behaviours/bobber.lua"
+                data {
+                    phase 5
+                }
+            }
+        }
+    }
+    actor {
+        id 72
+        name "Box"
+        position 4.5 0 4.5
+        components {
+            MeshRenderer {
+            }
+            Spin {
+                speed 0 0.5 0
+            }
+            Behaviour {
+                script "assets/scripts/behaviours/bobber.lua"
+                data {
+                    phase 6
+                }
+            }
+        }
+    }
+    actor {
+        id 73
+        name "Box"
+        position 4.5 0 6
+        components {
+            MeshRenderer {
+            }
+            Spin {
+                speed 0 0.5 0
+            }
+            Behaviour {
+                script "assets/scripts/behaviours/bobber.lua"
+                data {
+                    phase 7
+                }
+            }
+        }
+    }
+    actor {
+        id 74
+        name "Box"
+        position 6 0 -6
+        components {
+            MeshRenderer {
+            }
+            Spin {
+                speed 0 0.5 0
+            }
+            Behaviour {
+                script "assets/scripts/behaviours/bobber.lua"
+                data {
+                    phase 0
+                }
+            }
+        }
+    }
+    actor {
+        id 75
+        name "Box"
+        position 6 0 -4.5
+        components {
+            MeshRenderer {
+            }
+            Spin {
+                speed 0 0.5 0
+            }
+            Behaviour {
+                script "assets/scripts/behaviours/bobber.lua"
+                data {
+                    phase 1
+                }
+            }
+        }
+    }
+    actor {
+        id 76
+        name "Box"
+        position 6 0 -3
+        components {
+            MeshRenderer {
+            }
+            Spin {
+                speed 0 0.5 0
+            }
+            Behaviour {
+                script "assets/scripts/behaviours/bobber.lua"
+                data {
+                    phase 2
+                }
+            }
+        }
+    }
+    actor {
+        id 77
+        name "Box"
+        position 6 0 -1.5
+        components {
+            MeshRenderer {
+            }
+            Spin {
+                speed 0 0.5 0
+            }
+            Behaviour {
+                script "assets/scripts/behaviours/bobber.lua"
+                data {
+                    phase 3
+                }
+            }
+        }
+    }
+    actor {
+        id 78
+        name "Box"
+        position 6 0 0
+        components {
+            MeshRenderer {
+            }
+            Spin {
+                speed 0 0.5 0
+            }
+            Behaviour {
+                script "assets/scripts/behaviours/bobber.lua"
+                data {
+                    phase 4
+                }
+            }
+        }
+    }
+    actor {
+        id 79
+        name "Box"
+        position 6 0 1.5
+        components {
+            MeshRenderer {
+            }
+            Spin {
+                speed 0 0.5 0
+            }
+            Behaviour {
+                script "assets/scripts/behaviours/bobber.lua"
+                data {
+                    phase 5
+                }
+            }
+        }
+    }
+    actor {
+        id 80
+        name "Box"
+        position 6 0 3
+        components {
+            MeshRenderer {
+            }
+            Spin {
+                speed 0 0.5 0
+            }
+            Behaviour {
+                script "assets/scripts/behaviours/bobber.lua"
+                data {
+                    phase 6
+                }
+            }
+        }
+    }
+    actor {
+        id 81
+        name "Box"
+        position 6 0 4.5
+        components {
+            MeshRenderer {
+            }
+            Spin {
+                speed 0 0.5 0
+            }
+            Behaviour {
+                script "assets/scripts/behaviours/bobber.lua"
+                data {
+                    phase 7
+                }
+            }
+        }
+    }
+    actor {
+        id 82
+        name "Box"
+        position 6 0 6
+        components {
+            MeshRenderer {
+            }
+            Spin {
+                speed 0 0.5 0
+            }
+            Behaviour {
+                script "assets/scripts/behaviours/bobber.lua"
+                data {
+                    phase 8
+                }
+            }
+        }
+    }
+}

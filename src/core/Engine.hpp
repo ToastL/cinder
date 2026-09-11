@@ -10,7 +10,9 @@
 #include "scene/Scene.hpp"
 #include "script/LuaHost.hpp"
 
+#include <filesystem>
 #include <memory>
+#include <string>
 
 namespace cinder::core {
 
@@ -26,10 +28,17 @@ public:
     bool running() const;
     bool minimized() const;
 
+    void loadScene(const std::string& source);
+    void openScene(const std::filesystem::path& path);
+    void saveScene(const std::filesystem::path& path);
+
     void beginFrame();
     void update(float dt);
     void render(float alpha);
+
     void quit() { quit_ = true; }
+    bool quitRequested() const { return quit_; }
+    void clearQuitRequest() { quit_ = false; }
 
     cinder::platform::Window& window() { return window_; }
     cinder::platform::Input& input() { return input_; }
@@ -39,6 +48,8 @@ public:
     cinder::script::LuaHost& script() { return *script_; }
 
 private:
+    void reset();
+
     cinder::platform::Window window_;
     cinder::platform::Input input_;
     cinder::gfx::vk::VkCtx ctx_;

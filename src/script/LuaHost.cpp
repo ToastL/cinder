@@ -131,11 +131,9 @@ Host hostContext;
 
 }
 
-LuaHost::LuaHost(std::filesystem::path source, cinder::scene::Scene& scene,
-                 cinder::platform::Input& input, cinder::gfx::Renderer& renderer,
-                 std::function<void()> quit)
-    : source_(std::move(source)), scene_(scene), input_(input), renderer_(renderer),
-      quit_(std::move(quit)) {}
+LuaHost::LuaHost(cinder::scene::Scene& scene, cinder::platform::Input& input,
+                 cinder::gfx::Renderer& renderer, std::function<void()> quit)
+    : scene_(scene), input_(input), renderer_(renderer), quit_(std::move(quit)) {}
 
 int LuaHost::behaviourRead(lua_State* state) {
     const char* path = lua_tostring(state, 1);
@@ -151,12 +149,6 @@ int LuaHost::behaviourRead(lua_State* state) {
     }
 }
 
-void LuaHost::load() {
-    scene_.clear();
-    boot();
-    runEntry();
-}
-
 void LuaHost::boot() {
     close();
     watched_.clear();
@@ -167,19 +159,6 @@ void LuaHost::boot() {
     registerScripts();
     registerApi();
     loadPrelude();
-}
-
-void LuaHost::runEntry() {
-    const std::string source = cinder::lua::readSource(source_);
-    lastModified_ = cinder::lua::modifiedMillis(source_, lastModified_);
-
-    const std::string chunk = "@" + source_.string();
-    if (!cinder::lua::runChunk(state_, source, chunk.c_str())) {
-        cinder::platform::logError("[lua] load error: %s\n", lua_tostring(state_, -1));
-        lua_pop(state_, 1);
-        return;
-    }
-    cinder::platform::logInfo("[lua] loaded %s\n", source_.string().c_str());
 }
 
 void LuaHost::registerScripts() {
@@ -251,11 +230,6 @@ void LuaHost::watch(const char* path) {
 }
 
 void LuaHost::poll() {
-    if (cinder::lua::modifiedMillis(source_, lastModified_) != lastModified_) {
-        load();
-        return;
-    }
-
     std::vector<std::string> changed;
     for (auto& [path, entry] : watched_) {
         const std::int64_t modified = cinder::lua::modifiedMillis(entry.file, entry.modified);

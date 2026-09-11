@@ -5,6 +5,10 @@ return {
     speed = 8,
     sprint = 24,
 
+    start = function(self)
+        engine.log("click to capture the mouse, wasd + space/ctrl to fly, esc to release")
+    end,
+
     update = function(self, dt)
         local actor = self.actor
 

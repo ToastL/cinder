@@ -7,8 +7,8 @@
 
 namespace cinder::core {
 
-GameConfig::GameConfig(std::string title, int width, int height, std::string script, int fixedHz)
-    : title(std::move(title)), width(width), height(height), script(std::move(script)),
+GameConfig::GameConfig(std::string title, int width, int height, std::string scene, int fixedHz)
+    : title(std::move(title)), width(width), height(height), scene(std::move(scene)),
       fixedHz(fixedHz) {
     GameLoop::requirePositiveHz(fixedHz, "game.fixed_hz");
 }
@@ -18,7 +18,7 @@ GameConfig GameConfig::load(const std::filesystem::path& path) {
     return GameConfig(game.str("title", "Cinder"),
                       game.num("width", 1280),
                       game.num("height", 720),
-                      game.str("script", "assets/scripts/main.lua"),
+                      game.str("scene", "assets/scenes/main.scene"),
                       game.num("fixed_hz", 60));
 }
 

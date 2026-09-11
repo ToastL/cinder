@@ -6,7 +6,7 @@ class ScriptHost {
 public:
     virtual ~ScriptHost() = default;
 
-    virtual void load() = 0;
+    virtual void boot() = 0;
     virtual void poll() = 0;
     virtual void update(float dt) = 0;
     virtual void render(float alpha) = 0;

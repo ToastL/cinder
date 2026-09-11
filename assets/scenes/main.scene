@@ -1,0 +1,38 @@
+version 2
+actors {
+    actor {
+        id 1
+        name "Camera"
+        components {
+            Camera {
+                projection "orthographic"
+                clearColor 0.05 0.05 0.08 1
+                virtualSize 640 360
+            }
+            Behaviour {
+                script "assets/scripts/behaviours/camera2d.lua"
+            }
+        }
+    }
+    actor {
+        id 2
+        name "Spawner"
+        components {
+            Behaviour {
+                script "assets/scripts/behaviours/spawner.lua"
+            }
+        }
+    }
+    actor {
+        id 3
+        name "Cursor"
+        components {
+            SpriteRenderer {
+                size 6 6
+            }
+            Behaviour {
+                script "assets/scripts/behaviours/cursor.lua"
+            }
+        }
+    }
+}

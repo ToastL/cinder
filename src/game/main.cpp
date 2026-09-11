@@ -20,7 +20,7 @@ int main(int argc, char** argv) {
 
     int frameLimit = 0;
     std::string capture;
-    std::string script;
+    std::string scene;
 
     for (int i = 1; i < argc; ++i) {
         if (std::strcmp(argv[i], "--assets") == 0 && i + 1 < argc) {
@@ -29,18 +29,19 @@ int main(int argc, char** argv) {
             frameLimit = std::atoi(argv[++i]);
         } else if (std::strcmp(argv[i], "--capture") == 0 && i + 1 < argc) {
             capture = argv[++i];
-        } else if (std::strcmp(argv[i], "--script") == 0 && i + 1 < argc) {
-            script = argv[++i];
+        } else if (std::strcmp(argv[i], "--scene") == 0 && i + 1 < argc) {
+            scene = argv[++i];
         }
     }
 
     try {
         GameConfig config = GameConfig::load(cinder::platform::assetPath("game.lua"));
-        if (!script.empty()) config.script = script;
+        if (!scene.empty()) config.scene = scene;
 
         Glfw::acquire();
         {
             Engine engine(config);
+            engine.openScene(cinder::platform::resolveAsset(config.scene));
             GameLoop loop(config.fixedHz);
 
             int frames = 0;

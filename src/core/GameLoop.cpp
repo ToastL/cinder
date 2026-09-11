@@ -22,15 +22,20 @@ void GameLoop::requirePositiveHz(int hz, const char* what) {
     }
 }
 
-void GameLoop::tick(Engine& engine) {
+bool GameLoop::begin(Engine& engine) {
     cinder::platform::Glfw::pollEvents();
     engine.beginFrame();
 
     if (engine.minimized()) {
         cinder::platform::Glfw::waitEvents();
         resetClock();
-        return;
+        return false;
     }
+    return true;
+}
+
+void GameLoop::tick(Engine& engine) {
+    if (!begin(engine)) return;
 
     if (last_ < 0.0) last_ = cinder::platform::Glfw::time();
 
@@ -39,6 +44,22 @@ void GameLoop::tick(Engine& engine) {
     last_ = now;
 
     for (int i = 0; i < steps; ++i) engine.update(static_cast<float>(fixedDt_));
+    engine.render(alpha());
+}
+
+void GameLoop::idle(Engine& engine) {
+    if (!begin(engine)) return;
+
+    resetClock();
+    engine.input().consume();
+    engine.render(alpha());
+}
+
+void GameLoop::step(Engine& engine) {
+    if (!begin(engine)) return;
+
+    resetClock();
+    engine.update(static_cast<float>(fixedDt_));
     engine.render(alpha());
 }
 
