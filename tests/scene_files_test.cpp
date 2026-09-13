@@ -3,7 +3,7 @@
 #include "components/Builtins.hpp"
 #include "scene/Components.hpp"
 #include "scene/Scene.hpp"
-#include "script/Behaviour.hpp"
+#include "script/Script.hpp"
 #include "serial/SceneCodec.hpp"
 
 #include <lua.hpp>
@@ -17,7 +17,7 @@
 
 using cinder::scene::Components;
 using cinder::scene::Scene;
-using cinder::script::Behaviour;
+using cinder::script::Script;
 using cinder::serial::SceneCodec;
 
 namespace {
@@ -48,7 +48,7 @@ TEST_CASE("every shipped scene is canonical") {
     {
         Components types;
         cinder::components::registerBuiltins(types);
-        types.add<Behaviour>("Behaviour", [state] { return std::make_unique<Behaviour>(state); });
+        types.add<Script>("Script", [state] { return std::make_unique<Script>(state); });
         Scene scene{types};
 
         const std::vector<std::filesystem::path> scenes = shippedScenes();

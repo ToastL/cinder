@@ -1,6 +1,7 @@
 #pragma once
 
 #include "scene/Component.hpp"
+#include "scene/PropValue.hpp"
 #include "scene/Transform.hpp"
 
 #include <memory>
@@ -38,6 +39,12 @@ public:
     bool activeSelf() const { return active_; }
     void setActive(bool active) { active_ = active; }
     bool active() const;
+
+    const PropRec& attributes() const { return attributes_; }
+    const PropValue* attribute(const std::string& name) const;
+    void setAttribute(const std::string& name, PropValue value);
+    void removeAttribute(const std::string& name);
+    void loadAttributes(PropRec values) { attributes_ = std::move(values); }
 
     Component* add(std::unique_ptr<Component> component);
 
@@ -83,6 +90,7 @@ private:
     Transform transform_;
     std::vector<std::unique_ptr<Component>> components_;
     std::vector<Actor*> children_;
+    PropRec attributes_;
 
     std::string name_;
     Actor* parent_ = nullptr;

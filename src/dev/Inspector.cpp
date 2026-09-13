@@ -3,6 +3,7 @@
 #include "dev/Selection.hpp"
 #include "reflect/Reflect.hpp"
 #include "scene/Actor.hpp"
+#include "scene/Attributes.hpp"
 #include "scene/Component.hpp"
 #include "scene/Components.hpp"
 #include "scene/PropValue.hpp"
@@ -13,7 +14,7 @@
 #include <imgui_stdlib.h>
 
 #include <cfloat>
-#include <cmath>
+#include <cstddef>
 #include <cstdint>
 #include <optional>
 #include <string>
@@ -29,15 +30,17 @@ using cinder::reflect::PropList;
 using cinder::reflect::PropType;
 using cinder::scene::Actor;
 using cinder::scene::Component;
-using cinder::scene::PropBag;
 using cinder::scene::PropRec;
 using cinder::scene::PropSeq;
 using cinder::scene::PropValue;
 
 constexpr float LABEL_WEIGHT = 0.4f;
-constexpr float BAG_STEP = 0.1f;
+constexpr float ATTRIBUTE_STEP = 0.1f;
 constexpr ImGuiSliderFlags DRAG = ImGuiSliderFlags_NoRoundToFormat;
 constexpr ImGuiColorEditFlags COLOR = ImGuiColorEditFlags_Float;
+constexpr const char* ADD_POPUP = "Add Attribute";
+constexpr const char* KINDS[] = {"Number", "String", "Boolean", "Vector2", "Vector3", "Vector4"};
+constexpr int FIRST_VECTOR = 3;
 
 struct Range {
     float min;
@@ -65,11 +68,6 @@ void row(std::string_view label) {
     ImGui::TextUnformatted(label.data(), label.data() + label.size());
     ImGui::TableNextColumn();
     ImGui::SetNextItemWidth(-FLT_MIN);
-}
-
-void note(const char* format, std::size_t count) {
-    ImGui::AlignTextToFramePadding();
-    ImGui::TextDisabled(format, count);
 }
 
 bool editText(std::string& text) {
@@ -137,57 +135,58 @@ void editProp(const PropDef& def, void* target) {
     }
 }
 
-std::optional<PropValue> editNumbers(const PropSeq& items) {
-    const std::size_t count = items.size();
-    double values[4]{};
-    bool numeric = count > 0 && count <= 4;
-    for (std::size_t i = 0; numeric && i < count; ++i) {
-        if (items[i].is<double>()) values[i] = items[i].as<double>();
-        else if (items[i].is<std::int64_t>()) values[i] = static_cast<double>(items[i].as<std::int64_t>());
-        else numeric = false;
-    }
+double numberOf(const PropValue& value) {
+    return value.is<double>() ? value.as<double>() : static_cast<double>(value.as<std::int64_t>());
+}
 
-    if (!numeric) {
-        note("%zu items", count);
+std::optional<PropValue> editAttribute(const PropValue& value) {
+    if (!cinder::scene::isAttributeValue(value)) {
+        ImGui::AlignTextToFramePadding();
+        ImGui::TextDisabled("unsupported");
         return std::nullopt;
     }
-    if (!ImGui::DragScalarN("##value", ImGuiDataType_Double, values, static_cast<int>(count), BAG_STEP,
-                            nullptr, nullptr, "%g", DRAG)) {
+
+    if (value.is<bool>()) {
+        bool flag = value.as<bool>();
+        if (ImGui::Checkbox("##value", &flag)) return PropValue::flag(flag);
+        return std::nullopt;
+    }
+
+    if (value.is<std::string>()) {
+        std::string text = value.as<std::string>();
+        if (editText(text)) return PropValue::text(std::move(text));
+        return std::nullopt;
+    }
+
+    if (!value.is<PropSeq>()) {
+        double number = numberOf(value);
+        if (!ImGui::DragScalar("##value", ImGuiDataType_Double, &number, ATTRIBUTE_STEP, nullptr, nullptr,
+                               "%g", DRAG)) {
+            return std::nullopt;
+        }
+        return PropValue::number(number);
+    }
+
+    const PropSeq& items = value.as<PropSeq>();
+    const int count = static_cast<int>(items.size());
+    double values[4]{};
+    for (int i = 0; i < count; ++i) values[i] = numberOf(items[static_cast<std::size_t>(i)]);
+
+    if (!ImGui::DragScalarN("##value", ImGuiDataType_Double, values, count, ATTRIBUTE_STEP, nullptr,
+                            nullptr, "%g", DRAG)) {
         return std::nullopt;
     }
 
     PropSeq next;
-    for (std::size_t i = 0; i < count; ++i) {
-        next.push_back(items[i].is<std::int64_t>() ? PropValue::integer(std::llround(values[i]))
-                                                   : PropValue::number(values[i]));
-    }
+    for (int i = 0; i < count; ++i) next.push_back(PropValue::number(values[i]));
     return PropValue::seq(std::move(next));
 }
 
-std::optional<PropValue> editValue(const PropValue& value) {
-    if (value.is<bool>()) {
-        bool flag = value.as<bool>();
-        if (ImGui::Checkbox("##value", &flag)) return PropValue::flag(flag);
-    } else if (value.is<std::int64_t>()) {
-        std::int64_t number = value.as<std::int64_t>();
-        if (ImGui::DragScalar("##value", ImGuiDataType_S64, &number, BAG_STEP)) {
-            return PropValue::integer(number);
-        }
-    } else if (value.is<double>()) {
-        double number = value.as<double>();
-        if (ImGui::DragScalar("##value", ImGuiDataType_Double, &number, BAG_STEP, nullptr, nullptr, "%g",
-                              DRAG)) {
-            return PropValue::number(number);
-        }
-    } else if (value.is<std::string>()) {
-        std::string text = value.as<std::string>();
-        if (editText(text)) return PropValue::text(std::move(text));
-    } else if (value.is<PropSeq>()) {
-        return editNumbers(value.as<PropSeq>());
-    } else {
-        note("%zu fields", value.as<PropRec>().size());
-    }
-    return std::nullopt;
+PropValue zeroOf(int kind) {
+    if (kind == 1) return PropValue::text("");
+    if (kind == 2) return PropValue::flag(false);
+    if (kind < FIRST_VECTOR) return PropValue::number(0.0);
+    return PropValue::seq(PropSeq(static_cast<std::size_t>(kind - FIRST_VECTOR + 2), PropValue::number(0.0)));
 }
 
 void propRows(const PropList& defs, void* target) {
@@ -197,21 +196,6 @@ void propRows(const PropList& defs, void* target) {
         editProp(def, target);
         ImGui::PopID();
     }
-}
-
-void bagRows(PropBag& bag) {
-    const PropRec values = bag.readBag();
-
-    ImGui::PushID("bag");
-    for (const auto& [key, value] : values) {
-        pushId(key);
-        row(cinder::reflect::deriveLabel(key));
-        if (std::optional<PropValue> next = editValue(value)) {
-            bag.patchBag(PropRec{{key, std::move(*next)}});
-        }
-        ImGui::PopID();
-    }
-    ImGui::PopID();
 }
 
 void actorHeader(Actor& actor) {
@@ -232,25 +216,9 @@ void componentSection(Component& component, std::string_view type, int index) {
     const std::string title = type.empty() ? std::string("Component") : std::string(type);
     if (ImGui::CollapsingHeader(title.c_str(), ImGuiTreeNodeFlags_DefaultOpen) && beginRows("rows")) {
         propRows(component.propList(), component.propTarget());
-        if (auto* bag = dynamic_cast<PropBag*>(&component)) bagRows(*bag);
         ImGui::EndTable();
     }
     ImGui::PopID();
-}
-
-void inspect(Actor& actor, const cinder::scene::Components& types) {
-    actorHeader(actor);
-
-    if (ImGui::CollapsingHeader("Transform", ImGuiTreeNodeFlags_DefaultOpen) && beginRows("transform")) {
-        propRows(cinder::reflect::props<cinder::scene::Transform>(), &actor.transform());
-        ImGui::EndTable();
-    }
-
-    const auto& components = actor.components();
-    for (std::size_t i = 0; i < components.size(); ++i) {
-        Component& component = *components[i];
-        componentSection(component, types.nameOf(component), static_cast<int>(i));
-    }
 }
 
 }
@@ -264,8 +232,78 @@ void Inspector::draw() {
     ImGui::SetNextWindowSize(ImVec2(320, 480), ImGuiCond_FirstUseEver);
     const bool visible = ImGui::Begin(TITLE, nullptr, ImGuiWindowFlags_NoFocusOnAppearing);
     if (visible && actor == nullptr) ImGui::TextDisabled("Nothing selected");
-    if (visible && actor != nullptr) inspect(*actor, scene_.types());
+    if (visible && actor != nullptr) inspect(*actor);
     ImGui::End();
+}
+
+void Inspector::inspect(Actor& actor) {
+    actorHeader(actor);
+
+    if (ImGui::CollapsingHeader("Transform", ImGuiTreeNodeFlags_DefaultOpen) && beginRows("transform")) {
+        propRows(cinder::reflect::props<cinder::scene::Transform>(), &actor.transform());
+        ImGui::EndTable();
+    }
+
+    const auto& components = actor.components();
+    for (std::size_t i = 0; i < components.size(); ++i) {
+        Component& component = *components[i];
+        componentSection(component, scene_.types().nameOf(component), static_cast<int>(i));
+    }
+
+    attributes(actor);
+}
+
+void Inspector::attributes(Actor& actor) {
+    if (!ImGui::CollapsingHeader("Attributes", ImGuiTreeNodeFlags_DefaultOpen)) return;
+
+    const PropRec values = actor.attributes();
+    std::optional<std::string> removed;
+
+    if (!values.empty() && ImGui::BeginTable("attributes", 3, ImGuiTableFlags_SizingStretchProp)) {
+        const float button = ImGui::GetFrameHeight();
+        ImGui::TableSetupColumn("label", ImGuiTableColumnFlags_WidthStretch, LABEL_WEIGHT);
+        ImGui::TableSetupColumn("value", ImGuiTableColumnFlags_WidthStretch, 1.0f - LABEL_WEIGHT);
+        ImGui::TableSetupColumn("remove", ImGuiTableColumnFlags_WidthFixed, button);
+
+        for (const auto& [name, value] : values) {
+            pushId(name);
+            row(name);
+            if (std::optional<PropValue> next = editAttribute(value)) actor.setAttribute(name, std::move(*next));
+            ImGui::TableNextColumn();
+            if (ImGui::Button("x", ImVec2(button, button))) removed = name;
+            ImGui::PopID();
+        }
+        ImGui::EndTable();
+    }
+    if (removed) actor.removeAttribute(*removed);
+
+    if (ImGui::Button("Add Attribute...")) {
+        newName_.clear();
+        newKind_ = 0;
+        ImGui::OpenPopup(ADD_POPUP);
+    }
+    addAttribute(actor);
+}
+
+void Inspector::addAttribute(Actor& actor) {
+    if (!ImGui::BeginPopup(ADD_POPUP)) return;
+
+    if (ImGui::IsWindowAppearing()) ImGui::SetKeyboardFocusHere();
+    const bool entered = ImGui::InputText("Name", &newName_, ImGuiInputTextFlags_EnterReturnsTrue);
+    ImGui::Combo("Type", &newKind_, KINDS, IM_ARRAYSIZE(KINDS));
+
+    const bool valid = cinder::scene::isAttributeName(newName_) && actor.attribute(newName_) == nullptr;
+    ImGui::BeginDisabled(!valid);
+    const bool clicked = ImGui::Button("Add");
+    ImGui::EndDisabled();
+    ImGui::SameLine();
+    if (ImGui::Button("Cancel")) ImGui::CloseCurrentPopup();
+
+    if (valid && (entered || clicked)) {
+        actor.setAttribute(newName_, zeroOf(newKind_));
+        ImGui::CloseCurrentPopup();
+    }
+    ImGui::EndPopup();
 }
 
 }

@@ -1,15 +1,21 @@
 #include <doctest/doctest.h>
 
 #include "scene/Actor.hpp"
+#include "scene/Attributes.hpp"
 #include "scene/Component.hpp"
 #include "scene/Components.hpp"
 #include "scene/DrawList.hpp"
+#include "scene/PropValue.hpp"
 #include "scene/Scene.hpp"
+
+#include <string>
+#include <vector>
 
 using cinder::scene::Actor;
 using cinder::scene::Component;
 using cinder::scene::Components;
 using cinder::scene::DrawList;
+using cinder::scene::PropValue;
 using cinder::scene::Scene;
 
 namespace {
@@ -228,4 +234,49 @@ TEST_CASE("removing a component clears its pending start") {
     f.scene.update(0.1f);
 
     CHECK(a->components().empty());
+}
+
+TEST_CASE("an attribute notifies the scene once per real change") {
+    Fixture f;
+    Actor* a = f.scene.spawn("a");
+    std::vector<std::string> changes;
+    f.scene.setAttributeListener([&changes](Actor&, const std::string& name) { changes.push_back(name); });
+
+    a->setAttribute("hp", PropValue::integer(3));
+    a->setAttribute("hp", PropValue::number(3.0));
+    a->setAttribute("hp", PropValue::integer(4));
+    a->removeAttribute("hp");
+    a->removeAttribute("hp");
+
+    CHECK(changes == std::vector<std::string>{"hp", "hp", "hp"});
+    CHECK(a->attribute("hp") == nullptr);
+}
+
+TEST_CASE("loaded attributes do not notify") {
+    Fixture f;
+    Actor* a = f.scene.spawn("a");
+    int changes = 0;
+    f.scene.setAttributeListener([&changes](Actor&, const std::string&) { changes++; });
+
+    a->loadAttributes({{"rate", PropValue::number(2.0)}});
+
+    CHECK(changes == 0);
+    CHECK(a->attribute("rate")->as<double>() == doctest::Approx(2.0));
+}
+
+TEST_CASE("attributes hold numbers, strings, bools and small vectors") {
+    using cinder::scene::isAttributeName;
+    using cinder::scene::isAttributeValue;
+
+    CHECK(isAttributeName("max_speed2"));
+    CHECK_FALSE(isAttributeName(""));
+    CHECK_FALSE(isAttributeName("max speed"));
+
+    CHECK(isAttributeValue(PropValue::integer(1)));
+    CHECK(isAttributeValue(PropValue::text("a")));
+    CHECK(isAttributeValue(PropValue::flag(true)));
+    CHECK(isAttributeValue(PropValue::seq({PropValue::number(1), PropValue::integer(2)})));
+    CHECK_FALSE(isAttributeValue(PropValue::seq({PropValue::number(1)})));
+    CHECK_FALSE(isAttributeValue(PropValue::seq({PropValue::text("x"), PropValue::number(1)})));
+    CHECK_FALSE(isAttributeValue(PropValue::rec({})));
 }

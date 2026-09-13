@@ -33,7 +33,7 @@ ctest --test-dir build --output-on-failure
 ```
 
 `editor` is the **dev build** — the same engine plus the ImGui overlay: a dockspace holding the Scene
-viewport and the console, with the play toolbar in the main menu bar. It opens a project in **Edit
+viewport, the hierarchy, the inspector and the console, with the play toolbar in the main menu bar. It opens a project in **Edit
 mode**: the scene is loaded and drawn, and no game code runs.
 Play/Pause/Step/Stop are on the toolbar and on ⌘P, ⌘⇧P and ⌘⌥P; ⌘S saves the scene. It takes
 `--scene <path>` (project-relative), `--play` (start in Play), `--frames <n>` and `--capture <png>`.
@@ -155,8 +155,9 @@ dragging in passes or assets. `gfx/asset` is what you draw with (`Assets`, `Text
 Five placements are load-bearing and were each chosen to kill a cycle: `Glfw`/`Window`/`Input` live
 in `platform`, not next to `Engine`; `DrawList` lives in `scene`, so the scene graph never includes
 `gfx`; `LuaApi` lives in `lua`, so a pass can bind its own functions without including the script
-host; `PropBag`/`PropValue` live in `scene`, not `serial`, so `Behaviour` can expose its Lua-side
-fields without `script` gaining an edge to the serializer; and `Overlay` is an abstract interface in
+host; `PropValue` lives in `scene`, not `serial`, so an actor's attributes are scene data that the
+serializer, the Lua bindings and the inspector each read without an edge to one another; and
+`Overlay` is an abstract interface in
 `gfx` with its only implementation in `dev`, so the renderer can host an ImGui layer it cannot name.
 
 `LuaHost` takes `(Scene&, Input&, Renderer&, quit)` — never `Engine&` — for the same reason.
@@ -170,7 +171,7 @@ happens next. The player calls `GameLoop::tick` every iteration. The editor call
 `PlaySession::tick`, which calls one of three `GameLoop` entry points:
 
 - **`tick`** — the simulation:
-  1. `Glfw::pollEvents()`, then `engine.beginFrame()` -> `script->poll()` (behaviour hot reload)
+  1. `Glfw::pollEvents()`, then `engine.beginFrame()` -> `script->poll()` (script hot reload)
   2. minimized -> `Glfw::waitEvents()`, reset the clock, skip the frame
   3. `GameLoop::advance()` accumulates real time, clamped at `MAX_FRAME_TIME = 0.25s`
   4. `engine.update(fixedDt)` N times — fixed timestep; `script->update`, `scene.update`, then
@@ -192,14 +193,13 @@ the `stepped` and `rendered` signals.
 
 ## Edit mode and Play mode
 
-A game is a `.scene` file whose actors carry components — the Lua ones are `Behaviour`s. There is no
-entry script and no top-level game code.
+A game is a `.scene` file whose actors carry components and attributes; the Lua component is
+`Script`. There is no entry script.
 
-Nothing runs a behaviour until something calls `Scene::update`: `start` fires from
-`startPending()` at the top of the first update, and every `onUpdate` follows it. `Scene::render`
-does **not** wait for `start` — it draws every enabled component — so a scene that is never updated
-is still fully drawn. That split *is* Edit mode: built-in renderers and cameras draw, behaviours
-never instantiate. The one thing the editor draws differently is the 3D view: Edit mode looks
+Nothing runs a script until something calls `Scene::update`: `onStart` fires from `startPending()`
+at the top of the first update, and that is when a `Script` runs its file. `Scene::render` does
+**not** wait for `start` — it draws every enabled component — so a scene that is never updated is
+still fully drawn. That split *is* Edit mode: built-in renderers and cameras draw, scripts never run. The one thing the editor draws differently is the 3D view: Edit mode looks
 through its own camera and shows the scene's cameras as frustums — see *The editor camera*.
 
 `dev/PlaySession` owns the editor's state, `Edit | Playing | Paused`:
@@ -207,13 +207,13 @@ through its own camera and shows the scene's cameras as frustums — see *The ed
 - **Play** saves the scene to text with `SceneCodec::save` and hands it to `Engine::loadScene`, which
   is `scene.clear()`, then `LuaHost::boot()` — a fresh `lua_State` — then `SceneCodec::load`. Play
   therefore takes exactly the path the player takes from disk. Every session starts with fresh
-  prototypes and no leftover coroutines, and a serialization bug shows up on Play rather than on
+  script sources and no leftover coroutines, and a serialization bug shows up on Play rather than on
   Stop.
 - **Stop** hands the same text to `loadScene` and releases a locked cursor. Play and Stop are one
   operation; only whether the loop simulates afterwards differs.
 - **Pause** switches to `GameLoop::idle`; **Step** runs one `GameLoop::step`.
 
-The order inside `loadScene` is load-bearing: every `Behaviour` holds the `lua_State*` it was created
+The order inside `loadScene` is load-bearing: every `Script` holds the `lua_State*` it was created
 with, so the scene must be cleared before `boot()` closes that state.
 
 Toolbar buttons and shortcuts only set a request, and `PlaySession::tick` applies it **between
@@ -419,17 +419,12 @@ prop declared with `CINDER_PROP_COLOR` gets a colour editor instead. Text commit
 `IsItemDeactivatedAfterEdit`, not per keystroke, so a texture path does not try to load every prefix
 of itself.
 
-A component that is also a `PropBag` — a `Behaviour` — gets a second pass over `readBag()`, and writes
-back one key at a time through `PropBag::patchBag`. `patchBag` merges into whichever table is live:
-the pending `data` before `start`, the instance after it, coercing a sequence back into a vector when
-the field it replaces is one. It is not `writeBag`, which replaces the pending table and never
-reaches a running instance. Numbers, strings, bools and numeric sequences of up to four are editable;
-anything else is shown as a count.
-
-In Edit mode a behaviour's bag is only its `data` overrides: the prototype is never loaded before
-Play, so a field still at its script default is not listed. An edit made during Play lands on the
-running game and is discarded by Stop, like any other Play change. Nothing the inspector does is
-undoable or marks the scene dirty yet.
+Below the components, an **Attributes** section lists the actor's attributes, each with a remove
+button, and **Add Attribute…** opens a popup for a name and a type. Every attribute number is edited
+as a float drag, integers included: `TextLoad` reads `40` back as an integer and `40.5` as a float,
+so an integer drag could never move a saved `40` to `40.5`. Writes go through `Actor::setAttribute`,
+so an edit during Play fires the game's changed signals, and Stop discards it like any other Play
+change. Nothing the inspector does is undoable or marks the scene dirty yet.
 
 ### Logging and the console
 
@@ -444,7 +439,7 @@ The console's input line runs `LuaHost::eval` against the live `lua_State`. It t
 first and falls back to the raw text, so `1 + 1` prints `2` and a multi-statement chunk still runs.
 Results and errors both go back through `logInfo`/`logError`, so they land in the panel like anything
 else, with `[console]` as the chunk name. In Edit mode that state holds the prelude and nothing else,
-so the console can build a scene — `scene:spawn`, `actor:behaviour(path, data)` — without starting
+so the console can build a scene — `scene:spawn`, `actor:setAttribute`, `actor:addScript(file)` — without starting
 any of it, and Save writes the result.
 
 Typing in the console does not also drive the game, because the console has focus and the Scene
@@ -456,9 +451,11 @@ A project's `project.lua` defines a global `project` table (`title`, `width`, `h
 `fixed_hz`) parsed by `ProjectConfig::load` in a throwaway `lua_State`. `scene` is the scene both
 executables open; `--scene` overrides it.
 
-There is **no entry script and no top-level game code**. Game code lives in behaviours: per-frame
-work belongs in a behaviour's `update`, in a `stepped:connect(fn)` handler, or in a coroutine started
-from `start`. Lua errors are caught and printed, not propagated.
+There is **no entry script**. Game code lives in scripts, in Roblox's shape: a `Script` component
+names a project file, and that file runs top to bottom, once, when the component starts. Per-frame
+work is a `stepped:connect(fn)` handler, and the top level may `task.wait`, because it runs as a
+thread. Per-actor settings are attributes, not script fields. Lua errors are caught and printed, not
+propagated.
 
 ### The prelude
 
@@ -469,9 +466,10 @@ from `start`. Lua errors are caught and printed, not propagated.
   `+ - * / unary-minus == tostring`, plus `:length()`, `:dot()`, `:normalized()`, `:unpack()` and
   `vec3:cross()`. `rgba` is a `vec4` whose `r/g/b/a` alias `x/y/z/w`. `vecSize(v)` returns the
   component count or nil, and is how the proxy layer tells a vector from a scalar.
-- **`scene.lua`** — the `scene` global plus actor and component proxies.
-- **`task.lua`** — `task.wait`/`spawn`/`delay`, the `signal()` constructor, and the `stepped` and
-  `rendered` signals.
+- **`scene.lua`** — the `scene` global plus actor and component proxies, and the attribute API.
+- **`task.lua`** — `task.wait`/`spawn`/`delay`, the `signal()` constructor, the `stepped` and
+  `rendered` signals, and the owners that let a stopped script take its threads and connections with
+  it.
 
 **The proxy layer is pure Lua over the `engine.*` bindings** — there is no C++-side proxy. It works
 because `engine.getProp` returns 1-4 values by arity and `setProp` takes them as varargs, so
@@ -487,25 +485,17 @@ These contracts are load-bearing and must not drift:
   push as **floats**, string and enum props as strings.
 - Edge-triggered input clears in `consume()` **per fixed step**, not per frame.
 - `screenToWorld` takes **window points**, matching `mousePosition`.
+- `getAttribute` returns **`nil`** for a missing attribute, and a 2–4-number attribute as a vector.
 
 Writing an unknown actor property **errors**; unknown component props print `[lua] X has no prop Y`
 from `SceneApi`, since that is C++-side.
 
-Behaviours are named script files that `return` a table: function values are behaviour, everything
-else is a serializable field with a default. `Behaviour::BOOTSTRAP` caches one prototype per path,
-copies it per instance, applies the `data` overrides, wraps `start` in `task.spawn` so it can yield,
-and sets `self.actor` to an actor proxy.
+`script/LuaProps` converts between Lua values and `PropValue` — scalars, arrays of scalars,
+string-keyed records, and vectors (detected by their metatable's `__vec`) as sequences of numbers.
+Functions and anything else with a metatable are skipped.
 
-`Behaviour` is also a `PropBag`, so a scene saves its `data` overrides as a `data { ... }` block.
-Before `start` the bag is the pending `data` table; after it, `__behaviourFields`. `patchBag`, the
-inspector's write, merges into whichever of the two is live — see *The hierarchy and the inspector*. `script/LuaProps`
-converts between Lua values and `PropValue` — scalars, arrays of scalars, string-keyed records, and
-vectors (detected by their metatable's `__vec`) as sequences of numbers. Functions, actor proxies and
-anything else with a metatable are skipped. On the way back in, `__behaviourNew` rebuilds a sequence
-into a vector when the prototype's default for that key is one — the prototype is the schema.
-
-`tests/selftest` is a project whose scene runs a 44-check smoke test for this whole layer from a
-behaviour's `start`. `./build/editor tests/selftest --play --frames 120` or `./build/player
+`tests/selftest` is a project whose scene runs a 55-check smoke test for this whole layer from a
+script's top level. `./build/editor tests/selftest --play --frames 120` or `./build/player
 tests/selftest` prints `ALL PASS`. It needs a window, so it is not part of `ctest`.
 
 **Where to add a Lua function:** `LuaHost::registerApi()` builds the global `engine` table and binds
@@ -518,29 +508,74 @@ not in `LuaHost`.
 `api.bind("name", fn, &receiver)`, read back with `LuaApi::context<T>(state)`. Use
 `LuaApi::optFloat`/`optInt` for optional numeric arguments.
 
+### Scripts
+
+`Script::BOOTSTRAP` caches each file's source by path and compiles it per instance with
+`load(source, "@" .. file, "t", env)`, where `env` is `setmetatable({ script = ... }, { __index = _G })`:
+`script.actor` is the actor proxy and `script.file` the path. A global a script assigns stays in its
+own environment, and `_G.x` is how two scripts share one. `__scriptStart(file, actor, previous)`
+compiles first, so a start that fails to compile leaves `previous` running, and only then stops
+`previous` and spawns the chunk as a thread of a fresh owner.
+
+`Script` is a `PropSink`: writing `enabled` false stops it, and writing it true runs the file again
+from the top. `Scene::startPending` calls `onStart` on a disabled component too, so `Script::onStart`
+checks `isEnabled` itself. `actor:addScript(file)` is Lua sugar for `add("Script")` plus a write to
+`file`.
+
+### Attributes
+
+Per-actor settings are **attributes**: a `PropRec` on `Actor`, saved as an `attributes { ... }` block
+between the transform and the components, edited in the inspector, and read by scripts.
+`scene/Attributes` decides what one may hold — a number, string, bool, or a sequence of 2–4 numbers —
+and what a name may be: letters, digits and `_`, which the text format needs anyway. The Lua API is
+Roblox's in camelCase: `actor:getAttribute(name)`, `setAttribute(name, value)` (nil removes),
+`getAttributes()`, `getAttributeChangedSignal(name)`, and `actor.attributeChanged`, which fires with
+the name. An invalid name or value raises a Lua error. Attributes cannot hold tables, so `scene.lua`
+turns any table `getAttribute` returns into a `vec2`/`vec3`/`vec4`.
+
+Because they are data on the actor, nothing has to run for the inspector to list them, and they
+survive a hot reload.
+
+`Actor::setAttribute` and `removeAttribute` notify the scene's attribute listener, only on a real
+change — `sameAttribute` counts `2` and `2.0` as equal — so a handler that writes back the value it
+was told about cannot loop. `loadAttributes` does not notify, since loading is not a change.
+`listenForAttributes` in `script/SceneApi` installs the listener that calls
+`__attributeChanged(id, name)`, which is how an inspector edit during Play reaches the game's signals.
+`LuaHost::boot` installs it and `close` clears it, and the scene graph still never names Lua.
+
+Lua is built as C, so `luaL_error` longjmps past C++ destructors. A binding finishes its C++ work
+before it raises: `setAttribute` validates in a helper that returns a status, and errors only after
+that helper's `std::optional` is gone.
+
+### Ownership
+
+`task.lua` keeps a module-local `current` owner. A thread records the owner that was current when it
+was spawned, a connection records it when it connects, and resuming a thread or firing a handler puts
+that owner back in `current` — so everything a script starts, and everything that starts, belongs to
+the script. `__taskStop(owner)` disconnects the owner's connections and closes its suspended threads.
+A thread that is running when its owner stops is only marked; the scheduler drops it when it next
+yields. `__taskStop` never removes from the thread list, which is what makes it safe to call from
+inside a resume — a script disabling itself, say. The console and the prelude run with no owner, and
+what they start lives until Stop discards the state.
+
 ### Hot reload
 
-Only behaviours hot-reload. Editing a behaviour reloads only that file.
-`__behaviourForget(path)` drops the cached prototype, then every live `Behaviour` whose `script()`
-matches re-instantiates through `__behaviourNew`, carrying its current fields across as the `data`
-overrides. `__behaviourFields` is what decides what "its current fields" means — everything that is
-not a function and not `actor`, the same split that makes a behaviour table serializable. The scene,
-the `lua_State`, and every other behaviour survive untouched.
+Only scripts hot-reload, and editing one reloads only that file. `LuaHost::reloadScript` calls
+`__scriptForget(path)` to drop the cached source, then `__scriptCheck(path)` to compile it once. A
+file that fails to compile logs one error and changes nothing: every script running the old code
+keeps running. Otherwise every `Script` on that file that is started and enabled runs again — its old
+owner stops, taking the old code's threads and connections with it, and the file runs from the top.
 
-`__behaviourRead` is the single funnel every behaviour file is read through, so it is also where
-`LuaHost` records the path to watch. Nothing walks a directory; a behaviour is watched because it was
-loaded. `poll()` stats each loaded behaviour every frame. In Edit mode nothing has been loaded, so
-nothing is watched — and Play reloads every prototype from disk anyway, so edits made while editing
-are picked up by the next Play.
+That is Roblox's trade: what a script keeps in locals starts over, and what it keeps in attributes
+survives, because attributes live on the actor. The scene, the `lua_State` and every other script are
+untouched.
 
-Three things the reload deliberately does **not** do:
-
-- It does not re-fire `start` or `destroy`. A reload is a code swap on a live object, not a lifecycle
-  event, and re-running `start` would clobber the fields just carried over.
-- It does not cancel coroutines the old instance spawned. `task.spawn` tracks no owner, so a loop
-  started by the old table keeps running against the old table until Stop discards the state.
-- A file that fails to load leaves the running instance alone — `Behaviour::reload` only swaps `ref_`
-  once the new instance exists, so a syntax error mid-edit costs nothing.
+`__scriptRead` is the single funnel every script file is read through, so it is also where `LuaHost`
+records the path to watch. Nothing walks a directory; a script is watched because it was read.
+`poll()` stats each read script every frame. In Edit mode nothing has been read, so nothing is
+watched — and Play reads every script from disk anyway, so edits made while editing are picked up by
+the next Play. A script that failed to compile when it first started is still watched, so fixing the
+file starts it.
 
 The prelude is not watched; editing `types.lua`, `scene.lua` or `task.lua` needs a restart.
 
@@ -580,11 +615,13 @@ Four behaviours are easy to lose, and each has a test pinning it:
 `Components` is an instance owned by `Engine`, threaded to `Scene` -> `SceneCodec` / `SceneApi`. It
 keeps insertion-ordered iteration (a vector plus two indices) and caches a class-default instance per
 type for delta encoding. Re-binding a name keeps its slot — so iteration order is stable across a
-reboot — and drops its cached default, so a `Behaviour` default cannot outlive the `lua_State` it
+reboot — and drops its cached default, so a `Script` default cannot outlive the `lua_State` it
 closed over.
 
-`SceneCodec::VERSION` is 2 and `OLDEST` is 2: version 1 stored texture and mesh handles, which cannot
-be migrated. `tests/scene_files_test` loads and re-saves every `.scene` under `samples/` and
+`SceneCodec::VERSION` is 3 and `OLDEST` is 2. Version 3 replaced `Behaviour { script, data }` with a
+`Script { file }` and actor attributes, and a version 2 file still loads: `migrateBehaviour` adds the
+`Script` and merges `data` into the actor's attributes, dropping what an attribute cannot hold.
+Version 1 stored texture and mesh handles, which cannot be migrated. `tests/scene_files_test` loads and re-saves every `.scene` under `samples/` and
 `tests/selftest/` and requires the bytes to match, so shipped scenes stay canonical as the format
 moves.
 
@@ -595,10 +632,10 @@ moves.
 - **`enginePath`** — shaders and the prelude. `CINDER_ENGINE` if set; else `engine/` next to the
   executable, if it exists, which is the packaged layout; else the source tree's `engine/`, baked in
   at configure time as `CINDER_ENGINE_DEFAULT`.
-- **`projectPath`** — `project.lua`, scenes, behaviours and textures. Set from the executable's first
+- **`projectPath`** — `project.lua`, scenes, scripts and textures. Set from the executable's first
   argument, made absolute; the player falls back to `project/` next to itself.
 
-Every path inside a project — a scene's `script "scripts/riser.lua"`, a `SpriteRenderer.texture` — is
+Every path inside a project — a `Script`'s `file "scripts/bobber.lua"`, a `SpriteRenderer.texture` — is
 relative to the project root, so a project folder can live anywhere and runs from any working
 directory.
 

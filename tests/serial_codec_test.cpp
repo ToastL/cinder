@@ -6,9 +6,15 @@
 #include "components/SpriteRenderer.hpp"
 #include "scene/Actor.hpp"
 #include "scene/Components.hpp"
+#include "scene/PropValue.hpp"
 #include "scene/Scene.hpp"
+#include "script/Script.hpp"
 #include "serial/SceneCodec.hpp"
 
+#include <lua.hpp>
+
+#include <cstdint>
+#include <memory>
 #include <string>
 
 using cinder::components::Camera;
@@ -16,7 +22,10 @@ using cinder::components::MeshRenderer;
 using cinder::components::SpriteRenderer;
 using cinder::scene::Actor;
 using cinder::scene::Components;
+using cinder::scene::PropSeq;
+using cinder::scene::PropValue;
 using cinder::scene::Scene;
+using cinder::script::Script;
 using cinder::serial::SceneCodec;
 
 namespace {
@@ -37,6 +46,8 @@ struct Fixture {
         SpriteRenderer* sprite = player->add<SpriteRenderer>();
         sprite->setSize(64, 48);
         sprite->setColor(1, 0.2f, 0.2f, 1);
+        player->setAttribute("hp", PropValue::integer(3));
+        player->setAttribute("tag", PropValue::text("hero"));
 
         Actor* muzzle = scene.spawn(12, "Muzzle", player);
         muzzle->transform().setPosition(0, 1, 0);
@@ -55,7 +66,7 @@ TEST_CASE("the emitted format is pinned byte for byte") {
     f.populate();
 
     const std::string golden =
-        "version 2\n"
+        "version 3\n"
         "actors {\n"
         "    actor {\n"
         "        id 7\n"
@@ -71,6 +82,10 @@ TEST_CASE("the emitted format is pinned byte for byte") {
         "        id 9\n"
         "        name \"Play\\\"er\"\n"
         "        position -1.5 0 0.25\n"
+        "        attributes {\n"
+        "            hp 3\n"
+        "            tag \"hero\"\n"
+        "        }\n"
         "        components {\n"
         "            SpriteRenderer {\n"
         "                size 64 48\n"
@@ -285,4 +300,89 @@ TEST_CASE("camera zoom beyond its range is clamped on load") {
         "}\n", f.scene);
 
     CHECK(f.scene.byId(1)->get<Camera>()->zoom() == doctest::Approx(20));
+}
+
+TEST_CASE("attributes round trip with their types") {
+    Fixture f;
+    Actor* box = f.scene.spawn(1, "Box", nullptr);
+    box->setAttribute("count", PropValue::integer(3));
+    box->setAttribute("rate", PropValue::number(2.5));
+    box->setAttribute("label", PropValue::text("crate"));
+    box->setAttribute("solid", PropValue::flag(true));
+    box->setAttribute("offset", PropValue::seq({PropValue::number(0), PropValue::number(2.5),
+                                                PropValue::number(-1)}));
+
+    SceneCodec::load(SceneCodec::save(f.scene), f.scene);
+    const Actor* loaded = f.scene.byId(1);
+    REQUIRE(loaded != nullptr);
+
+    CHECK(loaded->attribute("count")->as<std::int64_t>() == 3);
+    CHECK(loaded->attribute("rate")->as<double>() == doctest::Approx(2.5));
+    CHECK(loaded->attribute("label")->as<std::string>() == "crate");
+    CHECK(loaded->attribute("solid")->as<bool>());
+    const PropSeq& offset = loaded->attribute("offset")->as<PropSeq>();
+    REQUIRE(offset.size() == 3);
+    CHECK(offset[1].as<double>() == doctest::Approx(2.5));
+}
+
+TEST_CASE("an attribute that is not a value is dropped on load") {
+    Fixture f;
+    SceneCodec::load(
+        "version 3\n"
+        "actors {\n"
+        "    actor {\n"
+        "        id 1\n"
+        "        name \"Box\"\n"
+        "        attributes {\n"
+        "            rate 2\n"
+        "            nested {\n"
+        "                deep 1\n"
+        "            }\n"
+        "        }\n"
+        "    }\n"
+        "}\n", f.scene);
+
+    const Actor* box = f.scene.byId(1);
+    REQUIRE(box != nullptr);
+    CHECK(box->attribute("rate") != nullptr);
+    CHECK(box->attribute("nested") == nullptr);
+}
+
+TEST_CASE("a version 2 Behaviour loads as a Script with its data as attributes") {
+    lua_State* state = luaL_newstate();
+    {
+        Fixture f;
+        f.types.add<Script>("Script", [state] { return std::make_unique<Script>(state); });
+        SceneCodec::load(
+            "version 2\n"
+            "actors {\n"
+            "    actor {\n"
+            "        id 3\n"
+            "        name \"Box\"\n"
+            "        components {\n"
+            "            Behaviour {\n"
+            "                enabled false\n"
+            "                script \"scripts/bobber.lua\"\n"
+            "                data {\n"
+            "                    phase -8\n"
+            "                }\n"
+            "            }\n"
+            "        }\n"
+            "    }\n"
+            "}\n", f.scene);
+
+        const Actor* box = f.scene.byId(3);
+        REQUIRE(box != nullptr);
+        const Script* script = box->get<Script>();
+        REQUIRE(script != nullptr);
+        CHECK(script->file() == "scripts/bobber.lua");
+        CHECK_FALSE(script->isEnabled());
+        CHECK(box->attribute("phase")->as<std::int64_t>() == -8);
+
+        const std::string text = SceneCodec::save(f.scene);
+        CHECK(contains(text, "version 3"));
+        CHECK(contains(text, "Script {"));
+        CHECK_FALSE(contains(text, "Behaviour"));
+    }
+    lua_close(state);
 }

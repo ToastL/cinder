@@ -101,7 +101,7 @@ TEST_CASE("non-finite floats become zero") {
 
 TEST_CASE("empty collections are omitted") {
     Fixture f;
-    CHECK(SceneCodec::save(f.scene) == "version 2\n");
+    CHECK(SceneCodec::save(f.scene) == "version 3\n");
 }
 
 TEST_CASE("output is independent of the default locale") {

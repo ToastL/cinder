@@ -1,25 +1,34 @@
-version 2
+version 3
 actors {
     actor {
         id 1
         name "Camera"
+        attributes {
+            speed 200
+        }
         components {
             Camera {
                 projection "orthographic"
                 clearColor 0.05 0.05 0.08 1
                 virtualSize 640 360
             }
-            Behaviour {
-                script "scripts/camera2d.lua"
+            Script {
+                file "scripts/camera2d.lua"
             }
         }
     }
     actor {
         id 2
         name "Spawner"
+        attributes {
+            boxScript "scripts/riser.lua"
+            lifetime 6
+            maxSize 18
+            minSize 4
+        }
         components {
-            Behaviour {
-                script "scripts/spawner.lua"
+            Script {
+                file "scripts/spawner.lua"
             }
         }
     }
@@ -30,8 +39,8 @@ actors {
             SpriteRenderer {
                 size 6 6
             }
-            Behaviour {
-                script "scripts/cursor.lua"
+            Script {
+                file "scripts/cursor.lua"
             }
         }
     }

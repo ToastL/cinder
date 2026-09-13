@@ -38,13 +38,13 @@ private:
         std::int64_t modified;
     };
 
-    static int behaviourRead(lua_State* state);
+    static int scriptRead(lua_State* state);
 
     void registerScripts();
     void registerApi();
     void loadPrelude();
     void watch(const char* path);
-    void reloadBehaviour(const std::string& path);
+    void reloadScript(const std::string& path);
     int reloadIn(cinder::scene::Actor& actor, const std::string& path);
     void close();
 

@@ -1,5 +1,6 @@
 #include "scene/Actor.hpp"
 
+#include "scene/Attributes.hpp"
 #include "scene/Scene.hpp"
 
 #include <algorithm>
@@ -15,6 +16,24 @@ bool Actor::active() const {
         if (!entry->active_) return false;
     }
     return true;
+}
+
+const PropValue* Actor::attribute(const std::string& name) const {
+    auto found = attributes_.find(name);
+    return found == attributes_.end() ? nullptr : &found->second;
+}
+
+void Actor::setAttribute(const std::string& name, PropValue value) {
+    auto found = attributes_.find(name);
+    if (found != attributes_.end() && sameAttribute(found->second, value)) return;
+
+    attributes_.insert_or_assign(name, std::move(value));
+    scene_.attributeChanged(*this, name);
+}
+
+void Actor::removeAttribute(const std::string& name) {
+    if (attributes_.erase(name) == 0) return;
+    scene_.attributeChanged(*this, name);
 }
 
 Component* Actor::add(std::unique_ptr<Component> component) {

@@ -1,10 +1,8 @@
-return {
-    mark = 0,
+local actor = script.actor
 
-    start = function(self)
-        _G.selftestMarks = _G.selftestMarks or {}
-        _G.selftestMarks[self.actor.name] = self.mark
-        task.wait(0.05)
-        _G.selftestYielded = true
-    end,
-}
+_G.selftestMarks = _G.selftestMarks or {}
+_G.selftestMarks[actor.name] = actor:getAttribute("mark")
+leaked = true
+
+task.wait(0.05)
+_G.selftestYielded = true

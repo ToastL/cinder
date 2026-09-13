@@ -11,8 +11,8 @@
 #include "scene/Actor.hpp"
 #include "scene/Components.hpp"
 #include "scene/Scene.hpp"
-#include "script/Behaviour.hpp"
 #include "script/SceneApi.hpp"
+#include "script/Script.hpp"
 
 #include <memory>
 #include <string>
@@ -129,15 +129,25 @@ int cursorLocked(lua_State* state) {
 
 Host hostContext;
 
+bool callWithPath(lua_State* state, const char* global, const std::string& path) {
+    const int top = lua_gettop(state);
+    lua_getglobal(state, global);
+    lua_pushstring(state, path.c_str());
+    const bool ok = lua_pcall(state, 1, 0, 0) == LUA_OK;
+    if (!ok) cinder::platform::logError("[lua] %s\n", lua_tostring(state, -1));
+    lua_settop(state, top);
+    return ok;
+}
+
 }
 
 LuaHost::LuaHost(cinder::scene::Scene& scene, cinder::platform::Input& input,
                  cinder::gfx::Renderer& renderer, std::function<void()> quit)
     : scene_(scene), input_(input), renderer_(renderer), quit_(std::move(quit)) {}
 
-int LuaHost::behaviourRead(lua_State* state) {
+int LuaHost::scriptRead(lua_State* state) {
     const char* path = lua_tostring(state, 1);
-    if (path == nullptr) return luaL_error(state, "__behaviourRead expects a path");
+    if (path == nullptr) return luaL_error(state, "__scriptRead expects a path");
 
     try {
         const std::string source = cinder::lua::readSource(cinder::platform::projectPath(path));
@@ -159,21 +169,21 @@ void LuaHost::boot() {
     registerScripts();
     registerApi();
     loadPrelude();
+    listenForAttributes(state_, scene_);
 }
 
 void LuaHost::registerScripts() {
     lua_pushlightuserdata(state_, this);
-    lua_pushcclosure(state_, behaviourRead, 1);
-    lua_setglobal(state_, "__behaviourRead");
+    lua_pushcclosure(state_, scriptRead, 1);
+    lua_setglobal(state_, "__scriptRead");
 
-    if (!cinder::lua::runChunk(state_, Behaviour::BOOTSTRAP, "=[behaviour bootstrap]")) {
+    if (!cinder::lua::runChunk(state_, Script::BOOTSTRAP, "=[script bootstrap]")) {
         cinder::platform::logError("[lua] bootstrap: %s\n", lua_tostring(state_, -1));
         lua_pop(state_, 1);
     }
 
     lua_State* state = state_;
-    scene_.types().add<Behaviour>("Behaviour",
-                                  [state] { return std::make_unique<Behaviour>(state); });
+    scene_.types().add<Script>("Script", [state] { return std::make_unique<Script>(state); });
 }
 
 void LuaHost::registerApi() {
@@ -238,19 +248,12 @@ void LuaHost::poll() {
         changed.push_back(path);
     }
 
-    for (const std::string& path : changed) reloadBehaviour(path);
+    for (const std::string& path : changed) reloadScript(path);
 }
 
-void LuaHost::reloadBehaviour(const std::string& path) {
-    const int top = lua_gettop(state_);
-    lua_getglobal(state_, "__behaviourForget");
-    lua_pushstring(state_, path.c_str());
-    if (lua_pcall(state_, 1, 0, 0) != LUA_OK) {
-        cinder::platform::logError("[lua] reload %s: %s\n", path.c_str(), lua_tostring(state_, -1));
-        lua_settop(state_, top);
-        return;
-    }
-    lua_settop(state_, top);
+void LuaHost::reloadScript(const std::string& path) {
+    if (!callWithPath(state_, "__scriptForget", path)) return;
+    if (!callWithPath(state_, "__scriptCheck", path)) return;
 
     int count = 0;
     for (cinder::scene::Actor* root : scene_.roots()) count += reloadIn(*root, path);
@@ -261,9 +264,9 @@ int LuaHost::reloadIn(cinder::scene::Actor& actor, const std::string& path) {
     int count = 0;
 
     for (const std::unique_ptr<cinder::scene::Component>& component : actor.components()) {
-        auto* behaviour = dynamic_cast<Behaviour*>(component.get());
-        if (behaviour == nullptr || behaviour->script() != path) continue;
-        behaviour->reload();
+        auto* script = dynamic_cast<Script*>(component.get());
+        if (script == nullptr || script->file() != path) continue;
+        script->reload();
         ++count;
     }
 
@@ -308,6 +311,7 @@ void LuaHost::render(float alpha) {
 
 void LuaHost::close() {
     if (state_ == nullptr) return;
+    scene_.setAttributeListener(nullptr);
     lua_close(state_);
     state_ = nullptr;
 }

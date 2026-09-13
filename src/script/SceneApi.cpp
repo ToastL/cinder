@@ -3,11 +3,16 @@
 #include "lua/LuaApi.hpp"
 #include "platform/Log.hpp"
 #include "scene/Actor.hpp"
+#include "scene/Attributes.hpp"
 #include "scene/Components.hpp"
 #include "scene/Scene.hpp"
-#include "script/Behaviour.hpp"
+#include "script/LuaProps.hpp"
 
+#include <lua.hpp>
+
+#include <optional>
 #include <string>
+#include <utility>
 
 namespace cinder::script {
 namespace {
@@ -17,6 +22,7 @@ using cinder::reflect::PropDef;
 using cinder::reflect::PropType;
 using cinder::scene::Actor;
 using cinder::scene::Component;
+using cinder::scene::PropValue;
 using cinder::scene::Scene;
 using cinder::scene::Transform;
 
@@ -256,18 +262,57 @@ int addComponent(lua_State* state) {
     return 0;
 }
 
-int addBehaviour(lua_State* state) {
+enum class AttributeWrite { Done, BadName, BadValue };
+
+AttributeWrite writeAttribute(lua_State* state, Actor& actor) {
+    const char* name = lua_tostring(state, 2);
+    if (name == nullptr || !cinder::scene::isAttributeName(name)) return AttributeWrite::BadName;
+
+    if (lua_isnoneornil(state, 3)) {
+        actor.removeAttribute(name);
+        return AttributeWrite::Done;
+    }
+
+    std::optional<PropValue> value = readProp(state, 3);
+    if (!value || !cinder::scene::isAttributeValue(*value)) return AttributeWrite::BadValue;
+
+    actor.setAttribute(name, std::move(*value));
+    return AttributeWrite::Done;
+}
+
+int setAttribute(lua_State* state) {
     Actor* actor = actorOf(state);
     if (actor == nullptr) return 0;
 
-    int data = LUA_NOREF;
-    if (lua_istable(state, 3)) {
-        lua_pushvalue(state, 3);
-        data = luaL_ref(state, LUA_REGISTRYINDEX);
+    switch (writeAttribute(state, *actor)) {
+        case AttributeWrite::BadName:
+            return luaL_error(state, "'%s' is not an attribute name", luaL_tolstring(state, 2, nullptr));
+        case AttributeWrite::BadValue:
+            return luaL_error(state, "attribute '%s' cannot hold a %s", lua_tostring(state, 2),
+                              luaL_typename(state, 3));
+        case AttributeWrite::Done:
+            break;
     }
-
-    actor->add(std::make_unique<Behaviour>(state, lua_tostring(state, 2), data));
     return 0;
+}
+
+int getAttribute(lua_State* state) {
+    Actor* actor = actorOf(state);
+    const char* name = lua_tostring(state, 2);
+    if (actor == nullptr || name == nullptr) return 0;
+
+    const PropValue* value = actor->attribute(name);
+    if (value == nullptr) return 0;
+
+    pushProp(state, *value);
+    return 1;
+}
+
+int getAttributes(lua_State* state) {
+    Actor* actor = actorOf(state);
+    if (actor == nullptr) lua_newtable(state);
+    else pushRec(state, actor->attributes());
+    return 1;
 }
 
 int setProp(lua_State* state) {
@@ -362,9 +407,30 @@ void registerSceneApi(cinder::lua::LuaApi& api, Scene& scene) {
     api.bind("up", up, &scene);
 
     api.bind("addComponent", addComponent, &scene);
-    api.bind("addBehaviour", addBehaviour, &scene);
     api.bind("setProp", setProp, &scene);
     api.bind("getProp", getProp, &scene);
+
+    api.bind("getAttribute", getAttribute, &scene);
+    api.bind("setAttribute", setAttribute, &scene);
+    api.bind("getAttributes", getAttributes, &scene);
+}
+
+void listenForAttributes(lua_State* state, Scene& scene) {
+    scene.setAttributeListener([state](Actor& actor, const std::string& name) {
+        const int top = lua_gettop(state);
+        lua_getglobal(state, "__attributeChanged");
+        if (!lua_isfunction(state, -1)) {
+            lua_settop(state, top);
+            return;
+        }
+
+        lua_pushinteger(state, actor.id());
+        lua_pushlstring(state, name.data(), name.size());
+        if (lua_pcall(state, 2, 0, 0) != LUA_OK) {
+            cinder::platform::logError("[lua] attributeChanged: %s\n", lua_tostring(state, -1));
+        }
+        lua_settop(state, top);
+    });
 }
 
 }

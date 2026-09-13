@@ -1,16 +1,22 @@
-version 2
+version 3
 actors {
     actor {
         id 1
         name "Camera"
         position 0 3 10
+        rotation -0.17 0 0
+        attributes {
+            sensitivity 0.0021
+            speed 8
+            sprint 24
+        }
         components {
             Camera {
                 fov 70
                 clearColor 0.05 0.06 0.09 1
             }
-            Behaviour {
-                script "scripts/flycam.lua"
+            Script {
+                file "scripts/flycam.lua"
             }
         }
     }
@@ -18,18 +24,19 @@ actors {
         id 2
         name "Box"
         position -6 0 -6
+        attributes {
+            phase -8
+            rate 2
+        }
         components {
             MeshRenderer {
             }
             Spin {
                 speed 0 0.5 0
             }
-            Behaviour {
+            Script {
                 enabled false
-                script "scripts/bobber.lua"
-                data {
-                    phase -8
-                }
+                file "scripts/bobber.lua"
             }
         }
     }
@@ -37,17 +44,18 @@ actors {
         id 3
         name "Box"
         position -6 0 -4.5
+        attributes {
+            phase -7
+            rate 2
+        }
         components {
             MeshRenderer {
             }
             Spin {
                 speed 0 0.5 0
             }
-            Behaviour {
-                script "scripts/bobber.lua"
-                data {
-                    phase -7
-                }
+            Script {
+                file "scripts/bobber.lua"
             }
         }
     }
@@ -55,17 +63,18 @@ actors {
         id 4
         name "Box"
         position -6 0 -3
+        attributes {
+            phase -6
+            rate 2
+        }
         components {
             MeshRenderer {
             }
             Spin {
                 speed 0 0.5 0
             }
-            Behaviour {
-                script "scripts/bobber.lua"
-                data {
-                    phase -6
-                }
+            Script {
+                file "scripts/bobber.lua"
             }
         }
     }
@@ -73,17 +82,18 @@ actors {
         id 5
         name "Box"
         position -6 0 -1.5
+        attributes {
+            phase -5
+            rate 2
+        }
         components {
             MeshRenderer {
             }
             Spin {
                 speed 0 0.5 0
             }
-            Behaviour {
-                script "scripts/bobber.lua"
-                data {
-                    phase -5
-                }
+            Script {
+                file "scripts/bobber.lua"
             }
         }
     }
@@ -91,17 +101,18 @@ actors {
         id 6
         name "Box"
         position -6 0 0
+        attributes {
+            phase -4
+            rate 2
+        }
         components {
             MeshRenderer {
             }
             Spin {
                 speed 0 0.5 0
             }
-            Behaviour {
-                script "scripts/bobber.lua"
-                data {
-                    phase -4
-                }
+            Script {
+                file "scripts/bobber.lua"
             }
         }
     }
@@ -109,17 +120,18 @@ actors {
         id 7
         name "Box"
         position -6 0 1.5
+        attributes {
+            phase -3
+            rate 2
+        }
         components {
             MeshRenderer {
             }
             Spin {
                 speed 0 0.5 0
             }
-            Behaviour {
-                script "scripts/bobber.lua"
-                data {
-                    phase -3
-                }
+            Script {
+                file "scripts/bobber.lua"
             }
         }
     }
@@ -127,17 +139,18 @@ actors {
         id 8
         name "Box"
         position -6 0 3
+        attributes {
+            phase -2
+            rate 2
+        }
         components {
             MeshRenderer {
             }
             Spin {
                 speed 0 0.5 0
             }
-            Behaviour {
-                script "scripts/bobber.lua"
-                data {
-                    phase -2
-                }
+            Script {
+                file "scripts/bobber.lua"
             }
         }
     }
@@ -145,17 +158,18 @@ actors {
         id 9
         name "Box"
         position -6 0 4.5
+        attributes {
+            phase -1
+            rate 2
+        }
         components {
             MeshRenderer {
             }
             Spin {
                 speed 0 0.5 0
             }
-            Behaviour {
-                script "scripts/bobber.lua"
-                data {
-                    phase -1
-                }
+            Script {
+                file "scripts/bobber.lua"
             }
         }
     }
@@ -163,17 +177,18 @@ actors {
         id 10
         name "Box"
         position -6 0 6
+        attributes {
+            phase 0
+            rate 2
+        }
         components {
             MeshRenderer {
             }
             Spin {
                 speed 0 0.5 0
             }
-            Behaviour {
-                script "scripts/bobber.lua"
-                data {
-                    phase 0
-                }
+            Script {
+                file "scripts/bobber.lua"
             }
         }
     }
@@ -181,17 +196,18 @@ actors {
         id 11
         name "Box"
         position -4.5 0 -6
+        attributes {
+            phase -7
+            rate 2
+        }
         components {
             MeshRenderer {
             }
             Spin {
                 speed 0 0.5 0
             }
-            Behaviour {
-                script "scripts/bobber.lua"
-                data {
-                    phase -7
-                }
+            Script {
+                file "scripts/bobber.lua"
             }
         }
     }
@@ -199,17 +215,18 @@ actors {
         id 12
         name "Box"
         position -4.5 0 -4.5
+        attributes {
+            phase -6
+            rate 2
+        }
         components {
             MeshRenderer {
             }
             Spin {
                 speed 0 0.5 0
             }
-            Behaviour {
-                script "scripts/bobber.lua"
-                data {
-                    phase -6
-                }
+            Script {
+                file "scripts/bobber.lua"
             }
         }
     }
@@ -217,17 +234,18 @@ actors {
         id 13
         name "Box"
         position -4.5 0 -3
+        attributes {
+            phase -5
+            rate 2
+        }
         components {
             MeshRenderer {
             }
             Spin {
                 speed 0 0.5 0
             }
-            Behaviour {
-                script "scripts/bobber.lua"
-                data {
-                    phase -5
-                }
+            Script {
+                file "scripts/bobber.lua"
             }
         }
     }
@@ -235,17 +253,18 @@ actors {
         id 14
         name "Box"
         position -4.5 0 -1.5
+        attributes {
+            phase -4
+            rate 2
+        }
         components {
             MeshRenderer {
             }
             Spin {
                 speed 0 0.5 0
             }
-            Behaviour {
-                script "scripts/bobber.lua"
-                data {
-                    phase -4
-                }
+            Script {
+                file "scripts/bobber.lua"
             }
         }
     }
@@ -253,17 +272,18 @@ actors {
         id 15
         name "Box"
         position -4.5 0 0
+        attributes {
+            phase -3
+            rate 2
+        }
         components {
             MeshRenderer {
             }
             Spin {
                 speed 0 0.5 0
             }
-            Behaviour {
-                script "scripts/bobber.lua"
-                data {
-                    phase -3
-                }
+            Script {
+                file "scripts/bobber.lua"
             }
         }
     }
@@ -271,17 +291,18 @@ actors {
         id 16
         name "Box"
         position -4.5 0 1.5
+        attributes {
+            phase -2
+            rate 2
+        }
         components {
             MeshRenderer {
             }
             Spin {
                 speed 0 0.5 0
             }
-            Behaviour {
-                script "scripts/bobber.lua"
-                data {
-                    phase -2
-                }
+            Script {
+                file "scripts/bobber.lua"
             }
         }
     }
@@ -289,17 +310,18 @@ actors {
         id 17
         name "Box"
         position -4.5 0 3
+        attributes {
+            phase -1
+            rate 2
+        }
         components {
             MeshRenderer {
             }
             Spin {
                 speed 0 0.5 0
             }
-            Behaviour {
-                script "scripts/bobber.lua"
-                data {
-                    phase -1
-                }
+            Script {
+                file "scripts/bobber.lua"
             }
         }
     }
@@ -307,17 +329,18 @@ actors {
         id 18
         name "Box"
         position -4.5 0 4.5
+        attributes {
+            phase 0
+            rate 2
+        }
         components {
             MeshRenderer {
             }
             Spin {
                 speed 0 0.5 0
             }
-            Behaviour {
-                script "scripts/bobber.lua"
-                data {
-                    phase 0
-                }
+            Script {
+                file "scripts/bobber.lua"
             }
         }
     }
@@ -325,17 +348,18 @@ actors {
         id 19
         name "Box"
         position -4.5 0 6
+        attributes {
+            phase 1
+            rate 2
+        }
         components {
             MeshRenderer {
             }
             Spin {
                 speed 0 0.5 0
             }
-            Behaviour {
-                script "scripts/bobber.lua"
-                data {
-                    phase 1
-                }
+            Script {
+                file "scripts/bobber.lua"
             }
         }
     }
@@ -343,17 +367,18 @@ actors {
         id 20
         name "Box"
         position -3 0 -6
+        attributes {
+            phase -6
+            rate 2
+        }
         components {
             MeshRenderer {
             }
             Spin {
                 speed 0 0.5 0
             }
-            Behaviour {
-                script "scripts/bobber.lua"
-                data {
-                    phase -6
-                }
+            Script {
+                file "scripts/bobber.lua"
             }
         }
     }
@@ -361,17 +386,18 @@ actors {
         id 21
         name "Box"
         position -3 0 -4.5
+        attributes {
+            phase -5
+            rate 2
+        }
         components {
             MeshRenderer {
             }
             Spin {
                 speed 0 0.5 0
             }
-            Behaviour {
-                script "scripts/bobber.lua"
-                data {
-                    phase -5
-                }
+            Script {
+                file "scripts/bobber.lua"
             }
         }
     }
@@ -379,17 +405,18 @@ actors {
         id 22
         name "Box"
         position -3 0 -3
+        attributes {
+            phase -4
+            rate 2
+        }
         components {
             MeshRenderer {
             }
             Spin {
                 speed 0 0.5 0
             }
-            Behaviour {
-                script "scripts/bobber.lua"
-                data {
-                    phase -4
-                }
+            Script {
+                file "scripts/bobber.lua"
             }
         }
     }
@@ -397,17 +424,18 @@ actors {
         id 23
         name "Box"
         position -3 0 -1.5
+        attributes {
+            phase -3
+            rate 2
+        }
         components {
             MeshRenderer {
             }
             Spin {
                 speed 0 0.5 0
             }
-            Behaviour {
-                script "scripts/bobber.lua"
-                data {
-                    phase -3
-                }
+            Script {
+                file "scripts/bobber.lua"
             }
         }
     }
@@ -415,17 +443,18 @@ actors {
         id 24
         name "Box"
         position -3 0 0
+        attributes {
+            phase -2
+            rate 2
+        }
         components {
             MeshRenderer {
             }
             Spin {
                 speed 0 0.5 0
             }
-            Behaviour {
-                script "scripts/bobber.lua"
-                data {
-                    phase -2
-                }
+            Script {
+                file "scripts/bobber.lua"
             }
         }
     }
@@ -433,17 +462,18 @@ actors {
         id 25
         name "Box"
         position -3 0 1.5
+        attributes {
+            phase -1
+            rate 2
+        }
         components {
             MeshRenderer {
             }
             Spin {
                 speed 0 0.5 0
             }
-            Behaviour {
-                script "scripts/bobber.lua"
-                data {
-                    phase -1
-                }
+            Script {
+                file "scripts/bobber.lua"
             }
         }
     }
@@ -451,17 +481,18 @@ actors {
         id 26
         name "Box"
         position -3 0 3
+        attributes {
+            phase 0
+            rate 2
+        }
         components {
             MeshRenderer {
             }
             Spin {
                 speed 0 0.5 0
             }
-            Behaviour {
-                script "scripts/bobber.lua"
-                data {
-                    phase 0
-                }
+            Script {
+                file "scripts/bobber.lua"
             }
         }
     }
@@ -469,17 +500,18 @@ actors {
         id 27
         name "Box"
         position -3 0 4.5
+        attributes {
+            phase 1
+            rate 2
+        }
         components {
             MeshRenderer {
             }
             Spin {
                 speed 0 0.5 0
             }
-            Behaviour {
-                script "scripts/bobber.lua"
-                data {
-                    phase 1
-                }
+            Script {
+                file "scripts/bobber.lua"
             }
         }
     }
@@ -487,17 +519,18 @@ actors {
         id 28
         name "Box"
         position -3 0 6
+        attributes {
+            phase 2
+            rate 2
+        }
         components {
             MeshRenderer {
             }
             Spin {
                 speed 0 0.5 0
             }
-            Behaviour {
-                script "scripts/bobber.lua"
-                data {
-                    phase 2
-                }
+            Script {
+                file "scripts/bobber.lua"
             }
         }
     }
@@ -505,17 +538,18 @@ actors {
         id 29
         name "Box"
         position -1.5 0 -6
+        attributes {
+            phase -5
+            rate 2
+        }
         components {
             MeshRenderer {
             }
             Spin {
                 speed 0 0.5 0
             }
-            Behaviour {
-                script "scripts/bobber.lua"
-                data {
-                    phase -5
-                }
+            Script {
+                file "scripts/bobber.lua"
             }
         }
     }
@@ -523,17 +557,18 @@ actors {
         id 30
         name "Box"
         position -1.5 0 -4.5
+        attributes {
+            phase -4
+            rate 2
+        }
         components {
             MeshRenderer {
             }
             Spin {
                 speed 0 0.5 0
             }
-            Behaviour {
-                script "scripts/bobber.lua"
-                data {
-                    phase -4
-                }
+            Script {
+                file "scripts/bobber.lua"
             }
         }
     }
@@ -541,17 +576,18 @@ actors {
         id 31
         name "Box"
         position -1.5 0 -3
+        attributes {
+            phase -3
+            rate 2
+        }
         components {
             MeshRenderer {
             }
             Spin {
                 speed 0 0.5 0
             }
-            Behaviour {
-                script "scripts/bobber.lua"
-                data {
-                    phase -3
-                }
+            Script {
+                file "scripts/bobber.lua"
             }
         }
     }
@@ -559,17 +595,18 @@ actors {
         id 32
         name "Box"
         position -1.5 0 -1.5
+        attributes {
+            phase -2
+            rate 2
+        }
         components {
             MeshRenderer {
             }
             Spin {
                 speed 0 0.5 0
             }
-            Behaviour {
-                script "scripts/bobber.lua"
-                data {
-                    phase -2
-                }
+            Script {
+                file "scripts/bobber.lua"
             }
         }
     }
@@ -577,17 +614,18 @@ actors {
         id 33
         name "Box"
         position -1.5 0 0
+        attributes {
+            phase -1
+            rate 2
+        }
         components {
             MeshRenderer {
             }
             Spin {
                 speed 0 0.5 0
             }
-            Behaviour {
-                script "scripts/bobber.lua"
-                data {
-                    phase -1
-                }
+            Script {
+                file "scripts/bobber.lua"
             }
         }
     }
@@ -595,17 +633,18 @@ actors {
         id 34
         name "Box"
         position -1.5 0 1.5
+        attributes {
+            phase 0
+            rate 2
+        }
         components {
             MeshRenderer {
             }
             Spin {
                 speed 0 0.5 0
             }
-            Behaviour {
-                script "scripts/bobber.lua"
-                data {
-                    phase 0
-                }
+            Script {
+                file "scripts/bobber.lua"
             }
         }
     }
@@ -613,17 +652,18 @@ actors {
         id 35
         name "Box"
         position -1.5 0 3
+        attributes {
+            phase 1
+            rate 2
+        }
         components {
             MeshRenderer {
             }
             Spin {
                 speed 0 0.5 0
             }
-            Behaviour {
-                script "scripts/bobber.lua"
-                data {
-                    phase 1
-                }
+            Script {
+                file "scripts/bobber.lua"
             }
         }
     }
@@ -631,17 +671,18 @@ actors {
         id 36
         name "Box"
         position -1.5 0 4.5
+        attributes {
+            phase 2
+            rate 2
+        }
         components {
             MeshRenderer {
             }
             Spin {
                 speed 0 0.5 0
             }
-            Behaviour {
-                script "scripts/bobber.lua"
-                data {
-                    phase 2
-                }
+            Script {
+                file "scripts/bobber.lua"
             }
         }
     }
@@ -649,17 +690,18 @@ actors {
         id 37
         name "Box"
         position -1.5 0 6
+        attributes {
+            phase 3
+            rate 2
+        }
         components {
             MeshRenderer {
             }
             Spin {
                 speed 0 0.5 0
             }
-            Behaviour {
-                script "scripts/bobber.lua"
-                data {
-                    phase 3
-                }
+            Script {
+                file "scripts/bobber.lua"
             }
         }
     }
@@ -667,17 +709,18 @@ actors {
         id 38
         name "Box"
         position 0 0 -6
+        attributes {
+            phase -4
+            rate 2
+        }
         components {
             MeshRenderer {
             }
             Spin {
                 speed 0 0.5 0
             }
-            Behaviour {
-                script "scripts/bobber.lua"
-                data {
-                    phase -4
-                }
+            Script {
+                file "scripts/bobber.lua"
             }
         }
     }
@@ -685,17 +728,18 @@ actors {
         id 39
         name "Box"
         position 0 0 -4.5
+        attributes {
+            phase -3
+            rate 2
+        }
         components {
             MeshRenderer {
             }
             Spin {
                 speed 0 0.5 0
             }
-            Behaviour {
-                script "scripts/bobber.lua"
-                data {
-                    phase -3
-                }
+            Script {
+                file "scripts/bobber.lua"
             }
         }
     }
@@ -703,17 +747,18 @@ actors {
         id 40
         name "Box"
         position 0 0 -3
+        attributes {
+            phase -2
+            rate 2
+        }
         components {
             MeshRenderer {
             }
             Spin {
                 speed 0 0.5 0
             }
-            Behaviour {
-                script "scripts/bobber.lua"
-                data {
-                    phase -2
-                }
+            Script {
+                file "scripts/bobber.lua"
             }
         }
     }
@@ -721,34 +766,36 @@ actors {
         id 41
         name "Box"
         position 0 0 -1.5
+        attributes {
+            phase -1
+            rate 2
+        }
         components {
             MeshRenderer {
             }
             Spin {
                 speed 0 0.5 0
             }
-            Behaviour {
-                script "scripts/bobber.lua"
-                data {
-                    phase -1
-                }
+            Script {
+                file "scripts/bobber.lua"
             }
         }
     }
     actor {
         id 42
         name "Box"
+        attributes {
+            phase 0
+            rate 2
+        }
         components {
             MeshRenderer {
             }
             Spin {
                 speed 0 0.5 0
             }
-            Behaviour {
-                script "scripts/bobber.lua"
-                data {
-                    phase 0
-                }
+            Script {
+                file "scripts/bobber.lua"
             }
         }
     }
@@ -756,17 +803,18 @@ actors {
         id 43
         name "Box"
         position 0 0 1.5
+        attributes {
+            phase 1
+            rate 2
+        }
         components {
             MeshRenderer {
             }
             Spin {
                 speed 0 0.5 0
             }
-            Behaviour {
-                script "scripts/bobber.lua"
-                data {
-                    phase 1
-                }
+            Script {
+                file "scripts/bobber.lua"
             }
         }
     }
@@ -774,17 +822,18 @@ actors {
         id 44
         name "Box"
         position 0 0 3
+        attributes {
+            phase 2
+            rate 2
+        }
         components {
             MeshRenderer {
             }
             Spin {
                 speed 0 0.5 0
             }
-            Behaviour {
-                script "scripts/bobber.lua"
-                data {
-                    phase 2
-                }
+            Script {
+                file "scripts/bobber.lua"
             }
         }
     }
@@ -792,17 +841,18 @@ actors {
         id 45
         name "Box"
         position 0 0 4.5
+        attributes {
+            phase 3
+            rate 2
+        }
         components {
             MeshRenderer {
             }
             Spin {
                 speed 0 0.5 0
             }
-            Behaviour {
-                script "scripts/bobber.lua"
-                data {
-                    phase 3
-                }
+            Script {
+                file "scripts/bobber.lua"
             }
         }
     }
@@ -810,17 +860,18 @@ actors {
         id 46
         name "Box"
         position 0 0 6
+        attributes {
+            phase 4
+            rate 2
+        }
         components {
             MeshRenderer {
             }
             Spin {
                 speed 0 0.5 0
             }
-            Behaviour {
-                script "scripts/bobber.lua"
-                data {
-                    phase 4
-                }
+            Script {
+                file "scripts/bobber.lua"
             }
         }
     }
@@ -828,17 +879,18 @@ actors {
         id 47
         name "Box"
         position 1.5 0 -6
+        attributes {
+            phase -3
+            rate 2
+        }
         components {
             MeshRenderer {
             }
             Spin {
                 speed 0 0.5 0
             }
-            Behaviour {
-                script "scripts/bobber.lua"
-                data {
-                    phase -3
-                }
+            Script {
+                file "scripts/bobber.lua"
             }
         }
     }
@@ -846,17 +898,18 @@ actors {
         id 48
         name "Box"
         position 1.5 0 -4.5
+        attributes {
+            phase -2
+            rate 2
+        }
         components {
             MeshRenderer {
             }
             Spin {
                 speed 0 0.5 0
             }
-            Behaviour {
-                script "scripts/bobber.lua"
-                data {
-                    phase -2
-                }
+            Script {
+                file "scripts/bobber.lua"
             }
         }
     }
@@ -864,17 +917,18 @@ actors {
         id 49
         name "Box"
         position 1.5 0 -3
+        attributes {
+            phase -1
+            rate 2
+        }
         components {
             MeshRenderer {
             }
             Spin {
                 speed 0 0.5 0
             }
-            Behaviour {
-                script "scripts/bobber.lua"
-                data {
-                    phase -1
-                }
+            Script {
+                file "scripts/bobber.lua"
             }
         }
     }
@@ -882,17 +936,18 @@ actors {
         id 50
         name "Box"
         position 1.5 0 -1.5
+        attributes {
+            phase 0
+            rate 2
+        }
         components {
             MeshRenderer {
             }
             Spin {
                 speed 0 0.5 0
             }
-            Behaviour {
-                script "scripts/bobber.lua"
-                data {
-                    phase 0
-                }
+            Script {
+                file "scripts/bobber.lua"
             }
         }
     }
@@ -900,17 +955,18 @@ actors {
         id 51
         name "Box"
         position 1.5 0 0
+        attributes {
+            phase 1
+            rate 2
+        }
         components {
             MeshRenderer {
             }
             Spin {
                 speed 0 0.5 0
             }
-            Behaviour {
-                script "scripts/bobber.lua"
-                data {
-                    phase 1
-                }
+            Script {
+                file "scripts/bobber.lua"
             }
         }
     }
@@ -918,17 +974,18 @@ actors {
         id 52
         name "Box"
         position 1.5 0 1.5
+        attributes {
+            phase 2
+            rate 2
+        }
         components {
             MeshRenderer {
             }
             Spin {
                 speed 0 0.5 0
             }
-            Behaviour {
-                script "scripts/bobber.lua"
-                data {
-                    phase 2
-                }
+            Script {
+                file "scripts/bobber.lua"
             }
         }
     }
@@ -936,17 +993,18 @@ actors {
         id 53
         name "Box"
         position 1.5 0 3
+        attributes {
+            phase 3
+            rate 2
+        }
         components {
             MeshRenderer {
             }
             Spin {
                 speed 0 0.5 0
             }
-            Behaviour {
-                script "scripts/bobber.lua"
-                data {
-                    phase 3
-                }
+            Script {
+                file "scripts/bobber.lua"
             }
         }
     }
@@ -954,17 +1012,18 @@ actors {
         id 54
         name "Box"
         position 1.5 0 4.5
+        attributes {
+            phase 4
+            rate 2
+        }
         components {
             MeshRenderer {
             }
             Spin {
                 speed 0 0.5 0
             }
-            Behaviour {
-                script "scripts/bobber.lua"
-                data {
-                    phase 4
-                }
+            Script {
+                file "scripts/bobber.lua"
             }
         }
     }
@@ -972,17 +1031,18 @@ actors {
         id 55
         name "Box"
         position 1.5 0 6
+        attributes {
+            phase 5
+            rate 2
+        }
         components {
             MeshRenderer {
             }
             Spin {
                 speed 0 0.5 0
             }
-            Behaviour {
-                script "scripts/bobber.lua"
-                data {
-                    phase 5
-                }
+            Script {
+                file "scripts/bobber.lua"
             }
         }
     }
@@ -990,17 +1050,18 @@ actors {
         id 56
         name "Box"
         position 3 0 -6
+        attributes {
+            phase -2
+            rate 2
+        }
         components {
             MeshRenderer {
             }
             Spin {
                 speed 0 0.5 0
             }
-            Behaviour {
-                script "scripts/bobber.lua"
-                data {
-                    phase -2
-                }
+            Script {
+                file "scripts/bobber.lua"
             }
         }
     }
@@ -1008,17 +1069,18 @@ actors {
         id 57
         name "Box"
         position 3 0 -4.5
+        attributes {
+            phase -1
+            rate 2
+        }
         components {
             MeshRenderer {
             }
             Spin {
                 speed 0 0.5 0
             }
-            Behaviour {
-                script "scripts/bobber.lua"
-                data {
-                    phase -1
-                }
+            Script {
+                file "scripts/bobber.lua"
             }
         }
     }
@@ -1026,17 +1088,18 @@ actors {
         id 58
         name "Box"
         position 3 0 -3
+        attributes {
+            phase 0
+            rate 2
+        }
         components {
             MeshRenderer {
             }
             Spin {
                 speed 0 0.5 0
             }
-            Behaviour {
-                script "scripts/bobber.lua"
-                data {
-                    phase 0
-                }
+            Script {
+                file "scripts/bobber.lua"
             }
         }
     }
@@ -1044,17 +1107,18 @@ actors {
         id 59
         name "Box"
         position 3 0 -1.5
+        attributes {
+            phase 1
+            rate 2
+        }
         components {
             MeshRenderer {
             }
             Spin {
                 speed 0 0.5 0
             }
-            Behaviour {
-                script "scripts/bobber.lua"
-                data {
-                    phase 1
-                }
+            Script {
+                file "scripts/bobber.lua"
             }
         }
     }
@@ -1062,17 +1126,18 @@ actors {
         id 60
         name "Box"
         position 3 0 0
+        attributes {
+            phase 2
+            rate 2
+        }
         components {
             MeshRenderer {
             }
             Spin {
                 speed 0 0.5 0
             }
-            Behaviour {
-                script "scripts/bobber.lua"
-                data {
-                    phase 2
-                }
+            Script {
+                file "scripts/bobber.lua"
             }
         }
     }
@@ -1080,17 +1145,18 @@ actors {
         id 61
         name "Box"
         position 3 0 1.5
+        attributes {
+            phase 3
+            rate 2
+        }
         components {
             MeshRenderer {
             }
             Spin {
                 speed 0 0.5 0
             }
-            Behaviour {
-                script "scripts/bobber.lua"
-                data {
-                    phase 3
-                }
+            Script {
+                file "scripts/bobber.lua"
             }
         }
     }
@@ -1098,17 +1164,18 @@ actors {
         id 62
         name "Box"
         position 3 0 3
+        attributes {
+            phase 4
+            rate 2
+        }
         components {
             MeshRenderer {
             }
             Spin {
                 speed 0 0.5 0
             }
-            Behaviour {
-                script "scripts/bobber.lua"
-                data {
-                    phase 4
-                }
+            Script {
+                file "scripts/bobber.lua"
             }
         }
     }
@@ -1116,17 +1183,18 @@ actors {
         id 63
         name "Box"
         position 3 0 4.5
+        attributes {
+            phase 5
+            rate 2
+        }
         components {
             MeshRenderer {
             }
             Spin {
                 speed 0 0.5 0
             }
-            Behaviour {
-                script "scripts/bobber.lua"
-                data {
-                    phase 5
-                }
+            Script {
+                file "scripts/bobber.lua"
             }
         }
     }
@@ -1134,17 +1202,18 @@ actors {
         id 64
         name "Box"
         position 3 0 6
+        attributes {
+            phase 6
+            rate 2
+        }
         components {
             MeshRenderer {
             }
             Spin {
                 speed 0 0.5 0
             }
-            Behaviour {
-                script "scripts/bobber.lua"
-                data {
-                    phase 6
-                }
+            Script {
+                file "scripts/bobber.lua"
             }
         }
     }
@@ -1152,17 +1221,18 @@ actors {
         id 65
         name "Box"
         position 4.5 0 -6
+        attributes {
+            phase -1
+            rate 2
+        }
         components {
             MeshRenderer {
             }
             Spin {
                 speed 0 0.5 0
             }
-            Behaviour {
-                script "scripts/bobber.lua"
-                data {
-                    phase -1
-                }
+            Script {
+                file "scripts/bobber.lua"
             }
         }
     }
@@ -1170,17 +1240,18 @@ actors {
         id 66
         name "Box"
         position 4.5 0 -4.5
+        attributes {
+            phase 0
+            rate 2
+        }
         components {
             MeshRenderer {
             }
             Spin {
                 speed 0 0.5 0
             }
-            Behaviour {
-                script "scripts/bobber.lua"
-                data {
-                    phase 0
-                }
+            Script {
+                file "scripts/bobber.lua"
             }
         }
     }
@@ -1188,17 +1259,18 @@ actors {
         id 67
         name "Box"
         position 4.5 0 -3
+        attributes {
+            phase 1
+            rate 2
+        }
         components {
             MeshRenderer {
             }
             Spin {
                 speed 0 0.5 0
             }
-            Behaviour {
-                script "scripts/bobber.lua"
-                data {
-                    phase 1
-                }
+            Script {
+                file "scripts/bobber.lua"
             }
         }
     }
@@ -1206,17 +1278,18 @@ actors {
         id 68
         name "Box"
         position 4.5 0 -1.5
+        attributes {
+            phase 2
+            rate 2
+        }
         components {
             MeshRenderer {
             }
             Spin {
                 speed 0 0.5 0
             }
-            Behaviour {
-                script "scripts/bobber.lua"
-                data {
-                    phase 2
-                }
+            Script {
+                file "scripts/bobber.lua"
             }
         }
     }
@@ -1224,17 +1297,18 @@ actors {
         id 69
         name "Box"
         position 4.5 0 0
+        attributes {
+            phase 3
+            rate 2
+        }
         components {
             MeshRenderer {
             }
             Spin {
                 speed 0 0.5 0
             }
-            Behaviour {
-                script "scripts/bobber.lua"
-                data {
-                    phase 3
-                }
+            Script {
+                file "scripts/bobber.lua"
             }
         }
     }
@@ -1242,17 +1316,18 @@ actors {
         id 70
         name "Box"
         position 4.5 0 1.5
+        attributes {
+            phase 4
+            rate 2
+        }
         components {
             MeshRenderer {
             }
             Spin {
                 speed 0 0.5 0
             }
-            Behaviour {
-                script "scripts/bobber.lua"
-                data {
-                    phase 4
-                }
+            Script {
+                file "scripts/bobber.lua"
             }
         }
     }
@@ -1260,17 +1335,18 @@ actors {
         id 71
         name "Box"
         position 4.5 0 3
+        attributes {
+            phase 5
+            rate 2
+        }
         components {
             MeshRenderer {
             }
             Spin {
                 speed 0 0.5 0
             }
-            Behaviour {
-                script "scripts/bobber.lua"
-                data {
-                    phase 5
-                }
+            Script {
+                file "scripts/bobber.lua"
             }
         }
     }
@@ -1278,17 +1354,18 @@ actors {
         id 72
         name "Box"
         position 4.5 0 4.5
+        attributes {
+            phase 6
+            rate 2
+        }
         components {
             MeshRenderer {
             }
             Spin {
                 speed 0 0.5 0
             }
-            Behaviour {
-                script "scripts/bobber.lua"
-                data {
-                    phase 6
-                }
+            Script {
+                file "scripts/bobber.lua"
             }
         }
     }
@@ -1296,17 +1373,18 @@ actors {
         id 73
         name "Box"
         position 4.5 0 6
+        attributes {
+            phase 7
+            rate 2
+        }
         components {
             MeshRenderer {
             }
             Spin {
                 speed 0 0.5 0
             }
-            Behaviour {
-                script "scripts/bobber.lua"
-                data {
-                    phase 7
-                }
+            Script {
+                file "scripts/bobber.lua"
             }
         }
     }
@@ -1314,17 +1392,18 @@ actors {
         id 74
         name "Box"
         position 6 0 -6
+        attributes {
+            phase 0
+            rate 2
+        }
         components {
             MeshRenderer {
             }
             Spin {
                 speed 0 0.5 0
             }
-            Behaviour {
-                script "scripts/bobber.lua"
-                data {
-                    phase 0
-                }
+            Script {
+                file "scripts/bobber.lua"
             }
         }
     }
@@ -1332,17 +1411,18 @@ actors {
         id 75
         name "Box"
         position 6 0 -4.5
+        attributes {
+            phase 1
+            rate 2
+        }
         components {
             MeshRenderer {
             }
             Spin {
                 speed 0 0.5 0
             }
-            Behaviour {
-                script "scripts/bobber.lua"
-                data {
-                    phase 1
-                }
+            Script {
+                file "scripts/bobber.lua"
             }
         }
     }
@@ -1350,17 +1430,18 @@ actors {
         id 76
         name "Box"
         position 6 0 -3
+        attributes {
+            phase 2
+            rate 2
+        }
         components {
             MeshRenderer {
             }
             Spin {
                 speed 0 0.5 0
             }
-            Behaviour {
-                script "scripts/bobber.lua"
-                data {
-                    phase 2
-                }
+            Script {
+                file "scripts/bobber.lua"
             }
         }
     }
@@ -1368,17 +1449,18 @@ actors {
         id 77
         name "Box"
         position 6 0 -1.5
+        attributes {
+            phase 3
+            rate 2
+        }
         components {
             MeshRenderer {
             }
             Spin {
                 speed 0 0.5 0
             }
-            Behaviour {
-                script "scripts/bobber.lua"
-                data {
-                    phase 3
-                }
+            Script {
+                file "scripts/bobber.lua"
             }
         }
     }
@@ -1386,17 +1468,18 @@ actors {
         id 78
         name "Box"
         position 6 0 0
+        attributes {
+            phase 4
+            rate 2
+        }
         components {
             MeshRenderer {
             }
             Spin {
                 speed 0 0.5 0
             }
-            Behaviour {
-                script "scripts/bobber.lua"
-                data {
-                    phase 4
-                }
+            Script {
+                file "scripts/bobber.lua"
             }
         }
     }
@@ -1404,17 +1487,18 @@ actors {
         id 79
         name "Box"
         position 6 0 1.5
+        attributes {
+            phase 5
+            rate 2
+        }
         components {
             MeshRenderer {
             }
             Spin {
                 speed 0 0.5 0
             }
-            Behaviour {
-                script "scripts/bobber.lua"
-                data {
-                    phase 5
-                }
+            Script {
+                file "scripts/bobber.lua"
             }
         }
     }
@@ -1422,17 +1506,18 @@ actors {
         id 80
         name "Box"
         position 6 0 3
+        attributes {
+            phase 6
+            rate 2
+        }
         components {
             MeshRenderer {
             }
             Spin {
                 speed 0 0.5 0
             }
-            Behaviour {
-                script "scripts/bobber.lua"
-                data {
-                    phase 6
-                }
+            Script {
+                file "scripts/bobber.lua"
             }
         }
     }
@@ -1440,17 +1525,18 @@ actors {
         id 81
         name "Box"
         position 6 0 4.5
+        attributes {
+            phase 7
+            rate 2
+        }
         components {
             MeshRenderer {
             }
             Spin {
                 speed 0 0.5 0
             }
-            Behaviour {
-                script "scripts/bobber.lua"
-                data {
-                    phase 7
-                }
+            Script {
+                file "scripts/bobber.lua"
             }
         }
     }
@@ -1458,17 +1544,18 @@ actors {
         id 82
         name "Box"
         position 6 0 6
+        attributes {
+            phase 8
+            rate 2
+        }
         components {
             MeshRenderer {
             }
             Spin {
                 speed 0 0.5 0
             }
-            Behaviour {
-                script "scripts/bobber.lua"
-                data {
-                    phase 8
-                }
+            Script {
+                file "scripts/bobber.lua"
             }
         }
     }

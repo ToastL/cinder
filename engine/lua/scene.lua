@@ -5,6 +5,37 @@ local isComponent = {}
 
 for _, name in ipairs(engine.componentNames()) do isComponent[name] = true end
 
+local ANY_ATTRIBUTE = "*"
+local attributeSignals = {}
+
+local function attributeValue(value)
+    if type(value) ~= "table" then return value end
+    if #value == 2 then return vec2(value[1], value[2]) end
+    if #value == 3 then return vec3(value[1], value[2], value[3]) end
+    return vec4(value[1], value[2], value[3], value[4])
+end
+
+local function attributeSignal(id, name)
+    local byName = attributeSignals[id]
+    if byName == nil then
+        byName = {}
+        attributeSignals[id] = byName
+    end
+    local changed = byName[name]
+    if changed == nil then
+        changed = signal()
+        byName[name] = changed
+    end
+    return changed
+end
+
+function __attributeChanged(id, name)
+    local byName = attributeSignals[id]
+    if byName == nil then return end
+    if byName[name] then byName[name]:fire() end
+    if byName[ANY_ATTRIBUTE] then byName[ANY_ATTRIBUTE]:fire(name) end
+end
+
 local function component(id, name)
     return setmetatable({ id = id, component = name }, compMt)
 end
@@ -51,6 +82,7 @@ local get = {
     forward        = function(self) return vec3(engine.forward(self.id)) end,
     right          = function(self) return vec3(engine.right(self.id)) end,
     up             = function(self) return vec3(engine.up(self.id)) end,
+    attributeChanged = function(self) return attributeSignal(self.id, ANY_ATTRIBUTE) end,
 }
 
 local set = {
@@ -74,9 +106,28 @@ function fns:get(name)
     return component(self.id, name)
 end
 
-function fns:behaviour(script, data)
-    engine.addBehaviour(self.id, script, data)
-    return self
+function fns:addScript(file)
+    local added = self:add("Script")
+    added.file = file
+    return added
+end
+
+function fns:getAttribute(name)
+    return attributeValue(engine.getAttribute(self.id, name))
+end
+
+function fns:setAttribute(name, value)
+    engine.setAttribute(self.id, name, value)
+end
+
+function fns:getAttributes()
+    local out = engine.getAttributes(self.id)
+    for name, value in pairs(out) do out[name] = attributeValue(value) end
+    return out
+end
+
+function fns:getAttributeChangedSignal(name)
+    return attributeSignal(self.id, name)
 end
 
 function fns:spawn(name)

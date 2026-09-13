@@ -5,8 +5,9 @@ hit Play, hit Stop, and land back where you started.
 
 **Where we are:** a Vulkan renderer driving an ordered pass list into an offscreen target,
 composited to the swapchain by a fullscreen triangle. Sprite batch with atlas support, mesh pipeline
-with one directional light, per-pass cameras, edge-triggered input, Lua scripting with file-watch hot
-reload — per-file for behaviours, carrying instance fields across the swap. An actor/component scene
+with one directional light, per-pass cameras, edge-triggered input, and Lua scripts in Roblox's shape —
+code that runs top to bottom, attributes on actors, and per-file hot reload that stops what the old
+code started. An actor/component scene
 with a prop system that feeds the serializer and the script bindings from one declaration. A
 bidirectional `Archive` with a text backend, and games that are `.scene` files in project folders
 rather than scripts in the engine. Dear ImGui is up in a separate `engine_dev` target, with a
@@ -14,7 +15,8 @@ dockspace holding the Scene viewport and a console with a live Lua REPL, and a p
 main menu bar — `player` ships without a byte of it. The editor opens a project in Edit mode, seen
 through a free-flying editor camera with a frustum drawn for every scene camera; Play serializes the
 scene into a fresh Lua state and Stop restores it. A hierarchy selects an actor and an inspector
-edits its fields with no per-type editor code. 91 headless test cases and a 44-check Lua selftest.
+edits its fields and attributes with no per-type editor code. 97 headless test cases and a 55-check
+Lua selftest.
 
 Foundations, the scene model, the scripting ergonomics, serialization and the Edit/Play split are
 done. The editor shell is underway — ImGui, the console, the toolbar, the Scene viewport, the
@@ -38,12 +40,9 @@ editor camera, the hierarchy and the inspector have landed; picking, gizmos and 
 - [ ] Hierarchy: drag to reparent, multi-select, create and delete actors
 - [x] **Inspector** — `dev/Inspector` walks `props<Transform>()` and every component's `propList()`,
       one widget per `PropType`, with enum combos from `PropDef::options()` and colour pickers from
-      `CINDER_PROP_COLOR`. A behaviour's `PropBag` gets its own pass and writes through `patchBag`,
-      so a field edited during Play reaches the running instance.
-- [ ] Inspector: add and remove components; an asset-reference widget for texture and mesh names;
-      nested records and arrays, which are shown read-only as a count
-- [ ] Inspector: a behaviour's fields at their script default in Edit mode. The prototype is never
-      loaded before Play, so only the scene's `data` overrides are listed.
+      `CINDER_PROP_COLOR`. The actor's attributes get their own section, with add and remove, and an
+      edit during Play fires the game's changed signals.
+- [ ] Inspector: add and remove components; an asset-reference widget for texture and mesh names
 - [ ] Gizmos — translate/rotate/scale handles, snapping. `dev/Gizmos` already draws a frustum for
       every perspective `Camera` in Edit mode, on the Scene window's draw list.
 - [ ] Mouse picking — click the viewport to select (id buffer or CPU raycast)
@@ -51,7 +50,8 @@ editor camera, the hierarchy and the inspector have landed; picking, gizmos and 
       camera and handed to `Renderer::overrideCamera3d` in Edit mode. Right-drag to look and fly
       with WASD/QE, middle-drag to pan, scroll to dolly. Orthographic scenes still look through the
       scene's 2D camera; a 2D pan/zoom for them is not done.
-- [ ] **Undo/redo** — command stack recording `(component, field, old, new)`
+- [ ] **Undo/redo** — command stack recording `(component, field, old, new)`, and attribute adds,
+      removes and changes
 - [x] Console panel — every print routes through `platform/Log`, and `dev/Console` installs the
       sink. REPL line evaluates against the live `lua_State`, with history on up/down.
 - [x] Toolbar — Play / Pause / Step / Stop and Save, on ⌘P / ⌘⇧P / ⌘⌥P / ⌘S, in the main menu bar
@@ -76,7 +76,7 @@ sugar, never the primary surface.
 - [x] Serialize scene on Play, restore on Stop — both are `Engine::loadScene` on one snapshot, so
       every session also starts from a fresh `lua_State`
 - [x] Editor keeps rendering while paused — `GameLoop::idle`
-- [x] Game code never runs in Edit mode — there is no entry script, and behaviours only start from
+- [x] Game code never runs in Edit mode — there is no entry script, and scripts only run from
       `Scene::update`, which Edit mode never calls
 - [x] Input routing — `dev/Viewport` gives the game the keyboard while the Scene window is focused
       and the mouse while its image is hovered; a locked cursor keeps both. Play focuses the Scene.
@@ -154,13 +154,12 @@ sugar, never the primary surface.
       bindless.
 - [ ] **No sorting anywhere**, in either pass. Submission order only.
 - [ ] **`endSingleTime` does a full `vkQueueWaitIdle`** per texture upload.
-- [ ] **A behaviour reload leaks the old instance's coroutines** — `task.spawn` tracks no owner, so a
-      loop started by the pre-reload table keeps running against it until Stop discards the state.
-      Needs threads tagged with the instance that spawned them, and dropped on reload and destroy.
+- [ ] **Scripts cannot share code.** There is no `ModuleScript`/`require`: `package.path` does not
+      include the project, so a helper has to be copied or hung off `_G` by another script.
 - [ ] **The prelude is not watched** — editing `types.lua`, `scene.lua` or `task.lua` needs a restart.
-- [ ] **`poll()` stats every loaded behaviour every frame** — move to a watch service, or throttle.
-- [ ] **Behaviour bags skip what they cannot write** — functions, actor proxies and arrays of
-      tables. A field holding an actor is lost on save; it needs *Cross-actor references*.
+- [ ] **`poll()` stats every script it has read, every frame** — move to a watch service, or throttle.
+- [ ] **An attribute cannot name an actor** — it holds numbers, strings, bools and small vectors. An
+      actor reference needs *Cross-actor references*.
 - [ ] **Runtime meshes cannot be named in a scene** — `MeshRenderer.mesh` names a primitive, and
       `engine.newCube` hands back an anonymous handle. Mesh import is where named meshes come from.
 - [ ] Fixed caps with no growth path: `MAX_QUADS = 10000`, `MAX_DRAWS = 4096`, `MAX_TEXTURES = 256`

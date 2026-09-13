@@ -1,23 +1,23 @@
-version 2
+version 3
 actors {
     actor {
         id 1
         name "SelfTest"
         components {
-            Behaviour {
-                script "scripts/runner.lua"
+            Script {
+                file "scripts/runner.lua"
             }
         }
     }
     actor {
         id 2
-        name "Behaved"
+        name "Marked"
+        attributes {
+            mark 42
+        }
         components {
-            Behaviour {
-                script "scripts/marker.lua"
-                data {
-                    mark 42
-                }
+            Script {
+                file "scripts/marker.lua"
             }
         }
     }

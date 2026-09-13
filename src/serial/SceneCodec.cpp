@@ -3,6 +3,7 @@
 #include "platform/Log.hpp"
 #include "reflect/Reflect.hpp"
 #include "scene/Actor.hpp"
+#include "scene/Attributes.hpp"
 #include "scene/Component.hpp"
 #include "scene/Components.hpp"
 #include "scene/PropValue.hpp"
@@ -18,9 +19,26 @@ namespace cinder::serial {
 
 using cinder::scene::Actor;
 using cinder::scene::Component;
-using cinder::scene::PropBag;
 using cinder::scene::PropRec;
 using cinder::scene::Scene;
+
+namespace {
+
+PropRec accepted(const PropRec& values, int actor) {
+    PropRec out;
+    for (const auto& [name, value] : values) {
+        if (cinder::scene::isAttributeName(name) && cinder::scene::isAttributeValue(value)) {
+            out.emplace(name, value);
+        } else {
+            cinder::platform::logError(
+                    "[serial] actor %d: attribute %s dropped, not a number, string, bool or vector\n",
+                    actor, name.c_str());
+        }
+    }
+    return out;
+}
+
+}
 
 SceneCodec::SceneCodec(Scene& scene) : scene_(scene), types_(scene.types()) {}
 
@@ -82,6 +100,10 @@ void SceneCodec::actor(Archive& ar, Actor* actor, Actor* parent, int version) {
 
     target->setActive(ar.flag("active", target->activeSelf(), true));
     emit(ar, cinder::reflect::props<cinder::scene::Transform>(), &target->transform(), &blank_);
+
+    const PropRec attributes = ar.bag("attributes", ar.loading() ? PropRec{} : target->attributes());
+    if (ar.loading()) target->loadAttributes(accepted(attributes, target->id()));
+
     components(ar, *target, version);
     actors(ar, target->children(), target, version);
 }
@@ -114,6 +136,11 @@ void SceneCodec::components(Archive& ar, Actor& actor, int version) {
 
 void SceneCodec::component(Archive& ar, Actor& actor, Component* existing,
                            std::string_view type, int version) {
+    if (ar.loading() && version < 3 && type == "Behaviour") {
+        migrateBehaviour(ar, actor);
+        return;
+    }
+
     const Component* base = types_.fallback(type);
     if (base == nullptr) {
         cinder::platform::logError("[serial] unknown component type: %.*s\n",
@@ -125,11 +152,25 @@ void SceneCodec::component(Archive& ar, Actor& actor, Component* existing,
     if (target == nullptr) return;
 
     emit(ar, target->propList(), target->propTarget(), base->propTarget());
+}
 
-    if (auto* holder = dynamic_cast<PropBag*>(target)) {
-        const PropRec data = ar.bag("data", ar.loading() ? PropRec{} : holder->readBag());
-        if (ar.loading()) holder->writeBag(data);
+void SceneCodec::migrateBehaviour(Archive& ar, Actor& actor) {
+    const Component* base = types_.fallback("Script");
+    Component* script = base == nullptr ? nullptr : actor.add(types_.create("Script"));
+    if (script == nullptr) {
+        cinder::platform::logError("[serial] a Behaviour needs the Script component, which is not registered\n");
+        return;
     }
+
+    emit(ar, script->propList(), script->propTarget(), base->propTarget());
+    const std::string file = ar.text("script", "", "");
+    for (const cinder::reflect::PropDef& def : script->propList()) {
+        if (def.name() == "file") def.writeText(script->propTarget(), file);
+    }
+
+    PropRec merged = actor.attributes();
+    for (const auto& [name, value] : ar.bag("data", PropRec{})) merged.insert_or_assign(name, value);
+    actor.loadAttributes(accepted(merged, actor.id()));
 }
 
 void SceneCodec::emit(Archive& ar, const std::vector<cinder::reflect::PropDef>& defs,

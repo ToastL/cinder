@@ -1,8 +1,10 @@
 #pragma once
 
+#include <functional>
 #include <memory>
 #include <string>
 #include <unordered_map>
+#include <utility>
 #include <vector>
 
 namespace cinder::scene {
@@ -14,6 +16,8 @@ class DrawList;
 
 class Scene {
 public:
+    using AttributeListener = std::function<void(Actor&, const std::string&)>;
+
     explicit Scene(Components& types);
     ~Scene();
 
@@ -43,6 +47,11 @@ public:
     void attachRoot(Actor* actor);
     void detachRoot(Actor* actor);
 
+    void setAttributeListener(AttributeListener listener) { attributeListener_ = std::move(listener); }
+    void attributeChanged(Actor& actor, const std::string& name) const {
+        if (attributeListener_) attributeListener_(actor, name);
+    }
+
 private:
     void update(Actor& actor, float dt);
     void render(Actor& actor, float alpha, DrawList& draws);
@@ -56,6 +65,7 @@ private:
     std::unordered_map<int, std::unique_ptr<Actor>> actors_;
     std::vector<Component*> pendingStart_;
     std::vector<int> pendingDestroy_;
+    AttributeListener attributeListener_;
     int nextId_ = 1;
 };
 

@@ -22,7 +22,7 @@ class Archive;
 
 class SceneCodec {
 public:
-    static constexpr int VERSION = 2;
+    static constexpr int VERSION = 3;
     static constexpr int OLDEST = 2;
 
     static std::string save(cinder::scene::Scene& scene);
@@ -40,6 +40,7 @@ private:
     void components(Archive& ar, cinder::scene::Actor& actor, int version);
     void component(Archive& ar, cinder::scene::Actor& actor, cinder::scene::Component* existing,
                    std::string_view type, int version);
+    void migrateBehaviour(Archive& ar, cinder::scene::Actor& actor);
 
     cinder::scene::Actor* spawn(int id, const std::string& name, cinder::scene::Actor* parent);
     void emit(Archive& ar, const std::vector<cinder::reflect::PropDef>& defs,
