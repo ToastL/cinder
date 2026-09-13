@@ -1,5 +1,7 @@
 #pragma once
 
+#include "dev/EditorCamera.hpp"
+
 namespace cinder::core { class Engine; }
 
 namespace cinder::dev {
@@ -20,6 +22,7 @@ public:
 private:
     PlaySession& session_;
     cinder::core::Engine& engine_;
+    EditorCamera camera_;
     bool playing_ = false;
 };
 

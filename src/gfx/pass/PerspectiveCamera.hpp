@@ -1,6 +1,9 @@
 #pragma once
 
 #include <glm/mat4x4.hpp>
+#include <glm/vec3.hpp>
+
+#include <array>
 
 namespace cinder::gfx::pass {
 
@@ -12,6 +15,7 @@ public:
     void setClip(float near, float far);
 
     const glm::mat4& viewProjection();
+    std::array<glm::vec3, 8> corners() const;
 
 private:
     void recompute();

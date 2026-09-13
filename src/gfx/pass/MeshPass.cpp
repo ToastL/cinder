@@ -90,7 +90,8 @@ int MeshPass::addCube(float r, float g, float b) {
 void MeshPass::record(VkCommandBuffer cmd, uint32_t frameInFlight) {
     if (drawCount_ == 0) return;
 
-    pipeline_.bind(cmd, camera_.viewProjection());
+    PerspectiveCamera& view = override_ ? *override_ : camera_;
+    pipeline_.bind(cmd, view.viewProjection());
 
     int boundMesh = -1;
     int boundTexture = -1;

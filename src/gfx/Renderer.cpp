@@ -55,6 +55,7 @@ Renderer::Renderer(const VkCtx& ctx, cinder::platform::Window& window,
     auto spritePass = std::make_unique<cinder::gfx::pass::SpritePass>(
             ctx, *assets_, *spritePipeline_, FRAMES_IN_FLIGHT);
 
+    meshPass_ = meshPass.get();
     draws_ = std::make_unique<RendererDrawList>(*this, *meshPass, *spritePass);
 
     passes_.push_back(std::move(meshPass));
@@ -152,6 +153,12 @@ void Renderer::setViewportSize(int width, int height) {
     createTargets();
     resizePasses();
 }
+
+void Renderer::overrideCamera3d(const cinder::gfx::pass::PerspectiveCamera& camera) {
+    meshPass_->overrideCamera(camera);
+}
+
+void Renderer::releaseCamera3d() { meshPass_->releaseCamera(); }
 
 void Renderer::beginFrame() {
     for (const std::unique_ptr<DrawPass>& pass : passes_) pass->beginFrame();

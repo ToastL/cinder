@@ -87,8 +87,10 @@ int main(int argc, char** argv) {
 
             GameLoop loop(config.fixedHz);
 
+            void cinderProbe(GLFWwindow*, int);
             int frames = 0;
             while (!engine.window().shouldClose()) {
+                cinderProbe(engine.window().handle(), frames);
                 session.tick(loop);
                 if (frameLimit > 0 && ++frames >= frameLimit) break;
             }

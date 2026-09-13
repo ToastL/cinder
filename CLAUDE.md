@@ -56,7 +56,9 @@ Stages a runnable game in `build/dist/<project>/` — see *Projects and packagin
 
 Note that `--capture` reads back the **scene render target**, not the swapchain, so an overlay would
 never appear in a capture anyway. That is deliberate: it is the game's picture, not the editor's. In
-the editor that target is the size of the Scene panel, not the window.
+the editor that target is the size of the Scene panel, not the window, and in Edit mode its 3D view
+is the editor camera's — which starts as a copy of the scene's camera, so an unattended `--frames
+--capture` still writes the game's frame. See *The editor camera*.
 
 The first configure fetches every dependency and needs network — glfw, glm, lua, VMA, stb, volk,
 Vulkan-Headers, Dear ImGui and doctest, all pinned in `cmake/Dependencies.cmake`. Nothing needs
@@ -133,8 +135,8 @@ dev                        -> core and all of the above (a separate target, see 
 ```
 
 Everything down to `core` is the `engine` library. **`dev` is not** — it is its own target,
-`engine_dev`, and it holds everything editor-only: ImGui, the console, the Scene viewport, the
-dockspace, the play session and the toolbar. It is the only place ImGui may be mentioned. `player` links `engine`; `editor` links
+`engine_dev`, and it holds everything editor-only: ImGui, the console, the Scene viewport with its
+editor camera and gizmos, the dockspace, the play session and the toolbar. It is the only place ImGui may be mentioned. `player` links `engine`; `editor` links
 `engine_dev`. If a `#include <imgui.h>` ever appears outside `src/dev/`, the split is broken.
 
 **`platform` is the one leaf everything may reach for**, because `platform/Log.hpp` lives there and
@@ -196,7 +198,8 @@ Nothing runs a behaviour until something calls `Scene::update`: `start` fires fr
 `startPending()` at the top of the first update, and every `onUpdate` follows it. `Scene::render`
 does **not** wait for `start` — it draws every enabled component — so a scene that is never updated
 is still fully drawn. That split *is* Edit mode: built-in renderers and cameras draw, behaviours
-never instantiate.
+never instantiate. The one thing the editor draws differently is the 3D view: Edit mode looks
+through its own camera and shows the scene's cameras as frustums — see *The editor camera*.
 
 `dev/PlaySession` owns the editor's state, `Edit | Playing | Paused`:
 
@@ -254,7 +257,9 @@ pass's output needs the same treatment.
 `DrawPass`, not `RenderPass`, so that `renderPass` unambiguously means a `VkRenderPass`. A new pass
 means: implement the interface, add it to `passes_` in the `Renderer` constructor in draw order, and
 let it register its own Lua functions. Passes own their cameras (`MeshPass` -> `PerspectiveCamera`,
-`SpritePass` -> `OrthographicCamera`).
+`SpritePass` -> `OrthographicCamera`). `MeshPass` also holds an optional host override, set through
+`Renderer::overrideCamera3d`, that it draws with instead while it is set; the scene's `camera3d` keeps
+writing the pass's own camera underneath, which is what makes `releaseCamera3d` exact.
 
 Sprite space is **Y-down** — the ortho camera deliberately has no Y flip, so `y = 0` is the top of
 the screen. The perspective camera does flip, in the projection matrix rather than with a negative
@@ -307,7 +312,8 @@ to be submitted before the windows it hosts. The two hooks together are what kee
 ImGui and `script`.
 
 What remains in the shipping binary is a null `unique_ptr`, an empty `std::function`, a zero
-viewport size, and three branches per frame. That is the whole cost of the seam.
+viewport size, an empty camera override, and four branches per frame. That is the whole cost of the
+seam.
 
 Three things about the ImGui frame lifecycle are load-bearing:
 
@@ -356,6 +362,39 @@ frame N's overlay and read by frame N+1's updates.
 `dev/Dockspace` builds the default layout — Scene above, Console below — with the `DockBuilder`
 API from `imgui_internal.h`, once, when the dockspace node does not exist yet. With no ini file,
 that is every launch.
+
+### The editor camera
+
+In Edit mode the Scene window looks through `dev/EditorCamera`, not through the scene's `Camera`.
+`Viewport` hands it to `Renderer::overrideCamera3d` on every Edit frame and calls `releaseCamera3d`
+in every other state, so Play and Pause show the game's camera. The override sits in `MeshPass` next
+to the scene's camera rather than replacing it: the scene's `Camera` keeps writing
+`MeshPass::camera()` through `camera3d` the whole time, so a release restores exactly the camera the
+game set — or the default, for a scene without one — and Play still sees what the player sees. Only
+the 3D view is overridden; the sprite pass keeps the scene's 2D camera.
+
+It is seeded once, on the first Edit frame, from the last enabled perspective `Camera` in render
+order — the one whose `camera3d` wins — taking its pose, fov and clip planes, so an Edit frame is the
+game's frame until you move. Stop does not reset it: like Unity's Scene view, it stays where you left
+it. It has no roll and is not saved.
+
+Its controls are read from ImGui, not from `Input` — they are an interaction with a panel, and
+`Input` belongs to the game — and they only act on the Scene image. Hold the **right button** to look
+around and fly with **WASD**, **Q/E** for down/up, **Shift** to go faster and the wheel to change
+speed; drag the **middle button** to pan; scroll with no button held to dolly. A press on the image
+makes the `InvisibleButton` the active item, so the drag keeps working past the panel's edge, and it
+focuses the Scene window, so fly keys never land in the console.
+
+`dev/Gizmos` draws a wireframe frustum for every enabled perspective `Camera` while editing: the near
+and far rectangles, the four edges joining them, and dimmer lines from the camera to the near
+corners. The corners come from `PerspectiveCamera::corners()` at the panel's aspect — the aspect Play
+renders at — and a test pins them to the projection's clip volume. They are drawn on the Scene
+window's `ImDrawList`, projected through the editor camera and clipped in clip space against the near
+plane and the four sides before the divide, so a corner behind the editor camera cannot fold across
+the image. The sides are inset by `INSET`, so a camera the editor is looking straight through — as
+it is right after seeding — draws nothing, rather than a frame along the border that float noise
+leaves half-drawn. Being overlay, the frustums draw over geometry, cost the player nothing, and never
+appear in a `--capture`.
 
 ### Logging and the console
 

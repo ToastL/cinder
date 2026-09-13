@@ -6,6 +6,7 @@
 #include "gfx/pass/MeshPipeline.hpp"
 #include "gfx/pass/PerspectiveCamera.hpp"
 
+#include <optional>
 #include <string>
 #include <string_view>
 #include <unordered_map>
@@ -30,6 +31,8 @@ public:
     int meshNamed(std::string_view name) const;
 
     PerspectiveCamera& camera() { return camera_; }
+    void overrideCamera(const PerspectiveCamera& camera) { override_ = camera; }
+    void releaseCamera() { override_.reset(); }
 
 private:
     bool accept(int mesh);
@@ -47,6 +50,7 @@ private:
     bool overflowWarned_ = false;
 
     PerspectiveCamera camera_;
+    std::optional<PerspectiveCamera> override_;
 };
 
 }

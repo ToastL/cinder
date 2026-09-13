@@ -11,13 +11,14 @@ with a prop system that feeds the serializer and the script bindings from one de
 bidirectional `Archive` with a text backend, and games that are `.scene` files in project folders
 rather than scripts in the engine. Dear ImGui is up in a separate `engine_dev` target, with a
 dockspace holding the Scene viewport and a console with a live Lua REPL, and a play toolbar in the
-main menu bar — `player` ships without a byte of it. The editor opens a project in Edit mode; Play
-serializes the scene into a fresh Lua state and Stop restores it. 83 headless test cases and a
-44-check Lua selftest.
+main menu bar — `player` ships without a byte of it. The editor opens a project in Edit mode, seen
+through a free-flying editor camera with a frustum drawn for every scene camera; Play serializes the
+scene into a fresh Lua state and Stop restores it. 85 headless test cases and a 44-check Lua
+selftest.
 
 Foundations, the scene model, the scripting ergonomics, serialization and the Edit/Play split are
-done. The editor shell is underway — ImGui, the console, the toolbar and the Scene viewport have
-landed; the hierarchy and inspector are next.
+done. The editor shell is underway — ImGui, the console, the toolbar, the Scene viewport and the
+editor camera have landed; the hierarchy and inspector are next.
 
 ---
 
@@ -37,10 +38,13 @@ landed; the hierarchy and inspector are next.
       `std::string`, `glm::vec3`, color, asset reference, enum). `PropDef` already carries `label`,
       `min`, `max` and `step`; only `step` and `label` are currently unread. A behaviour's fields are
       its `PropBag`, not `props<T>()`, and need their own widget pass.
-- [ ] Gizmos — translate/rotate/scale handles, snapping
+- [ ] Gizmos — translate/rotate/scale handles, snapping. `dev/Gizmos` already draws a frustum for
+      every perspective `Camera` in Edit mode, on the Scene window's draw list.
 - [ ] Mouse picking — click the viewport to select (id buffer or CPU raycast)
-- [ ] Editor camera, independent of the game camera. Edit mode currently looks through the scene's
-      own `Camera`.
+- [x] Editor camera, independent of the game camera — `dev/EditorCamera`, seeded from the scene's
+      camera and handed to `Renderer::overrideCamera3d` in Edit mode. Right-drag to look and fly
+      with WASD/QE, middle-drag to pan, scroll to dolly. Orthographic scenes still look through the
+      scene's 2D camera; a 2D pan/zoom for them is not done.
 - [ ] **Undo/redo** — command stack recording `(component, field, old, new)`
 - [x] Console panel — every print routes through `platform/Log`, and `dev/Console` installs the
       sink. REPL line evaluates against the live `lua_State`, with history on up/down.

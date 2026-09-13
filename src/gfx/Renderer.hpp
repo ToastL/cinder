@@ -18,6 +18,11 @@
 namespace cinder::platform { class Window; }
 namespace cinder::scene { class DrawList; }
 
+namespace cinder::gfx::pass {
+class MeshPass;
+class PerspectiveCamera;
+}
+
 namespace cinder::gfx {
 
 class Renderer {
@@ -33,6 +38,8 @@ public:
 
     void setClearColor(float r, float g, float b);
     void setViewportSize(int width, int height);
+    void overrideCamera3d(const cinder::gfx::pass::PerspectiveCamera& camera);
+    void releaseCamera3d();
     void beginFrame();
     void drawFrame();
     void capture(const std::string& path);
@@ -75,6 +82,7 @@ private:
     std::unique_ptr<cinder::gfx::pass::MeshPipeline> meshPipeline_;
     std::unique_ptr<CompositePipeline> compositePipeline_;
     std::vector<std::unique_ptr<cinder::gfx::pass::DrawPass>> passes_;
+    cinder::gfx::pass::MeshPass* meshPass_ = nullptr;
     std::unique_ptr<cinder::scene::DrawList> draws_;
     std::unique_ptr<Overlay> overlay_;
     std::function<void()> overlayDraw_;
