@@ -136,7 +136,8 @@ dev                        -> core and all of the above (a separate target, see 
 
 Everything down to `core` is the `engine` library. **`dev` is not** — it is its own target,
 `engine_dev`, and it holds everything editor-only: ImGui, the console, the Scene viewport with its
-editor camera and gizmos, the dockspace, the play session and the toolbar. It is the only place ImGui may be mentioned. `player` links `engine`; `editor` links
+editor camera and gizmos, the hierarchy and inspector, the dockspace, the play session and the
+toolbar. It is the only place ImGui may be mentioned. `player` links `engine`; `editor` links
 `engine_dev`. If a `#include <imgui.h>` ever appears outside `src/dev/`, the split is broken.
 
 **`platform` is the one leaf everything may reach for**, because `platform/Log.hpp` lives there and
@@ -307,8 +308,8 @@ render target and never writes it.
 null; `editor` passes `cinder::dev::overlayFactory()`. Panels are a second, separate hook —
 `setOverlayDraw(std::function<void()>)`, called from `beginFrame()` between `ImGui::NewFrame` and the
 `ImGui::Render` that happens during command recording. `editor/main.cpp` sets it to draw
-`dev/Toolbar`, `dev/Dockspace`, `dev/Viewport` and `dev/Console`, in that order — the dockspace has
-to be submitted before the windows it hosts. The two hooks together are what keep `gfx` free of both
+`dev/Toolbar`, `dev/Dockspace`, `dev/Viewport`, `dev/Hierarchy`, `dev/Inspector` and `dev/Console`, in
+that order — the dockspace has to be submitted before the windows it hosts. The two hooks together are what keep `gfx` free of both
 ImGui and `script`.
 
 What remains in the shipping binary is a null `unique_ptr`, an empty `std::function`, a zero
@@ -354,13 +355,14 @@ while the Scene window is focused** and the **mouse while the image is hovered**
 started on it is held. A locked cursor gives the game both and sets `ImGuiConfigFlags_NoMouse`: GLFW
 still reports a virtual cursor while disabled, and ImGui would otherwise click whatever panel it
 wanders over. Entering `Playing` focuses the window, so Play and Resume hand the game the keyboard
-without a click on the scene first. The console opens with `NoFocusOnAppearing`: every new window
-takes focus on its first frame, and the console is submitted after the Scene, so without the flag
-`editor --play` would start with the keyboard in the console. The flags are set while building
+without a click on the scene first. The hierarchy, inspector and console open with
+`NoFocusOnAppearing`: every new window takes focus on its first frame, and all three are submitted
+after the Scene, so without the flag `editor --play` would start with the keyboard in the console. The flags are set while building
 frame N's overlay and read by frame N+1's updates.
 
-`dev/Dockspace` builds the default layout — Scene above, Console below — with the `DockBuilder`
-API from `imgui_internal.h`, once, when the dockspace node does not exist yet. With no ini file,
+`dev/Dockspace` builds the default layout — Inspector down the right, Console along the bottom,
+Hierarchy left of the Scene — with the `DockBuilder` API from `imgui_internal.h`, once, when the
+dockspace node does not exist yet. With no ini file,
 that is every launch.
 
 ### The editor camera
@@ -395,6 +397,39 @@ the image. The sides are inset by `INSET`, so a camera the editor is looking str
 it is right after seeding — draws nothing, rather than a frame along the border that float noise
 leaves half-drawn. Being overlay, the frustums draw over geometry, cost the player nothing, and never
 appear in a `--capture`.
+
+### The hierarchy and the inspector
+
+`dev/Selection` holds the selected actor's **id**, never an `Actor*`. Play and Stop rebuild every
+actor through `loadScene`, and ids are what `SceneCodec` round-trips, so a selection made in Edit
+mode is still selected after Play and after Stop. `resolve` returns null — and forgets the id — once
+the actor is gone or marked destroyed, so an actor spawned during Play drops out of the selection on
+Stop.
+
+`dev/Hierarchy` draws `Scene::roots()` as a tree. A click selects, a click on empty space clears, and
+an actor that is inactive, itself or through a parent, is dimmed.
+
+`dev/Inspector` has no per-type code. It edits the actor's name and `active` flag, then walks
+`props<Transform>()` and every component's `propList()`, one widget per `PropType`: drags for numbers
+and vectors, a checkbox, a text field, and a combo filled from `PropDef::options()` for enums. Every
+write goes through `PropDef`, so clamping, in-place vector writes and `propChanged` behave exactly as
+they do from Lua and from the serializer. `step` is the drag speed; bounds reach ImGui only when the
+prop declares them, and `NoRoundToFormat` stops a drag rounding a value to its display precision. A
+prop declared with `CINDER_PROP_COLOR` gets a colour editor instead. Text commits on
+`IsItemDeactivatedAfterEdit`, not per keystroke, so a texture path does not try to load every prefix
+of itself.
+
+A component that is also a `PropBag` — a `Behaviour` — gets a second pass over `readBag()`, and writes
+back one key at a time through `PropBag::patchBag`. `patchBag` merges into whichever table is live:
+the pending `data` before `start`, the instance after it, coercing a sequence back into a vector when
+the field it replaces is one. It is not `writeBag`, which replaces the pending table and never
+reaches a running instance. Numbers, strings, bools and numeric sequences of up to four are editable;
+anything else is shown as a count.
+
+In Edit mode a behaviour's bag is only its `data` overrides: the prototype is never loaded before
+Play, so a field still at its script default is not listed. An edit made during Play lands on the
+running game and is discarded by Stop, like any other Play change. Nothing the inspector does is
+undoable or marks the scene dirty yet.
 
 ### Logging and the console
 
@@ -462,7 +497,8 @@ copies it per instance, applies the `data` overrides, wraps `start` in `task.spa
 and sets `self.actor` to an actor proxy.
 
 `Behaviour` is also a `PropBag`, so a scene saves its `data` overrides as a `data { ... }` block.
-Before `start` the bag is the pending `data` table; after it, `__behaviourFields`. `script/LuaProps`
+Before `start` the bag is the pending `data` table; after it, `__behaviourFields`. `patchBag`, the
+inspector's write, merges into whichever of the two is live — see *The hierarchy and the inspector*. `script/LuaProps`
 converts between Lua values and `PropValue` — scalars, arrays of scalars, string-keyed records, and
 vectors (detected by their metatable's `__vec`) as sequences of numbers. Functions, actor proxies and
 anything else with a metatable are skipped. On the way back in, `__behaviourNew` rebuilds a sequence
@@ -520,6 +556,10 @@ CINDER_COMPONENT(Camera, cinder::scene::Component) {
     CINDER_PROP_R(zoom_, 0.05f, 20.0f);
 }
 ```
+
+`CINDER_PROP_R` adds a clamp range, `CINDER_PROP_S` a range and a drag step, and `CINDER_PROP_COLOR`
+marks a `vec3`/`vec4` as a colour through `PropHint`. Only the inspector reads the step and the hint;
+neither changes how a prop is written or saved, and a colour is not clamped.
 
 `props<T>()` builds the list once into a function-local static and a `PropChain` recursion emits the
 base class's props first, so `Component::enabled` is always the first prop of every component —

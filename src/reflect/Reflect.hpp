@@ -29,7 +29,8 @@ public:
 
     template <auto Member>
     void add(std::string_view name,
-             float min = -FLT_MAX, float max = FLT_MAX, float step = 0.1f) {
+             float min = -FLT_MAX, float max = FLT_MAX, float step = 0.1f,
+             PropHint hint = PropHint::None) {
         using Ref = decltype(std::declval<Target&>().*Member);
         using Field = std::remove_cvref_t<Ref>;
 
@@ -49,6 +50,7 @@ public:
         def.min_ = min;
         def.max_ = max;
         def.step_ = step;
+        def.hint_ = hint;
         def.sink_ = &sinkOf<Target>;
 
         if constexpr (kind == PropType::Float) {
@@ -86,6 +88,8 @@ public:
                 return true;
             };
         } else {
+            def.options_ = EnumNames<Field>::names;
+            def.optionCount_ = EnumNames<Field>::count;
             def.readStr_ = [](const void* p) -> std::string_view {
                 const auto index = static_cast<std::size_t>(static_cast<const Target*>(p)->*Member);
                 return index < EnumNames<Field>::count ? EnumNames<Field>::names[index]
@@ -141,3 +145,6 @@ public:                                                                 \
 #define CINDER_PROP(field)              b.template add<&PropSelf::field>(#field)
 #define CINDER_PROP_R(field, lo, hi)    b.template add<&PropSelf::field>(#field, lo, hi)
 #define CINDER_PROP_S(field, lo, hi, s) b.template add<&PropSelf::field>(#field, lo, hi, s)
+#define CINDER_PROP_COLOR(field)                                            \
+    b.template add<&PropSelf::field>(#field, -FLT_MAX, FLT_MAX, 0.1f,       \
+                                     cinder::reflect::PropHint::Color)

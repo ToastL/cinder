@@ -40,7 +40,7 @@ public:
         CINDER_PROP(near_);
         CINDER_PROP(far_);
         CINDER_PROP_R(zoom_, 0.05f, 20.0f);
-        CINDER_PROP(clearColor_);
+        CINDER_PROP_COLOR(clearColor_);
         CINDER_PROP(virtualSize_);
     }
 

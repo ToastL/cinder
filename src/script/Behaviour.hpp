@@ -23,6 +23,7 @@ public:
 
     cinder::scene::PropRec readBag() const override;
     void writeBag(const cinder::scene::PropRec& values) override;
+    void patchBag(const cinder::scene::PropRec& values) override;
 
     const std::string& script() const { return script_; }
     void reload();

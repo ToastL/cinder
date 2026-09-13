@@ -149,3 +149,37 @@ TEST_CASE("labels are derived from the field name") {
     CHECK(cinder::reflect::deriveLabel("maxSpeed") == "Max Speed");
     CHECK(cinder::reflect::deriveLabel("position") == "Position");
 }
+
+TEST_CASE("a label only capitalises a leading lowercase letter") {
+    CHECK(cinder::reflect::deriveLabel("_hidden") == "_hidden");
+    CHECK(cinder::reflect::deriveLabel("x2") == "X2");
+}
+
+namespace {
+
+struct Swatch {
+    glm::vec4 tint{1, 1, 1, 1};
+
+    CINDER_PROPS(Swatch, void) { CINDER_PROP_COLOR(tint); }
+};
+
+}
+
+TEST_CASE("enum props list their constants in order") {
+    const auto options = prop("mode").options();
+    REQUIRE(options.size() == 2);
+    CHECK(options[0] == "low");
+    CHECK(options[1] == "high");
+    CHECK(prop("label").options().empty());
+}
+
+TEST_CASE("a color prop carries its hint and is not clamped") {
+    const cinder::reflect::PropDef& tint = cinder::reflect::props<Swatch>().front();
+    CHECK(tint.hint() == cinder::reflect::PropHint::Color);
+    CHECK(prop("offset").hint() == cinder::reflect::PropHint::None);
+
+    Swatch s;
+    const float hdr[] = {4, 0.5f, 0, 1};
+    tint.write(&s, hdr);
+    CHECK(s.tint.r == doctest::Approx(4));
+}

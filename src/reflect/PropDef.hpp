@@ -2,6 +2,8 @@
 
 #include "reflect/PropType.hpp"
 
+#include <cstddef>
+#include <span>
 #include <string>
 #include <string_view>
 #include <vector>
@@ -25,6 +27,8 @@ public:
     float min() const { return min_; }
     float max() const { return max_; }
     float step() const { return step_; }
+    PropHint hint() const { return hint_; }
+    std::span<const std::string_view> options() const { return {options_, optionCount_}; }
 
     void read(const void* target, float* out) const;
     void write(void* target, const float* values) const;
@@ -47,6 +51,9 @@ private:
     float min_ = 0;
     float max_ = 0;
     float step_ = 0;
+    PropHint hint_ = PropHint::None;
+    const std::string_view* options_ = nullptr;
+    std::size_t optionCount_ = 0;
 
     void (*readNum_)(const void*, float*) = nullptr;
     void (*writeNum_)(void*, const float*) = nullptr;

@@ -11,6 +11,8 @@ namespace cinder::reflect {
 
 enum class PropType { Float, Int, Vec2, Vec3, Vec4, Bool, String, Enum };
 
+enum class PropHint { None, Color };
+
 constexpr int arityOf(PropType type) {
     switch (type) {
         case PropType::Float:

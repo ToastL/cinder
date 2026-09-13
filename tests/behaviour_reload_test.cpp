@@ -16,6 +16,8 @@
 using cinder::scene::Actor;
 using cinder::scene::Components;
 using cinder::scene::PropRec;
+using cinder::scene::PropSeq;
+using cinder::scene::PropValue;
 using cinder::scene::Scene;
 using cinder::script::Behaviour;
 using cinder::serial::SceneCodec;
@@ -194,6 +196,52 @@ TEST_CASE("fields survive a scene save and load") {
 
     host.scene.update(0.1f);
     CHECK(host.probe("speed") == 7);
+    CHECK(host.probe("lift") == doctest::Approx(2.5));
+    CHECK(host.probe("size") == 3);
+}
+
+TEST_CASE("a patch before start becomes start data") {
+    Host host;
+    pending = "return { speed = 1, rate = 2, start = function(self) "
+              "_G.speed = self.speed; _G.rate = self.rate end }";
+
+    Behaviour* behaviour = host.attach("b.lua");
+    behaviour->patchBag(PropRec{{"speed", PropValue::integer(7)}});
+
+    const PropRec bag = behaviour->readBag();
+    CHECK(bag.at("speed").as<std::int64_t>() == 7);
+    CHECK(bag.count("rate") == 0);
+
+    host.scene.update(0.1f);
+    CHECK(host.probe("speed") == 7);
+    CHECK(host.probe("rate") == 2);
+}
+
+TEST_CASE("a patch keeps the other pending fields") {
+    Host host;
+    Behaviour* behaviour = host.scene.spawn("subject")->add<Behaviour>(
+            host.state, "b.lua", host.ref("{ phase = 3 }"));
+
+    behaviour->patchBag(PropRec{{"label", PropValue::text("box")}});
+
+    const PropRec bag = behaviour->readBag();
+    CHECK(bag.at("phase").as<std::int64_t>() == 3);
+    CHECK(bag.at("label").as<std::string>() == "box");
+}
+
+TEST_CASE("a patch after start writes the live instance") {
+    Host host;
+    pending = "return { speed = 1, offset = vec3(0, 0, 0), update = function(self) "
+              "_G.speed = self.speed; _G.lift = self.offset.y; _G.size = vecSize(self.offset) end }";
+
+    Behaviour* behaviour = host.attach("b.lua");
+    host.scene.update(0.1f);
+
+    const PropSeq lifted{PropValue::number(0), PropValue::number(2.5), PropValue::number(0)};
+    behaviour->patchBag(PropRec{{"offset", PropValue::seq(lifted)}});
+    host.scene.update(0.1f);
+
+    CHECK(host.probe("speed") == 1);
     CHECK(host.probe("lift") == doctest::Approx(2.5));
     CHECK(host.probe("size") == 3);
 }

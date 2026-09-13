@@ -45,6 +45,7 @@ public:
     virtual ~PropBag() = default;
     virtual PropRec readBag() const = 0;
     virtual void writeBag(const PropRec& values) = 0;
+    virtual void patchBag(const PropRec& values) = 0;
 };
 
 }

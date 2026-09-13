@@ -3,8 +3,11 @@
 #include "core/ProjectConfig.hpp"
 #include "dev/Console.hpp"
 #include "dev/Dockspace.hpp"
+#include "dev/Hierarchy.hpp"
 #include "dev/ImGuiLayer.hpp"
+#include "dev/Inspector.hpp"
 #include "dev/PlaySession.hpp"
+#include "dev/Selection.hpp"
 #include "dev/Toolbar.hpp"
 #include "dev/Viewport.hpp"
 #include "platform/Assets.hpp"
@@ -21,7 +24,10 @@ using cinder::core::Engine;
 using cinder::core::GameLoop;
 using cinder::core::ProjectConfig;
 using cinder::dev::Console;
+using cinder::dev::Hierarchy;
+using cinder::dev::Inspector;
 using cinder::dev::PlaySession;
+using cinder::dev::Selection;
 using cinder::dev::Toolbar;
 using cinder::dev::Viewport;
 using cinder::platform::Glfw;
@@ -69,12 +75,18 @@ int main(int argc, char** argv) {
             Console console(engine.script());
             Toolbar toolbar(session, engine, scenePath);
             Viewport viewport(session, engine);
-            engine.renderer().setOverlayDraw([&toolbar, &viewport, &console] {
-                toolbar.draw();
-                cinder::dev::drawDockspace();
-                viewport.draw();
-                console.draw();
-            });
+            Selection selection;
+            Hierarchy hierarchy(selection, engine.scene());
+            Inspector inspector(selection, engine.scene());
+            engine.renderer().setOverlayDraw(
+                    [&toolbar, &viewport, &hierarchy, &inspector, &console] {
+                        toolbar.draw();
+                        cinder::dev::drawDockspace();
+                        viewport.draw();
+                        hierarchy.draw();
+                        inspector.draw();
+                        console.draw();
+                    });
 
             if (std::filesystem::exists(scenePath)) {
                 engine.openScene(scenePath);

@@ -13,12 +13,12 @@ rather than scripts in the engine. Dear ImGui is up in a separate `engine_dev` t
 dockspace holding the Scene viewport and a console with a live Lua REPL, and a play toolbar in the
 main menu bar — `player` ships without a byte of it. The editor opens a project in Edit mode, seen
 through a free-flying editor camera with a frustum drawn for every scene camera; Play serializes the
-scene into a fresh Lua state and Stop restores it. 85 headless test cases and a 44-check Lua
-selftest.
+scene into a fresh Lua state and Stop restores it. A hierarchy selects an actor and an inspector
+edits its fields with no per-type editor code. 91 headless test cases and a 44-check Lua selftest.
 
 Foundations, the scene model, the scripting ergonomics, serialization and the Edit/Play split are
-done. The editor shell is underway — ImGui, the console, the toolbar, the Scene viewport and the
-editor camera have landed; the hierarchy and inspector are next.
+done. The editor shell is underway — ImGui, the console, the toolbar, the Scene viewport, the
+editor camera, the hierarchy and the inspector have landed; picking, gizmos and undo are next.
 
 ---
 
@@ -29,15 +29,21 @@ editor camera have landed; the hierarchy and inspector are next.
       the abstract `gfx::Overlay`, drawn inside the present pass. `editor` is the dev build;
       `player` links `engine` and contains no ImGui symbols at all.
 - [ ] Docking layout: viewport, hierarchy, inspector, console, asset browser. `dev/Dockspace` is up
-      with Scene above Console; the other panels dock into it as they land.
+      with Scene, Hierarchy, Inspector and Console; the asset browser docks into it when it lands.
 - [x] **Viewport** — `dev/Viewport`, the "Scene" window. The target is sized to the panel through
       `Renderer::setViewportSize` and registered with ImGui through `Overlay::addTexture`, and
       `engine.mousePosition()` is relative to the panel's top-left.
-- [ ] **Hierarchy** — tree of actors, drag to reparent, multi-select
-- [ ] **Inspector** — iterate `props<T>()`, one widget per field type (`float`, `int`, `bool`,
-      `std::string`, `glm::vec3`, color, asset reference, enum). `PropDef` already carries `label`,
-      `min`, `max` and `step`; only `step` and `label` are currently unread. A behaviour's fields are
-      its `PropBag`, not `props<T>()`, and need their own widget pass.
+- [x] **Hierarchy** — `dev/Hierarchy`, a tree of the scene's actors; a click selects. `dev/Selection`
+      holds an actor id, so the selection survives Play and Stop.
+- [ ] Hierarchy: drag to reparent, multi-select, create and delete actors
+- [x] **Inspector** — `dev/Inspector` walks `props<Transform>()` and every component's `propList()`,
+      one widget per `PropType`, with enum combos from `PropDef::options()` and colour pickers from
+      `CINDER_PROP_COLOR`. A behaviour's `PropBag` gets its own pass and writes through `patchBag`,
+      so a field edited during Play reaches the running instance.
+- [ ] Inspector: add and remove components; an asset-reference widget for texture and mesh names;
+      nested records and arrays, which are shown read-only as a count
+- [ ] Inspector: a behaviour's fields at their script default in Edit mode. The prototype is never
+      loaded before Play, so only the scene's `data` overrides are listed.
 - [ ] Gizmos — translate/rotate/scale handles, snapping. `dev/Gizmos` already draws a frustum for
       every perspective `Camera` in Edit mode, on the Scene window's draw list.
 - [ ] Mouse picking — click the viewport to select (id buffer or CPU raycast)
@@ -175,6 +181,8 @@ sugar, never the primary surface.
       `cursor.lua` and `spawner.lua` in `samples/sandbox2d` depend on the current behaviour.
 - [ ] **The packaged player finds itself through `argv[0]`**, so launching it through a `PATH`
       lookup rather than by path misses `engine/` and `project/` next to it
+- [ ] **The inspector edits `Transform.rotation` in radians**, the unit the engine stores. A degrees
+      display wants a `PropHint`, the way colours have one.
 - [ ] No CI
 
 ## Explicitly out of scope

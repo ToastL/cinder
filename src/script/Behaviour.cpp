@@ -41,6 +41,10 @@ function __behaviourForget(path)
     protos[path] = nil
 end
 
+function __behaviourPatch(target, values)
+    for k, v in pairs(values) do target[k] = coerce(target[k], v) end
+end
+
 function __behaviourFields(instance)
     local fields = {}
     for k, v in pairs(instance) do
@@ -122,6 +126,27 @@ void Behaviour::writeBag(const cinder::scene::PropRec& values) {
 
     pushRec(state_, values);
     data_ = luaL_ref(state_, LUA_REGISTRYINDEX);
+}
+
+void Behaviour::patchBag(const cinder::scene::PropRec& values) {
+    if (values.empty()) return;
+
+    const int top = lua_gettop(state_);
+    if (ref_ == LUA_NOREF && data_ == LUA_NOREF) {
+        lua_newtable(state_);
+        data_ = luaL_ref(state_, LUA_REGISTRYINDEX);
+    }
+
+    lua_getglobal(state_, "__behaviourPatch");
+    lua_rawgeti(state_, LUA_REGISTRYINDEX, ref_ != LUA_NOREF ? ref_ : data_);
+    pushRec(state_, values);
+
+    if (lua_pcall(state_, 2, 0, 0) != LUA_OK) {
+        const char* message = lua_tostring(state_, -1);
+        cinder::platform::logError("[lua] %s: %s\n", script_.c_str(),
+                                   message != nullptr ? message : "unknown error");
+    }
+    lua_settop(state_, top);
 }
 
 void Behaviour::reload() {

@@ -25,6 +25,7 @@ actors {
                 speed 0 0.5 0
             }
             Behaviour {
+                enabled false
                 script "scripts/bobber.lua"
                 data {
                     phase -8

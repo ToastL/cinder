@@ -36,7 +36,7 @@ public:
     CINDER_COMPONENT(SpriteRenderer, cinder::scene::Component) {
         CINDER_PROP(texture_);
         CINDER_PROP(size_);
-        CINDER_PROP(color_);
+        CINDER_PROP_COLOR(color_);
     }
 
 private:
