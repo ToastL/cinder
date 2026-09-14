@@ -1,6 +1,6 @@
 #pragma once
 
-#include "scene/Component.hpp"
+#include "scene/Node.hpp"
 
 #include <lua.hpp>
 
@@ -8,7 +8,7 @@
 
 namespace cinder::script {
 
-class Script final : public cinder::scene::Component, public cinder::reflect::PropSink {
+class Script final : public cinder::scene::Node, public cinder::reflect::PropSink {
 public:
     static const char* BOOTSTRAP;
 
@@ -24,7 +24,7 @@ public:
     bool running() const { return owner_ != LUA_NOREF; }
     void reload();
 
-    CINDER_COMPONENT(Script, cinder::scene::Component) { CINDER_PROP(file_); }
+    CINDER_NODE(Script, cinder::scene::Node) { CINDER_PROP(file_); }
 
 private:
     void start();

@@ -1,7 +1,7 @@
 #include <doctest/doctest.h>
 
 #include "components/Builtins.hpp"
-#include "scene/Components.hpp"
+#include "scene/NodeTypes.hpp"
 #include "scene/Scene.hpp"
 #include "script/Script.hpp"
 #include "serial/SceneCodec.hpp"
@@ -15,7 +15,7 @@
 #include <string>
 #include <vector>
 
-using cinder::scene::Components;
+using cinder::scene::NodeTypes;
 using cinder::scene::Scene;
 using cinder::script::Script;
 using cinder::serial::SceneCodec;
@@ -46,7 +46,7 @@ std::vector<std::filesystem::path> shippedScenes() {
 TEST_CASE("every shipped scene is canonical") {
     lua_State* state = luaL_newstate();
     {
-        Components types;
+        NodeTypes types;
         cinder::components::registerBuiltins(types);
         types.add<Script>("Script", [state] { return std::make_unique<Script>(state); });
         Scene scene{types};

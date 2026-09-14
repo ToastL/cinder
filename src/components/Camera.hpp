@@ -1,13 +1,13 @@
 #pragma once
 
-#include "scene/Component.hpp"
+#include "scene/Spatial.hpp"
 
 #include <glm/vec2.hpp>
 #include <glm/vec4.hpp>
 
 namespace cinder::components {
 
-class Camera final : public cinder::scene::Component {
+class Camera final : public cinder::scene::Spatial {
 public:
     enum class Projection { Perspective, Orthographic };
 
@@ -34,7 +34,7 @@ public:
 
     void onRender(float alpha, cinder::scene::DrawList& draws) override;
 
-    CINDER_COMPONENT(Camera, cinder::scene::Component) {
+    CINDER_NODE(Camera, cinder::scene::Spatial) {
         CINDER_PROP(projection_);
         CINDER_PROP_S(fov_, 1.0f, 179.0f, 1.0f);
         CINDER_PROP(near_);

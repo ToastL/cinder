@@ -1,7 +1,6 @@
 #include "script/Script.hpp"
 
 #include "platform/Log.hpp"
-#include "scene/Actor.hpp"
 
 #include <utility>
 
@@ -29,9 +28,8 @@ function __scriptCheck(file)
     compile(file, {})
 end
 
-function __scriptStart(file, actor, previous)
-    local script = { actor = __actor(actor), file = file }
-    local env = setmetatable({ script = script }, { __index = _G })
+function __scriptStart(file, node, previous)
+    local env = setmetatable({ script = __node(node) }, { __index = _G })
     local chunk = compile(file, env)
 
     if previous then __taskStop(previous) end
@@ -54,13 +52,13 @@ Script::Script(lua_State* state) : state_(state) {}
 Script::Script(lua_State* state, std::string file) : state_(state), file_(std::move(file)) {}
 
 void Script::start() {
-    if (file_.empty() || actor() == nullptr) return;
+    if (file_.empty() || scene() == nullptr) return;
 
     const int top = lua_gettop(state_);
 
     lua_getglobal(state_, "__scriptStart");
     lua_pushstring(state_, file_.c_str());
-    lua_pushinteger(state_, actor()->id());
+    lua_pushinteger(state_, id());
     if (owner_ == LUA_NOREF) lua_pushnil(state_);
     else lua_rawgeti(state_, LUA_REGISTRYINDEX, owner_);
 

@@ -1,7 +1,7 @@
-local actor = script.actor
+local cursor = script.parent
 
 stepped:connect(function()
     local mx, my = engine.mousePosition()
     local wx, wy = engine.screenToWorld(mx, my)
-    actor.position = vec3(wx, wy, 0)
+    cursor.position = vec3(wx, wy, 0)
 end)

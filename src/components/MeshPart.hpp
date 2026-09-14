@@ -1,23 +1,23 @@
 #pragma once
 
-#include "scene/Component.hpp"
+#include "scene/Spatial.hpp"
 
 #include <string>
 #include <utility>
 
 namespace cinder::components {
 
-class MeshRenderer final : public cinder::scene::Component, public cinder::reflect::PropSink {
+class MeshPart final : public cinder::scene::Spatial, public cinder::reflect::PropSink {
 public:
     const std::string& mesh() const { return mesh_; }
     const std::string& texture() const { return texture_; }
 
-    MeshRenderer& setMesh(std::string name) {
+    MeshPart& setMesh(std::string name) {
         mesh_ = std::move(name);
         meshHandle_ = -1;
         return *this;
     }
-    MeshRenderer& setTexture(std::string path) {
+    MeshPart& setTexture(std::string path) {
         texture_ = std::move(path);
         textureHandle_ = -1;
         return *this;
@@ -30,7 +30,7 @@ public:
         if (prop.name() == "texture") textureHandle_ = -1;
     }
 
-    CINDER_COMPONENT(MeshRenderer, cinder::scene::Component) {
+    CINDER_NODE(MeshPart, cinder::scene::Spatial) {
         CINDER_PROP(mesh_);
         CINDER_PROP(texture_);
     }

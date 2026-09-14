@@ -2,10 +2,11 @@
 
 #include "lua/LuaApi.hpp"
 #include "platform/Log.hpp"
-#include "scene/Actor.hpp"
 #include "scene/Attributes.hpp"
-#include "scene/Components.hpp"
+#include "scene/Node.hpp"
+#include "scene/NodeTypes.hpp"
 #include "scene/Scene.hpp"
+#include "scene/Transform.hpp"
 #include "script/LuaProps.hpp"
 
 #include <lua.hpp>
@@ -13,6 +14,7 @@
 #include <optional>
 #include <string>
 #include <utility>
+#include <vector>
 
 namespace cinder::script {
 namespace {
@@ -20,37 +22,44 @@ namespace {
 using cinder::lua::LuaApi;
 using cinder::reflect::PropDef;
 using cinder::reflect::PropType;
-using cinder::scene::Actor;
-using cinder::scene::Component;
+using cinder::scene::Node;
 using cinder::scene::PropValue;
 using cinder::scene::Scene;
 using cinder::scene::Transform;
 
 Scene& sceneOf(lua_State* state) { return *LuaApi::context<Scene>(state); }
 
-Actor* actorOf(lua_State* state) {
-    return sceneOf(state).byId(static_cast<int>(lua_tointeger(state, 1)));
+Node* nodeAt(lua_State* state, int index) {
+    if (lua_isnoneornil(state, index)) return nullptr;
+    return sceneOf(state).byId(static_cast<int>(lua_tointeger(state, index)));
+}
+
+Node* nodeOf(lua_State* state) { return nodeAt(state, 1); }
+
+void pushNode(lua_State* state, const Node* node) {
+    if (node == nullptr) lua_pushnil(state);
+    else lua_pushinteger(state, node->id());
+}
+
+int pushIds(lua_State* state, const std::vector<Node*>& nodes) {
+    lua_createtable(state, static_cast<int>(nodes.size()), 0);
+    lua_Integer index = 0;
+    for (Node* entry : nodes) {
+        if (entry->destroyed()) continue;
+        lua_pushinteger(state, entry->id());
+        lua_rawseti(state, -2, ++index);
+    }
+    return 1;
 }
 
 Transform* transformOf(lua_State* state) {
-    Actor* actor = actorOf(state);
-    return actor == nullptr ? nullptr : &actor->transform();
+    Node* node = nodeOf(state);
+    return node == nullptr ? nullptr : node->transform();
 }
 
-Component* componentOf(lua_State* state) {
-    Actor* actor = actorOf(state);
-    if (actor == nullptr) return nullptr;
-
-    const char* name = lua_tostring(state, 2);
-    if (name == nullptr) return nullptr;
-
-    const auto* entry = sceneOf(state).types().entry(name);
-    return entry == nullptr ? nullptr : actor->get(entry->type);
-}
-
-const PropDef* propOf(const Component& component, const char* field) {
+const PropDef* propOf(const Node& node, const char* field) {
     if (field == nullptr) return nullptr;
-    for (const PropDef& def : component.propList()) {
+    for (const PropDef& def : node.propList()) {
         if (def.name() == field) return &def;
     }
     return nullptr;
@@ -63,112 +72,93 @@ int pushVec3(lua_State* state, const glm::vec3& value) {
     return 3;
 }
 
-int spawn(lua_State* state) {
+int create(lua_State* state) {
     Scene& scene = sceneOf(state);
-    Actor* parent = lua_isnoneornil(state, 2)
-            ? nullptr
-            : scene.byId(static_cast<int>(lua_tointeger(state, 2)));
-    lua_pushinteger(state, scene.spawn(lua_tostring(state, 1), parent)->id());
-    return 1;
-}
-
-int destroy(lua_State* state) {
-    sceneOf(state).destroy(actorOf(state));
-    return 0;
-}
-
-int find(lua_State* state) {
-    Actor* actor = sceneOf(state).find(lua_tostring(state, 1));
-    if (actor == nullptr) lua_pushnil(state);
-    else lua_pushinteger(state, actor->id());
-    return 1;
-}
-
-int setParent(lua_State* state) {
-    Actor* actor = actorOf(state);
-    if (actor != nullptr) {
-        actor->setParent(lua_isnoneornil(state, 2)
-                                 ? nullptr
-                                 : sceneOf(state).byId(static_cast<int>(lua_tointeger(state, 2))));
+    const char* className = lua_tostring(state, 1);
+    if (className == nullptr || scene.types().entry(className) == nullptr) {
+        return luaL_error(state, "'%s' is not a node class", className != nullptr ? className : "nil");
     }
-    return 0;
+    pushNode(state, scene.create(className, nodeAt(state, 2)));
+    return 1;
 }
 
-int setActive(lua_State* state) {
-    Actor* actor = actorOf(state);
-    if (actor != nullptr) actor->setActive(lua_toboolean(state, 2) != 0);
-    return 0;
-}
-
-int active(lua_State* state) {
-    Actor* actor = actorOf(state);
-    lua_pushboolean(state, actor != nullptr && actor->activeSelf());
+int className(lua_State* state) {
+    Node* node = nodeOf(state);
+    if (node == nullptr) return 0;
+    const std::string_view type = sceneOf(state).types().nameOf(*node);
+    lua_pushlstring(state, type.data(), type.size());
     return 1;
 }
 
 int name(lua_State* state) {
-    Actor* actor = actorOf(state);
-    if (actor == nullptr) lua_pushnil(state);
-    else lua_pushstring(state, actor->name().c_str());
+    Node* node = nodeOf(state);
+    if (node == nullptr) return 0;
+    lua_pushstring(state, node->name().c_str());
     return 1;
 }
 
 int setName(lua_State* state) {
-    Actor* actor = actorOf(state);
-    if (actor != nullptr) actor->setName(lua_tostring(state, 2));
+    Node* node = nodeOf(state);
+    const char* text = lua_tostring(state, 2);
+    if (node != nullptr && text != nullptr) node->setName(text);
     return 0;
 }
 
 int parent(lua_State* state) {
-    Actor* actor = actorOf(state);
-    if (actor == nullptr || actor->parent() == nullptr) lua_pushnil(state);
-    else lua_pushinteger(state, actor->parent()->id());
+    Node* node = nodeOf(state);
+    pushNode(state, node == nullptr ? nullptr : node->parent());
     return 1;
+}
+
+int setParent(lua_State* state) {
+    Node* node = nodeOf(state);
+    if (node == nullptr) return 0;
+    Node* next = nodeAt(state, 2);
+    if (next == node || node->isAncestorOf(next)) {
+        return luaL_error(state, "a node cannot be parented inside itself");
+    }
+    node->setParent(next);
+    return 0;
 }
 
 int children(lua_State* state) {
-    Actor* actor = actorOf(state);
-    const std::size_t count = actor == nullptr ? 0 : actor->children().size();
-
-    lua_createtable(state, static_cast<int>(count), 0);
-    for (std::size_t i = 0; i < count; ++i) {
-        lua_pushinteger(state, actor->children()[i]->id());
-        lua_rawseti(state, -2, static_cast<lua_Integer>(i) + 1);
+    Node* node = nodeOf(state);
+    if (node == nullptr) {
+        lua_newtable(state);
+        return 1;
     }
+    return pushIds(state, node->children());
+}
+
+int roots(lua_State* state) { return pushIds(state, sceneOf(state).roots()); }
+
+int find(lua_State* state) {
+    const char* text = lua_tostring(state, 1);
+    pushNode(state, text == nullptr ? nullptr : sceneOf(state).find(text));
     return 1;
+}
+
+int findChild(lua_State* state) {
+    Node* node = nodeOf(state);
+    const char* text = lua_tostring(state, 2);
+    pushNode(state, node == nullptr || text == nullptr ? nullptr : node->findFirstChild(text));
+    return 1;
+}
+
+int clone(lua_State* state) {
+    Node* node = nodeOf(state);
+    pushNode(state, node == nullptr ? nullptr : sceneOf(state).clone(*node, node->parent()));
+    return 1;
+}
+
+int destroy(lua_State* state) {
+    sceneOf(state).destroy(nodeOf(state));
+    return 0;
 }
 
 int valid(lua_State* state) {
-    lua_pushboolean(state, actorOf(state) != nullptr);
-    return 1;
-}
-
-int hasComponent(lua_State* state) {
-    lua_pushboolean(state, componentOf(state) != nullptr);
-    return 1;
-}
-
-int componentNames(lua_State* state) {
-    const auto& entries = sceneOf(state).types().registered();
-    lua_createtable(state, static_cast<int>(entries.size()), 0);
-    for (std::size_t i = 0; i < entries.size(); ++i) {
-        lua_pushstring(state, entries[i].name.c_str());
-        lua_rawseti(state, -2, static_cast<lua_Integer>(i) + 1);
-    }
-    return 1;
-}
-
-int propNames(lua_State* state) {
-    const char* type = lua_tostring(state, 1);
-    const auto* props = type == nullptr ? nullptr : sceneOf(state).types().propsOf(type);
-    const std::size_t count = props == nullptr ? 0 : props->size();
-
-    lua_createtable(state, static_cast<int>(count), 0);
-    for (std::size_t i = 0; i < count; ++i) {
-        const std::string_view field = (*props)[i].name();
-        lua_pushlstring(state, field.data(), field.size());
-        lua_rawseti(state, -2, static_cast<lua_Integer>(i) + 1);
-    }
+    Node* node = nodeOf(state);
+    lua_pushboolean(state, node != nullptr && !node->destroyed());
     return 1;
 }
 
@@ -179,7 +169,8 @@ int setPosition(lua_State* state) {
                        static_cast<float>(lua_tonumber(state, 3)),
                        LuaApi::optFloat(state, 4, 0.0f));
     }
-    return 0;
+    lua_pushboolean(state, t != nullptr);
+    return 1;
 }
 
 int setRotation(lua_State* state) {
@@ -189,7 +180,8 @@ int setRotation(lua_State* state) {
                        static_cast<float>(lua_tonumber(state, 3)),
                        LuaApi::optFloat(state, 4, 0.0f));
     }
-    return 0;
+    lua_pushboolean(state, t != nullptr);
+    return 1;
 }
 
 int setScale(lua_State* state) {
@@ -199,7 +191,8 @@ int setScale(lua_State* state) {
                     static_cast<float>(lua_tonumber(state, 3)),
                     LuaApi::optFloat(state, 4, 1.0f));
     }
-    return 0;
+    lua_pushboolean(state, t != nullptr);
+    return 1;
 }
 
 int translate(lua_State* state) {
@@ -209,7 +202,8 @@ int translate(lua_State* state) {
                      static_cast<float>(lua_tonumber(state, 3)),
                      LuaApi::optFloat(state, 4, 0.0f));
     }
-    return 0;
+    lua_pushboolean(state, t != nullptr);
+    return 1;
 }
 
 int position(lua_State* state) {
@@ -247,116 +241,44 @@ int up(lua_State* state) {
     return t == nullptr ? 0 : pushVec3(state, t->up());
 }
 
-int addComponent(lua_State* state) {
-    Actor* actor = actorOf(state);
-    if (actor == nullptr) return 0;
-
-    const char* type = lua_tostring(state, 2);
-    auto component = type == nullptr ? nullptr : sceneOf(state).types().create(type);
-    if (component == nullptr) {
-        cinder::platform::logError("[lua] unknown component type: %s\n", type != nullptr ? type : "nil");
-        return 0;
-    }
-
-    actor->add(std::move(component));
-    return 0;
-}
-
-enum class AttributeWrite { Done, BadName, BadValue };
-
-AttributeWrite writeAttribute(lua_State* state, Actor& actor) {
-    const char* name = lua_tostring(state, 2);
-    if (name == nullptr || !cinder::scene::isAttributeName(name)) return AttributeWrite::BadName;
-
-    if (lua_isnoneornil(state, 3)) {
-        actor.removeAttribute(name);
-        return AttributeWrite::Done;
-    }
-
-    std::optional<PropValue> value = readProp(state, 3);
-    if (!value || !cinder::scene::isAttributeValue(*value)) return AttributeWrite::BadValue;
-
-    actor.setAttribute(name, std::move(*value));
-    return AttributeWrite::Done;
-}
-
-int setAttribute(lua_State* state) {
-    Actor* actor = actorOf(state);
-    if (actor == nullptr) return 0;
-
-    switch (writeAttribute(state, *actor)) {
-        case AttributeWrite::BadName:
-            return luaL_error(state, "'%s' is not an attribute name", luaL_tolstring(state, 2, nullptr));
-        case AttributeWrite::BadValue:
-            return luaL_error(state, "attribute '%s' cannot hold a %s", lua_tostring(state, 2),
-                              luaL_typename(state, 3));
-        case AttributeWrite::Done:
-            break;
-    }
-    return 0;
-}
-
-int getAttribute(lua_State* state) {
-    Actor* actor = actorOf(state);
-    const char* name = lua_tostring(state, 2);
-    if (actor == nullptr || name == nullptr) return 0;
-
-    const PropValue* value = actor->attribute(name);
-    if (value == nullptr) return 0;
-
-    pushProp(state, *value);
-    return 1;
-}
-
-int getAttributes(lua_State* state) {
-    Actor* actor = actorOf(state);
-    if (actor == nullptr) lua_newtable(state);
-    else pushRec(state, actor->attributes());
-    return 1;
-}
-
 int setProp(lua_State* state) {
-    Component* component = componentOf(state);
-    if (component == nullptr) return 0;
-
-    const PropDef* prop = propOf(*component, lua_tostring(state, 3));
+    Node* node = nodeOf(state);
+    const PropDef* prop = node == nullptr ? nullptr : propOf(*node, lua_tostring(state, 2));
     if (prop == nullptr) {
-        cinder::platform::logError("[lua] %s has no prop %s\n", lua_tostring(state, 2),
-                                   lua_tostring(state, 3));
-        return 0;
+        lua_pushboolean(state, false);
+        return 1;
     }
 
-    void* target = component->propTarget();
+    void* target = node->propTarget();
     switch (prop->type()) {
         case PropType::Bool:
-            prop->writeBool(target, lua_toboolean(state, 4) != 0);
+            prop->writeBool(target, lua_toboolean(state, 3) != 0);
             break;
         case PropType::String:
         case PropType::Enum: {
-            const char* text = lua_tostring(state, 4);
+            const char* text = lua_tostring(state, 3);
             prop->writeText(target, text != nullptr ? text : "");
             break;
         }
         default: {
             float values[4]{};
             for (int i = 0; i < prop->arity(); ++i) {
-                values[i] = static_cast<float>(lua_tonumber(state, 4 + i));
+                values[i] = static_cast<float>(lua_tonumber(state, 3 + i));
             }
             prop->write(target, values);
             break;
         }
     }
-    return 0;
+    lua_pushboolean(state, true);
+    return 1;
 }
 
 int getProp(lua_State* state) {
-    Component* component = componentOf(state);
-    if (component == nullptr) return 0;
-
-    const PropDef* prop = propOf(*component, lua_tostring(state, 3));
+    Node* node = nodeOf(state);
+    const PropDef* prop = node == nullptr ? nullptr : propOf(*node, lua_tostring(state, 2));
     if (prop == nullptr) return 0;
 
-    const void* target = component->propTarget();
+    const void* target = node->propTarget();
     switch (prop->type()) {
         case PropType::Bool:
             lua_pushboolean(state, prop->readBool(target));
@@ -376,23 +298,124 @@ int getProp(lua_State* state) {
     }
 }
 
+enum class AttributeWrite { Done, BadName, BadValue };
+
+AttributeWrite writeAttribute(lua_State* state, Node& node) {
+    const char* key = lua_tostring(state, 2);
+    if (key == nullptr || !cinder::scene::isAttributeName(key)) return AttributeWrite::BadName;
+
+    if (lua_isnoneornil(state, 3)) {
+        node.removeAttribute(key);
+        return AttributeWrite::Done;
+    }
+
+    std::optional<PropValue> value = readProp(state, 3);
+    if (!value || !cinder::scene::isAttributeValue(*value)) return AttributeWrite::BadValue;
+
+    node.setAttribute(key, std::move(*value));
+    return AttributeWrite::Done;
+}
+
+int setAttribute(lua_State* state) {
+    Node* node = nodeOf(state);
+    if (node == nullptr) return 0;
+
+    switch (writeAttribute(state, *node)) {
+        case AttributeWrite::BadName:
+            return luaL_error(state, "'%s' is not an attribute name", luaL_tolstring(state, 2, nullptr));
+        case AttributeWrite::BadValue:
+            return luaL_error(state, "attribute '%s' cannot hold a %s", lua_tostring(state, 2),
+                              luaL_typename(state, 3));
+        case AttributeWrite::Done:
+            break;
+    }
+    return 0;
+}
+
+int getAttribute(lua_State* state) {
+    Node* node = nodeOf(state);
+    const char* key = lua_tostring(state, 2);
+    if (node == nullptr || key == nullptr) return 0;
+
+    const PropValue* value = node->attribute(key);
+    if (value == nullptr) return 0;
+
+    pushProp(state, *value);
+    return 1;
+}
+
+int getAttributes(lua_State* state) {
+    Node* node = nodeOf(state);
+    if (node == nullptr) lua_newtable(state);
+    else pushRec(state, node->attributes());
+    return 1;
+}
+
+class LuaObserver final : public cinder::scene::SceneObserver {
+public:
+    explicit LuaObserver(lua_State* state) : state_(state) {}
+
+    void attributeChanged(Node& node, const std::string& key) override {
+        const int top = lua_gettop(state_);
+        if (!function(top, "__attributeChanged")) return;
+        lua_pushinteger(state_, node.id());
+        lua_pushlstring(state_, key.data(), key.size());
+        call(top, 2);
+    }
+
+    void childAdded(Node& parent, Node& child) override { pair(parent, child, "__childAdded"); }
+
+    void childRemoved(Node& parent, Node& child) override { pair(parent, child, "__childRemoved"); }
+
+    void destroying(Node& node) override {
+        const int top = lua_gettop(state_);
+        if (!function(top, "__destroying")) return;
+        lua_pushinteger(state_, node.id());
+        call(top, 1);
+    }
+
+private:
+    void pair(Node& parent, Node& child, const char* global) {
+        const int top = lua_gettop(state_);
+        if (!function(top, global)) return;
+        lua_pushinteger(state_, parent.id());
+        lua_pushinteger(state_, child.id());
+        call(top, 2);
+    }
+
+    bool function(int top, const char* global) {
+        lua_getglobal(state_, global);
+        if (lua_isfunction(state_, -1)) return true;
+        lua_settop(state_, top);
+        return false;
+    }
+
+    void call(int top, int args) {
+        if (lua_pcall(state_, args, 0, 0) != LUA_OK) {
+            cinder::platform::logError("[lua] %s\n", lua_tostring(state_, -1));
+        }
+        lua_settop(state_, top);
+    }
+
+    lua_State* state_;
+};
+
 }
 
 void registerSceneApi(cinder::lua::LuaApi& api, Scene& scene) {
-    api.bind("spawn", spawn, &scene);
-    api.bind("destroy", destroy, &scene);
-    api.bind("find", find, &scene);
-    api.bind("setParent", setParent, &scene);
-    api.bind("setActive", setActive, &scene);
-    api.bind("active", active, &scene);
+    api.bind("create", create, &scene);
+    api.bind("className", className, &scene);
     api.bind("name", name, &scene);
     api.bind("setName", setName, &scene);
     api.bind("parent", parent, &scene);
+    api.bind("setParent", setParent, &scene);
     api.bind("children", children, &scene);
+    api.bind("roots", roots, &scene);
+    api.bind("find", find, &scene);
+    api.bind("findChild", findChild, &scene);
+    api.bind("clone", clone, &scene);
+    api.bind("destroy", destroy, &scene);
     api.bind("valid", valid, &scene);
-    api.bind("hasComponent", hasComponent, &scene);
-    api.bind("componentNames", componentNames, &scene);
-    api.bind("propNames", propNames, &scene);
 
     api.bind("setPosition", setPosition, &scene);
     api.bind("setRotation", setRotation, &scene);
@@ -406,7 +429,6 @@ void registerSceneApi(cinder::lua::LuaApi& api, Scene& scene) {
     api.bind("right", right, &scene);
     api.bind("up", up, &scene);
 
-    api.bind("addComponent", addComponent, &scene);
     api.bind("setProp", setProp, &scene);
     api.bind("getProp", getProp, &scene);
 
@@ -415,22 +437,8 @@ void registerSceneApi(cinder::lua::LuaApi& api, Scene& scene) {
     api.bind("getAttributes", getAttributes, &scene);
 }
 
-void listenForAttributes(lua_State* state, Scene& scene) {
-    scene.setAttributeListener([state](Actor& actor, const std::string& name) {
-        const int top = lua_gettop(state);
-        lua_getglobal(state, "__attributeChanged");
-        if (!lua_isfunction(state, -1)) {
-            lua_settop(state, top);
-            return;
-        }
-
-        lua_pushinteger(state, actor.id());
-        lua_pushlstring(state, name.data(), name.size());
-        if (lua_pcall(state, 2, 0, 0) != LUA_OK) {
-            cinder::platform::logError("[lua] attributeChanged: %s\n", lua_tostring(state, -1));
-        }
-        lua_settop(state, top);
-    });
+std::unique_ptr<cinder::scene::SceneObserver> makeSceneObserver(lua_State* state) {
+    return std::make_unique<LuaObserver>(state);
 }
 
 }

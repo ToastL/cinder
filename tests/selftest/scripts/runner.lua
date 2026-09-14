@@ -5,7 +5,8 @@ local function check(what, ok)
 end
 local function near(a, b) return math.abs(a - b) < 1e-4 end
 
-check("script actor",   script.actor.name == "SelfTest" and script.file == "scripts/runner.lua")
+check("script node",    script.className == "Script" and script.file == "scripts/runner.lua")
+check("script parent",  script.parent.name == "SelfTest")
 
 check("vec add",        vec3(1, 2, 3) + vec3(1, 1, 1) == vec3(2, 3, 4))
 check("vec sub",        vec3(5, 5, 5) - vec3(1, 2, 3) == vec3(4, 3, 2))
@@ -25,11 +26,11 @@ check("color channels", near(c.r, 0.1) and near(c.g, 0.2) and near(c.b, 0.3) and
 c.r = 0.9
 check("color write",    near(c.x, 0.9))
 
-local a = scene:spawn("Alpha")
-check("spawn",          a ~= nil and a.name == "Alpha")
+local a = scene:create("Group")
+check("create",         a ~= nil and a.className == "Group" and a.name == "Group")
 a.name = "Renamed"
 check("name write",     a.name == "Renamed")
-check("actor identity", scene:find("Renamed") == a)
+check("node identity",  scene:find("Renamed") == a)
 
 a.position = vec3(1, 2, 3)
 check("position rt",    a.position == vec3(1, 2, 3))
@@ -38,35 +39,31 @@ check("position math",  a.position == vec3(1, 3, 3))
 a.scale = vec3(2, 2, 2)
 check("scale rt",       a.scale == vec3(2, 2, 2))
 
-local kid = a:spawn("Kid")
-check("child spawn",    kid.parent == a)
-check("children list",  #a:children() == 1)
-check("child by name",  a:child("Kid") == kid)
+local kid = a:add("Group")
+kid.name = "Kid"
+check("add child",      kid.parent == a)
+check("children list",  #a:getChildren() == 1)
+check("findFirstChild", a:findFirstChild("Kid") == kid)
+check("child by name",  a.Kid == kid)
+check("missing child",  a:findFirstChild("Nope") == nil)
 kid.parent = nil
 check("reparent nil",   kid.parent == nil)
 
-check("active default", a.active == true)
-a.active = false
-check("active write",   a.active == false)
-a.active = true
+check("enabled default", a.enabled == true)
+a.enabled = false
+check("enabled write",  a.enabled == false)
+a.enabled = true
 
-local sprite = a:add("SpriteRenderer")
-check("add component",  sprite ~= nil)
-check("get component",  a:get("SpriteRenderer") ~= nil)
-check("dot component",  a.SpriteRenderer ~= nil)
-check("missing comp",   a:get("Spin") == nil)
-
+local sprite = a:add("Sprite")
+check("sprite class",   sprite.className == "Sprite")
 sprite.size = vec2(12, 34)
 check("vec2 prop rt",   sprite.size == vec2(12, 34))
 sprite.color = rgba(0.5, 0.25, 0.125, 1)
 check("vec4 prop rt",   near(sprite.color.r, 0.5) and near(sprite.color.b, 0.125))
 sprite.texture = "none.png"
 check("string prop rt", sprite.texture == "none.png")
-sprite.texture = ""
-check("bool prop rt",   sprite.enabled == true)
-sprite.enabled = false
-check("bool prop write", sprite.enabled == false)
-sprite.enabled = true
+sprite:add("Group").name = "texture"
+check("prop before child", sprite.texture == "none.png")
 
 local cam = a:add("Camera")
 cam.projection = "orthographic"
@@ -74,8 +71,23 @@ check("enum prop rt",   cam.projection == "orthographic")
 cam.fov = 500
 check("clamp via proxy", near(cam.fov, 179))
 
-local ok = pcall(function() a.nonsense = 1 end)
-check("unknown prop errors", not ok)
+check("unknown prop errors", not pcall(function() a.nonsense = 1 end))
+
+local folder = scene:create("Folder")
+check("folder has no position", folder.position == nil
+      and not pcall(function() folder.position = vec3(1, 1, 1) end))
+
+local holder = scene:create("Group")
+holder.position = vec3(10, 0, 0)
+local inner = holder:add("Folder"):add("Group")
+inner.position = vec3(0, 1, 0)
+check("folder breaks the chain", inner.worldPosition == vec3(0, 1, 0))
+
+local copy = sprite:clone()
+check("clone",          copy ~= sprite and copy.texture == "none.png" and copy.parent == a
+      and copy:findFirstChild("texture") ~= nil)
+sprite.texture = ""
+copy.texture = ""
 
 a:setAttribute("hp", 10)
 check("attribute rt",   a:getAttribute("hp") == 10)
@@ -97,6 +109,17 @@ check("attribute remove", a:getAttribute("hp") == nil and hpChanges == 2)
 check("invalid attribute errors", not pcall(function() a:setAttribute("bad", {}) end))
 check("invalid attribute name errors", not pcall(function() a:setAttribute("bad name", 1) end))
 
+local added, removed, destroyed = nil, nil, false
+a.childAdded:connect(function(child) added = child end)
+a.childRemoved:connect(function(child) removed = child end)
+local temp = a:add("Group")
+check("childAdded",     added == temp)
+temp.destroying:connect(function() destroyed = true end)
+temp:destroy()
+
+local spinner = scene:create("Group")
+spinner:add("Spin").speed = vec3(0, 1, 0)
+
 local ticks = 0
 stepped:connect(function(dt) ticks = ticks + 1 end)
 
@@ -109,12 +132,13 @@ end)
 local delayed = false
 task.delay(0.15, function() delayed = true end)
 
-local spawned = scene:spawn("Spawned")
+local spawned = scene:create("Group")
+spawned.name = "Spawned"
 spawned:setAttribute("mark", 7)
-spawned:addScript("scripts/marker.lua")
+spawned:add("Script").file = "scripts/marker.lua"
 
-local ticker = scene:spawn("Ticker")
-ticker:addScript("scripts/ticker.lua")
+local ticker = scene:create("Group")
+ticker:add("Script").file = "scripts/ticker.lua"
 local ticksAtDestroy = nil
 task.delay(0.1, function()
     ticker:destroy()
@@ -126,11 +150,13 @@ task.delay(0.4, function()
     check("stepped signal", ticks > 5)
     check("task.wait", waited)
     check("task.delay", delayed)
+    check("childRemoved and destroying", removed == temp and destroyed)
+    check("spin rotates its parent", spinner.rotation.y > 0.1)
     check("attribute from scene", marks.Marked == 42)
-    check("attribute before addScript", marks.Spawned == 7)
+    check("attribute before the script", marks.Spawned == 7)
     check("script top level yields", _G.selftestYielded == true)
     check("script globals are private", leaked == nil)
-    check("destroyed actor stops its script",
+    check("destroyed node stops its script",
           ticksAtDestroy ~= nil and ticksAtDestroy > 0 and _G.selftestTicks == ticksAtDestroy)
     engine.log(fails == 0 and "ALL PASS" or (fails .. " FAILED"))
     engine.quit()

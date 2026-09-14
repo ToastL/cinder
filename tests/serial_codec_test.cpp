@@ -2,56 +2,61 @@
 
 #include "components/Builtins.hpp"
 #include "components/Camera.hpp"
-#include "components/MeshRenderer.hpp"
-#include "components/SpriteRenderer.hpp"
-#include "scene/Actor.hpp"
-#include "scene/Components.hpp"
+#include "components/Group.hpp"
+#include "components/MeshPart.hpp"
+#include "components/Sprite.hpp"
+#include "scene/Node.hpp"
+#include "scene/NodeTypes.hpp"
 #include "scene/PropValue.hpp"
 #include "scene/Scene.hpp"
-#include "script/Script.hpp"
 #include "serial/SceneCodec.hpp"
-
-#include <lua.hpp>
 
 #include <cstdint>
 #include <memory>
+#include <stdexcept>
 #include <string>
 
 using cinder::components::Camera;
-using cinder::components::MeshRenderer;
-using cinder::components::SpriteRenderer;
-using cinder::scene::Actor;
-using cinder::scene::Components;
+using cinder::components::Group;
+using cinder::components::MeshPart;
+using cinder::components::Sprite;
+using cinder::scene::Node;
+using cinder::scene::NodeTypes;
 using cinder::scene::PropSeq;
 using cinder::scene::PropValue;
 using cinder::scene::Scene;
-using cinder::script::Script;
 using cinder::serial::SceneCodec;
 
 namespace {
 
+template <class T>
+T* place(Scene& scene, int id, const char* name, Node* parent) {
+    auto owned = std::make_unique<T>();
+    if (name != nullptr) owned->setName(name);
+    return static_cast<T*>(scene.insert(std::move(owned), parent, id));
+}
+
 struct Fixture {
-    Components types;
+    NodeTypes types;
     Scene scene{types};
 
     Fixture() { cinder::components::registerBuiltins(types); }
 
     void populate() {
-        Actor* camera = scene.spawn(7, "Camera", nullptr);
-        camera->transform().setPosition(0, 3, 8);
-        camera->add<Camera>()->setFov(70);
+        Camera* camera = place<Camera>(scene, 7, nullptr, nullptr);
+        camera->transform()->setPosition(0, 3, 8);
+        camera->setFov(70);
 
-        Actor* player = scene.spawn(9, "Play\"er", nullptr);
-        player->transform().setPosition(-1.5f, 0, 0.25f);
-        SpriteRenderer* sprite = player->add<SpriteRenderer>();
-        sprite->setSize(64, 48);
-        sprite->setColor(1, 0.2f, 0.2f, 1);
+        Sprite* player = place<Sprite>(scene, 9, "Play\"er", nullptr);
+        player->transform()->setPosition(-1.5f, 0, 0.25f);
+        player->setSize(64, 48);
+        player->setColor(1, 0.2f, 0.2f, 1);
         player->setAttribute("hp", PropValue::integer(3));
         player->setAttribute("tag", PropValue::text("hero"));
 
-        Actor* muzzle = scene.spawn(12, "Muzzle", player);
-        muzzle->transform().setPosition(0, 1, 0);
-        muzzle->setActive(false);
+        Group* muzzle = place<Group>(scene, 12, "Muzzle", player);
+        muzzle->transform()->setPosition(0, 1, 0);
+        muzzle->setEnabled(false);
     }
 };
 
@@ -66,38 +71,29 @@ TEST_CASE("the emitted format is pinned byte for byte") {
     f.populate();
 
     const std::string golden =
-        "version 3\n"
-        "actors {\n"
-        "    actor {\n"
+        "version 4\n"
+        "nodes {\n"
+        "    Camera {\n"
         "        id 7\n"
-        "        name \"Camera\"\n"
         "        position 0 3 8\n"
-        "        components {\n"
-        "            Camera {\n"
-        "                fov 70\n"
-        "            }\n"
-        "        }\n"
+        "        fov 70\n"
         "    }\n"
-        "    actor {\n"
+        "    Sprite {\n"
         "        id 9\n"
         "        name \"Play\\\"er\"\n"
         "        position -1.5 0 0.25\n"
+        "        size 64 48\n"
+        "        color 1 0.2 0.2 1\n"
         "        attributes {\n"
         "            hp 3\n"
         "            tag \"hero\"\n"
         "        }\n"
-        "        components {\n"
-        "            SpriteRenderer {\n"
-        "                size 64 48\n"
-        "                color 1 0.2 0.2 1\n"
-        "            }\n"
-        "        }\n"
         "        children {\n"
-        "            actor {\n"
+        "            Group {\n"
         "                id 12\n"
         "                name \"Muzzle\"\n"
-        "                active false\n"
         "                position 0 1 0\n"
+        "                enabled false\n"
         "            }\n"
         "        }\n"
         "    }\n"
@@ -112,14 +108,13 @@ TEST_CASE("round trip is byte identical") {
 
     const std::string first = SceneCodec::save(f.scene);
     SceneCodec::load(first, f.scene);
-    const std::string second = SceneCodec::save(f.scene);
 
-    CHECK(first == second);
+    CHECK(SceneCodec::save(f.scene) == first);
 }
 
-TEST_CASE("default valued props are omitted") {
+TEST_CASE("default valued props and names are omitted") {
     Fixture f;
-    f.scene.spawn("Bare")->add<SpriteRenderer>();
+    f.scene.create<Sprite>(nullptr);
 
     const std::string text = SceneCodec::save(f.scene);
 
@@ -128,7 +123,8 @@ TEST_CASE("default valued props are omitted") {
     CHECK_FALSE(contains(text, "rotation"));
     CHECK_FALSE(contains(text, "texture"));
     CHECK_FALSE(contains(text, "size"));
-    CHECK(contains(text, "SpriteRenderer"));
+    CHECK_FALSE(contains(text, "name"));
+    CHECK(contains(text, "Sprite {"));
 }
 
 TEST_CASE("non-default props survive") {
@@ -136,14 +132,15 @@ TEST_CASE("non-default props survive") {
     f.populate();
     SceneCodec::load(SceneCodec::save(f.scene), f.scene);
 
-    CHECK(f.scene.byId(7)->get<Camera>()->fov() == doctest::Approx(70));
+    CHECK(dynamic_cast<Camera*>(f.scene.byId(7))->fov() == doctest::Approx(70));
 
-    SpriteRenderer* sprite = f.scene.byId(9)->get<SpriteRenderer>();
+    const Sprite* sprite = dynamic_cast<Sprite*>(f.scene.byId(9));
+    REQUIRE(sprite != nullptr);
     CHECK(sprite->size().x == doctest::Approx(64));
     CHECK(sprite->color().y == doctest::Approx(0.2f));
 }
 
-TEST_CASE("actor ids and names survive") {
+TEST_CASE("ids, names, classes and the hierarchy survive") {
     Fixture f;
     f.populate();
     SceneCodec::load(SceneCodec::save(f.scene), f.scene);
@@ -151,114 +148,81 @@ TEST_CASE("actor ids and names survive") {
     CHECK(f.scene.byId(7)->name() == "Camera");
     CHECK(f.scene.byId(9)->name() == "Play\"er");
     CHECK(f.scene.byId(3) == nullptr);
-}
-
-TEST_CASE("hierarchy and active flag survive") {
-    Fixture f;
-    f.populate();
-    SceneCodec::load(SceneCodec::save(f.scene), f.scene);
-
+    CHECK(dynamic_cast<Group*>(f.scene.byId(12)) != nullptr);
+    CHECK(f.scene.byId(12)->parent() == f.scene.byId(9));
+    CHECK_FALSE(f.scene.byId(12)->isEnabled());
     CHECK(f.scene.roots().size() == 2);
-    Actor* muzzle = f.scene.byId(12);
-    CHECK(muzzle->parent() == f.scene.byId(9));
-    CHECK_FALSE(muzzle->activeSelf());
-    CHECK(f.scene.byId(9)->activeSelf());
 }
 
-TEST_CASE("loaded transforms are dirty") {
-    Fixture f;
-    f.populate();
-    SceneCodec::load(SceneCodec::save(f.scene), f.scene);
-
-    CHECK(f.scene.byId(7)->transform().world()[3][2] == doctest::Approx(8));
-}
-
-TEST_CASE("saving does not write back through PropDef") {
-    Fixture f;
-    Actor* a = f.scene.spawn("Camera");
-    a->add<Camera>()->setZoom(50);
-
-    SceneCodec::save(f.scene);
-
-    CHECK(a->get<Camera>()->zoom() == doctest::Approx(50));
-}
-
-TEST_CASE("loading replaces the existing scene") {
-    Fixture f;
-    f.populate();
-    const std::string text = SceneCodec::save(f.scene);
-
-    f.scene.spawn("Extra");
-    SceneCodec::load(text, f.scene);
-
-    CHECK(f.scene.roots().size() == 2);
-    CHECK(f.scene.find("Extra") == nullptr);
-}
-
-TEST_CASE("components come back attached") {
-    Fixture f;
-    f.populate();
-    SceneCodec::load(SceneCodec::save(f.scene), f.scene);
-
-    CHECK(f.scene.byId(7)->get<Camera>() != nullptr);
-}
-
-TEST_CASE("an unknown component type is skipped") {
+TEST_CASE("an unknown class is skipped with its subtree") {
     Fixture f;
     SceneCodec::load(
-        "version 2\n"
-        "actors {\n"
-        "    actor {\n"
+        "version 4\n"
+        "nodes {\n"
+        "    Nope {\n"
         "        id 4\n"
-        "        name \"Ghost\"\n"
-        "        components {\n"
-        "            Nope {\n"
-        "                whatever 1\n"
+        "        children {\n"
+        "            Group {\n"
+        "                id 5\n"
         "            }\n"
         "        }\n"
         "    }\n"
+        "    Group {\n"
+        "        id 6\n"
+        "    }\n"
         "}\n", f.scene);
 
-    REQUIRE(f.scene.byId(4) != nullptr);
-    CHECK(f.scene.byId(4)->components().empty());
+    CHECK(f.scene.byId(4) == nullptr);
+    CHECK(f.scene.byId(5) == nullptr);
+    CHECK(f.scene.byId(6) != nullptr);
+}
+
+TEST_CASE("load replaces the previous scene") {
+    Fixture f;
+    f.populate();
+    SceneCodec::load("version 4\nnodes {\n    Group {\n        id 1\n    }\n}\n", f.scene);
+
+    CHECK(f.scene.roots().size() == 1);
+    CHECK(f.scene.byId(7) == nullptr);
 }
 
 TEST_CASE("a newer version is rejected and leaves the scene intact") {
     Fixture f;
     f.populate();
 
-    CHECK_THROWS_AS(SceneCodec::load("version 99\nactors {\n}\n", f.scene), std::runtime_error);
+    CHECK_THROWS_AS(SceneCodec::load("version 99\nnodes {\n}\n", f.scene), std::runtime_error);
     CHECK(f.scene.roots().size() == 2);
 }
 
 TEST_CASE("a missing version is rejected") {
     Fixture f;
-    CHECK_THROWS_AS(SceneCodec::load("actors {\n}\n", f.scene), std::runtime_error);
+    CHECK_THROWS_AS(SceneCodec::load("nodes {\n}\n", f.scene), std::runtime_error);
 }
 
-TEST_CASE("a version 1 file is rejected") {
+TEST_CASE("actor-era files are rejected") {
     Fixture f;
+    CHECK_THROWS_AS(SceneCodec::load("version 3\nactors {\n}\n", f.scene), std::runtime_error);
     CHECK_THROWS_AS(SceneCodec::load("version 1\nactors {\n}\n", f.scene), std::runtime_error);
 }
 
 TEST_CASE("asset references survive by name") {
     Fixture f;
-    f.scene.spawn(1, "Box", nullptr)->add<MeshRenderer>()->setMesh("sphere").setTexture("crate.png");
-    f.scene.spawn(2, "Tile", nullptr)->add<SpriteRenderer>()->setTexture("tile.png");
+    place<MeshPart>(f.scene, 1, "Box", nullptr)->setMesh("sphere").setTexture("crate.png");
+    place<Sprite>(f.scene, 2, "Tile", nullptr)->setTexture("tile.png");
     SceneCodec::load(SceneCodec::save(f.scene), f.scene);
 
-    CHECK(f.scene.byId(1)->get<MeshRenderer>()->mesh() == "sphere");
-    CHECK(f.scene.byId(1)->get<MeshRenderer>()->texture() == "crate.png");
-    CHECK(f.scene.byId(2)->get<SpriteRenderer>()->texture() == "tile.png");
+    CHECK(dynamic_cast<MeshPart*>(f.scene.byId(1))->mesh() == "sphere");
+    CHECK(dynamic_cast<MeshPart*>(f.scene.byId(1))->texture() == "crate.png");
+    CHECK(dynamic_cast<Sprite*>(f.scene.byId(2))->texture() == "tile.png");
 }
 
 TEST_CASE("camera render settings survive") {
     Fixture f;
-    f.scene.spawn(1, "Camera", nullptr)->add<Camera>()->setClearColor(0.05f, 0.06f, 0.09f, 1)
-            .setVirtualSize(640, 360);
+    place<Camera>(f.scene, 1, nullptr, nullptr)->setClearColor(0.05f, 0.06f, 0.09f, 1).setVirtualSize(640, 360);
     SceneCodec::load(SceneCodec::save(f.scene), f.scene);
 
-    const Camera* camera = f.scene.byId(1)->get<Camera>();
+    const Camera* camera = dynamic_cast<Camera*>(f.scene.byId(1));
+    REQUIRE(camera != nullptr);
     CHECK(camera->clearColor().z == doctest::Approx(0.09f));
     CHECK(camera->virtualSize().x == doctest::Approx(640));
     CHECK(camera->virtualSize().y == doctest::Approx(360));
@@ -267,13 +231,13 @@ TEST_CASE("camera render settings survive") {
 TEST_CASE("duplicate ids in a file do not abort the load") {
     Fixture f;
     SceneCodec::load(
-        "version 2\n"
-        "actors {\n"
-        "    actor {\n"
+        "version 4\n"
+        "nodes {\n"
+        "    Group {\n"
         "        id 5\n"
         "        name \"First\"\n"
         "    }\n"
-        "    actor {\n"
+        "    Group {\n"
         "        id 5\n"
         "        name \"Second\"\n"
         "    }\n"
@@ -286,25 +250,20 @@ TEST_CASE("duplicate ids in a file do not abort the load") {
 TEST_CASE("camera zoom beyond its range is clamped on load") {
     Fixture f;
     SceneCodec::load(
-        "version 2\n"
-        "actors {\n"
-        "    actor {\n"
+        "version 4\n"
+        "nodes {\n"
+        "    Camera {\n"
         "        id 1\n"
-        "        name \"Camera\"\n"
-        "        components {\n"
-        "            Camera {\n"
-        "                zoom 900\n"
-        "            }\n"
-        "        }\n"
+        "        zoom 900\n"
         "    }\n"
         "}\n", f.scene);
 
-    CHECK(f.scene.byId(1)->get<Camera>()->zoom() == doctest::Approx(20));
+    CHECK(dynamic_cast<Camera*>(f.scene.byId(1))->zoom() == doctest::Approx(20));
 }
 
 TEST_CASE("attributes round trip with their types") {
     Fixture f;
-    Actor* box = f.scene.spawn(1, "Box", nullptr);
+    Group* box = place<Group>(f.scene, 1, "Box", nullptr);
     box->setAttribute("count", PropValue::integer(3));
     box->setAttribute("rate", PropValue::number(2.5));
     box->setAttribute("label", PropValue::text("crate"));
@@ -313,7 +272,7 @@ TEST_CASE("attributes round trip with their types") {
                                                 PropValue::number(-1)}));
 
     SceneCodec::load(SceneCodec::save(f.scene), f.scene);
-    const Actor* loaded = f.scene.byId(1);
+    const Node* loaded = f.scene.byId(1);
     REQUIRE(loaded != nullptr);
 
     CHECK(loaded->attribute("count")->as<std::int64_t>() == 3);
@@ -328,11 +287,10 @@ TEST_CASE("attributes round trip with their types") {
 TEST_CASE("an attribute that is not a value is dropped on load") {
     Fixture f;
     SceneCodec::load(
-        "version 3\n"
-        "actors {\n"
-        "    actor {\n"
+        "version 4\n"
+        "nodes {\n"
+        "    Group {\n"
         "        id 1\n"
-        "        name \"Box\"\n"
         "        attributes {\n"
         "            rate 2\n"
         "            nested {\n"
@@ -342,47 +300,8 @@ TEST_CASE("an attribute that is not a value is dropped on load") {
         "    }\n"
         "}\n", f.scene);
 
-    const Actor* box = f.scene.byId(1);
+    const Node* box = f.scene.byId(1);
     REQUIRE(box != nullptr);
     CHECK(box->attribute("rate") != nullptr);
     CHECK(box->attribute("nested") == nullptr);
-}
-
-TEST_CASE("a version 2 Behaviour loads as a Script with its data as attributes") {
-    lua_State* state = luaL_newstate();
-    {
-        Fixture f;
-        f.types.add<Script>("Script", [state] { return std::make_unique<Script>(state); });
-        SceneCodec::load(
-            "version 2\n"
-            "actors {\n"
-            "    actor {\n"
-            "        id 3\n"
-            "        name \"Box\"\n"
-            "        components {\n"
-            "            Behaviour {\n"
-            "                enabled false\n"
-            "                script \"scripts/bobber.lua\"\n"
-            "                data {\n"
-            "                    phase -8\n"
-            "                }\n"
-            "            }\n"
-            "        }\n"
-            "    }\n"
-            "}\n", f.scene);
-
-        const Actor* box = f.scene.byId(3);
-        REQUIRE(box != nullptr);
-        const Script* script = box->get<Script>();
-        REQUIRE(script != nullptr);
-        CHECK(script->file() == "scripts/bobber.lua");
-        CHECK_FALSE(script->isEnabled());
-        CHECK(box->attribute("phase")->as<std::int64_t>() == -8);
-
-        const std::string text = SceneCodec::save(f.scene);
-        CHECK(contains(text, "version 3"));
-        CHECK(contains(text, "Script {"));
-        CHECK_FALSE(contains(text, "Behaviour"));
-    }
-    lua_close(state);
 }

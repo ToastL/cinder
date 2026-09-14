@@ -8,8 +8,8 @@
 #include "platform/Glfw.hpp"
 #include "platform/Input.hpp"
 #include "platform/Log.hpp"
-#include "scene/Actor.hpp"
-#include "scene/Components.hpp"
+#include "scene/Node.hpp"
+#include "scene/NodeTypes.hpp"
 #include "scene/Scene.hpp"
 #include "script/SceneApi.hpp"
 #include "script/Script.hpp"
@@ -169,7 +169,8 @@ void LuaHost::boot() {
     registerScripts();
     registerApi();
     loadPrelude();
-    listenForAttributes(state_, scene_);
+    observer_ = makeSceneObserver(state_);
+    scene_.setObserver(observer_.get());
 }
 
 void LuaHost::registerScripts() {
@@ -256,21 +257,22 @@ void LuaHost::reloadScript(const std::string& path) {
     if (!callWithPath(state_, "__scriptCheck", path)) return;
 
     int count = 0;
-    for (cinder::scene::Actor* root : scene_.roots()) count += reloadIn(*root, path);
+    const std::vector<cinder::scene::Node*> roots = scene_.roots();
+    for (cinder::scene::Node* root : roots) count += reloadIn(*root, path);
     cinder::platform::logInfo("[lua] reloaded %s (%d)\n", path.c_str(), count);
 }
 
-int LuaHost::reloadIn(cinder::scene::Actor& actor, const std::string& path) {
+int LuaHost::reloadIn(cinder::scene::Node& node, const std::string& path) {
     int count = 0;
 
-    for (const std::unique_ptr<cinder::scene::Component>& component : actor.components()) {
-        auto* script = dynamic_cast<Script*>(component.get());
-        if (script == nullptr || script->file() != path) continue;
+    auto* script = dynamic_cast<Script*>(&node);
+    if (script != nullptr && script->file() == path) {
         script->reload();
         ++count;
     }
 
-    for (cinder::scene::Actor* child : actor.children()) count += reloadIn(*child, path);
+    const std::vector<cinder::scene::Node*> children = node.children();
+    for (cinder::scene::Node* child : children) count += reloadIn(*child, path);
     return count;
 }
 
@@ -311,7 +313,8 @@ void LuaHost::render(float alpha) {
 
 void LuaHost::close() {
     if (state_ == nullptr) return;
-    scene_.setAttributeListener(nullptr);
+    scene_.setObserver(nullptr);
+    observer_.reset();
     lua_close(state_);
     state_ = nullptr;
 }

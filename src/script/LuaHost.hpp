@@ -7,12 +7,17 @@
 #include <cstdint>
 #include <filesystem>
 #include <functional>
+#include <memory>
 #include <string>
 #include <unordered_map>
 
 namespace cinder::gfx { class Renderer; }
 namespace cinder::platform { class Input; }
-namespace cinder::scene { class Actor; class Scene; }
+namespace cinder::scene {
+class Node;
+class Scene;
+class SceneObserver;
+}
 
 namespace cinder::script {
 
@@ -45,7 +50,7 @@ private:
     void loadPrelude();
     void watch(const char* path);
     void reloadScript(const std::string& path);
-    int reloadIn(cinder::scene::Actor& actor, const std::string& path);
+    int reloadIn(cinder::scene::Node& node, const std::string& path);
     void close();
 
     cinder::scene::Scene& scene_;
@@ -54,6 +59,7 @@ private:
     std::function<void()> quit_;
 
     lua_State* state_ = nullptr;
+    std::unique_ptr<cinder::scene::SceneObserver> observer_;
     std::unordered_map<std::string, Watch> watched_;
 };
 

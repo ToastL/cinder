@@ -3,7 +3,7 @@
 #include <optional>
 
 namespace cinder::scene {
-class Actor;
+class Node;
 class Scene;
 }
 
@@ -17,7 +17,7 @@ public:
     void select(int id) { id_ = id; }
     void clear() { id_.reset(); }
 
-    cinder::scene::Actor* resolve(cinder::scene::Scene& scene);
+    cinder::scene::Node* resolve(cinder::scene::Scene& scene);
 
 private:
     std::optional<int> id_;

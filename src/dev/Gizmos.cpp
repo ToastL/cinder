@@ -2,8 +2,9 @@
 
 #include "components/Camera.hpp"
 #include "gfx/pass/PerspectiveCamera.hpp"
-#include "scene/Actor.hpp"
+#include "scene/Node.hpp"
 #include "scene/Scene.hpp"
+#include "scene/Transform.hpp"
 
 #include <imgui.h>
 
@@ -72,7 +73,7 @@ void segment(ImDrawList& list, const Screen& screen, const glm::vec3& from, cons
 }
 
 void frustum(ImDrawList& list, const Screen& screen, Camera& camera) {
-    cinder::scene::Transform& transform = camera.transform();
+    cinder::scene::Transform& transform = *camera.transform();
 
     cinder::gfx::pass::PerspectiveCamera view;
     view.setWorld(transform.world());
@@ -91,22 +92,21 @@ void frustum(ImDrawList& list, const Screen& screen, Camera& camera) {
     }
 }
 
-void collect(cinder::scene::Actor& actor, std::vector<Camera*>& cameras) {
-    if (actor.destroyed() || !actor.activeSelf()) return;
+void collect(cinder::scene::Node& node, std::vector<Camera*>& cameras) {
+    if (node.destroyed() || !node.isEnabled()) return;
 
-    for (Camera* camera : actor.getAll<Camera>()) {
-        if (camera->isEnabled() && camera->projection() == Camera::Projection::Perspective) {
-            cameras.push_back(camera);
-        }
+    auto* camera = dynamic_cast<Camera*>(&node);
+    if (camera != nullptr && camera->projection() == Camera::Projection::Perspective) {
+        cameras.push_back(camera);
     }
-    for (cinder::scene::Actor* child : actor.children()) collect(*child, cameras);
+    for (cinder::scene::Node* child : node.children()) collect(*child, cameras);
 }
 
 }
 
 std::vector<Camera*> perspectiveCameras(cinder::scene::Scene& scene) {
     std::vector<Camera*> cameras;
-    for (cinder::scene::Actor* root : scene.roots()) collect(*root, cameras);
+    for (cinder::scene::Node* root : scene.roots()) collect(*root, cameras);
     return cameras;
 }
 

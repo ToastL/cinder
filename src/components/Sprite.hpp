@@ -1,6 +1,6 @@
 #pragma once
 
-#include "scene/Component.hpp"
+#include "scene/Spatial.hpp"
 
 #include <glm/vec2.hpp>
 #include <glm/vec4.hpp>
@@ -10,19 +10,19 @@
 
 namespace cinder::components {
 
-class SpriteRenderer final : public cinder::scene::Component, public cinder::reflect::PropSink {
+class Sprite final : public cinder::scene::Spatial, public cinder::reflect::PropSink {
 public:
     const std::string& texture() const { return texture_; }
     const glm::vec2& size() const { return size_; }
     const glm::vec4& color() const { return color_; }
 
-    SpriteRenderer& setTexture(std::string path) {
+    Sprite& setTexture(std::string path) {
         texture_ = std::move(path);
         textureHandle_ = -1;
         return *this;
     }
-    SpriteRenderer& setSize(float w, float h) { size_ = glm::vec2(w, h); return *this; }
-    SpriteRenderer& setColor(float r, float g, float b, float a) {
+    Sprite& setSize(float w, float h) { size_ = glm::vec2(w, h); return *this; }
+    Sprite& setColor(float r, float g, float b, float a) {
         color_ = glm::vec4(r, g, b, a);
         return *this;
     }
@@ -33,7 +33,7 @@ public:
         if (prop.name() == "texture") textureHandle_ = -1;
     }
 
-    CINDER_COMPONENT(SpriteRenderer, cinder::scene::Component) {
+    CINDER_NODE(Sprite, cinder::scene::Spatial) {
         CINDER_PROP(texture_);
         CINDER_PROP(size_);
         CINDER_PROP_COLOR(color_);

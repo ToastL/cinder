@@ -1,6 +1,6 @@
 #include "scene/Transform.hpp"
 
-#include "scene/Actor.hpp"
+#include "scene/Node.hpp"
 
 #include <glm/geometric.hpp>
 #include <glm/gtc/matrix_transform.hpp>
@@ -51,9 +51,10 @@ const glm::mat4& Transform::local() {
 }
 
 const glm::mat4& Transform::world() {
-    Actor* parent = actor_ != nullptr ? actor_->parent() : nullptr;
+    Node* parent = node_ != nullptr ? node_->parent() : nullptr;
+    Transform* above = parent != nullptr ? parent->transform() : nullptr;
 
-    if (parent == nullptr) {
+    if (above == nullptr) {
         if (worldDirty_) {
             world_ = local();
             worldDirty_ = false;
@@ -62,12 +63,11 @@ const glm::mat4& Transform::world() {
         return world_;
     }
 
-    Transform& above = parent->transform();
-    const glm::mat4& parentWorld = above.world();
+    const glm::mat4& parentWorld = above->world();
 
-    if (worldDirty_ || above.version_ != parentVersion_) {
+    if (worldDirty_ || above->version_ != parentVersion_) {
         world_ = parentWorld * local();
-        parentVersion_ = above.version_;
+        parentVersion_ = above->version_;
         worldDirty_ = false;
         version_++;
     }

@@ -1,4 +1,4 @@
-local spawner = script.actor
+local spawner = script.parent
 
 stepped:connect(function()
     if not engine.mouseDown("left") then return end
@@ -9,15 +9,14 @@ stepped:connect(function()
     local wx, wy = engine.screenToWorld(mx, my)
     local size = minSize + math.random() * (maxSize - minSize)
 
-    local box = scene:spawn("Box")
+    local box = scene:create("Sprite")
+    box.name = "Box"
     box.position = vec3(wx, wy, 0)
-
-    local sprite = box:add("SpriteRenderer")
-    sprite.size = vec2(size, size)
-    sprite.color = rgba(math.random(), math.random(), math.random(), 0.85)
+    box.size = vec2(size, size)
+    box.color = rgba(math.random(), math.random(), math.random(), 0.85)
 
     box:setAttribute("speed", 20 + math.random() * 80)
-    box:addScript(spawner:getAttribute("boxScript"))
+    box:add("Script").file = spawner:getAttribute("boxScript")
 
     task.delay(spawner:getAttribute("lifetime"), function()
         if box:valid() then box:destroy() end

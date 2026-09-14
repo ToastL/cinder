@@ -1,9 +1,9 @@
 #pragma once
 
-namespace cinder::scene { class Components; }
+namespace cinder::scene { class NodeTypes; }
 
 namespace cinder::components {
 
-void registerBuiltins(cinder::scene::Components& types);
+void registerBuiltins(cinder::scene::NodeTypes& types);
 
 }

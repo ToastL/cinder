@@ -27,7 +27,7 @@ constexpr float PAN_SECONDS_PER_POINT = 0.004f;
 void EditorCamera::seed(cinder::components::Camera* camera) {
     seeded_ = true;
     if (camera != nullptr) {
-        const glm::mat4& world = camera->transform().world();
+        const glm::mat4& world = camera->transform()->world();
         const glm::vec3 forward = glm::normalize(-glm::vec3(world[2]));
         position_ = glm::vec3(world[3]);
         pitch_ = std::asin(std::clamp(forward.y, -1.0f, 1.0f));

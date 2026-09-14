@@ -1,7 +1,7 @@
 #pragma once
 
 #include "reflect/Reflect.hpp"
-#include "scene/Component.hpp"
+#include "scene/Node.hpp"
 
 #include <functional>
 #include <memory>
@@ -13,23 +13,23 @@
 
 namespace cinder::scene {
 
-class Components {
+class NodeTypes {
 public:
-    using Factory = std::function<std::unique_ptr<Component>()>;
+    using Factory = std::function<std::unique_ptr<Node>()>;
 
     struct Entry {
         std::string name;
         std::type_index type;
         const cinder::reflect::PropList* props;
         Factory factory;
-        mutable std::unique_ptr<Component> fallback;
+        mutable std::unique_ptr<Node> fallback;
     };
 
-    Components() = default;
-    ~Components();
+    NodeTypes() = default;
+    ~NodeTypes();
 
-    Components(const Components&) = delete;
-    Components& operator=(const Components&) = delete;
+    NodeTypes(const NodeTypes&) = delete;
+    NodeTypes& operator=(const NodeTypes&) = delete;
 
     template <class T>
     void add(std::string name) {
@@ -39,14 +39,14 @@ public:
     template <class T, class F>
     void add(std::string name, F make) {
         bind(std::move(name), std::type_index(typeid(T)), &cinder::reflect::props<T>(),
-             [factory = std::move(make)]() -> std::unique_ptr<Component> { return factory(); });
+             [factory = std::move(make)]() -> std::unique_ptr<Node> { return factory(); });
     }
 
-    std::unique_ptr<Component> create(std::string_view name) const;
+    std::unique_ptr<Node> create(std::string_view name) const;
     std::string_view nameOf(std::type_index type) const;
-    std::string_view nameOf(const Component& component) const;
+    std::string_view nameOf(const Node& node) const;
     const cinder::reflect::PropList* propsOf(std::string_view name) const;
-    const Component* fallback(std::string_view name) const;
+    const Node* fallback(std::string_view name) const;
     const Entry* entry(std::string_view name) const { return find(name); }
 
     const std::vector<Entry>& registered() const { return entries_; }

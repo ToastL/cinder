@@ -1,5 +1,5 @@
-local actor = script.actor
+local box = script.parent
 
 stepped:connect(function(dt)
-    actor:translate(vec3(0, actor:getAttribute("speed") * dt, 0))
+    box:translate(vec3(0, box:getAttribute("speed") * dt, 0))
 end)

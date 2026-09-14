@@ -3,9 +3,9 @@
 #include "core/ProjectConfig.hpp"
 #include "dev/Console.hpp"
 #include "dev/Dockspace.hpp"
-#include "dev/Hierarchy.hpp"
+#include "dev/Explorer.hpp"
 #include "dev/ImGuiLayer.hpp"
-#include "dev/Inspector.hpp"
+#include "dev/Properties.hpp"
 #include "dev/PlaySession.hpp"
 #include "dev/Selection.hpp"
 #include "dev/Toolbar.hpp"
@@ -24,8 +24,8 @@ using cinder::core::Engine;
 using cinder::core::GameLoop;
 using cinder::core::ProjectConfig;
 using cinder::dev::Console;
-using cinder::dev::Hierarchy;
-using cinder::dev::Inspector;
+using cinder::dev::Explorer;
+using cinder::dev::Properties;
 using cinder::dev::PlaySession;
 using cinder::dev::Selection;
 using cinder::dev::Toolbar;
@@ -76,15 +76,15 @@ int main(int argc, char** argv) {
             Toolbar toolbar(session, engine, scenePath);
             Viewport viewport(session, engine);
             Selection selection;
-            Hierarchy hierarchy(selection, engine.scene());
-            Inspector inspector(selection, engine.scene());
+            Explorer explorer(selection, engine.scene());
+            Properties properties(selection, engine.scene());
             engine.renderer().setOverlayDraw(
-                    [&toolbar, &viewport, &hierarchy, &inspector, &console] {
+                    [&toolbar, &viewport, &explorer, &properties, &console] {
                         toolbar.draw();
                         cinder::dev::drawDockspace();
                         viewport.draw();
-                        hierarchy.draw();
-                        inspector.draw();
+                        explorer.draw();
+                        properties.draw();
                         console.draw();
                     });
 

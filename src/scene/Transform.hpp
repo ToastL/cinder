@@ -7,13 +7,13 @@
 
 namespace cinder::scene {
 
-class Actor;
+class Node;
 
 class Transform : public cinder::reflect::PropSink {
 public:
-    explicit Transform(Actor* actor) : actor_(actor) {}
+    explicit Transform(Node* node) : node_(node) {}
 
-    Actor* actor() const { return actor_; }
+    Node* node() const { return node_; }
 
     glm::vec3& position() { return position_; }
     glm::vec3& rotation() { return rotation_; }
@@ -48,7 +48,7 @@ public:
     }
 
 private:
-    Actor* actor_ = nullptr;
+    Node* node_ = nullptr;
 
     glm::vec3 position_{0.0f};
     glm::vec3 rotation_{0.0f};

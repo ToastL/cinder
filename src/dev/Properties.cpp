@@ -1,11 +1,10 @@
-#include "dev/Inspector.hpp"
+#include "dev/Properties.hpp"
 
 #include "dev/Selection.hpp"
 #include "reflect/Reflect.hpp"
-#include "scene/Actor.hpp"
+#include "scene/Node.hpp"
 #include "scene/Attributes.hpp"
-#include "scene/Component.hpp"
-#include "scene/Components.hpp"
+#include "scene/NodeTypes.hpp"
 #include "scene/PropValue.hpp"
 #include "scene/Scene.hpp"
 #include "scene/Transform.hpp"
@@ -28,8 +27,7 @@ using cinder::reflect::PropDef;
 using cinder::reflect::PropHint;
 using cinder::reflect::PropList;
 using cinder::reflect::PropType;
-using cinder::scene::Actor;
-using cinder::scene::Component;
+using cinder::scene::Node;
 using cinder::scene::PropRec;
 using cinder::scene::PropSeq;
 using cinder::scene::PropValue;
@@ -198,65 +196,57 @@ void propRows(const PropList& defs, void* target) {
     }
 }
 
-void actorHeader(Actor& actor) {
-    bool active = actor.activeSelf();
-    if (ImGui::Checkbox("##active", &active)) actor.setActive(active);
-    ImGui::SameLine();
-
-    std::string name = actor.name();
+void nodeHeader(Node& node, std::string_view type) {
+    std::string name = node.name();
     ImGui::SetNextItemWidth(-FLT_MIN);
     ImGui::InputText("##name", &name);
-    if (ImGui::IsItemDeactivatedAfterEdit()) actor.setName(std::move(name));
+    if (ImGui::IsItemDeactivatedAfterEdit()) node.setName(std::move(name));
 
-    ImGui::TextDisabled("Actor %d", actor.id());
+    ImGui::TextDisabled("%.*s  #%d", static_cast<int>(type.size()), type.data(), node.id());
 }
 
-void componentSection(Component& component, std::string_view type, int index) {
-    ImGui::PushID(index);
-    const std::string title = type.empty() ? std::string("Component") : std::string(type);
-    if (ImGui::CollapsingHeader(title.c_str(), ImGuiTreeNodeFlags_DefaultOpen) && beginRows("rows")) {
-        propRows(component.propList(), component.propTarget());
+void classSection(Node& node, std::string_view type) {
+    const std::string title = type.empty() ? std::string("Node") : std::string(type);
+    if (ImGui::CollapsingHeader(title.c_str(), ImGuiTreeNodeFlags_DefaultOpen) && beginRows("class")) {
+        propRows(node.propList(), node.propTarget());
         ImGui::EndTable();
     }
-    ImGui::PopID();
 }
 
 }
 
-Inspector::Inspector(Selection& selection, cinder::scene::Scene& scene)
+Properties::Properties(Selection& selection, cinder::scene::Scene& scene)
     : selection_(selection), scene_(scene) {}
 
-void Inspector::draw() {
-    Actor* actor = selection_.resolve(scene_);
+void Properties::draw() {
+    Node* node = selection_.resolve(scene_);
 
     ImGui::SetNextWindowSize(ImVec2(320, 480), ImGuiCond_FirstUseEver);
     const bool visible = ImGui::Begin(TITLE, nullptr, ImGuiWindowFlags_NoFocusOnAppearing);
-    if (visible && actor == nullptr) ImGui::TextDisabled("Nothing selected");
-    if (visible && actor != nullptr) inspect(*actor);
+    if (visible && node == nullptr) ImGui::TextDisabled("Nothing selected");
+    if (visible && node != nullptr) inspect(*node);
     ImGui::End();
 }
 
-void Inspector::inspect(Actor& actor) {
-    actorHeader(actor);
+void Properties::inspect(Node& node) {
+    const std::string_view type = scene_.types().nameOf(node);
+    nodeHeader(node, type);
 
-    if (ImGui::CollapsingHeader("Transform", ImGuiTreeNodeFlags_DefaultOpen) && beginRows("transform")) {
-        propRows(cinder::reflect::props<cinder::scene::Transform>(), &actor.transform());
-        ImGui::EndTable();
+    if (cinder::scene::Transform* transform = node.transform()) {
+        if (ImGui::CollapsingHeader("Transform", ImGuiTreeNodeFlags_DefaultOpen) && beginRows("transform")) {
+            propRows(cinder::reflect::props<cinder::scene::Transform>(), transform);
+            ImGui::EndTable();
+        }
     }
 
-    const auto& components = actor.components();
-    for (std::size_t i = 0; i < components.size(); ++i) {
-        Component& component = *components[i];
-        componentSection(component, scene_.types().nameOf(component), static_cast<int>(i));
-    }
-
-    attributes(actor);
+    classSection(node, type);
+    attributes(node);
 }
 
-void Inspector::attributes(Actor& actor) {
+void Properties::attributes(Node& node) {
     if (!ImGui::CollapsingHeader("Attributes", ImGuiTreeNodeFlags_DefaultOpen)) return;
 
-    const PropRec values = actor.attributes();
+    const PropRec values = node.attributes();
     std::optional<std::string> removed;
 
     if (!values.empty() && ImGui::BeginTable("attributes", 3, ImGuiTableFlags_SizingStretchProp)) {
@@ -268,31 +258,31 @@ void Inspector::attributes(Actor& actor) {
         for (const auto& [name, value] : values) {
             pushId(name);
             row(name);
-            if (std::optional<PropValue> next = editAttribute(value)) actor.setAttribute(name, std::move(*next));
+            if (std::optional<PropValue> next = editAttribute(value)) node.setAttribute(name, std::move(*next));
             ImGui::TableNextColumn();
             if (ImGui::Button("x", ImVec2(button, button))) removed = name;
             ImGui::PopID();
         }
         ImGui::EndTable();
     }
-    if (removed) actor.removeAttribute(*removed);
+    if (removed) node.removeAttribute(*removed);
 
     if (ImGui::Button("Add Attribute...")) {
         newName_.clear();
         newKind_ = 0;
         ImGui::OpenPopup(ADD_POPUP);
     }
-    addAttribute(actor);
+    addAttribute(node);
 }
 
-void Inspector::addAttribute(Actor& actor) {
+void Properties::addAttribute(Node& node) {
     if (!ImGui::BeginPopup(ADD_POPUP)) return;
 
     if (ImGui::IsWindowAppearing()) ImGui::SetKeyboardFocusHere();
     const bool entered = ImGui::InputText("Name", &newName_, ImGuiInputTextFlags_EnterReturnsTrue);
     ImGui::Combo("Type", &newKind_, KINDS, IM_ARRAYSIZE(KINDS));
 
-    const bool valid = cinder::scene::isAttributeName(newName_) && actor.attribute(newName_) == nullptr;
+    const bool valid = cinder::scene::isAttributeName(newName_) && node.attribute(newName_) == nullptr;
     ImGui::BeginDisabled(!valid);
     const bool clicked = ImGui::Button("Add");
     ImGui::EndDisabled();
@@ -300,7 +290,7 @@ void Inspector::addAttribute(Actor& actor) {
     if (ImGui::Button("Cancel")) ImGui::CloseCurrentPopup();
 
     if (valid && (entered || clicked)) {
-        actor.setAttribute(newName_, zeroOf(newKind_));
+        node.setAttribute(newName_, zeroOf(newKind_));
         ImGui::CloseCurrentPopup();
     }
     ImGui::EndPopup();

@@ -5,7 +5,7 @@ Guidance for Claude Code (claude.ai/code) when working in this repository.
 ## What this is
 
 A from-scratch C++20 game engine: Vulkan renderer, GLFW windowing, Lua 5.4 scripting. The long-term
-target is a Unity/Unreal-shaped editor workflow — select an actor, edit its fields, hit Play, hit
+target is a Unity/Unreal-shaped editor workflow — select a node, edit its fields, hit Play, hit
 Stop, land back where you started. `TODO.md` is the authoritative roadmap; read it before proposing
 architectural work, since it records what is deliberately deferred and what is out of scope.
 
@@ -33,7 +33,7 @@ ctest --test-dir build --output-on-failure
 ```
 
 `editor` is the **dev build** — the same engine plus the ImGui overlay: a dockspace holding the Scene
-viewport, the hierarchy, the inspector and the console, with the play toolbar in the main menu bar. It opens a project in **Edit
+viewport, the Explorer, Properties and the console, with the play toolbar in the main menu bar. It opens a project in **Edit
 mode**: the scene is loaded and drawn, and no game code runs.
 Play/Pause/Step/Stop are on the toolbar and on ⌘P, ⌘⇧P and ⌘⌥P; ⌘S saves the scene. It takes
 `--scene <path>` (project-relative), `--play` (start in Play), `--frames <n>` and `--capture <png>`.
@@ -111,7 +111,7 @@ cinder/
     selftest/                        a project whose scene runs the Lua smoke test
 ```
 
-`src/` is the only include root, so every include carries its layer: `#include "scene/Actor.hpp"`.
+`src/` is the only include root, so every include carries its layer: `#include "scene/Node.hpp"`.
 Headers sit next to their sources.
 
 ## Layering
@@ -136,7 +136,7 @@ dev                        -> core and all of the above (a separate target, see 
 
 Everything down to `core` is the `engine` library. **`dev` is not** — it is its own target,
 `engine_dev`, and it holds everything editor-only: ImGui, the console, the Scene viewport with its
-editor camera and gizmos, the hierarchy and inspector, the dockspace, the play session and the
+editor camera and gizmos, the Explorer and Properties, the dockspace, the play session and the
 toolbar. It is the only place ImGui may be mentioned. `player` links `engine`; `editor` links
 `engine_dev`. If a `#include <imgui.h>` ever appears outside `src/dev/`, the split is broken.
 
@@ -152,12 +152,13 @@ dragging in passes or assets. `gfx/asset` is what you draw with (`Assets`, `Text
 `gfx` itself is only the orchestrator — `Renderer`, `RenderTarget`, `CompositePipeline`,
 `RendererDrawList`. Nothing in a subdirectory includes its parent.
 
-Five placements are load-bearing and were each chosen to kill a cycle: `Glfw`/`Window`/`Input` live
+Six placements are load-bearing and were each chosen to kill a cycle: `Glfw`/`Window`/`Input` live
 in `platform`, not next to `Engine`; `DrawList` lives in `scene`, so the scene graph never includes
 `gfx`; `LuaApi` lives in `lua`, so a pass can bind its own functions without including the script
-host; `PropValue` lives in `scene`, not `serial`, so an actor's attributes are scene data that the
-serializer, the Lua bindings and the inspector each read without an edge to one another; and
-`Overlay` is an abstract interface in
+host; `PropValue` lives in `scene`, not `serial`, so a node's attributes are scene data that the
+serializer, the Lua bindings and Properties each read without an edge to one another;
+`SceneObserver` is an interface in `scene` with its only implementation in `script`, so the tree
+can announce changes to Lua it cannot name; and `Overlay` is an abstract interface in
 `gfx` with its only implementation in `dev`, so the renderer can host an ImGui layer it cannot name.
 
 `LuaHost` takes `(Scene&, Input&, Renderer&, quit)` — never `Engine&` — for the same reason.
@@ -191,15 +192,92 @@ without a window; keep new loop logic in that shape.
 `__render(alpha)`. Both live in `engine/lua/task.lua`, which steps the coroutine scheduler and fires
 the `stepped` and `rendered` signals.
 
+## The scene: a tree of nodes
+
+The world is **one tree of nodes**, the way Roblox and Godot build it. A node is exactly one class,
+and things are made by nesting: a Box is a `MeshPart` with a `Spin` and a `Script` inside it. There
+are no components.
+
+- **`scene/Node`** holds an id, a name, a parent, children, `enabled`, attributes, and the lifecycle
+  hooks `onStart`, `onUpdate`, `onRender` and `onDestroy`. `CINDER_PROPS(Node, void)` declares
+  `enabled`, so it is the first prop of every class.
+- **`scene/Spatial`** is a `Node` that owns a `Transform`; `Node::transform()` is null on every other
+  node. A `Transform` composes with its parent only when the parent is spatial, so a `Folder` breaks
+  the chain and its children sit in world space.
+- **`scene/NodeTypes`** is the class registry — a name, a factory, the prop list and a default
+  instance per class for delta encoding. Re-binding a name keeps its slot, so iteration order, and
+  the Explorer's insert menu, is stable across a reboot.
+- **`scene/Scene`** owns every node by id. `insert` takes a node and an optional id — the codec's
+  path — `create` builds one by class name, and `clone` copies a subtree through the registry, props,
+  transform and attributes, with fresh ids. A node inserted without a name takes its class name.
+
+Lifecycle rules that are easy to lose:
+
+- Every inserted node queues `onStart`, which runs at the top of the next `Scene::update`, disabled
+  or not; a node inserted during a start is started in the same pass.
+- A disabled node skips itself **and its subtree** in `update` and `render`. It does not stop the
+  scripts under it: a `Script` stops only when its own `enabled` is written.
+- `destroy` is deferred to the end of `update`. `destroyNow` tears a subtree down at once and exists
+  for the editor, which never calls `update` in Edit mode; never call it from inside an update walk.
+- `Scene::clear` does not notify the observer, so loading a scene is not a stream of destroy events.
+
+`SceneObserver`, declared in `scene/Scene.hpp`, is how the tree announces `attributeChanged`,
+`childAdded`, `childRemoved` and `destroying` without naming Lua. `script/SceneApi` implements it and
+`LuaHost::boot` installs it. An attribute notifies only on a real change — `sameAttribute` counts `2`
+and `2.0` as equal — and `loadAttributes` never notifies.
+
+| Class | Base | Props | |
+|---|---|---|---|
+| `Group` | Spatial | — | moves its children |
+| `Folder` | Node | — | organizes; breaks the transform chain |
+| `MeshPart` | Spatial | `mesh`, `texture` | |
+| `Sprite` | Spatial | `texture`, `size`, `color` | sprite space is Y-down |
+| `Camera` | Spatial | `projection`, `fov`, clip planes, `zoom`, `clearColor`, `virtualSize` | |
+| `Spin` | Node | `speed` | rotates its **parent** |
+| `Script` | Node | `file` | lives in `script`; see *Scripting* |
+
+A new class derives from `Node` or `Spatial`, declares its props with `CINDER_NODE`, and is
+registered — engine classes in `components::registerBuiltins`. The serializer, Lua and the editor
+need no change.
+
+### The scene file
+
+`serial/SceneCodec` writes version 4:
+
+```
+version 4
+nodes {
+    MeshPart {
+        id 2
+        name "Box"
+        position -6 0 -6
+        attributes {
+            phase -8
+        }
+        children {
+            Spin {
+                id 3
+                speed 0 0.5 0
+            }
+        }
+    }
+}
+```
+
+An item's block name is its class. A node writes `id`, `name` (omitted when it is the class name),
+its transform if it is spatial, its class props where they differ from the class default,
+`attributes`, then `children`. An unknown class is logged and skipped along with its subtree, and a
+value an attribute cannot hold is logged and dropped. `VERSION` and `OLDEST` are both 4: the
+actor/component formats are not read, and the repo's scenes were converted once.
+
 ## Edit mode and Play mode
 
-A game is a `.scene` file whose actors carry components and attributes; the Lua component is
-`Script`. There is no entry script.
+A game is a `.scene` file — a tree of nodes, some of them `Script`s. There is no entry script.
 
 Nothing runs a script until something calls `Scene::update`: `onStart` fires from `startPending()`
 at the top of the first update, and that is when a `Script` runs its file. `Scene::render` does
-**not** wait for `start` — it draws every enabled component — so a scene that is never updated is
-still fully drawn. That split *is* Edit mode: built-in renderers and cameras draw, scripts never run. The one thing the editor draws differently is the 3D view: Edit mode looks
+**not** wait for `start` — it draws every enabled node — so a scene that is never updated is still
+fully drawn. That split *is* Edit mode: meshes, sprites and cameras draw, and scripts never run. The one thing the editor draws differently is the 3D view: Edit mode looks
 through its own camera and shows the scene's cameras as frustums — see *The editor camera*.
 
 `dev/PlaySession` owns the editor's state, `Edit | Playing | Paused`:
@@ -280,8 +358,8 @@ Conventions used throughout, follow them:
 `Assets` hands out `int` texture handles (`DrawList::WHITE == 0`), caches by path, and never frees;
 `MAX_TEXTURES = 256` is backed by a fixed-size descriptor pool.
 
-**Components never store those handles**, because a handle means nothing on the next run.
-`SpriteRenderer::texture` and `MeshRenderer::texture` / `mesh` are *names* — a project-relative path,
+**Nodes never store those handles**, because a handle means nothing on the next run.
+`Sprite::texture` and `MeshPart::texture` / `mesh` are *names* — a project-relative path,
 or a primitive such as `"cube"` — resolved through `DrawList::textureHandle` / `meshHandle` on first
 draw and cached until `propChanged` says the name changed. A missing file logs once and draws white;
 an unknown mesh logs once and draws a cube. The clear colour and the 2D virtual size are `Camera`
@@ -308,7 +386,7 @@ render target and never writes it.
 null; `editor` passes `cinder::dev::overlayFactory()`. Panels are a second, separate hook —
 `setOverlayDraw(std::function<void()>)`, called from `beginFrame()` between `ImGui::NewFrame` and the
 `ImGui::Render` that happens during command recording. `editor/main.cpp` sets it to draw
-`dev/Toolbar`, `dev/Dockspace`, `dev/Viewport`, `dev/Hierarchy`, `dev/Inspector` and `dev/Console`, in
+`dev/Toolbar`, `dev/Dockspace`, `dev/Viewport`, `dev/Explorer`, `dev/Properties` and `dev/Console`, in
 that order — the dockspace has to be submitted before the windows it hosts. The two hooks together are what keep `gfx` free of both
 ImGui and `script`.
 
@@ -355,13 +433,13 @@ while the Scene window is focused** and the **mouse while the image is hovered**
 started on it is held. A locked cursor gives the game both and sets `ImGuiConfigFlags_NoMouse`: GLFW
 still reports a virtual cursor while disabled, and ImGui would otherwise click whatever panel it
 wanders over. Entering `Playing` focuses the window, so Play and Resume hand the game the keyboard
-without a click on the scene first. The hierarchy, inspector and console open with
+without a click on the scene first. The Explorer, Properties and console open with
 `NoFocusOnAppearing`: every new window takes focus on its first frame, and all three are submitted
 after the Scene, so without the flag `editor --play` would start with the keyboard in the console. The flags are set while building
 frame N's overlay and read by frame N+1's updates.
 
-`dev/Dockspace` builds the default layout — Inspector down the right, Console along the bottom,
-Hierarchy left of the Scene — with the `DockBuilder` API from `imgui_internal.h`, once, when the
+`dev/Dockspace` builds the default layout — Properties down the right, Console along the bottom,
+Explorer left of the Scene — with the `DockBuilder` API from `imgui_internal.h`, once, when the
 dockspace node does not exist yet. With no ini file,
 that is every launch.
 
@@ -398,33 +476,44 @@ it is right after seeding — draws nothing, rather than a frame along the borde
 leaves half-drawn. Being overlay, the frustums draw over geometry, cost the player nothing, and never
 appear in a `--capture`.
 
-### The hierarchy and the inspector
+### The Explorer and Properties
 
-`dev/Selection` holds the selected actor's **id**, never an `Actor*`. Play and Stop rebuild every
-actor through `loadScene`, and ids are what `SceneCodec` round-trips, so a selection made in Edit
-mode is still selected after Play and after Stop. `resolve` returns null — and forgets the id — once
-the actor is gone or marked destroyed, so an actor spawned during Play drops out of the selection on
-Stop.
+`dev/Selection` holds the selected node's **id**, never a `Node*`. Play and Stop rebuild every node
+through `loadScene`, and ids are what `SceneCodec` round-trips, so a selection survives both.
+`resolve` returns null — and forgets the id — once the node is gone or marked destroyed, so a node
+spawned during Play drops out of the selection on Stop.
 
-`dev/Hierarchy` draws `Scene::roots()` as a tree. A click selects, a click on empty space clears, and
-an actor that is inactive, itself or through a parent, is dimmed.
+`dev/Explorer` draws the whole tree, scripts included. A row is the node's name followed, dimmed, by
+its class — or its file name, for a `Script` — and a node disabled itself or through a parent is
+dimmed unless it is selected. A click selects and a click on empty space clears. **"+"** lists every
+registered class and inserts one under the selection, or at the root. Right-clicking a row offers
+Insert, Duplicate (`Scene::clone`) and Delete; dragging a row onto another reparents it, cycles
+refused, and dropping it on empty space makes it a root. Delete or Backspace removes the selection
+while the Explorer has focus and no text field is active. A filter turns the tree into a flat list of
+the nodes whose name or class matches.
 
-`dev/Inspector` has no per-type code. It edits the actor's name and `active` flag, then walks
-`props<Transform>()` and every component's `propList()`, one widget per `PropType`: drags for numbers
-and vectors, a checkbox, a text field, and a combo filled from `PropDef::options()` for enums. Every
-write goes through `PropDef`, so clamping, in-place vector writes and `propChanged` behave exactly as
-they do from Lua and from the serializer. `step` is the drag speed; bounds reach ImGui only when the
-prop declares them, and `NoRoundToFormat` stops a drag rounding a value to its display precision. A
-prop declared with `CINDER_PROP_COLOR` gets a colour editor instead. Text commits on
+Structural edits are recorded during the tree walk and applied after it, so the walk never iterates a
+list it is changing. Delete uses `destroyNow`, because Edit mode never runs the `Scene::update` that
+flushes a deferred destroy. An inserted or duplicated node becomes the selection. During Play the same
+edits act on the running game and are discarded by Stop.
+
+`dev/Properties` has no per-type code. It shows the node's name, class and id, a Transform section for
+spatial nodes, the class's props and the attributes. A prop gets one widget per `PropType`: drags for
+numbers and vectors, a checkbox, a text field, and a combo filled from `PropDef::options()` for enums.
+Every write goes through `PropDef`, so clamping, in-place vector writes and `propChanged` behave
+exactly as they do from Lua and from the serializer. `step` is the drag speed; bounds reach ImGui only
+when the prop declares them, and `NoRoundToFormat` stops a drag rounding a value to its display
+precision. A prop declared with `CINDER_PROP_COLOR` gets a colour editor. Text commits on
 `IsItemDeactivatedAfterEdit`, not per keystroke, so a texture path does not try to load every prefix
 of itself.
 
-Below the components, an **Attributes** section lists the actor's attributes, each with a remove
-button, and **Add Attribute…** opens a popup for a name and a type. Every attribute number is edited
-as a float drag, integers included: `TextLoad` reads `40` back as an integer and `40.5` as a float,
-so an integer drag could never move a saved `40` to `40.5`. Writes go through `Actor::setAttribute`,
-so an edit during Play fires the game's changed signals, and Stop discards it like any other Play
-change. Nothing the inspector does is undoable or marks the scene dirty yet.
+The **Attributes** section lists each attribute with a remove button, and **Add Attribute…** opens a
+popup for a name and a type. Every attribute number is edited as a float drag, integers included:
+`TextLoad` reads `40` back as an integer and `40.5` as a float, so an integer drag could never move a
+saved `40` to `40.5`. Writes go through `Node::setAttribute`, so an edit during Play fires the game's
+changed signals.
+
+Nothing the Explorer or Properties does is undoable or marks the scene dirty yet.
 
 ### Logging and the console
 
@@ -439,7 +528,7 @@ The console's input line runs `LuaHost::eval` against the live `lua_State`. It t
 first and falls back to the raw text, so `1 + 1` prints `2` and a multi-statement chunk still runs.
 Results and errors both go back through `logInfo`/`logError`, so they land in the panel like anything
 else, with `[console]` as the chunk name. In Edit mode that state holds the prelude and nothing else,
-so the console can build a scene — `scene:spawn`, `actor:setAttribute`, `actor:addScript(file)` — without starting
+so the console can build a scene — `scene:create`, `node:setAttribute`, `node:add("Script")` — without starting
 any of it, and Save writes the result.
 
 Typing in the console does not also drive the game, because the console has focus and the Scene
@@ -451,11 +540,20 @@ A project's `project.lua` defines a global `project` table (`title`, `width`, `h
 `fixed_hz`) parsed by `ProjectConfig::load` in a throwaway `lua_State`. `scene` is the scene both
 executables open; `--scene` overrides it.
 
-There is **no entry script**. Game code lives in scripts, in Roblox's shape: a `Script` component
-names a project file, and that file runs top to bottom, once, when the component starts. Per-frame
-work is a `stepped:connect(fn)` handler, and the top level may `task.wait`, because it runs as a
-thread. Per-actor settings are attributes, not script fields. Lua errors are caught and printed, not
-propagated.
+There is **no entry script**. Game code lives in `Script` nodes, in Roblox's shape: a `Script` names a
+project file, and that file runs top to bottom, once, when the node starts, with `script.parent` the
+node it sits in. Per-frame work is a `stepped:connect(fn)` handler, and the top level may `task.wait`,
+because it runs as a thread. Per-node settings are attributes, not script fields. Lua errors are
+caught and printed, not propagated.
+
+```lua
+local box = script.parent
+
+stepped:connect(function()
+    local h = 1 + math.sin(engine.time() * box:getAttribute("rate") + box:getAttribute("phase"))
+    box.scale = vec3(1, h, 1)
+end)
+```
 
 ### The prelude
 
@@ -466,35 +564,47 @@ propagated.
   `+ - * / unary-minus == tostring`, plus `:length()`, `:dot()`, `:normalized()`, `:unpack()` and
   `vec3:cross()`. `rgba` is a `vec4` whose `r/g/b/a` alias `x/y/z/w`. `vecSize(v)` returns the
   component count or nil, and is how the proxy layer tells a vector from a scalar.
-- **`scene.lua`** — the `scene` global plus actor and component proxies, and the attribute API.
+- **`scene.lua`** — the `scene` global, node proxies, the attribute API and the node signals.
 - **`task.lua`** — `task.wait`/`spawn`/`delay`, the `signal()` constructor, the `stepped` and
   `rendered` signals, and the owners that let a stopped script take its threads and connections with
   it.
 
-**The proxy layer is pure Lua over the `engine.*` bindings** — there is no C++-side proxy. It works
-because `engine.getProp` returns 1-4 values by arity and `setProp` takes them as varargs, so
-`compMt.__index` counts returns to build the right vector and `__newindex` calls `value:unpack()`.
-Adding a prop therefore needs no scripting-layer change at all. Actor proxies are cached in a
-weak-valued table so `scene:find(n) == actor` holds.
+### Node proxies
+
+**The proxy layer is pure Lua over the `engine.*` bindings**, which all take node ids. There is one
+proxy type for every node, cached in a weak-valued table so `scene:find(n) == node` holds. Reading a
+key looks, in order, at:
+
+1. fixed getters — `name`, `className`, `parent`, `position`, `rotation`, `scale`, `worldPosition`,
+   `forward`, `right`, `up`, and the signals `childAdded`, `childRemoved`, `destroying` and
+   `attributeChanged`;
+2. methods — `getChildren`, `findFirstChild`, `add(className)`, `clone`, `destroy`, `valid`,
+   `translate` and the attribute methods;
+3. the node's own props, through `engine.getProp`, which returns 1-4 values by arity — so a vector
+   comes back as `vec2`/`vec3`/`vec4`, and adding a prop needs no scripting-layer change;
+4. a child with that name.
+
+A prop therefore wins over a child with the same name. Writing a key that is neither a setter nor a
+prop **errors**, and so does writing a transform on a node that is not spatial, whose transform getters
+return nil. `scene:create(className, parent)` and `node:add(className)` make nodes, and
+`box:add("Script").file = "scripts/riser.lua"` is how a script attaches another.
 
 These contracts are load-bearing and must not drift:
 
-- `getProp` returns **1-4 values by arity**, and **zero** values when the actor or prop is missing.
-- `find` / `parent` return **`nil`**, never `0` or `-1`.
-- Actor ids and the handles `loadTexture`/`newCube` return push as **integers**; numeric prop values
+- `getProp` returns **1-4 values by arity**, and **zero** values when the node or prop is missing;
+  `setProp` returns whether the prop exists.
+- `find` / `parent` / `findFirstChild` return **`nil`**, never `0` or `-1`.
+- Node ids and the handles `loadTexture`/`newCube` return push as **integers**; numeric prop values
   push as **floats**, string and enum props as strings.
 - Edge-triggered input clears in `consume()` **per fixed step**, not per frame.
 - `screenToWorld` takes **window points**, matching `mousePosition`.
 - `getAttribute` returns **`nil`** for a missing attribute, and a 2–4-number attribute as a vector.
 
-Writing an unknown actor property **errors**; unknown component props print `[lua] X has no prop Y`
-from `SceneApi`, since that is C++-side.
-
 `script/LuaProps` converts between Lua values and `PropValue` — scalars, arrays of scalars,
 string-keyed records, and vectors (detected by their metatable's `__vec`) as sequences of numbers.
 Functions and anything else with a metatable are skipped.
 
-`tests/selftest` is a project whose scene runs a 55-check smoke test for this whole layer from a
+`tests/selftest` is a project whose scene runs a 60-check smoke test for this whole layer from a
 script's top level. `./build/editor tests/selftest --play --frames 120` or `./build/player
 tests/selftest` prints `ALL PASS`. It needs a window, so it is not part of `ctest`.
 
@@ -511,41 +621,36 @@ not in `LuaHost`.
 ### Scripts
 
 `Script::BOOTSTRAP` caches each file's source by path and compiles it per instance with
-`load(source, "@" .. file, "t", env)`, where `env` is `setmetatable({ script = ... }, { __index = _G })`:
-`script.actor` is the actor proxy and `script.file` the path. A global a script assigns stays in its
-own environment, and `_G.x` is how two scripts share one. `__scriptStart(file, actor, previous)`
-compiles first, so a start that fails to compile leaves `previous` running, and only then stops
-`previous` and spawns the chunk as a thread of a fresh owner.
+`load(source, "@" .. file, "t", env)`, where `env` is `setmetatable({ script = __node(id) }, { __index
+= _G })`: `script` is the Script node's own proxy, so `script.parent` is its object and `script.file`
+its path. A global a script assigns stays in its own environment, and `_G.x` is how two scripts share
+one. `__scriptStart(file, node, previous)` compiles first, so a start that fails to compile leaves
+`previous` running, and only then stops `previous` and spawns the chunk as a thread of a fresh owner.
 
 `Script` is a `PropSink`: writing `enabled` false stops it, and writing it true runs the file again
-from the top. `Scene::startPending` calls `onStart` on a disabled component too, so `Script::onStart`
-checks `isEnabled` itself. `actor:addScript(file)` is Lua sugar for `add("Script")` plus a write to
-`file`.
+from the top. `Scene::startPending` calls `onStart` on a disabled node too, so `Script::onStart` checks
+`isEnabled` itself.
 
 ### Attributes
 
-Per-actor settings are **attributes**: a `PropRec` on `Actor`, saved as an `attributes { ... }` block
-between the transform and the components, edited in the inspector, and read by scripts.
-`scene/Attributes` decides what one may hold — a number, string, bool, or a sequence of 2–4 numbers —
-and what a name may be: letters, digits and `_`, which the text format needs anyway. The Lua API is
-Roblox's in camelCase: `actor:getAttribute(name)`, `setAttribute(name, value)` (nil removes),
-`getAttributes()`, `getAttributeChangedSignal(name)`, and `actor.attributeChanged`, which fires with
-the name. An invalid name or value raises a Lua error. Attributes cannot hold tables, so `scene.lua`
-turns any table `getAttribute` returns into a `vec2`/`vec3`/`vec4`.
-
-Because they are data on the actor, nothing has to run for the inspector to list them, and they
+Per-node settings are **attributes**: a `PropRec` on `Node`, saved as an `attributes { ... }` block,
+edited in Properties, and read by scripts. `scene/Attributes` decides what one may hold — a number,
+string, bool, or a sequence of 2–4 numbers — and what a name may be: letters, digits and `_`, which the
+text format needs anyway. The Lua API is Roblox's in camelCase: `node:getAttribute(name)`,
+`setAttribute(name, value)` (nil removes), `getAttributes()`, `getAttributeChangedSignal(name)`, and
+`node.attributeChanged`, which fires with the name. An invalid name or value raises a Lua error.
+Because attributes are data on the node, nothing has to run for Properties to list them, and they
 survive a hot reload.
 
-`Actor::setAttribute` and `removeAttribute` notify the scene's attribute listener, only on a real
-change — `sameAttribute` counts `2` and `2.0` as equal — so a handler that writes back the value it
-was told about cannot loop. `loadAttributes` does not notify, since loading is not a change.
-`listenForAttributes` in `script/SceneApi` installs the listener that calls
-`__attributeChanged(id, name)`, which is how an inspector edit during Play reaches the game's signals.
-`LuaHost::boot` installs it and `close` clears it, and the scene graph still never names Lua.
+`LuaHost::boot` installs the `SceneObserver` from `script/SceneApi`, which calls `__attributeChanged`,
+`__childAdded`, `__childRemoved` and `__destroying`; that is how an edit in Properties during Play
+reaches the game's signals. `__destroying` also drops the node's cached signals, and `LuaHost::close`
+removes the observer before the state closes.
 
 Lua is built as C, so `luaL_error` longjmps past C++ destructors. A binding finishes its C++ work
 before it raises: `setAttribute` validates in a helper that returns a status, and errors only after
-that helper's `std::optional` is gone.
+that helper's `std::optional` is gone. No C++ exception may cross Lua either, which is why `setParent`
+checks for a cycle before it calls `Node::setParent`.
 
 ### Ownership
 
@@ -567,7 +672,7 @@ keeps running. Otherwise every `Script` on that file that is started and enabled
 owner stops, taking the old code's threads and connections with it, and the file runs from the top.
 
 That is Roblox's trade: what a script keeps in locals starts over, and what it keeps in attributes
-survives, because attributes live on the actor. The scene, the `lua_State` and every other script are
+survives, because attributes live on the node. The scene, the `lua_State` and every other script are
 untouched.
 
 `__scriptRead` is the single funnel every script file is read through, so it is also where `LuaHost`
@@ -585,7 +690,7 @@ There is no runtime reflection in C++, so props are declared with a macro that s
 name — the identifier *is* the serialization and Lua key:
 
 ```cpp
-CINDER_COMPONENT(Camera, cinder::scene::Component) {
+CINDER_NODE(Camera, cinder::scene::Spatial) {
     CINDER_PROP(projection_);
     CINDER_PROP_S(fov_, 1.0f, 179.0f, 1.0f);
     CINDER_PROP_R(zoom_, 0.05f, 20.0f);
@@ -597,7 +702,7 @@ marks a `vec3`/`vec4` as a colour through `PropHint`. Only the inspector reads t
 neither changes how a prop is written or saved, and a colour is not clamped.
 
 `props<T>()` builds the list once into a function-local static and a `PropChain` recursion emits the
-base class's props first, so `Component::enabled` is always the first prop of every component —
+base class's props first, so `Node::enabled` is always the first prop of every class —
 which the delta serializer's field order depends on. `PropBuilder` is templated on the **concrete**
 type, so inherited props carry no base-subobject offset assumption.
 
@@ -612,16 +717,13 @@ Four behaviours are easy to lose, and each has a test pinning it:
 - **`PropSink::propChanged`** fires after every successful write; `Transform` overrides it to
   `dirty()`, and the renderers override it to drop a cached texture or mesh handle.
 
-`Components` is an instance owned by `Engine`, threaded to `Scene` -> `SceneCodec` / `SceneApi`. It
+`NodeTypes` is an instance owned by `Engine`, threaded to `Scene` -> `SceneCodec` / `SceneApi`. It
 keeps insertion-ordered iteration (a vector plus two indices) and caches a class-default instance per
 type for delta encoding. Re-binding a name keeps its slot — so iteration order is stable across a
 reboot — and drops its cached default, so a `Script` default cannot outlive the `lua_State` it
 closed over.
 
-`SceneCodec::VERSION` is 3 and `OLDEST` is 2. Version 3 replaced `Behaviour { script, data }` with a
-`Script { file }` and actor attributes, and a version 2 file still loads: `migrateBehaviour` adds the
-`Script` and merges `data` into the actor's attributes, dropping what an attribute cannot hold.
-Version 1 stored texture and mesh handles, which cannot be migrated. `tests/scene_files_test` loads and re-saves every `.scene` under `samples/` and
+`SceneCodec::VERSION` and `OLDEST` are both 4 — see *The scene file*. `tests/scene_files_test` loads and re-saves every `.scene` under `samples/` and
 `tests/selftest/` and requires the bytes to match, so shipped scenes stay canonical as the format
 moves.
 

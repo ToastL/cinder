@@ -1,26 +1,26 @@
 # TODO
 
-Roadmap toward a Unity/Unreal-shaped engine: an editor where you select an actor, edit its fields,
+Roadmap toward a Unity/Unreal-shaped engine: an editor where you select a node, edit its fields,
 hit Play, hit Stop, and land back where you started.
 
 **Where we are:** a Vulkan renderer driving an ordered pass list into an offscreen target,
 composited to the swapchain by a fullscreen triangle. Sprite batch with atlas support, mesh pipeline
 with one directional light, per-pass cameras, edge-triggered input, and Lua scripts in Roblox's shape —
-code that runs top to bottom, attributes on actors, and per-file hot reload that stops what the old
-code started. An actor/component scene
+code that runs top to bottom, attributes on nodes, and per-file hot reload that stops what the old
+code started. A Roblox-style tree of nodes
 with a prop system that feeds the serializer and the script bindings from one declaration. A
 bidirectional `Archive` with a text backend, and games that are `.scene` files in project folders
 rather than scripts in the engine. Dear ImGui is up in a separate `engine_dev` target, with a
 dockspace holding the Scene viewport and a console with a live Lua REPL, and a play toolbar in the
 main menu bar — `player` ships without a byte of it. The editor opens a project in Edit mode, seen
 through a free-flying editor camera with a frustum drawn for every scene camera; Play serializes the
-scene into a fresh Lua state and Stop restores it. A hierarchy selects an actor and an inspector
-edits its fields and attributes with no per-type editor code. 97 headless test cases and a 55-check
-Lua selftest.
+scene into a fresh Lua state and Stop restores it. An Explorer shows the whole node tree, scripts
+included, and Properties edits the selected node's fields and attributes with no per-type editor
+code. 98 headless test cases and a 60-check Lua selftest.
 
 Foundations, the scene model, the scripting ergonomics, serialization and the Edit/Play split are
 done. The editor shell is underway — ImGui, the console, the toolbar, the Scene viewport, the
-editor camera, the hierarchy and the inspector have landed; picking, gizmos and undo are next.
+editor camera, the Explorer and Properties have landed; picking, gizmos and undo are next.
 
 ---
 
@@ -30,19 +30,19 @@ editor camera, the hierarchy and the inspector have landed; picking, gizmos and 
       the backend can build on it without dragging in passes or assets. Lives in `src/dev`, behind
       the abstract `gfx::Overlay`, drawn inside the present pass. `editor` is the dev build;
       `player` links `engine` and contains no ImGui symbols at all.
-- [ ] Docking layout: viewport, hierarchy, inspector, console, asset browser. `dev/Dockspace` is up
-      with Scene, Hierarchy, Inspector and Console; the asset browser docks into it when it lands.
+- [ ] Docking layout: viewport, explorer, properties, console, asset browser. `dev/Dockspace` is up
+      with Scene, Explorer, Properties and Console; the asset browser docks into it when it lands.
 - [x] **Viewport** — `dev/Viewport`, the "Scene" window. The target is sized to the panel through
       `Renderer::setViewportSize` and registered with ImGui through `Overlay::addTexture`, and
       `engine.mousePosition()` is relative to the panel's top-left.
-- [x] **Hierarchy** — `dev/Hierarchy`, a tree of the scene's actors; a click selects. `dev/Selection`
-      holds an actor id, so the selection survives Play and Stop.
-- [ ] Hierarchy: drag to reparent, multi-select, create and delete actors
-- [x] **Inspector** — `dev/Inspector` walks `props<Transform>()` and every component's `propList()`,
-      one widget per `PropType`, with enum combos from `PropDef::options()` and colour pickers from
-      `CINDER_PROP_COLOR`. The actor's attributes get their own section, with add and remove, and an
-      edit during Play fires the game's changed signals.
-- [ ] Inspector: add and remove components; an asset-reference widget for texture and mesh names
+- [x] **Explorer** — `dev/Explorer`, the whole node tree with scripts as children: a filter, "+" to
+      insert any registered class, right-click to insert, duplicate or delete, and drag to reparent.
+      `dev/Selection` holds a node id, so the selection survives Play and Stop.
+- [ ] Explorer: multi-select, inline rename, copy and paste
+- [x] **Properties** — `dev/Properties` shows one node: its transform when it is spatial, its
+      class's props with one widget per `PropType` (enum combos, colour pickers), and its attributes
+      with add and remove. An edit during Play fires the game's changed signals.
+- [ ] Properties: an asset-reference widget for texture and mesh names, and a node-reference widget
 - [ ] Gizmos — translate/rotate/scale handles, snapping. `dev/Gizmos` already draws a frustum for
       every perspective `Camera` in Edit mode, on the Scene window's draw list.
 - [ ] Mouse picking — click the viewport to select (id buffer or CPU raycast)
@@ -50,7 +50,7 @@ editor camera, the hierarchy and the inspector have landed; picking, gizmos and 
       camera and handed to `Renderer::overrideCamera3d` in Edit mode. Right-drag to look and fly
       with WASD/QE, middle-drag to pan, scroll to dolly. Orthographic scenes still look through the
       scene's 2D camera; a 2D pan/zoom for them is not done.
-- [ ] **Undo/redo** — command stack recording `(component, field, old, new)`, and attribute adds,
+- [ ] **Undo/redo** — command stack recording `(node, field, old, new)`, and attribute adds,
       removes and changes
 - [x] Console panel — every print routes through `platform/Log`, and `dev/Console` installs the
       sink. REPL line evaluates against the live `lua_State`, with history on up/down.
@@ -62,7 +62,7 @@ editor camera, the hierarchy and the inspector have landed; picking, gizmos and 
 - [ ] Scene switching — open, new and save-as. The editor edits the one scene named by
       `project.lua` or `--scene`.
 
-**Done when:** adding `CINDER_PROP(bounciness_)` to any component makes it appear in the inspector, save
+**Done when:** adding `CINDER_PROP(bounciness_)` to any node class makes it appear in Properties, save
 to disk, and become undoable — with zero editor code.
 
 **Script editing is external, by decision.** Scripts are plain files on disk, so the editor's job is
@@ -86,10 +86,12 @@ sugar, never the primary surface.
 
 ## Serialization — what is left
 
-- [ ] Cross-actor references. Needs an actor-reference prop type, which nothing declares yet, and a
-      layering decision: `reflect` is a leaf and cannot include `scene`, so `Actor` would need a
-      marker interface in `reflect`.
-- [ ] Prefabs — a saved subtree that can be instanced, with per-instance overrides
+- [ ] Node references — a prop type holding a node id, set by dragging a node from the Explorer into
+      Properties. `reflect` is a leaf and cannot include `scene`, so the prop stores the id and
+      `scene` resolves it.
+- [ ] Prefabs — a saved subtree that can be instanced, with per-instance overrides. `Scene::clone`
+      already copies a subtree generically.
+- [ ] Tags — one script driving every node carrying a tag, like Roblox's `CollectionService`
 
 ## Asset pipeline
 
@@ -109,13 +111,13 @@ sugar, never the primary surface.
 ## Gameplay systems
 
 - [ ] **Physics** — rigid bodies, colliders, raycasts, triggers; collision callbacks routed to
-      components; debug draw for colliders
+      scripts; debug draw for colliders
 - [ ] **Audio** — clip loading, one-shot + looping sources, 3D positional, buses/volume
 - [ ] **Animation** — skeletal (skinning shader, joint palette), sprite sheet animation, and a
       clip/state machine
 - [ ] **UI system** — the current "HUD" is `SpriteBatch` with an ortho camera. Needs anchoring,
       layout, text rendering (MSDF or stb_truetype), input hit-testing.
-- [ ] **Particles** — emitters as components, GPU-driven if it matters
+- [ ] **Particles** — emitters as nodes, GPU-driven if it matters
 - [ ] Scene queries — raycast, overlap, spatial partition (BVH or grid)
 - [ ] Timers, event bus
 
@@ -158,8 +160,10 @@ sugar, never the primary surface.
       include the project, so a helper has to be copied or hung off `_G` by another script.
 - [ ] **The prelude is not watched** — editing `types.lua`, `scene.lua` or `task.lua` needs a restart.
 - [ ] **`poll()` stats every script it has read, every frame** — move to a watch service, or throttle.
-- [ ] **An attribute cannot name an actor** — it holds numbers, strings, bools and small vectors. An
-      actor reference needs *Cross-actor references*.
+- [ ] **An attribute cannot name a node** — it holds numbers, strings, bools and small vectors. A node
+      reference needs *Node references*.
+- [ ] **A disabled parent does not stop its child scripts.** `enabled` skips a subtree's update and
+      render, but a `Script` stops only when its own `enabled` is written.
 - [ ] **Runtime meshes cannot be named in a scene** — `MeshRenderer.mesh` names a primitive, and
       `engine.newCube` hands back an anonymous handle. Mesh import is where named meshes come from.
 - [ ] Fixed caps with no growth path: `MAX_QUADS = 10000`, `MAX_DRAWS = 4096`, `MAX_TEXTURES = 256`
@@ -188,8 +192,8 @@ sugar, never the primary surface.
 
 Naming these keeps them from creeping in:
 
-- Feature parity with Unity/Unreal. Unity's inspector-and-play-button loop and Unreal's
-  actor/component model are the shape being copied — the *workflow*, not the feature list.
+- Feature parity with Roblox/Unity/Unreal. Roblox's Explorer, Properties and Play loop over a tree of
+  nodes (Godot's structure too) is the shape being copied — the *workflow*, not the feature list.
 - Console platforms
 - Networking / multiplayer
 - Visual scripting

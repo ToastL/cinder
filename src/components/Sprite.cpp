@@ -1,17 +1,17 @@
-#include "components/SpriteRenderer.hpp"
+#include "components/Sprite.hpp"
 
-#include "scene/Actor.hpp"
 #include "scene/DrawList.hpp"
 
-#include <cmath>
 #include <glm/geometric.hpp>
+
+#include <cmath>
 
 namespace cinder::components {
 
-void SpriteRenderer::onRender(float alpha, cinder::scene::DrawList& draws) {
+void Sprite::onRender(float alpha, cinder::scene::DrawList& draws) {
     if (textureHandle_ < 0) textureHandle_ = draws.textureHandle(texture_);
 
-    const glm::mat4& world = transform().world();
+    const glm::mat4& world = transform()->world();
 
     const glm::vec3 position(world[3]);
     const float scaleX = glm::length(glm::vec3(world[0]));

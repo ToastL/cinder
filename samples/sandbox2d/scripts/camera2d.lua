@@ -1,11 +1,10 @@
-local actor = script.actor
+local camera = script.parent
 
 engine.log("wasd/arrows pan, scroll zooms, click spawns")
 
 stepped:connect(function(dt)
     if engine.keyPressed("escape") then engine.quit() end
 
-    local camera = actor.Camera
     local move = vec3(0, 0, 0)
 
     if engine.keyDown("a") or engine.keyDown("left")  then move.x = move.x - 1 end
@@ -13,7 +12,7 @@ stepped:connect(function(dt)
     if engine.keyDown("w") or engine.keyDown("up")    then move.y = move.y - 1 end
     if engine.keyDown("s") or engine.keyDown("down")  then move.y = move.y + 1 end
 
-    actor.position = actor.position + move * (actor:getAttribute("speed") * dt / camera.zoom)
+    camera.position = camera.position + move * (camera:getAttribute("speed") * dt / camera.zoom)
 
     local _, scroll = engine.scroll()
     if scroll ~= 0 then

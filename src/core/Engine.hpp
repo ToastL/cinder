@@ -6,7 +6,7 @@
 #include "gfx/vk/VkCtx.hpp"
 #include "platform/Input.hpp"
 #include "platform/Window.hpp"
-#include "scene/Components.hpp"
+#include "scene/NodeTypes.hpp"
 #include "scene/Scene.hpp"
 #include "script/LuaHost.hpp"
 
@@ -44,7 +44,7 @@ public:
     cinder::platform::Input& input() { return input_; }
     cinder::gfx::Renderer& renderer() { return renderer_; }
     cinder::scene::Scene& scene() { return scene_; }
-    cinder::scene::Components& types() { return types_; }
+    cinder::scene::NodeTypes& types() { return types_; }
     cinder::script::LuaHost& script() { return *script_; }
 
 private:
@@ -54,7 +54,7 @@ private:
     cinder::platform::Input input_;
     cinder::gfx::vk::VkCtx ctx_;
     cinder::gfx::Renderer renderer_;
-    cinder::scene::Components types_;
+    cinder::scene::NodeTypes types_;
     cinder::scene::Scene scene_{types_};
     std::unique_ptr<cinder::script::LuaHost> script_;
     bool quit_ = false;

@@ -1,12 +1,11 @@
 #include "components/Camera.hpp"
 
-#include "scene/Actor.hpp"
 #include "scene/DrawList.hpp"
 
 namespace cinder::components {
 
 void Camera::onRender(float alpha, cinder::scene::DrawList& draws) {
-    cinder::scene::Transform& t = transform();
+    cinder::scene::Transform& t = *transform();
     draws.background(clearColor_.r, clearColor_.g, clearColor_.b);
 
     if (projection_ == Projection::Perspective) {

@@ -1,15 +1,15 @@
 #include "dev/Selection.hpp"
 
-#include "scene/Actor.hpp"
+#include "scene/Node.hpp"
 #include "scene/Scene.hpp"
 
 namespace cinder::dev {
 
-cinder::scene::Actor* Selection::resolve(cinder::scene::Scene& scene) {
+cinder::scene::Node* Selection::resolve(cinder::scene::Scene& scene) {
     if (!id_) return nullptr;
 
-    cinder::scene::Actor* actor = scene.byId(*id_);
-    if (actor != nullptr && !actor->destroyed()) return actor;
+    cinder::scene::Node* node = scene.byId(*id_);
+    if (node != nullptr && !node->destroyed()) return node;
 
     id_.reset();
     return nullptr;

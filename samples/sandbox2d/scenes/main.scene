@@ -1,23 +1,21 @@
-version 3
-actors {
-    actor {
+version 4
+nodes {
+    Camera {
         id 1
-        name "Camera"
+        projection "orthographic"
+        clearColor 0.05 0.05 0.08 1
+        virtualSize 640 360
         attributes {
             speed 200
         }
-        components {
-            Camera {
-                projection "orthographic"
-                clearColor 0.05 0.05 0.08 1
-                virtualSize 640 360
-            }
+        children {
             Script {
+                id 4
                 file "scripts/camera2d.lua"
             }
         }
     }
-    actor {
+    Group {
         id 2
         name "Spawner"
         attributes {
@@ -26,20 +24,20 @@ actors {
             maxSize 18
             minSize 4
         }
-        components {
+        children {
             Script {
+                id 5
                 file "scripts/spawner.lua"
             }
         }
     }
-    actor {
+    Sprite {
         id 3
         name "Cursor"
-        components {
-            SpriteRenderer {
-                size 6 6
-            }
+        size 6 6
+        children {
             Script {
+                id 6
                 file "scripts/cursor.lua"
             }
         }
