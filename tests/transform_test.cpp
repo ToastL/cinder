@@ -164,3 +164,11 @@ TEST_CASE("spin rotates its parent") {
     f.scene.update(0.5f);
     CHECK(box->transform()->rotation().y == doctest::Approx(1.0f));
 }
+
+TEST_CASE("rotation is declared as an angle, so the editor shows it in degrees") {
+    const cinder::reflect::PropList& defs = cinder::reflect::props<cinder::scene::Transform>();
+    REQUIRE(defs.size() == 3);
+    CHECK(defs[0].hint() == cinder::reflect::PropHint::None);
+    CHECK(defs[1].name() == "rotation");
+    CHECK(defs[1].hint() == cinder::reflect::PropHint::Angle);
+}

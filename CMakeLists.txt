@@ -70,7 +70,7 @@ enable_testing()
 
 file(GLOB TEST_SOURCES CONFIGURE_DEPENDS tests/*.cpp)
 add_executable(tests ${TEST_SOURCES})
-target_link_libraries(tests PRIVATE engine doctest::doctest)
+target_link_libraries(tests PRIVATE engine_dev doctest::doctest)
 target_compile_definitions(tests PRIVATE CINDER_SOURCE_DIR="${CMAKE_CURRENT_SOURCE_DIR}")
 add_test(NAME unit COMMAND tests)
 

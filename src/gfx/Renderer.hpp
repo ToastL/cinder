@@ -10,6 +10,9 @@
 #include "gfx/vk/FrameSync.hpp"
 #include "gfx/vk/Swapchain.hpp"
 
+#include <glm/mat4x4.hpp>
+#include <glm/vec3.hpp>
+
 #include <functional>
 #include <memory>
 #include <string>
@@ -21,6 +24,7 @@ namespace cinder::scene { class DrawList; }
 namespace cinder::gfx::pass {
 class MeshPass;
 class PerspectiveCamera;
+class SpritePass;
 }
 
 namespace cinder::gfx {
@@ -40,6 +44,8 @@ public:
     void setViewportSize(int width, int height);
     void overrideCamera3d(const cinder::gfx::pass::PerspectiveCamera& camera);
     void releaseCamera3d();
+    glm::vec3 screenToWorld2d(float x, float y);
+    glm::mat4 viewProjection2d();
     void beginFrame();
     void drawFrame();
     void capture(const std::string& path);
@@ -83,6 +89,7 @@ private:
     std::unique_ptr<CompositePipeline> compositePipeline_;
     std::vector<std::unique_ptr<cinder::gfx::pass::DrawPass>> passes_;
     cinder::gfx::pass::MeshPass* meshPass_ = nullptr;
+    cinder::gfx::pass::SpritePass* spritePass_ = nullptr;
     std::unique_ptr<cinder::scene::DrawList> draws_;
     std::unique_ptr<Overlay> overlay_;
     std::function<void()> overlayDraw_;

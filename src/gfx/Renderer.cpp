@@ -56,6 +56,7 @@ Renderer::Renderer(const VkCtx& ctx, cinder::platform::Window& window,
             ctx, *assets_, *spritePipeline_, FRAMES_IN_FLIGHT);
 
     meshPass_ = meshPass.get();
+    spritePass_ = spritePass.get();
     draws_ = std::make_unique<RendererDrawList>(*this, *meshPass, *spritePass);
 
     passes_.push_back(std::move(meshPass));
@@ -159,6 +160,10 @@ void Renderer::overrideCamera3d(const cinder::gfx::pass::PerspectiveCamera& came
 }
 
 void Renderer::releaseCamera3d() { meshPass_->releaseCamera(); }
+
+glm::vec3 Renderer::screenToWorld2d(float x, float y) { return spritePass_->screenToWorld(x, y); }
+
+glm::mat4 Renderer::viewProjection2d() { return spritePass_->camera().viewProjection(); }
 
 void Renderer::beginFrame() {
     for (const std::unique_ptr<DrawPass>& pass : passes_) pass->beginFrame();

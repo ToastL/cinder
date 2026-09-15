@@ -2,7 +2,10 @@
 
 #include "core/Engine.hpp"
 #include "dev/Gizmos.hpp"
+#include "dev/Picking.hpp"
 #include "dev/PlaySession.hpp"
+#include "dev/Selection.hpp"
+#include "scene/Node.hpp"
 
 #include <imgui.h>
 
@@ -40,10 +43,16 @@ EditorCamera::Controls readControls(bool focused) {
     return controls;
 }
 
+bool clicked(const ImGuiIO& io) {
+    const float slop = io.MouseDragThreshold;
+    return ImGui::IsItemDeactivated() && ImGui::IsMouseReleased(ImGuiMouseButton_Left) && !io.KeyAlt
+            && io.MouseDragMaxDistanceSqr[ImGuiMouseButton_Left] < slop * slop;
 }
 
-Viewport::Viewport(PlaySession& session, cinder::core::Engine& engine)
-    : session_(session), engine_(engine) {}
+}
+
+Viewport::Viewport(PlaySession& session, Selection& selection, cinder::core::Engine& engine)
+    : session_(session), selection_(selection), engine_(engine) {}
 
 void Viewport::draw() {
     cinder::platform::Input& input = engine_.input();
@@ -81,6 +90,8 @@ void Viewport::draw() {
         const int width = std::max(1, static_cast<int>(available.x));
         const int height = std::max(1, static_cast<int>(available.y));
         const ImVec2 size(static_cast<float>(width), static_cast<float>(height));
+        const glm::vec2 corner(origin.x, origin.y);
+        const glm::vec2 extent(size.x, size.y);
 
         renderer.setViewportSize(width, height);
         input.setViewportOrigin(origin.x, origin.y);
@@ -88,18 +99,23 @@ void Viewport::draw() {
         ImGui::InvisibleButton("##scene", size, ANY_BUTTON);
         hovered = ImGui::IsItemHovered() || ImGui::IsItemActive();
         focused = ImGui::IsWindowFocused();
+        const bool picking = editing && clicked(io);
 
         if (editing) {
             camera_.setAspect(size.x / size.y);
             camera_.update(readControls(focused), io.DeltaTime);
         }
+        if (picking) pickAt(glm::vec2(io.MousePos.x, io.MousePos.y) - corner, extent);
 
         ImDrawList& list = *ImGui::GetWindowDrawList();
         list.AddImage(reinterpret_cast<ImTextureID>(renderer.viewport()), origin,
                       ImVec2(origin.x + size.x, origin.y + size.y));
         if (editing) {
-            drawFrustums(list, cameras, camera_.camera().viewProjection(),
-                         glm::vec2(origin.x, origin.y), glm::vec2(size.x, size.y));
+            const glm::mat4& viewProjection = camera_.camera().viewProjection();
+            drawFrustums(list, cameras, viewProjection, corner, extent);
+            if (cinder::scene::Node* selected = selection_.resolve(engine_.scene())) {
+                drawSelection(list, *selected, viewProjection, renderer.viewProjection2d(), corner, extent);
+            }
         }
     }
     ImGui::End();
@@ -108,6 +124,14 @@ void Viewport::draw() {
     else renderer.releaseCamera3d();
 
     input.setSuppressed(!locked && !focused, !locked && !hovered);
+}
+
+void Viewport::pickAt(glm::vec2 point, glm::vec2 size) {
+    const glm::vec3 world2d = engine_.renderer().screenToWorld2d(point.x, point.y);
+    const PickView view{camera_.camera().viewProjection(), point, size, glm::vec2(world2d)};
+
+    if (cinder::scene::Node* node = pick(engine_.scene(), view)) selection_.select(node->id(), true);
+    else selection_.clear();
 }
 
 }

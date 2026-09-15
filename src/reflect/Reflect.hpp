@@ -148,3 +148,6 @@ public:                                                                 \
 #define CINDER_PROP_COLOR(field)                                            \
     b.template add<&PropSelf::field>(#field, -FLT_MAX, FLT_MAX, 0.1f,       \
                                      cinder::reflect::PropHint::Color)
+#define CINDER_PROP_ANGLE(field)                                            \
+    b.template add<&PropSelf::field>(#field, -FLT_MAX, FLT_MAX, 1.0f,       \
+                                     cinder::reflect::PropHint::Angle)

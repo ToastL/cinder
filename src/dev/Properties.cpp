@@ -1,5 +1,6 @@
 #include "dev/Properties.hpp"
 
+#include "dev/History.hpp"
 #include "dev/Selection.hpp"
 #include "reflect/Reflect.hpp"
 #include "scene/Node.hpp"
@@ -11,6 +12,8 @@
 
 #include <imgui.h>
 #include <imgui_stdlib.h>
+
+#include <glm/trigonometric.hpp>
 
 #include <cfloat>
 #include <cstddef>
@@ -73,62 +76,86 @@ bool editText(std::string& text) {
     return ImGui::IsItemDeactivatedAfterEdit();
 }
 
+bool editDegrees(const PropDef& def, float* radians) {
+    const int arity = def.arity();
+    float degrees[4]{};
+    for (int i = 0; i < arity; ++i) degrees[i] = glm::degrees(radians[i]);
+
+    if (!ImGui::DragScalarN("##value", ImGuiDataType_Float, degrees, arity, def.step(), nullptr, nullptr,
+                            "%.2f", DRAG)) {
+        return false;
+    }
+    for (int i = 0; i < arity; ++i) radians[i] = glm::radians(degrees[i]);
+    return true;
+}
+
 bool editVector(const PropDef& def, float* values) {
     const int arity = def.arity();
     if (def.hint() == PropHint::Color && arity == 3) return ImGui::ColorEdit3("##value", values, COLOR);
     if (def.hint() == PropHint::Color && arity == 4) return ImGui::ColorEdit4("##value", values, COLOR);
+    if (def.hint() == PropHint::Angle) return editDegrees(def, values);
 
     const Range range = dragRange(def);
     return ImGui::DragScalarN("##value", ImGuiDataType_Float, values, arity, def.step(), &range.min,
                               &range.max, "%.3f", DRAG);
 }
 
-void editProp(const PropDef& def, void* target) {
+bool editProp(const PropDef& def, void* target) {
     switch (def.type()) {
         case PropType::Bool: {
             bool value = def.readBool(target);
-            if (ImGui::Checkbox("##value", &value)) def.writeBool(target, value);
-            break;
+            if (!ImGui::Checkbox("##value", &value)) return false;
+            def.writeBool(target, value);
+            return true;
         }
         case PropType::String: {
             std::string text(def.readText(target));
-            if (editText(text)) def.writeText(target, text);
-            break;
+            if (!editText(text)) return false;
+            def.writeText(target, text);
+            return true;
         }
         case PropType::Enum: {
             const std::string current(def.readText(target));
-            if (!ImGui::BeginCombo("##value", current.c_str())) break;
+            if (!ImGui::BeginCombo("##value", current.c_str())) return false;
+            bool written = false;
             for (std::string_view option : def.options()) {
                 const std::string name(option);
-                if (ImGui::Selectable(name.c_str(), name == current)) def.writeText(target, name);
+                if (!ImGui::Selectable(name.c_str(), name == current)) continue;
+                def.writeText(target, name);
+                written = true;
             }
             ImGui::EndCombo();
-            break;
+            return written;
         }
         case PropType::Int: {
             float raw = 0.0f;
             def.read(target, &raw);
             int value = static_cast<int>(raw);
-            if (ImGui::DragInt("##value", &value, def.step())) {
-                const float next = static_cast<float>(value);
-                def.write(target, &next);
-            }
-            break;
+            if (!ImGui::DragInt("##value", &value, def.step())) return false;
+            const float next = static_cast<float>(value);
+            def.write(target, &next);
+            return true;
         }
         case PropType::Float: {
             float value = 0.0f;
             def.read(target, &value);
-            const Range range = dragRange(def);
-            if (ImGui::DragFloat("##value", &value, def.step(), range.min, range.max, "%.3f", DRAG)) {
-                def.write(target, &value);
+            if (def.hint() == PropHint::Angle) {
+                if (!editDegrees(def, &value)) return false;
+            } else {
+                const Range range = dragRange(def);
+                if (!ImGui::DragFloat("##value", &value, def.step(), range.min, range.max, "%.3f", DRAG)) {
+                    return false;
+                }
             }
-            break;
+            def.write(target, &value);
+            return true;
         }
         default: {
             float values[4]{};
             def.read(target, values);
-            if (editVector(def, values)) def.write(target, values);
-            break;
+            if (!editVector(def, values)) return false;
+            def.write(target, values);
+            return true;
         }
     }
 }
@@ -187,36 +214,42 @@ PropValue zeroOf(int kind) {
     return PropValue::seq(PropSeq(static_cast<std::size_t>(kind - FIRST_VECTOR + 2), PropValue::number(0.0)));
 }
 
-void propRows(const PropList& defs, void* target) {
+bool propRows(const PropList& defs, void* target) {
+    bool changed = false;
     for (const PropDef& def : defs) {
         pushId(def.name());
         row(def.label());
-        editProp(def, target);
+        changed = editProp(def, target) || changed;
         ImGui::PopID();
     }
+    return changed;
 }
 
-void nodeHeader(Node& node, std::string_view type) {
+bool nodeHeader(Node& node, std::string_view type) {
     std::string name = node.name();
     ImGui::SetNextItemWidth(-FLT_MIN);
     ImGui::InputText("##name", &name);
-    if (ImGui::IsItemDeactivatedAfterEdit()) node.setName(std::move(name));
+    const bool renamed = ImGui::IsItemDeactivatedAfterEdit();
+    if (renamed) node.setName(std::move(name));
 
     ImGui::TextDisabled("%.*s  #%d", static_cast<int>(type.size()), type.data(), node.id());
+    return renamed;
 }
 
-void classSection(Node& node, std::string_view type) {
+bool classSection(Node& node, std::string_view type) {
     const std::string title = type.empty() ? std::string("Node") : std::string(type);
-    if (ImGui::CollapsingHeader(title.c_str(), ImGuiTreeNodeFlags_DefaultOpen) && beginRows("class")) {
-        propRows(node.propList(), node.propTarget());
-        ImGui::EndTable();
+    if (!ImGui::CollapsingHeader(title.c_str(), ImGuiTreeNodeFlags_DefaultOpen) || !beginRows("class")) {
+        return false;
     }
+    const bool changed = propRows(node.propList(), node.propTarget());
+    ImGui::EndTable();
+    return changed;
 }
 
 }
 
-Properties::Properties(Selection& selection, cinder::scene::Scene& scene)
-    : selection_(selection), scene_(scene) {}
+Properties::Properties(Selection& selection, History& history, cinder::scene::Scene& scene)
+    : selection_(selection), history_(history), scene_(scene) {}
 
 void Properties::draw() {
     Node* node = selection_.resolve(scene_);
@@ -230,24 +263,26 @@ void Properties::draw() {
 
 void Properties::inspect(Node& node) {
     const std::string_view type = scene_.types().nameOf(node);
-    nodeHeader(node, type);
+    bool changed = nodeHeader(node, type);
 
     if (cinder::scene::Transform* transform = node.transform()) {
         if (ImGui::CollapsingHeader("Transform", ImGuiTreeNodeFlags_DefaultOpen) && beginRows("transform")) {
-            propRows(cinder::reflect::props<cinder::scene::Transform>(), transform);
+            changed = propRows(cinder::reflect::props<cinder::scene::Transform>(), transform) || changed;
             ImGui::EndTable();
         }
     }
 
-    classSection(node, type);
-    attributes(node);
+    changed = classSection(node, type) || changed;
+    changed = attributes(node) || changed;
+    if (changed) history_.touch("Edit " + node.name(), selection_.id());
 }
 
-void Properties::attributes(Node& node) {
-    if (!ImGui::CollapsingHeader("Attributes", ImGuiTreeNodeFlags_DefaultOpen)) return;
+bool Properties::attributes(Node& node) {
+    if (!ImGui::CollapsingHeader("Attributes", ImGuiTreeNodeFlags_DefaultOpen)) return false;
 
     const PropRec values = node.attributes();
     std::optional<std::string> removed;
+    bool changed = false;
 
     if (!values.empty() && ImGui::BeginTable("attributes", 3, ImGuiTableFlags_SizingStretchProp)) {
         const float button = ImGui::GetFrameHeight();
@@ -258,25 +293,31 @@ void Properties::attributes(Node& node) {
         for (const auto& [name, value] : values) {
             pushId(name);
             row(name);
-            if (std::optional<PropValue> next = editAttribute(value)) node.setAttribute(name, std::move(*next));
+            if (std::optional<PropValue> next = editAttribute(value)) {
+                node.setAttribute(name, std::move(*next));
+                changed = true;
+            }
             ImGui::TableNextColumn();
             if (ImGui::Button("x", ImVec2(button, button))) removed = name;
             ImGui::PopID();
         }
         ImGui::EndTable();
     }
-    if (removed) node.removeAttribute(*removed);
+    if (removed) {
+        node.removeAttribute(*removed);
+        changed = true;
+    }
 
     if (ImGui::Button("Add Attribute...")) {
         newName_.clear();
         newKind_ = 0;
         ImGui::OpenPopup(ADD_POPUP);
     }
-    addAttribute(node);
+    return addAttribute(node) || changed;
 }
 
-void Properties::addAttribute(Node& node) {
-    if (!ImGui::BeginPopup(ADD_POPUP)) return;
+bool Properties::addAttribute(Node& node) {
+    if (!ImGui::BeginPopup(ADD_POPUP)) return false;
 
     if (ImGui::IsWindowAppearing()) ImGui::SetKeyboardFocusHere();
     const bool entered = ImGui::InputText("Name", &newName_, ImGuiInputTextFlags_EnterReturnsTrue);
@@ -289,11 +330,14 @@ void Properties::addAttribute(Node& node) {
     ImGui::SameLine();
     if (ImGui::Button("Cancel")) ImGui::CloseCurrentPopup();
 
+    bool added = false;
     if (valid && (entered || clicked)) {
         node.setAttribute(newName_, zeroOf(newKind_));
         ImGui::CloseCurrentPopup();
+        added = true;
     }
     ImGui::EndPopup();
+    return added;
 }
 
 }

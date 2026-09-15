@@ -10,13 +10,14 @@ class Scene;
 
 namespace cinder::dev {
 
+class History;
 class Selection;
 
 class Explorer {
 public:
     static constexpr const char* TITLE = "Explorer";
 
-    Explorer(Selection& selection, cinder::scene::Scene& scene);
+    Explorer(Selection& selection, History& history, cinder::scene::Scene& scene);
 
     Explorer(const Explorer&) = delete;
     Explorer& operator=(const Explorer&) = delete;
@@ -33,12 +34,14 @@ private:
     void apply();
 
     Selection& selection_;
+    History& history_;
     cinder::scene::Scene& scene_;
     std::string filter_;
     Action action_ = Action::None;
     int target_ = 0;
     std::optional<int> destination_;
     std::string className_;
+    cinder::scene::Node* reveal_ = nullptr;
 };
 
 }

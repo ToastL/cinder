@@ -13,12 +13,15 @@ namespace cinder::script { class LuaHost; }
 
 namespace cinder::dev {
 
+class History;
+class Selection;
+
 class Console {
 public:
     static constexpr std::size_t MAX_LINES = 2000;
     static constexpr const char* TITLE = "Console";
 
-    explicit Console(cinder::script::LuaHost& script);
+    Console(cinder::script::LuaHost& script, History& history, Selection& selection);
     ~Console();
 
     Console(const Console&) = delete;
@@ -41,6 +44,8 @@ private:
     void submit();
 
     cinder::script::LuaHost& script_;
+    History& changes_;
+    Selection& selection_;
     std::deque<Line> lines_;
     std::vector<std::string> history_;
     char input_[512] = {};

@@ -16,11 +16,12 @@ main menu bar — `player` ships without a byte of it. The editor opens a projec
 through a free-flying editor camera with a frustum drawn for every scene camera; Play serializes the
 scene into a fresh Lua state and Stop restores it. An Explorer shows the whole node tree, scripts
 included, and Properties edits the selected node's fields and attributes with no per-type editor
-code. 98 headless test cases and a 60-check Lua selftest.
+code. A click in the Scene view selects, every edit is undoable, and an unsaved scene is marked and
+guarded on close. 116 headless test cases and a 60-check Lua selftest.
 
 Foundations, the scene model, the scripting ergonomics, serialization and the Edit/Play split are
 done. The editor shell is underway — ImGui, the console, the toolbar, the Scene viewport, the
-editor camera, the Explorer and Properties have landed; picking, gizmos and undo are next.
+editor camera, the Explorer, Properties, picking and undo have landed; transform gizmos are next.
 
 ---
 
@@ -45,13 +46,18 @@ editor camera, the Explorer and Properties have landed; picking, gizmos and undo
 - [ ] Properties: an asset-reference widget for texture and mesh names, and a node-reference widget
 - [ ] Gizmos — translate/rotate/scale handles, snapping. `dev/Gizmos` already draws a frustum for
       every perspective `Camera` in Edit mode, on the Scene window's draw list.
-- [ ] Mouse picking — click the viewport to select (id buffer or CPU raycast)
+- [x] Mouse picking — `dev/Picking`, a CPU raycast against each `MeshPart`'s cube, each `Sprite`'s
+      rectangle and each perspective `Camera`; the Explorer reveals the pick and `dev/Gizmos` outlines it
+- [ ] Picking against real mesh bounds — every `MeshPart` draws a cube today, so the cube is exact;
+      imported meshes will need their own bounds or triangles
 - [x] Editor camera, independent of the game camera — `dev/EditorCamera`, seeded from the scene's
       camera and handed to `Renderer::overrideCamera3d` in Edit mode. Right-drag to look and fly
       with WASD/QE, middle-drag to pan, scroll to dolly. Orthographic scenes still look through the
       scene's 2D camera; a 2D pan/zoom for them is not done.
-- [ ] **Undo/redo** — command stack recording `(node, field, old, new)`, and attribute adds,
-      removes and changes
+- [x] **Undo/redo** — `dev/History` snapshots the scene text through `SceneCodec` after each finished
+      edit, so every edit is covered with no per-edit code; ⌘Z / ⌘⇧Z and toolbar buttons
+- [ ] Undo: a snapshot costs a full scene save per edit — fine at sample scale; move to diffed snapshots
+      or a command stack if scenes grow large
 - [x] Console panel — every print routes through `platform/Log`, and `dev/Console` installs the
       sink. REPL line evaluates against the live `lua_State`, with history on up/down.
 - [x] Toolbar — Play / Pause / Step / Stop and Save, on ⌘P / ⌘⇧P / ⌘⌥P / ⌘S, in the main menu bar
@@ -80,8 +86,8 @@ sugar, never the primary surface.
       `Scene::update`, which Edit mode never calls
 - [x] Input routing — `dev/Viewport` gives the game the keyboard while the Scene window is focused
       and the mouse while its image is hovered; a locked cursor keeps both. Play focuses the Scene.
-- [ ] Dirty tracking — mark the scene modified and warn before closing it with unsaved changes.
-      Entering Play no longer risks edits, since Stop restores them.
+- [x] Dirty tracking — the toolbar shows `main.scene*`, and closing the window with unsaved changes
+      asks Save / Don't Save / Cancel
 - [ ] Keep a change made during Play — Unity's "copy component values" escape hatch
 
 ## Serialization — what is left
@@ -184,8 +190,6 @@ sugar, never the primary surface.
       `cursor.lua` and `spawner.lua` in `samples/sandbox2d` depend on the current behaviour.
 - [ ] **The packaged player finds itself through `argv[0]`**, so launching it through a `PATH`
       lookup rather than by path misses `engine/` and `project/` next to it
-- [ ] **The inspector edits `Transform.rotation` in radians**, the unit the engine stores. A degrees
-      display wants a `PropHint`, the way colours have one.
 - [ ] No CI
 
 ## Explicitly out of scope

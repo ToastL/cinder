@@ -35,7 +35,8 @@ ctest --test-dir build --output-on-failure
 `editor` is the **dev build** — the same engine plus the ImGui overlay: a dockspace holding the Scene
 viewport, the Explorer, Properties and the console, with the play toolbar in the main menu bar. It opens a project in **Edit
 mode**: the scene is loaded and drawn, and no game code runs.
-Play/Pause/Step/Stop are on the toolbar and on ⌘P, ⌘⇧P and ⌘⌥P; ⌘S saves the scene. It takes
+Play/Pause/Step/Stop are on the toolbar and on ⌘P, ⌘⇧P and ⌘⌥P; ⌘S saves the scene, and ⌘Z and ⌘⇧Z
+undo and redo edits. It takes
 `--scene <path>` (project-relative), `--play` (start in Play), `--frames <n>` and `--capture <png>`.
 The last two make it scriptable: `--frames 90 --capture out.png` runs headless-ish and writes a
 screenshot. See *The dev overlay* below for why this is a second executable rather than a flag.
@@ -373,7 +374,8 @@ per-frame feature.
 
 **The dev tools are a separate link target, not a runtime flag.** `player` links `engine` and
 `editor` links `engine_dev`, so ImGui is physically absent from the shipping binary — `nm
-build/player | grep -i imgui` returns nothing. There is no `--dev`: to get the tools, run `editor`.
+build/player | grep -i imgui` returns nothing. There is no `--dev`: to get the tools, run `editor`. `tests` links `engine_dev` as well, so the dev units
+with no ImGui in them — `History`, `Picking` — are tested headlessly.
 
 The seam is [`gfx/Overlay.hpp`](src/gfx/Overlay.hpp) — a pure interface (`beginFrame`, `record`,
 `discardFrame`, `setMinImageCount`, `addTexture`, `removeTexture`) plus an `OverlayFactory` typedef.
@@ -438,6 +440,16 @@ without a click on the scene first. The Explorer, Properties and console open wi
 after the Scene, so without the flag `editor --play` would start with the keyboard in the console. The flags are set while building
 frame N's overlay and read by frame N+1's updates.
 
+In Edit mode a **left click** on the image picks. `dev/Picking` is a CPU raycast with no ImGui in it:
+the click unprojects through the editor camera and hits every enabled `MeshPart` as the unit cube
+`Mesh::cube` is — which is every mesh there is — and every enabled perspective `Camera` within 10 points
+of where it projects, taking the nearest. A `Sprite` is hit in sprite space, through
+`Renderer::screenToWorld2d`, against the centre, scaled size and rotation `Sprite::onRender` draws
+with, and because sprites draw over meshes a sprite hit wins. A disabled node hides its subtree, as it
+does from `Scene::render`. A click is a press and release that stays inside ImGui's drag threshold;
+past it, a left drag still looks around. A hit selects with `reveal`, so the Explorer, drawn later in
+the same frame, opens the node's ancestors and scrolls to its row; a miss clears the selection.
+
 `dev/Dockspace` builds the default layout — Properties down the right, Console along the bottom,
 Explorer left of the Scene — with the `DockBuilder` API from `imgui_internal.h`, once, when the
 dockspace node does not exist yet. With no ini file,
@@ -476,6 +488,10 @@ it is right after seeding — draws nothing, rather than a frame along the borde
 leaves half-drawn. Being overlay, the frustums draw over geometry, cost the player nothing, and never
 appear in a `--capture`.
 
+`drawSelection` outlines the selection on the same draw list, in orange: the twelve edges of a
+`MeshPart`'s cube, a `Camera`'s frustum, or a `Sprite`'s rectangle projected through the sprite pass's
+camera, `Renderer::viewProjection2d`.
+
 ### The Explorer and Properties
 
 `dev/Selection` holds the selected node's **id**, never a `Node*`. Play and Stop rebuild every node
@@ -503,7 +519,9 @@ numbers and vectors, a checkbox, a text field, and a combo filled from `PropDef:
 Every write goes through `PropDef`, so clamping, in-place vector writes and `propChanged` behave
 exactly as they do from Lua and from the serializer. `step` is the drag speed; bounds reach ImGui only
 when the prop declares them, and `NoRoundToFormat` stops a drag rounding a value to its display
-precision. A prop declared with `CINDER_PROP_COLOR` gets a colour editor. Text commits on
+precision. A prop declared with `CINDER_PROP_COLOR` gets a colour editor, and one declared with `CINDER_PROP_ANGLE`
+— `Transform.rotation` — is dragged in degrees and written back in radians, so Lua and scene files never
+see degrees. Text commits on
 `IsItemDeactivatedAfterEdit`, not per keystroke, so a texture path does not try to load every prefix
 of itself.
 
@@ -513,7 +531,36 @@ popup for a name and a type. Every attribute number is edited as a float drag, i
 saved `40` to `40.5`. Writes go through `Node::setAttribute`, so an edit during Play fires the game's
 changed signals.
 
-Nothing the Explorer or Properties does is undoable or marks the scene dirty yet.
+Every edit either panel makes is undoable and marks the scene dirty — see *Undo, redo and unsaved
+changes*.
+
+### Undo, redo and unsaved changes
+
+`dev/History` is the editor's undo stack, and it stores **whole scenes**, not commands: after every
+finished edit it saves the scene to text with `SceneCodec::save` — the same text Play snapshots — and
+undo loads the previous text back with `SceneCodec::load`. Nothing has to describe an edit to make it
+undoable: a prop, an attribute, an insert, a delete, a reparent and a console line are all the same
+kind of step, which is what makes a new `CINDER_PROP` undoable with zero editor code. It costs one
+scene save per finished edit and one load per undo.
+
+Panels never push steps. They call `touch(label, selection)` when they write, and `dev/Toolbar` calls
+`settle` at the top of every overlay frame, which commits only once no ImGui item is active. A drag that
+writes on forty frames is therefore one step, carrying the label and selection of its first frame, and
+an edit that saves to the same text as before records nothing. `MAX_STEPS` is 100.
+
+Undo calls the codec directly, not `Engine::loadScene`, so it does not reboot Lua and the console's
+globals survive. That is only safe because history is enabled in Edit mode alone, where no script has
+started: during Play, `touch`, `settle` and the buttons do nothing, and Stop discards Play's edits anyway.
+Ids round-trip through the codec, so the selection stored with the step, and the Explorer's open rows,
+which ImGui keys by id, come back with it.
+
+The document is the text of the last commit, and it is **dirty** while it differs from the text last
+saved or opened — so undoing back to the saved state is clean again. Save commits a pending edit and
+writes that text, and the toolbar shows the scene as `main.scene*` while it is dirty. Closing the window
+does not end the loop directly: `editor/main.cpp` clears GLFW's close flag and calls
+`Toolbar::requestClose`, which confirms at once when the scene is clean and otherwise opens a Save /
+Don't Save / Cancel modal, and the loop runs until `closeConfirmed()`. ⌘Z and ⌘⇧Z route globally like
+the other shortcuts, but an active text field claims ⌘Z for its own undo first.
 
 ### Logging and the console
 
@@ -698,8 +745,9 @@ CINDER_NODE(Camera, cinder::scene::Spatial) {
 ```
 
 `CINDER_PROP_R` adds a clamp range, `CINDER_PROP_S` a range and a drag step, and `CINDER_PROP_COLOR`
-marks a `vec3`/`vec4` as a colour through `PropHint`. Only the inspector reads the step and the hint;
-neither changes how a prop is written or saved, and a colour is not clamped.
+marks a `vec3`/`vec4` as a colour through `PropHint`, and `CINDER_PROP_ANGLE` marks radians to show in
+degrees. Only Properties reads the step and the hint; neither changes how a prop is written or saved, and
+neither a colour nor an angle is clamped.
 
 `props<T>()` builds the list once into a function-local static and a `PropChain` recursion emits the
 base class's props first, so `Node::enabled` is always the first prop of every class —

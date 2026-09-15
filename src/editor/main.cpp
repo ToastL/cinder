@@ -4,6 +4,7 @@
 #include "dev/Console.hpp"
 #include "dev/Dockspace.hpp"
 #include "dev/Explorer.hpp"
+#include "dev/History.hpp"
 #include "dev/ImGuiLayer.hpp"
 #include "dev/Properties.hpp"
 #include "dev/PlaySession.hpp"
@@ -25,6 +26,7 @@ using cinder::core::GameLoop;
 using cinder::core::ProjectConfig;
 using cinder::dev::Console;
 using cinder::dev::Explorer;
+using cinder::dev::History;
 using cinder::dev::Properties;
 using cinder::dev::PlaySession;
 using cinder::dev::Selection;
@@ -72,12 +74,13 @@ int main(int argc, char** argv) {
         {
             Engine engine(config, cinder::dev::overlayFactory());
             PlaySession session(engine);
-            Console console(engine.script());
-            Toolbar toolbar(session, engine, scenePath);
-            Viewport viewport(session, engine);
             Selection selection;
-            Explorer explorer(selection, engine.scene());
-            Properties properties(selection, engine.scene());
+            History history(engine.scene());
+            Console console(engine.script(), history, selection);
+            Toolbar toolbar(session, history, selection, scenePath);
+            Viewport viewport(session, selection, engine);
+            Explorer explorer(selection, history, engine.scene());
+            Properties properties(selection, history, engine.scene());
             engine.renderer().setOverlayDraw(
                     [&toolbar, &viewport, &explorer, &properties, &console] {
                         toolbar.draw();
@@ -95,13 +98,19 @@ int main(int argc, char** argv) {
                 cinder::platform::logInfo("[editor] new scene, Save writes %s\n",
                                           scenePath.string().c_str());
             }
+            history.reset();
             if (play) session.togglePlay();
 
             GameLoop loop(config.fixedHz);
 
             void cinderProbe(GLFWwindow*, int);
             int frames = 0;
-            while (!engine.window().shouldClose()) {
+            while (!toolbar.closeConfirmed()) {
+                if (engine.window().shouldClose()) {
+                    engine.window().setShouldClose(false);
+                    toolbar.requestClose();
+                    if (toolbar.closeConfirmed()) break;
+                }
                 cinderProbe(engine.window().handle(), frames);
                 session.tick(loop);
                 if (frameLimit > 0 && ++frames >= frameLimit) break;

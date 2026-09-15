@@ -2,27 +2,33 @@
 
 #include <filesystem>
 
-namespace cinder::core { class Engine; }
-
 namespace cinder::dev {
 
+class History;
 class PlaySession;
+class Selection;
 
 class Toolbar {
 public:
-    Toolbar(PlaySession& session, cinder::core::Engine& engine, std::filesystem::path scene);
+    Toolbar(PlaySession& session, History& history, Selection& selection, std::filesystem::path scene);
 
     Toolbar(const Toolbar&) = delete;
     Toolbar& operator=(const Toolbar&) = delete;
 
     void draw();
+    void requestClose();
+    bool closeConfirmed() const { return closeConfirmed_; }
 
 private:
-    void save();
+    bool save();
+    void closePrompt();
 
     PlaySession& session_;
-    cinder::core::Engine& engine_;
+    History& history_;
+    Selection& selection_;
     std::filesystem::path scene_;
+    bool closeRequested_ = false;
+    bool closeConfirmed_ = false;
 };
 
 }

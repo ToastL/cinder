@@ -43,7 +43,7 @@ public:
 
     CINDER_PROPS(Transform, void) {
         CINDER_PROP(position_);
-        CINDER_PROP(rotation_);
+        CINDER_PROP_ANGLE(rotation_);
         CINDER_PROP(scale_);
     }
 

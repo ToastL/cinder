@@ -1,5 +1,6 @@
 #include "dev/Explorer.hpp"
 
+#include "dev/History.hpp"
 #include "dev/Selection.hpp"
 #include "scene/Node.hpp"
 #include "scene/NodeTypes.hpp"
@@ -48,13 +49,14 @@ std::string detailOf(const Node& node, std::string_view type) {
 
 }
 
-Explorer::Explorer(Selection& selection, cinder::scene::Scene& scene)
-    : selection_(selection), scene_(scene) {}
+Explorer::Explorer(Selection& selection, History& history, cinder::scene::Scene& scene)
+    : selection_(selection), history_(history), scene_(scene) {}
 
 void Explorer::draw() {
     ImGui::SetNextWindowSize(ImVec2(260, 480), ImGuiCond_FirstUseEver);
     if (ImGui::Begin(TITLE, nullptr, ImGuiWindowFlags_NoFocusOnAppearing)) {
         Node* selected = selection_.resolve(scene_);
+        reveal_ = selection_.revealing() ? selected : nullptr;
 
         if (ImGui::Button("+")) ImGui::OpenPopup("insert");
         if (ImGui::BeginPopup("insert")) {
@@ -73,6 +75,9 @@ void Explorer::draw() {
             selection_.clear();
         }
         ImGui::EndChild();
+
+        if (selection_.revealing()) selection_.revealed();
+        reveal_ = nullptr;
 
         if (ImGui::BeginDragDropTarget()) {
             if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload(DRAG_PAYLOAD)) {
@@ -114,9 +119,11 @@ void Explorer::row(Node& node) {
 
         const bool dimmed = !selected && !node.enabledInHierarchy();
         if (dimmed) ImGui::PushStyleColor(ImGuiCol_Text, ImGui::GetStyleColorVec4(ImGuiCol_TextDisabled));
+        if (reveal_ != nullptr && reveal_ != &node && node.isAncestorOf(reveal_)) ImGui::SetNextItemOpen(true);
         open = ImGui::TreeNodeEx(reinterpret_cast<void*>(static_cast<std::intptr_t>(node.id())), flags, "%s",
                                  node.name().c_str());
         if (dimmed) ImGui::PopStyleColor();
+        if (reveal_ == &node) ImGui::SetScrollHereY();
 
         if (ImGui::IsItemClicked(ImGuiMouseButton_Left) && !ImGui::IsItemToggledOpen()) {
             selection_.select(node.id());
@@ -194,17 +201,22 @@ void Explorer::apply() {
         case Action::None:
             break;
         case Action::Insert:
+            history_.touch("Insert " + className_, selection_.id());
             if (Node* node = scene_.create(className_, destination)) selection_.select(node->id());
             break;
         case Action::Duplicate:
             if (target == nullptr) break;
+            history_.touch("Duplicate " + target->name(), selection_.id());
             if (Node* copy = scene_.clone(*target, target->parent())) selection_.select(copy->id());
             break;
         case Action::Delete:
-            if (target != nullptr) scene_.destroyNow(target);
+            if (target == nullptr) break;
+            history_.touch("Delete " + target->name(), selection_.id());
+            scene_.destroyNow(target);
             break;
         case Action::Reparent:
             if (target != nullptr && target != destination && !target->isAncestorOf(destination)) {
+                history_.touch("Reparent " + target->name(), selection_.id());
                 target->setParent(destination);
             }
             break;
