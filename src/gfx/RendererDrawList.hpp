@@ -3,6 +3,7 @@
 #include "scene/DrawList.hpp"
 
 #include <string>
+#include <unordered_map>
 #include <unordered_set>
 
 namespace cinder::gfx::pass {
@@ -43,7 +44,7 @@ private:
     Renderer& renderer_;
     cinder::gfx::pass::MeshPass& mesh_;
     cinder::gfx::pass::SpritePass& sprite_;
-    std::unordered_set<std::string> missingTextures_;
+    std::unordered_map<std::string, int> textures_;
     std::unordered_set<std::string> unknownMeshes_;
 };
 

@@ -14,16 +14,17 @@ namespace cinder::gfx {
 int RendererDrawList::textureHandle(std::string_view path) {
     if (path.empty()) return WHITE;
 
-    const std::string key = cinder::platform::projectPath(path).string();
-    if (missingTextures_.count(key) != 0) return WHITE;
+    const std::string name(path);
+    if (auto found = textures_.find(name); found != textures_.end()) return found->second;
 
+    int handle = WHITE;
     try {
-        return renderer_.assets().load(key);
+        handle = renderer_.assets().load(cinder::platform::contentPath(path).string());
     } catch (const std::exception& e) {
-        missingTextures_.insert(key);
         cinder::platform::logError("[gfx] %s\n", e.what());
-        return WHITE;
     }
+    textures_.emplace(name, handle);
+    return handle;
 }
 
 int RendererDrawList::meshHandle(std::string_view name) {

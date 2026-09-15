@@ -9,8 +9,8 @@ with one directional light, per-pass cameras, edge-triggered input, and Lua scri
 code that runs top to bottom, attributes on nodes, and per-file hot reload that stops what the old
 code started. A Roblox-style tree of nodes
 with a prop system that feeds the serializer and the script bindings from one declaration. A
-bidirectional `Archive` with a text backend, and games that are `.scene` files in project folders
-rather than scripts in the engine. Dear ImGui is up in a separate `engine_dev` target, with a
+bidirectional `Archive` with text and INI backends, and games that are project folders in Unreal's
+shape — a `.cinder` file, `Config/`, `Content/` and `Source/` — rather than scripts in the engine. Dear ImGui is up in a separate `engine_dev` target, with a
 dockspace holding the Scene viewport and a console with a live Lua REPL, and a play toolbar in the
 main menu bar — `player` ships without a byte of it. The editor opens a project in Edit mode, seen
 through a free-flying editor camera with a frustum drawn for every scene camera; Play serializes the
@@ -62,11 +62,14 @@ editor camera, the Explorer, Properties, picking and undo have landed; transform
       sink. REPL line evaluates against the live `lua_State`, with history on up/down.
 - [x] Toolbar — Play / Pause / Step / Stop and Save, on ⌘P / ⌘⇧P / ⌘⌥P / ⌘S, in the main menu bar
 - [ ] Console: click a `file:line` to open it in `$EDITOR`; filter by level; search
-- [ ] Editor layout + window state persisted between runs — `io.IniFilename` is currently `nullptr`
-- [ ] Project picker and new-project template — the editor takes the project folder on the
-      command line
+- [ ] Editor layout + window state persisted between runs — `io.IniFilename` is currently `nullptr`;
+      the file belongs in the project's `Saved/`
+- [ ] Project picker and new-project template — the editor takes the project folder or its
+      `.cinder` file on the command line; the template writes `Content/Scenes/` and `Content/Textures/`,
+      and the picker lists each descriptor's `category` and `description`
+- [ ] Project Settings panel — `ProjectConfig::walk` already writes `Config/Game.ini` through `IniSave`
 - [ ] Scene switching — open, new and save-as. The editor edits the one scene named by
-      `project.lua` or `--scene`.
+      `startScene` in `Config/Game.ini` or `--scene`.
 
 **Done when:** adding `CINDER_PROP(bounciness_)` to any node class makes it appear in Properties, save
 to disk, and become undoable — with zero editor code.
@@ -102,7 +105,7 @@ sugar, never the primary surface.
 ## Asset pipeline
 
 - [ ] GUIDs — a `.meta` sidecar per asset, stable across renames and moves. Scenes currently store
-      the project-relative path, which a rename breaks.
+      the path relative to `Content/` or `Source/`, which a rename breaks.
 - [ ] Asset database: GUID -> path -> loaded handle. `DrawList::textureHandle` / `meshHandle` are
       already the lookup seam; they just need GUID lookup in front.
 - [ ] Import pipeline: source file -> cooked asset, cached, re-run on mtime change
@@ -163,7 +166,11 @@ sugar, never the primary surface.
 - [ ] **No sorting anywhere**, in either pass. Submission order only.
 - [ ] **`endSingleTime` does a full `vkQueueWaitIdle`** per texture upload.
 - [ ] **Scripts cannot share code.** There is no `ModuleScript`/`require`: `package.path` does not
-      include the project, so a helper has to be copied or hung off `_G` by another script.
+      include the project, so a helper has to be copied or hung off `_G` by another script. `Source/`
+      is the natural root — `Source/?.lua`, with required files watched like scripts.
+- [ ] **Half the project descriptor is read by nothing.** `modules`, `plugins`,
+      `additionalRootDirectories`, `additionalPluginDirectories` and `disableEnginePluginsByDefault`
+      are parsed, checked and saved; they wait for a plugin system and `require`.
 - [ ] **The prelude is not watched** — editing `types.lua`, `scene.lua` or `task.lua` needs a restart.
 - [ ] **`poll()` stats every script it has read, every frame** — move to a watch service, or throttle.
 - [ ] **An attribute cannot name a node** — it holds numbers, strings, bools and small vectors. A node

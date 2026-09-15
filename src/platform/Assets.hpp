@@ -13,6 +13,7 @@ std::filesystem::path enginePath(std::string_view relative);
 
 void setProjectRoot(const std::filesystem::path& root);
 const std::filesystem::path& projectRoot();
-std::filesystem::path projectPath(std::string_view relative);
+std::filesystem::path contentPath(std::string_view relative);
+std::filesystem::path sourcePath(std::string_view relative);
 
 }

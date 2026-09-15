@@ -5,7 +5,7 @@ local function check(what, ok)
 end
 local function near(a, b) return math.abs(a - b) < 1e-4 end
 
-check("script node",    script.className == "Script" and script.file == "scripts/runner.lua")
+check("script node",    script.className == "Script" and script.file == "runner.lua")
 check("script parent",  script.parent.name == "SelfTest")
 
 check("vec add",        vec3(1, 2, 3) + vec3(1, 1, 1) == vec3(2, 3, 4))
@@ -135,10 +135,10 @@ task.delay(0.15, function() delayed = true end)
 local spawned = scene:create("Group")
 spawned.name = "Spawned"
 spawned:setAttribute("mark", 7)
-spawned:add("Script").file = "scripts/marker.lua"
+spawned:add("Script").file = "marker.lua"
 
 local ticker = scene:create("Group")
-ticker:add("Script").file = "scripts/ticker.lua"
+ticker:add("Script").file = "ticker.lua"
 local ticksAtDestroy = nil
 task.delay(0.1, function()
     ticker:destroy()

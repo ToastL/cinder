@@ -1,6 +1,10 @@
 #include "platform/Assets.hpp"
 
+#include "platform/Log.hpp"
+
 #include <cstdlib>
+#include <stdexcept>
+#include <string>
 #include <system_error>
 
 #ifndef CINDER_ENGINE_DEFAULT
@@ -31,6 +35,41 @@ std::filesystem::path under(const std::filesystem::path& root, std::string_view 
     return root / std::filesystem::path(relative);
 }
 
+bool matchesDisk(const std::filesystem::path& local) {
+    std::error_code error;
+    if (!std::filesystem::exists(project / local, error)) return true;
+
+    std::filesystem::path at = project;
+    for (const std::filesystem::path& part : local) {
+        if (part.empty() || part == ".") continue;
+
+        bool found = false;
+        for (const auto& entry : std::filesystem::directory_iterator(at, error)) {
+            if (entry.path().filename() == part) {
+                found = true;
+                break;
+            }
+        }
+        if (!found) return false;
+        at /= part;
+    }
+    return true;
+}
+
+std::filesystem::path inside(const char* folder, std::string_view relative) {
+    const std::filesystem::path given(relative);
+    const std::filesystem::path normal = given.lexically_normal();
+    if (given.has_root_path() || (!normal.empty() && *normal.begin() == "..")) {
+        throw std::runtime_error("\"" + std::string(relative) + "\" is outside " + folder + "/");
+    }
+
+    const std::filesystem::path local = std::filesystem::path(folder) / normal;
+    if (!matchesDisk(local)) {
+        logError("[assets] %s differs in case from the file on disk\n", local.string().c_str());
+    }
+    return project / local;
+}
+
 }
 
 void locateExecutable(const char* argv0) {
@@ -57,6 +96,8 @@ void setProjectRoot(const std::filesystem::path& root) { project = std::filesyst
 
 const std::filesystem::path& projectRoot() { return project; }
 
-std::filesystem::path projectPath(std::string_view relative) { return under(project, relative); }
+std::filesystem::path contentPath(std::string_view relative) { return inside("Content", relative); }
+
+std::filesystem::path sourcePath(std::string_view relative) { return inside("Source", relative); }
 
 }

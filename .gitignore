@@ -53,3 +53,6 @@ compile_commands.json
 *.ubsan
 callgrind.out.*
 perf.data*
+
+### Per-user and generated project data ###
+Saved/

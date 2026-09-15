@@ -60,15 +60,17 @@ int main(int argc, char** argv) {
 
     if (project.empty()) {
         cinder::platform::logError(
-                "usage: editor <project> [--scene path] [--play] [--frames n] [--capture png]\n");
+                "usage: editor <project folder or .cinder file> [--scene path] [--play] [--frames n]"
+                " [--capture png]\n");
         return 2;
     }
 
     try {
-        cinder::platform::setProjectRoot(project);
-        ProjectConfig config = ProjectConfig::load(cinder::platform::projectPath("project.lua"));
-        if (!scene.empty()) config.scene = scene;
-        const std::filesystem::path scenePath = cinder::platform::projectPath(config.scene);
+        const std::filesystem::path root = ProjectConfig::root(project);
+        cinder::platform::setProjectRoot(root);
+        ProjectConfig config = ProjectConfig::load(root);
+        if (!scene.empty()) config.startScene = scene;
+        const std::filesystem::path scenePath = cinder::platform::contentPath(config.startScene);
 
         Glfw::acquire();
         {

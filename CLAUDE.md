@@ -9,9 +9,9 @@ target is a Unity/Unreal-shaped editor workflow — select a node, edit its fiel
 Stop, land back where you started. `TODO.md` is the authoritative roadmap; read it before proposing
 architectural work, since it records what is deliberately deferred and what is out of scope.
 
-The repo holds the engine only. A game is a **project folder** — a `project.lua`, its scenes and its
-scripts — that the editor opens and the player plays. `samples/` holds two example projects; nothing
-in them is compiled.
+The repo holds the engine only. A game is a **project folder** — a `.cinder` file, `Config/`,
+`Content/` and `Source/` — that the editor opens and the player plays; see *Projects and packaging*.
+`samples/` holds two example projects; nothing in them is compiled.
 
 ## Commands
 
@@ -36,8 +36,8 @@ ctest --test-dir build --output-on-failure
 viewport, the Explorer, Properties and the console, with the play toolbar in the main menu bar. It opens a project in **Edit
 mode**: the scene is loaded and drawn, and no game code runs.
 Play/Pause/Step/Stop are on the toolbar and on ⌘P, ⌘⇧P and ⌘⌥P; ⌘S saves the scene, and ⌘Z and ⌘⇧Z
-undo and redo edits. It takes
-`--scene <path>` (project-relative), `--play` (start in Play), `--frames <n>` and `--capture <png>`.
+undo and redo edits. It takes the project folder or its `.cinder` file, then
+`--scene <path>` (relative to `Content/`), `--play` (start in Play), `--frames <n>` and `--capture <png>`.
 The last two make it scriptable: `--frames 90 --capture out.png` runs headless-ish and writes a
 screenshot. See *The dev overlay* below for why this is a second executable rather than a flag.
 
@@ -360,9 +360,10 @@ Conventions used throughout, follow them:
 `MAX_TEXTURES = 256` is backed by a fixed-size descriptor pool.
 
 **Nodes never store those handles**, because a handle means nothing on the next run.
-`Sprite::texture` and `MeshPart::texture` / `mesh` are *names* — a project-relative path,
+`Sprite::texture` and `MeshPart::texture` / `mesh` are *names* — a path relative to `Content/`,
 or a primitive such as `"cube"` — resolved through `DrawList::textureHandle` / `meshHandle` on first
-draw and cached until `propChanged` says the name changed. A missing file logs once and draws white;
+draw and cached until `propChanged` says the name changed. `RendererDrawList` caches the handle by
+name, so a thousand sprites on one texture resolve its path once. A missing file logs once and draws white;
 an unknown mesh logs once and draws a cube. The clear colour and the 2D virtual size are `Camera`
 props, pushed to the renderer every frame through `DrawList::background` and `camera2d`, so a scene
 file carries them.
@@ -413,7 +414,7 @@ does not route through `Assets`: that pool has no `FREE_DESCRIPTOR_SET` flag. Im
 what lets `removeTexture` free the Scene panel's sets on every resize.
 
 `io.IniFilename` is `nullptr`, so no `imgui.ini` is written yet. Turning it on is the "editor layout
-persisted between runs" item in `TODO.md`.
+persisted between runs" item in `TODO.md`, and the file belongs in the project's `Saved/`.
 
 The toolbar is the main menu bar, not a window, so it takes no dock slot and the dockspace sits
 below it. Its shortcuts use `ImGui::Shortcut` with `ImGuiInputFlags_RouteGlobal`, so they work while
@@ -583,12 +584,12 @@ window does not — see *The Scene viewport*.
 
 ## Scripting
 
-A project's `project.lua` defines a global `project` table (`title`, `width`, `height`, `scene`,
-`fixed_hz`) parsed by `ProjectConfig::load` in a throwaway `lua_State`. `scene` is the scene both
-executables open; `--scene` overrides it.
+A project's settings are data, not code: `ProjectConfig::load` reads `Config/Game.ini` — `[Game]`
+`title`, `startScene`, `fixedHz` and `[Window]` `width`, `height` — without touching Lua, so opening a
+project runs nothing. `startScene` is the scene both executables open; `--scene` overrides it.
 
 There is **no entry script**. Game code lives in `Script` nodes, in Roblox's shape: a `Script` names a
-project file, and that file runs top to bottom, once, when the node starts, with `script.parent` the
+file in `Source/`, and that file runs top to bottom, once, when the node starts, with `script.parent` the
 node it sits in. Per-frame work is a `stepped:connect(fn)` handler, and the top level may `task.wait`,
 because it runs as a thread. Per-node settings are attributes, not script fields. Lua errors are
 caught and printed, not propagated.
@@ -634,7 +635,7 @@ key looks, in order, at:
 A prop therefore wins over a child with the same name. Writing a key that is neither a setter nor a
 prop **errors**, and so does writing a transform on a node that is not spatial, whose transform getters
 return nil. `scene:create(className, parent)` and `node:add(className)` make nodes, and
-`box:add("Script").file = "scripts/riser.lua"` is how a script attaches another.
+`box:add("Script").file = "riser.lua"` is how a script attaches another.
 
 These contracts are load-bearing and must not drift:
 
@@ -697,7 +698,8 @@ removes the observer before the state closes.
 Lua is built as C, so `luaL_error` longjmps past C++ destructors. A binding finishes its C++ work
 before it raises: `setAttribute` validates in a helper that returns a status, and errors only after
 that helper's `std::optional` is gone. No C++ exception may cross Lua either, which is why `setParent`
-checks for a cycle before it calls `Node::setParent`.
+checks for a cycle before it calls `Node::setParent`, and why `loadTexture` catches a failed load and
+calls `lua_error` only once the `catch` has ended.
 
 ### Ownership
 
@@ -771,28 +773,123 @@ type for delta encoding. Re-binding a name keeps its slot — so iteration order
 reboot — and drops its cached default, so a `Script` default cannot outlive the `lua_State` it
 closed over.
 
-`SceneCodec::VERSION` and `OLDEST` are both 4 — see *The scene file*. `tests/scene_files_test` loads and re-saves every `.scene` under `samples/` and
-`tests/selftest/` and requires the bytes to match, so shipped scenes stay canonical as the format
-moves.
+`SceneCodec::VERSION` and `OLDEST` are both 4 — see *The scene file*. `tests/scene_files_test` loads
+and re-saves every `.scene` and every project's `Config/Game.ini` under `samples/` and
+`tests/selftest/`, and requires the bytes to match, so shipped scenes and settings stay canonical as
+the formats move.
 
 ## Projects and packaging
 
-`platform/Assets` has two roots, and nothing else turns a name into a path:
+A project is a folder in Unreal's shape:
+
+```
+MyGame/
+  MyGame.cinder      the project descriptor, Unreal's .uproject — marks the folder as a project
+  Config/Game.ini    settings
+  Content/           scenes, textures, meshes — Scenes/ and Textures/ by convention, not by rule
+  Source/            scripts
+  Saved/             per-user and generated; gitignored, never packaged
+```
+
+`ProjectConfig::root` takes the folder or its `.cinder` file. `ProjectConfig::load` requires exactly
+one `*.cinder` in the folder, parses it into `config.descriptor`, then walks `Config/Game.ini`
+through `IniLoad`; a project with no `Game.ini` runs on defaults. `ProjectConfig::walk` serves both
+directions, like `SceneCodec::walk`, and `IniSave` writes only values that differ from the defaults and
+drops a section left empty — so a sample's `Game.ini` is usually just its title.
+
+**The `.cinder` file is the project descriptor**, Unreal's `.uproject` with camelCase keys: JSON that
+says what the project is and what it is made of, while `Config/` says how it is set up.
+
+```json
+{
+	"fileVersion": 1,
+	"engineAssociation": "0.1.0",
+	"category": "Games",
+	"description": "A short description for the project picker.",
+	"modules": [
+		{
+			"name": "Gameplay",
+			"type": "Runtime",
+			"loadingPhase": "Default"
+		}
+	],
+	"plugins": [
+		{
+			"name": "Physics",
+			"enabled": true,
+			"targetAllowList": [
+				"Editor"
+			]
+		}
+	],
+	"targetPlatforms": [
+		"macOS",
+		"Linux"
+	],
+	"postBuildSteps": {
+		"macOS": [
+			"codesign --force -s - $(StageDir)/player"
+		]
+	}
+}
+```
+
+`core/ProjectDescriptor` carries every `.uproject` field that means something outside Epic's own
+tooling — `EpicSampleNameHash` and `IsEnterpriseProject` are left out — and not all of them are read
+yet:
+
+- **`fileVersion`** must be `ProjectDescriptor::FILE_VERSION`, 1.
+- **`engineAssociation`** is the cinder version the project was made with. One that differs from
+  `ProjectDescriptor::engineVersion()` — CMake's `PROJECT_VERSION`, baked in as `CINDER_VERSION` —
+  logs a warning. Empty means the project lives in the engine's tree, which is Unreal's convention
+  and what the samples do.
+- **`targetPlatforms`** (`macOS`, `Linux`, `Windows`; empty means all) and **`preBuildSteps`** /
+  **`postBuildSteps`**, a platform name to command lines, are read by `package_game`, below.
+- **`category`** and **`description`** are for the project picker.
+- **`modules`**, **`plugins`**, **`additionalRootDirectories`**, **`additionalPluginDirectories`** and
+  **`disableEnginePluginsByDefault`** are parsed, type-checked and saved, and nothing reads them: they
+  wait for a plugin system and for `require`.
+
+`ProjectDescriptor::save` writes Unreal's layout — tabs, the first four keys always, everything else
+only when it is set — and `tests/scene_files_test` holds the shipped descriptors to it. A wrong type,
+or a module or plugin without a `name`, is an error that names the key, and `ProjectConfig::load`
+prefixes the file name. `serial/Json` is the format: `parseJson` builds a `PropValue` — objects are
+`PropRec`, arrays `PropSeq`, and `null` is rejected — and reports errors as `line:column`, and
+`JsonWriter` streams, so the descriptor rather than a sorted map decides the key order.
+
+`serial/IniLoad` and `serial/IniSave` are the `Archive` for INI: a record is a `[Section]`, a field is
+`key=value` with camelCase keys like props, a value runs raw to the end of its line, and numbers go
+through `from_chars`/`to_chars`. INI has no arrays, attribute bags or nested sections, and asking for
+one throws `std::logic_error`.
+
+`platform/Assets` is the only thing that turns a name into a path, and it has three roots:
 
 - **`enginePath`** — shaders and the prelude. `CINDER_ENGINE` if set; else `engine/` next to the
   executable, if it exists, which is the packaged layout; else the source tree's `engine/`, baked in
   at configure time as `CINDER_ENGINE_DEFAULT`.
-- **`projectPath`** — `project.lua`, scenes, scripts and textures. Set from the executable's first
-  argument, made absolute; the player falls back to `project/` next to itself.
+- **`contentPath`** — `Content/`: the scene to open, `Sprite.texture`, `MeshPart.texture` and
+  `engine.loadTexture`.
+- **`sourcePath`** — `Source/`: a `Script`'s `file`, through `__scriptRead`.
 
-Every path inside a project — a `Script`'s `file "scripts/bobber.lua"`, a `SpriteRenderer.texture` — is
-relative to the project root, so a project folder can live anywhere and runs from any working
-directory.
+The loader picks the root, so a path never names it — a scene says `file "bobber.lua"` and `texture
+"Textures/box.png"`. Both roots sit under the project root, which is made absolute, so a project
+folder can live anywhere and runs from any working directory; the player falls back to `project/`
+next to itself. A path that is absolute or climbs out of its root with `..` throws: a texture logs
+and draws white, a script or `loadTexture` raises a Lua error. It would work in the editor and break
+once packaged. A path that exists but differs in case from the disk logs `[assets] ... differs in
+case`: macOS is case-insensitive by default, and the same project would not find the file on a
+case-sensitive system.
 
 `cmake --build build --target package_game` builds `player` and runs `cmake/PackageGame.cmake`, which
-stages `build/dist/<project>/` as `player`, `engine/shaders/*.spv`, `engine/lua/*.lua` and
-`project/`. The cache variable `CINDER_PACKAGE_PROJECT` picks the project, defaulting to
-`samples/sandbox2d`.
+stages `build/dist/<name>/` as `player`, `engine/shaders/*.spv`, `engine/lua/*.lua` and `project/`
+holding the `.cinder` file, `Config/`, `Content/` and `Source/` — never `Saved/` or anything else in
+the folder. `<name>` is the `.cinder` file's stem. The cache variable `CINDER_PACKAGE_PROJECT` picks
+the project, defaulting to `samples/sandbox2d`.
+
+It reads the descriptor with CMake's own `string(JSON)`. Before staging it refuses a project whose
+`targetPlatforms` does not list the host and runs the host's `preBuildSteps`; after staging it runs
+`postBuildSteps`. Each step runs through `sh -c` — `cmd /c` on Windows — in the project folder, with
+`$(ProjectDir)`, `$(EngineDir)` and `$(StageDir)` expanded, and a step that fails stops the package.
 
 ## Conventions
 
@@ -806,7 +903,8 @@ stages `build/dist/<project>/` as `player`, `engine/shaders/*.spv`, `engine/lua/
 - `Input` is edge-triggered: `keyPressed`/`keyReleased` are true for exactly one fixed update,
   cleared by `input.consume()` at the end of `Engine::update` and on every `GameLoop::idle` frame.
 - **`std::to_chars` everywhere in `serial`** — never `printf` or `ostream`, which follow the locale.
-  A test pins the output under a Turkish locale.
+  A test pins the output under a Turkish locale, and `IniLoad` and `parseJson` parse with
+  `std::from_chars` for the same reason.
 - Sizes and view dimensions come in two flavours and they are not interchangeable: the swapchain and
   render target are in **framebuffer pixels**, while cameras, `resize()` and `screenToWorld` are in
   **window points**. On a Retina display these differ by 2x. GLFW reports cursor positions in points,

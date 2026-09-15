@@ -11,7 +11,7 @@ nodes {
         children {
             Script {
                 id 4
-                file "scripts/camera2d.lua"
+                file "camera2d.lua"
             }
         }
     }
@@ -19,7 +19,7 @@ nodes {
         id 2
         name "Spawner"
         attributes {
-            boxScript "scripts/riser.lua"
+            boxScript "riser.lua"
             lifetime 6
             maxSize 18
             minSize 4
@@ -27,7 +27,7 @@ nodes {
         children {
             Script {
                 id 5
-                file "scripts/spawner.lua"
+                file "spawner.lua"
             }
         }
     }
@@ -38,7 +38,7 @@ nodes {
         children {
             Script {
                 id 6
-                file "scripts/cursor.lua"
+                file "cursor.lua"
             }
         }
     }

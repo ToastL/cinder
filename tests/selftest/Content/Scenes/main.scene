@@ -6,7 +6,7 @@ nodes {
         children {
             Script {
                 id 3
-                file "scripts/runner.lua"
+                file "runner.lua"
             }
         }
     }
@@ -19,7 +19,7 @@ nodes {
         children {
             Script {
                 id 4
-                file "scripts/marker.lua"
+                file "marker.lua"
             }
         }
     }

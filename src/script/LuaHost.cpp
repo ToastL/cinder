@@ -56,8 +56,19 @@ int logMessage(lua_State* state) {
 }
 
 int loadTexture(lua_State* state) {
-    const std::string path = cinder::platform::projectPath(luaL_checkstring(state, 1)).string();
-    lua_pushinteger(state, host(state).renderer->assets().load(path));
+    const char* name = luaL_checkstring(state, 1);
+
+    int handle = -1;
+    try {
+        handle = host(state).renderer->assets().load(cinder::platform::contentPath(name).string());
+    } catch (const std::exception& e) {
+        luaL_where(state, 1);
+        lua_pushstring(state, e.what());
+        lua_concat(state, 2);
+    }
+    if (handle < 0) return lua_error(state);
+
+    lua_pushinteger(state, handle);
     return 1;
 }
 
@@ -150,8 +161,9 @@ int LuaHost::scriptRead(lua_State* state) {
     if (path == nullptr) return luaL_error(state, "__scriptRead expects a path");
 
     try {
-        const std::string source = cinder::lua::readSource(cinder::platform::projectPath(path));
-        LuaApi::context<LuaHost>(state)->watch(path);
+        const std::filesystem::path file = cinder::platform::sourcePath(path);
+        const std::string source = cinder::lua::readSource(file);
+        LuaApi::context<LuaHost>(state)->watch(path, file);
         lua_pushlstring(state, source.data(), source.size());
         return 1;
     } catch (const std::exception& e) {
@@ -235,8 +247,7 @@ void LuaHost::loadPrelude() {
     }
 }
 
-void LuaHost::watch(const char* path) {
-    const std::filesystem::path file = cinder::platform::projectPath(path);
+void LuaHost::watch(const char* path, const std::filesystem::path& file) {
     watched_.insert({path, Watch{file, cinder::lua::modifiedMillis(file, 0)}});
 }
 

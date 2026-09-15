@@ -14,7 +14,7 @@ nodes {
         children {
             Script {
                 id 83
-                file "scripts/flycam.lua"
+                file "flycam.lua"
             }
         }
     }
@@ -34,7 +34,7 @@ nodes {
             Script {
                 id 85
                 enabled false
-                file "scripts/bobber.lua"
+                file "bobber.lua"
             }
         }
     }
@@ -53,7 +53,7 @@ nodes {
             }
             Script {
                 id 87
-                file "scripts/bobber.lua"
+                file "bobber.lua"
             }
         }
     }
@@ -72,7 +72,7 @@ nodes {
             }
             Script {
                 id 89
-                file "scripts/bobber.lua"
+                file "bobber.lua"
             }
         }
     }
@@ -91,7 +91,7 @@ nodes {
             }
             Script {
                 id 91
-                file "scripts/bobber.lua"
+                file "bobber.lua"
             }
         }
     }
@@ -110,7 +110,7 @@ nodes {
             }
             Script {
                 id 93
-                file "scripts/bobber.lua"
+                file "bobber.lua"
             }
         }
     }
@@ -129,7 +129,7 @@ nodes {
             }
             Script {
                 id 95
-                file "scripts/bobber.lua"
+                file "bobber.lua"
             }
         }
     }
@@ -148,7 +148,7 @@ nodes {
             }
             Script {
                 id 97
-                file "scripts/bobber.lua"
+                file "bobber.lua"
             }
         }
     }
@@ -167,7 +167,7 @@ nodes {
             }
             Script {
                 id 99
-                file "scripts/bobber.lua"
+                file "bobber.lua"
             }
         }
     }
@@ -186,7 +186,7 @@ nodes {
             }
             Script {
                 id 101
-                file "scripts/bobber.lua"
+                file "bobber.lua"
             }
         }
     }
@@ -205,7 +205,7 @@ nodes {
             }
             Script {
                 id 103
-                file "scripts/bobber.lua"
+                file "bobber.lua"
             }
         }
     }
@@ -224,7 +224,7 @@ nodes {
             }
             Script {
                 id 105
-                file "scripts/bobber.lua"
+                file "bobber.lua"
             }
         }
     }
@@ -243,7 +243,7 @@ nodes {
             }
             Script {
                 id 107
-                file "scripts/bobber.lua"
+                file "bobber.lua"
             }
         }
     }
@@ -262,7 +262,7 @@ nodes {
             }
             Script {
                 id 109
-                file "scripts/bobber.lua"
+                file "bobber.lua"
             }
         }
     }
@@ -281,7 +281,7 @@ nodes {
             }
             Script {
                 id 111
-                file "scripts/bobber.lua"
+                file "bobber.lua"
             }
         }
     }
@@ -300,7 +300,7 @@ nodes {
             }
             Script {
                 id 113
-                file "scripts/bobber.lua"
+                file "bobber.lua"
             }
         }
     }
@@ -319,7 +319,7 @@ nodes {
             }
             Script {
                 id 115
-                file "scripts/bobber.lua"
+                file "bobber.lua"
             }
         }
     }
@@ -338,7 +338,7 @@ nodes {
             }
             Script {
                 id 117
-                file "scripts/bobber.lua"
+                file "bobber.lua"
             }
         }
     }
@@ -357,7 +357,7 @@ nodes {
             }
             Script {
                 id 119
-                file "scripts/bobber.lua"
+                file "bobber.lua"
             }
         }
     }
@@ -376,7 +376,7 @@ nodes {
             }
             Script {
                 id 121
-                file "scripts/bobber.lua"
+                file "bobber.lua"
             }
         }
     }
@@ -395,7 +395,7 @@ nodes {
             }
             Script {
                 id 123
-                file "scripts/bobber.lua"
+                file "bobber.lua"
             }
         }
     }
@@ -414,7 +414,7 @@ nodes {
             }
             Script {
                 id 125
-                file "scripts/bobber.lua"
+                file "bobber.lua"
             }
         }
     }
@@ -433,7 +433,7 @@ nodes {
             }
             Script {
                 id 127
-                file "scripts/bobber.lua"
+                file "bobber.lua"
             }
         }
     }
@@ -452,7 +452,7 @@ nodes {
             }
             Script {
                 id 129
-                file "scripts/bobber.lua"
+                file "bobber.lua"
             }
         }
     }
@@ -471,7 +471,7 @@ nodes {
             }
             Script {
                 id 131
-                file "scripts/bobber.lua"
+                file "bobber.lua"
             }
         }
     }
@@ -490,7 +490,7 @@ nodes {
             }
             Script {
                 id 133
-                file "scripts/bobber.lua"
+                file "bobber.lua"
             }
         }
     }
@@ -509,7 +509,7 @@ nodes {
             }
             Script {
                 id 135
-                file "scripts/bobber.lua"
+                file "bobber.lua"
             }
         }
     }
@@ -528,7 +528,7 @@ nodes {
             }
             Script {
                 id 137
-                file "scripts/bobber.lua"
+                file "bobber.lua"
             }
         }
     }
@@ -547,7 +547,7 @@ nodes {
             }
             Script {
                 id 139
-                file "scripts/bobber.lua"
+                file "bobber.lua"
             }
         }
     }
@@ -566,7 +566,7 @@ nodes {
             }
             Script {
                 id 141
-                file "scripts/bobber.lua"
+                file "bobber.lua"
             }
         }
     }
@@ -585,7 +585,7 @@ nodes {
             }
             Script {
                 id 143
-                file "scripts/bobber.lua"
+                file "bobber.lua"
             }
         }
     }
@@ -604,7 +604,7 @@ nodes {
             }
             Script {
                 id 145
-                file "scripts/bobber.lua"
+                file "bobber.lua"
             }
         }
     }
@@ -623,7 +623,7 @@ nodes {
             }
             Script {
                 id 147
-                file "scripts/bobber.lua"
+                file "bobber.lua"
             }
         }
     }
@@ -642,7 +642,7 @@ nodes {
             }
             Script {
                 id 149
-                file "scripts/bobber.lua"
+                file "bobber.lua"
             }
         }
     }
@@ -661,7 +661,7 @@ nodes {
             }
             Script {
                 id 151
-                file "scripts/bobber.lua"
+                file "bobber.lua"
             }
         }
     }
@@ -680,7 +680,7 @@ nodes {
             }
             Script {
                 id 153
-                file "scripts/bobber.lua"
+                file "bobber.lua"
             }
         }
     }
@@ -699,7 +699,7 @@ nodes {
             }
             Script {
                 id 155
-                file "scripts/bobber.lua"
+                file "bobber.lua"
             }
         }
     }
@@ -718,7 +718,7 @@ nodes {
             }
             Script {
                 id 157
-                file "scripts/bobber.lua"
+                file "bobber.lua"
             }
         }
     }
@@ -737,7 +737,7 @@ nodes {
             }
             Script {
                 id 159
-                file "scripts/bobber.lua"
+                file "bobber.lua"
             }
         }
     }
@@ -756,7 +756,7 @@ nodes {
             }
             Script {
                 id 161
-                file "scripts/bobber.lua"
+                file "bobber.lua"
             }
         }
     }
@@ -775,7 +775,7 @@ nodes {
             }
             Script {
                 id 163
-                file "scripts/bobber.lua"
+                file "bobber.lua"
             }
         }
     }
@@ -793,7 +793,7 @@ nodes {
             }
             Script {
                 id 165
-                file "scripts/bobber.lua"
+                file "bobber.lua"
             }
         }
     }
@@ -812,7 +812,7 @@ nodes {
             }
             Script {
                 id 167
-                file "scripts/bobber.lua"
+                file "bobber.lua"
             }
         }
     }
@@ -831,7 +831,7 @@ nodes {
             }
             Script {
                 id 169
-                file "scripts/bobber.lua"
+                file "bobber.lua"
             }
         }
     }
@@ -850,7 +850,7 @@ nodes {
             }
             Script {
                 id 171
-                file "scripts/bobber.lua"
+                file "bobber.lua"
             }
         }
     }
@@ -869,7 +869,7 @@ nodes {
             }
             Script {
                 id 173
-                file "scripts/bobber.lua"
+                file "bobber.lua"
             }
         }
     }
@@ -888,7 +888,7 @@ nodes {
             }
             Script {
                 id 175
-                file "scripts/bobber.lua"
+                file "bobber.lua"
             }
         }
     }
@@ -907,7 +907,7 @@ nodes {
             }
             Script {
                 id 177
-                file "scripts/bobber.lua"
+                file "bobber.lua"
             }
         }
     }
@@ -926,7 +926,7 @@ nodes {
             }
             Script {
                 id 179
-                file "scripts/bobber.lua"
+                file "bobber.lua"
             }
         }
     }
@@ -945,7 +945,7 @@ nodes {
             }
             Script {
                 id 181
-                file "scripts/bobber.lua"
+                file "bobber.lua"
             }
         }
     }
@@ -964,7 +964,7 @@ nodes {
             }
             Script {
                 id 183
-                file "scripts/bobber.lua"
+                file "bobber.lua"
             }
         }
     }
@@ -983,7 +983,7 @@ nodes {
             }
             Script {
                 id 185
-                file "scripts/bobber.lua"
+                file "bobber.lua"
             }
         }
     }
@@ -1002,7 +1002,7 @@ nodes {
             }
             Script {
                 id 187
-                file "scripts/bobber.lua"
+                file "bobber.lua"
             }
         }
     }
@@ -1021,7 +1021,7 @@ nodes {
             }
             Script {
                 id 189
-                file "scripts/bobber.lua"
+                file "bobber.lua"
             }
         }
     }
@@ -1040,7 +1040,7 @@ nodes {
             }
             Script {
                 id 191
-                file "scripts/bobber.lua"
+                file "bobber.lua"
             }
         }
     }
@@ -1059,7 +1059,7 @@ nodes {
             }
             Script {
                 id 193
-                file "scripts/bobber.lua"
+                file "bobber.lua"
             }
         }
     }
@@ -1078,7 +1078,7 @@ nodes {
             }
             Script {
                 id 195
-                file "scripts/bobber.lua"
+                file "bobber.lua"
             }
         }
     }
@@ -1097,7 +1097,7 @@ nodes {
             }
             Script {
                 id 197
-                file "scripts/bobber.lua"
+                file "bobber.lua"
             }
         }
     }
@@ -1116,7 +1116,7 @@ nodes {
             }
             Script {
                 id 199
-                file "scripts/bobber.lua"
+                file "bobber.lua"
             }
         }
     }
@@ -1135,7 +1135,7 @@ nodes {
             }
             Script {
                 id 201
-                file "scripts/bobber.lua"
+                file "bobber.lua"
             }
         }
     }
@@ -1154,7 +1154,7 @@ nodes {
             }
             Script {
                 id 203
-                file "scripts/bobber.lua"
+                file "bobber.lua"
             }
         }
     }
@@ -1173,7 +1173,7 @@ nodes {
             }
             Script {
                 id 205
-                file "scripts/bobber.lua"
+                file "bobber.lua"
             }
         }
     }
@@ -1192,7 +1192,7 @@ nodes {
             }
             Script {
                 id 207
-                file "scripts/bobber.lua"
+                file "bobber.lua"
             }
         }
     }
@@ -1211,7 +1211,7 @@ nodes {
             }
             Script {
                 id 209
-                file "scripts/bobber.lua"
+                file "bobber.lua"
             }
         }
     }
@@ -1230,7 +1230,7 @@ nodes {
             }
             Script {
                 id 211
-                file "scripts/bobber.lua"
+                file "bobber.lua"
             }
         }
     }
@@ -1249,7 +1249,7 @@ nodes {
             }
             Script {
                 id 213
-                file "scripts/bobber.lua"
+                file "bobber.lua"
             }
         }
     }
@@ -1268,7 +1268,7 @@ nodes {
             }
             Script {
                 id 215
-                file "scripts/bobber.lua"
+                file "bobber.lua"
             }
         }
     }
@@ -1287,7 +1287,7 @@ nodes {
             }
             Script {
                 id 217
-                file "scripts/bobber.lua"
+                file "bobber.lua"
             }
         }
     }
@@ -1306,7 +1306,7 @@ nodes {
             }
             Script {
                 id 219
-                file "scripts/bobber.lua"
+                file "bobber.lua"
             }
         }
     }
@@ -1325,7 +1325,7 @@ nodes {
             }
             Script {
                 id 221
-                file "scripts/bobber.lua"
+                file "bobber.lua"
             }
         }
     }
@@ -1344,7 +1344,7 @@ nodes {
             }
             Script {
                 id 223
-                file "scripts/bobber.lua"
+                file "bobber.lua"
             }
         }
     }
@@ -1363,7 +1363,7 @@ nodes {
             }
             Script {
                 id 225
-                file "scripts/bobber.lua"
+                file "bobber.lua"
             }
         }
     }
@@ -1382,7 +1382,7 @@ nodes {
             }
             Script {
                 id 227
-                file "scripts/bobber.lua"
+                file "bobber.lua"
             }
         }
     }
@@ -1401,7 +1401,7 @@ nodes {
             }
             Script {
                 id 229
-                file "scripts/bobber.lua"
+                file "bobber.lua"
             }
         }
     }
@@ -1420,7 +1420,7 @@ nodes {
             }
             Script {
                 id 231
-                file "scripts/bobber.lua"
+                file "bobber.lua"
             }
         }
     }
@@ -1439,7 +1439,7 @@ nodes {
             }
             Script {
                 id 233
-                file "scripts/bobber.lua"
+                file "bobber.lua"
             }
         }
     }
@@ -1458,7 +1458,7 @@ nodes {
             }
             Script {
                 id 235
-                file "scripts/bobber.lua"
+                file "bobber.lua"
             }
         }
     }
@@ -1477,7 +1477,7 @@ nodes {
             }
             Script {
                 id 237
-                file "scripts/bobber.lua"
+                file "bobber.lua"
             }
         }
     }
@@ -1496,7 +1496,7 @@ nodes {
             }
             Script {
                 id 239
-                file "scripts/bobber.lua"
+                file "bobber.lua"
             }
         }
     }
@@ -1515,7 +1515,7 @@ nodes {
             }
             Script {
                 id 241
-                file "scripts/bobber.lua"
+                file "bobber.lua"
             }
         }
     }
@@ -1534,7 +1534,7 @@ nodes {
             }
             Script {
                 id 243
-                file "scripts/bobber.lua"
+                file "bobber.lua"
             }
         }
     }
@@ -1553,7 +1553,7 @@ nodes {
             }
             Script {
                 id 245
-                file "scripts/bobber.lua"
+                file "bobber.lua"
             }
         }
     }
