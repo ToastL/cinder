@@ -24,6 +24,7 @@ public:
     int logicalHeight() const { return logicalHeight_; }
 
     bool shouldClose() const;
+    void setShouldClose(bool close);
     bool isMinimized() const { return width_ == 0 || height_ == 0; }
     bool wasResized() const { return resized_; }
     void clearResized() { resized_ = false; }

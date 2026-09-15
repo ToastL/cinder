@@ -5,9 +5,14 @@
 
 namespace cinder::platform {
 
-void setAssetRoot(const std::filesystem::path& root);
-const std::filesystem::path& assetRoot();
-std::filesystem::path assetPath(std::string_view relative);
-std::filesystem::path resolveAsset(std::string_view path);
+void locateExecutable(const char* argv0);
+const std::filesystem::path& executableDir();
+
+const std::filesystem::path& engineRoot();
+std::filesystem::path enginePath(std::string_view relative);
+
+void setProjectRoot(const std::filesystem::path& root);
+const std::filesystem::path& projectRoot();
+std::filesystem::path projectPath(std::string_view relative);
 
 }

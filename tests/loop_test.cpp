@@ -1,9 +1,9 @@
 #include <doctest/doctest.h>
 
-#include "core/GameConfig.hpp"
+#include "core/ProjectConfig.hpp"
 #include "core/GameLoop.hpp"
 
-using cinder::core::GameConfig;
+using cinder::core::ProjectConfig;
 using cinder::core::GameLoop;
 
 TEST_CASE("one step per exact period") {
@@ -47,5 +47,5 @@ TEST_CASE("non-positive rates are rejected") {
 }
 
 TEST_CASE("config rejects a non-positive fixed hz") {
-    CHECK_THROWS_AS(GameConfig("t", 640, 480, "s.lua", 0), std::runtime_error);
+    CHECK_THROWS_AS(ProjectConfig("t", 640, 480, "s.scene", 0), std::runtime_error);
 }

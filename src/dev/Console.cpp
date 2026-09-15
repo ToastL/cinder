@@ -1,5 +1,7 @@
 #include "dev/Console.hpp"
 
+#include "dev/History.hpp"
+#include "dev/Selection.hpp"
 #include "script/LuaHost.hpp"
 
 #include <imgui.h>
@@ -11,7 +13,8 @@ const ImVec4 ERROR_COLOR{1.0f, 0.45f, 0.4f, 1.0f};
 
 }
 
-Console::Console(cinder::script::LuaHost& script) : script_(script) {
+Console::Console(cinder::script::LuaHost& script, History& history, Selection& selection)
+    : script_(script), changes_(history), selection_(selection) {
     cinder::platform::setLogSink(
             [this](cinder::platform::LogLevel level, std::string_view text) {
                 push(level, text);
@@ -59,13 +62,14 @@ void Console::submit() {
 
     push(cinder::platform::LogLevel::Info, "> " + source);
     script_.eval(source);
+    changes_.touch("Console", selection_.id());
 }
 
 void Console::draw() {
     if (!open_) return;
 
     ImGui::SetNextWindowSize(ImVec2(720, 300), ImGuiCond_FirstUseEver);
-    if (!ImGui::Begin("Console", &open_)) {
+    if (!ImGui::Begin(TITLE, &open_, ImGuiWindowFlags_NoFocusOnAppearing)) {
         ImGui::End();
         return;
     }

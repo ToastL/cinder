@@ -46,4 +46,6 @@ Window::~Window() {
 
 bool Window::shouldClose() const { return glfwWindowShouldClose(handle_) == GLFW_TRUE; }
 
+void Window::setShouldClose(bool close) { glfwSetWindowShouldClose(handle_, close ? GLFW_TRUE : GLFW_FALSE); }
+
 }

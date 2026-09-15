@@ -1,11 +1,45 @@
 #include "gfx/RendererDrawList.hpp"
 
+#include "gfx/Renderer.hpp"
 #include "gfx/pass/MeshPass.hpp"
 #include "gfx/pass/SpritePass.hpp"
+#include "platform/Assets.hpp"
+#include "platform/Log.hpp"
 
+#include <exception>
 #include <glm/trigonometric.hpp>
 
 namespace cinder::gfx {
+
+int RendererDrawList::textureHandle(std::string_view path) {
+    if (path.empty()) return WHITE;
+
+    const std::string key = cinder::platform::projectPath(path).string();
+    if (missingTextures_.count(key) != 0) return WHITE;
+
+    try {
+        return renderer_.assets().load(key);
+    } catch (const std::exception& e) {
+        missingTextures_.insert(key);
+        cinder::platform::logError("[gfx] %s\n", e.what());
+        return WHITE;
+    }
+}
+
+int RendererDrawList::meshHandle(std::string_view name) {
+    if (name.empty()) name = "cube";
+
+    const int mesh = mesh_.meshNamed(name);
+    if (mesh >= 0) return mesh;
+
+    if (unknownMeshes_.insert(std::string(name)).second) {
+        cinder::platform::logError("[gfx] unknown mesh \"%.*s\", drawing a cube\n",
+                                   static_cast<int>(name.size()), name.data());
+    }
+    return mesh_.meshNamed("cube");
+}
+
+void RendererDrawList::background(float r, float g, float b) { renderer_.setClearColor(r, g, b); }
 
 void RendererDrawList::sprite(int texture, float x, float y, float w, float h, float rot,
                               float r, float g, float b, float a) {
@@ -29,7 +63,9 @@ void RendererDrawList::camera3d(const glm::mat4& world, float fovDegrees, float 
     camera.setClip(near, far);
 }
 
-void RendererDrawList::camera2d(float x, float y, float zoom, float rotation) {
+void RendererDrawList::camera2d(float x, float y, float zoom, float rotation,
+                                float virtualWidth, float virtualHeight) {
+    sprite_.setVirtualSize(virtualWidth, virtualHeight);
     cinder::gfx::pass::OrthographicCamera& camera = sprite_.camera();
     camera.setPosition(x, y);
     camera.setZoom(zoom);

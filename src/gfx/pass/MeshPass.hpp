@@ -6,6 +6,10 @@
 #include "gfx/pass/MeshPipeline.hpp"
 #include "gfx/pass/PerspectiveCamera.hpp"
 
+#include <optional>
+#include <string>
+#include <string_view>
+#include <unordered_map>
 #include <vector>
 
 namespace cinder::gfx::pass {
@@ -24,8 +28,11 @@ public:
 
     void submit(int mesh, int texture, const glm::mat4& model);
     int addCube(float r, float g, float b);
+    int meshNamed(std::string_view name) const;
 
     PerspectiveCamera& camera() { return camera_; }
+    void overrideCamera(const PerspectiveCamera& camera) { override_ = camera; }
+    void releaseCamera() { override_.reset(); }
 
 private:
     bool accept(int mesh);
@@ -35,6 +42,7 @@ private:
     const MeshPipeline& pipeline_;
 
     std::vector<cinder::gfx::asset::Mesh> meshes_;
+    std::unordered_map<std::string, int> named_;
     std::vector<int> drawMesh_;
     std::vector<int> drawTexture_;
     std::vector<glm::mat4> drawModel_;
@@ -42,6 +50,7 @@ private:
     bool overflowWarned_ = false;
 
     PerspectiveCamera camera_;
+    std::optional<PerspectiveCamera> override_;
 };
 
 }

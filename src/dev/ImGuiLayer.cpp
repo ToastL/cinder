@@ -74,9 +74,11 @@ void ImGuiLayer::setMinImageCount(uint32_t minImageCount) {
     ImGui_ImplVulkan_SetMinImageCount(minImageCount);
 }
 
-bool ImGuiLayer::capturesMouse() const { return ImGui::GetIO().WantCaptureMouse; }
+VkDescriptorSet ImGuiLayer::addTexture(VkImageView view) {
+    return ImGui_ImplVulkan_AddTexture(view, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+}
 
-bool ImGuiLayer::capturesKeyboard() const { return ImGui::GetIO().WantCaptureKeyboard; }
+void ImGuiLayer::removeTexture(VkDescriptorSet texture) { ImGui_ImplVulkan_RemoveTexture(texture); }
 
 ImGuiLayer::~ImGuiLayer() {
     ctx_.waitIdle();

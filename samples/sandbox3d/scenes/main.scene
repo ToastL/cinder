@@ -1,0 +1,1560 @@
+version 4
+nodes {
+    Camera {
+        id 1
+        position 0 3 10
+        rotation -0.17 0 0
+        fov 70
+        clearColor 0.05 0.06 0.09 1
+        attributes {
+            sensitivity 0.0021
+            speed 8
+            sprint 24
+        }
+        children {
+            Script {
+                id 83
+                file "scripts/flycam.lua"
+            }
+        }
+    }
+    MeshPart {
+        id 2
+        name "Box"
+        position -6 0 -6
+        attributes {
+            phase -8
+            rate 2
+        }
+        children {
+            Spin {
+                id 84
+                speed 0 0.5 0
+            }
+            Script {
+                id 85
+                enabled false
+                file "scripts/bobber.lua"
+            }
+        }
+    }
+    MeshPart {
+        id 3
+        name "Box"
+        position -6 0 -4.5
+        attributes {
+            phase -7
+            rate 2
+        }
+        children {
+            Spin {
+                id 86
+                speed 0 0.5 0
+            }
+            Script {
+                id 87
+                file "scripts/bobber.lua"
+            }
+        }
+    }
+    MeshPart {
+        id 4
+        name "Box"
+        position -6 0 -3
+        attributes {
+            phase -6
+            rate 2
+        }
+        children {
+            Spin {
+                id 88
+                speed 0 0.5 0
+            }
+            Script {
+                id 89
+                file "scripts/bobber.lua"
+            }
+        }
+    }
+    MeshPart {
+        id 5
+        name "Box"
+        position -6 0 -1.5
+        attributes {
+            phase -5
+            rate 2
+        }
+        children {
+            Spin {
+                id 90
+                speed 0 0.5 0
+            }
+            Script {
+                id 91
+                file "scripts/bobber.lua"
+            }
+        }
+    }
+    MeshPart {
+        id 6
+        name "Box"
+        position -6 0 0
+        attributes {
+            phase -4
+            rate 2
+        }
+        children {
+            Spin {
+                id 92
+                speed 0 0.5 0
+            }
+            Script {
+                id 93
+                file "scripts/bobber.lua"
+            }
+        }
+    }
+    MeshPart {
+        id 7
+        name "Box"
+        position -6 0 1.5
+        attributes {
+            phase -3
+            rate 2
+        }
+        children {
+            Spin {
+                id 94
+                speed 0 0.5 0
+            }
+            Script {
+                id 95
+                file "scripts/bobber.lua"
+            }
+        }
+    }
+    MeshPart {
+        id 8
+        name "Box"
+        position -6 0 3
+        attributes {
+            phase -2
+            rate 2
+        }
+        children {
+            Spin {
+                id 96
+                speed 0 0.5 0
+            }
+            Script {
+                id 97
+                file "scripts/bobber.lua"
+            }
+        }
+    }
+    MeshPart {
+        id 9
+        name "Box"
+        position -6 0 4.5
+        attributes {
+            phase -1
+            rate 2
+        }
+        children {
+            Spin {
+                id 98
+                speed 0 0.5 0
+            }
+            Script {
+                id 99
+                file "scripts/bobber.lua"
+            }
+        }
+    }
+    MeshPart {
+        id 10
+        name "Box"
+        position -6 0 6
+        attributes {
+            phase 0
+            rate 2
+        }
+        children {
+            Spin {
+                id 100
+                speed 0 0.5 0
+            }
+            Script {
+                id 101
+                file "scripts/bobber.lua"
+            }
+        }
+    }
+    MeshPart {
+        id 11
+        name "Box"
+        position -4.5 0 -6
+        attributes {
+            phase -7
+            rate 2
+        }
+        children {
+            Spin {
+                id 102
+                speed 0 0.5 0
+            }
+            Script {
+                id 103
+                file "scripts/bobber.lua"
+            }
+        }
+    }
+    MeshPart {
+        id 12
+        name "Box"
+        position -4.5 0 -4.5
+        attributes {
+            phase -6
+            rate 2
+        }
+        children {
+            Spin {
+                id 104
+                speed 0 0.5 0
+            }
+            Script {
+                id 105
+                file "scripts/bobber.lua"
+            }
+        }
+    }
+    MeshPart {
+        id 13
+        name "Box"
+        position -4.5 0 -3
+        attributes {
+            phase -5
+            rate 2
+        }
+        children {
+            Spin {
+                id 106
+                speed 0 0.5 0
+            }
+            Script {
+                id 107
+                file "scripts/bobber.lua"
+            }
+        }
+    }
+    MeshPart {
+        id 14
+        name "Box"
+        position -4.5 0 -1.5
+        attributes {
+            phase -4
+            rate 2
+        }
+        children {
+            Spin {
+                id 108
+                speed 0 0.5 0
+            }
+            Script {
+                id 109
+                file "scripts/bobber.lua"
+            }
+        }
+    }
+    MeshPart {
+        id 15
+        name "Box"
+        position -4.5 0 0
+        attributes {
+            phase -3
+            rate 2
+        }
+        children {
+            Spin {
+                id 110
+                speed 0 0.5 0
+            }
+            Script {
+                id 111
+                file "scripts/bobber.lua"
+            }
+        }
+    }
+    MeshPart {
+        id 16
+        name "Box"
+        position -4.5 0 1.5
+        attributes {
+            phase -2
+            rate 2
+        }
+        children {
+            Spin {
+                id 112
+                speed 0 0.5 0
+            }
+            Script {
+                id 113
+                file "scripts/bobber.lua"
+            }
+        }
+    }
+    MeshPart {
+        id 17
+        name "Box"
+        position -4.5 0 3
+        attributes {
+            phase -1
+            rate 2
+        }
+        children {
+            Spin {
+                id 114
+                speed 0 0.5 0
+            }
+            Script {
+                id 115
+                file "scripts/bobber.lua"
+            }
+        }
+    }
+    MeshPart {
+        id 18
+        name "Box"
+        position -4.5 0 4.5
+        attributes {
+            phase 0
+            rate 2
+        }
+        children {
+            Spin {
+                id 116
+                speed 0 0.5 0
+            }
+            Script {
+                id 117
+                file "scripts/bobber.lua"
+            }
+        }
+    }
+    MeshPart {
+        id 19
+        name "Box"
+        position -4.5 0 6
+        attributes {
+            phase 1
+            rate 2
+        }
+        children {
+            Spin {
+                id 118
+                speed 0 0.5 0
+            }
+            Script {
+                id 119
+                file "scripts/bobber.lua"
+            }
+        }
+    }
+    MeshPart {
+        id 20
+        name "Box"
+        position -3 0 -6
+        attributes {
+            phase -6
+            rate 2
+        }
+        children {
+            Spin {
+                id 120
+                speed 0 0.5 0
+            }
+            Script {
+                id 121
+                file "scripts/bobber.lua"
+            }
+        }
+    }
+    MeshPart {
+        id 21
+        name "Box"
+        position -3 0 -4.5
+        attributes {
+            phase -5
+            rate 2
+        }
+        children {
+            Spin {
+                id 122
+                speed 0 0.5 0
+            }
+            Script {
+                id 123
+                file "scripts/bobber.lua"
+            }
+        }
+    }
+    MeshPart {
+        id 22
+        name "Box"
+        position -3 0 -3
+        attributes {
+            phase -4
+            rate 2
+        }
+        children {
+            Spin {
+                id 124
+                speed 0 0.5 0
+            }
+            Script {
+                id 125
+                file "scripts/bobber.lua"
+            }
+        }
+    }
+    MeshPart {
+        id 23
+        name "Box"
+        position -3 0 -1.5
+        attributes {
+            phase -3
+            rate 2
+        }
+        children {
+            Spin {
+                id 126
+                speed 0 0.5 0
+            }
+            Script {
+                id 127
+                file "scripts/bobber.lua"
+            }
+        }
+    }
+    MeshPart {
+        id 24
+        name "Box"
+        position -3 0 0
+        attributes {
+            phase -2
+            rate 2
+        }
+        children {
+            Spin {
+                id 128
+                speed 0 0.5 0
+            }
+            Script {
+                id 129
+                file "scripts/bobber.lua"
+            }
+        }
+    }
+    MeshPart {
+        id 25
+        name "Box"
+        position -3 0 1.5
+        attributes {
+            phase -1
+            rate 2
+        }
+        children {
+            Spin {
+                id 130
+                speed 0 0.5 0
+            }
+            Script {
+                id 131
+                file "scripts/bobber.lua"
+            }
+        }
+    }
+    MeshPart {
+        id 26
+        name "Box"
+        position -3 0 3
+        attributes {
+            phase 0
+            rate 2
+        }
+        children {
+            Spin {
+                id 132
+                speed 0 0.5 0
+            }
+            Script {
+                id 133
+                file "scripts/bobber.lua"
+            }
+        }
+    }
+    MeshPart {
+        id 27
+        name "Box"
+        position -3 0 4.5
+        attributes {
+            phase 1
+            rate 2
+        }
+        children {
+            Spin {
+                id 134
+                speed 0 0.5 0
+            }
+            Script {
+                id 135
+                file "scripts/bobber.lua"
+            }
+        }
+    }
+    MeshPart {
+        id 28
+        name "Box"
+        position -3 0 6
+        attributes {
+            phase 2
+            rate 2
+        }
+        children {
+            Spin {
+                id 136
+                speed 0 0.5 0
+            }
+            Script {
+                id 137
+                file "scripts/bobber.lua"
+            }
+        }
+    }
+    MeshPart {
+        id 29
+        name "Box"
+        position -1.5 0 -6
+        attributes {
+            phase -5
+            rate 2
+        }
+        children {
+            Spin {
+                id 138
+                speed 0 0.5 0
+            }
+            Script {
+                id 139
+                file "scripts/bobber.lua"
+            }
+        }
+    }
+    MeshPart {
+        id 30
+        name "Box"
+        position -1.5 0 -4.5
+        attributes {
+            phase -4
+            rate 2
+        }
+        children {
+            Spin {
+                id 140
+                speed 0 0.5 0
+            }
+            Script {
+                id 141
+                file "scripts/bobber.lua"
+            }
+        }
+    }
+    MeshPart {
+        id 31
+        name "Box"
+        position -1.5 0 -3
+        attributes {
+            phase -3
+            rate 2
+        }
+        children {
+            Spin {
+                id 142
+                speed 0 0.5 0
+            }
+            Script {
+                id 143
+                file "scripts/bobber.lua"
+            }
+        }
+    }
+    MeshPart {
+        id 32
+        name "Box"
+        position -1.5 0 -1.5
+        attributes {
+            phase -2
+            rate 2
+        }
+        children {
+            Spin {
+                id 144
+                speed 0 0.5 0
+            }
+            Script {
+                id 145
+                file "scripts/bobber.lua"
+            }
+        }
+    }
+    MeshPart {
+        id 33
+        name "Box"
+        position -1.5 0 0
+        attributes {
+            phase -1
+            rate 2
+        }
+        children {
+            Spin {
+                id 146
+                speed 0 0.5 0
+            }
+            Script {
+                id 147
+                file "scripts/bobber.lua"
+            }
+        }
+    }
+    MeshPart {
+        id 34
+        name "Box"
+        position -1.5 0 1.5
+        attributes {
+            phase 0
+            rate 2
+        }
+        children {
+            Spin {
+                id 148
+                speed 0 0.5 0
+            }
+            Script {
+                id 149
+                file "scripts/bobber.lua"
+            }
+        }
+    }
+    MeshPart {
+        id 35
+        name "Box"
+        position -1.5 0 3
+        attributes {
+            phase 1
+            rate 2
+        }
+        children {
+            Spin {
+                id 150
+                speed 0 0.5 0
+            }
+            Script {
+                id 151
+                file "scripts/bobber.lua"
+            }
+        }
+    }
+    MeshPart {
+        id 36
+        name "Box"
+        position -1.5 0 4.5
+        attributes {
+            phase 2
+            rate 2
+        }
+        children {
+            Spin {
+                id 152
+                speed 0 0.5 0
+            }
+            Script {
+                id 153
+                file "scripts/bobber.lua"
+            }
+        }
+    }
+    MeshPart {
+        id 37
+        name "Box"
+        position -1.5 0 6
+        attributes {
+            phase 3
+            rate 2
+        }
+        children {
+            Spin {
+                id 154
+                speed 0 0.5 0
+            }
+            Script {
+                id 155
+                file "scripts/bobber.lua"
+            }
+        }
+    }
+    MeshPart {
+        id 38
+        name "Box"
+        position 0 0 -6
+        attributes {
+            phase -4
+            rate 2
+        }
+        children {
+            Spin {
+                id 156
+                speed 0 0.5 0
+            }
+            Script {
+                id 157
+                file "scripts/bobber.lua"
+            }
+        }
+    }
+    MeshPart {
+        id 39
+        name "Box"
+        position 0 0 -4.5
+        attributes {
+            phase -3
+            rate 2
+        }
+        children {
+            Spin {
+                id 158
+                speed 0 0.5 0
+            }
+            Script {
+                id 159
+                file "scripts/bobber.lua"
+            }
+        }
+    }
+    MeshPart {
+        id 40
+        name "Box"
+        position 0 0 -3
+        attributes {
+            phase -2
+            rate 2
+        }
+        children {
+            Spin {
+                id 160
+                speed 0 0.5 0
+            }
+            Script {
+                id 161
+                file "scripts/bobber.lua"
+            }
+        }
+    }
+    MeshPart {
+        id 41
+        name "Box"
+        position 0 0 -1.5
+        attributes {
+            phase -1
+            rate 2
+        }
+        children {
+            Spin {
+                id 162
+                speed 0 0.5 0
+            }
+            Script {
+                id 163
+                file "scripts/bobber.lua"
+            }
+        }
+    }
+    MeshPart {
+        id 42
+        name "Box"
+        attributes {
+            phase 0
+            rate 2
+        }
+        children {
+            Spin {
+                id 164
+                speed 0 0.5 0
+            }
+            Script {
+                id 165
+                file "scripts/bobber.lua"
+            }
+        }
+    }
+    MeshPart {
+        id 43
+        name "Box"
+        position 0 0 1.5
+        attributes {
+            phase 1
+            rate 2
+        }
+        children {
+            Spin {
+                id 166
+                speed 0 0.5 0
+            }
+            Script {
+                id 167
+                file "scripts/bobber.lua"
+            }
+        }
+    }
+    MeshPart {
+        id 44
+        name "Box"
+        position 0 0 3
+        attributes {
+            phase 2
+            rate 2
+        }
+        children {
+            Spin {
+                id 168
+                speed 0 0.5 0
+            }
+            Script {
+                id 169
+                file "scripts/bobber.lua"
+            }
+        }
+    }
+    MeshPart {
+        id 45
+        name "Box"
+        position 0 0 4.5
+        attributes {
+            phase 3
+            rate 2
+        }
+        children {
+            Spin {
+                id 170
+                speed 0 0.5 0
+            }
+            Script {
+                id 171
+                file "scripts/bobber.lua"
+            }
+        }
+    }
+    MeshPart {
+        id 46
+        name "Box"
+        position 0 0 6
+        attributes {
+            phase 4
+            rate 2
+        }
+        children {
+            Spin {
+                id 172
+                speed 0 0.5 0
+            }
+            Script {
+                id 173
+                file "scripts/bobber.lua"
+            }
+        }
+    }
+    MeshPart {
+        id 47
+        name "Box"
+        position 1.5 0 -6
+        attributes {
+            phase -3
+            rate 2
+        }
+        children {
+            Spin {
+                id 174
+                speed 0 0.5 0
+            }
+            Script {
+                id 175
+                file "scripts/bobber.lua"
+            }
+        }
+    }
+    MeshPart {
+        id 48
+        name "Box"
+        position 1.5 0 -4.5
+        attributes {
+            phase -2
+            rate 2
+        }
+        children {
+            Spin {
+                id 176
+                speed 0 0.5 0
+            }
+            Script {
+                id 177
+                file "scripts/bobber.lua"
+            }
+        }
+    }
+    MeshPart {
+        id 49
+        name "Box"
+        position 1.5 0 -3
+        attributes {
+            phase -1
+            rate 2
+        }
+        children {
+            Spin {
+                id 178
+                speed 0 0.5 0
+            }
+            Script {
+                id 179
+                file "scripts/bobber.lua"
+            }
+        }
+    }
+    MeshPart {
+        id 50
+        name "Box"
+        position 1.5 0 -1.5
+        attributes {
+            phase 0
+            rate 2
+        }
+        children {
+            Spin {
+                id 180
+                speed 0 0.5 0
+            }
+            Script {
+                id 181
+                file "scripts/bobber.lua"
+            }
+        }
+    }
+    MeshPart {
+        id 51
+        name "Box"
+        position 1.5 0 0
+        attributes {
+            phase 1
+            rate 2
+        }
+        children {
+            Spin {
+                id 182
+                speed 0 0.5 0
+            }
+            Script {
+                id 183
+                file "scripts/bobber.lua"
+            }
+        }
+    }
+    MeshPart {
+        id 52
+        name "Box"
+        position 1.5 0 1.5
+        attributes {
+            phase 2
+            rate 2
+        }
+        children {
+            Spin {
+                id 184
+                speed 0 0.5 0
+            }
+            Script {
+                id 185
+                file "scripts/bobber.lua"
+            }
+        }
+    }
+    MeshPart {
+        id 53
+        name "Box"
+        position 1.5 0 3
+        attributes {
+            phase 3
+            rate 2
+        }
+        children {
+            Spin {
+                id 186
+                speed 0 0.5 0
+            }
+            Script {
+                id 187
+                file "scripts/bobber.lua"
+            }
+        }
+    }
+    MeshPart {
+        id 54
+        name "Box"
+        position 1.5 0 4.5
+        attributes {
+            phase 4
+            rate 2
+        }
+        children {
+            Spin {
+                id 188
+                speed 0 0.5 0
+            }
+            Script {
+                id 189
+                file "scripts/bobber.lua"
+            }
+        }
+    }
+    MeshPart {
+        id 55
+        name "Box"
+        position 1.5 0 6
+        attributes {
+            phase 5
+            rate 2
+        }
+        children {
+            Spin {
+                id 190
+                speed 0 0.5 0
+            }
+            Script {
+                id 191
+                file "scripts/bobber.lua"
+            }
+        }
+    }
+    MeshPart {
+        id 56
+        name "Box"
+        position 3 0 -6
+        attributes {
+            phase -2
+            rate 2
+        }
+        children {
+            Spin {
+                id 192
+                speed 0 0.5 0
+            }
+            Script {
+                id 193
+                file "scripts/bobber.lua"
+            }
+        }
+    }
+    MeshPart {
+        id 57
+        name "Box"
+        position 3 0 -4.5
+        attributes {
+            phase -1
+            rate 2
+        }
+        children {
+            Spin {
+                id 194
+                speed 0 0.5 0
+            }
+            Script {
+                id 195
+                file "scripts/bobber.lua"
+            }
+        }
+    }
+    MeshPart {
+        id 58
+        name "Box"
+        position 3 0 -3
+        attributes {
+            phase 0
+            rate 2
+        }
+        children {
+            Spin {
+                id 196
+                speed 0 0.5 0
+            }
+            Script {
+                id 197
+                file "scripts/bobber.lua"
+            }
+        }
+    }
+    MeshPart {
+        id 59
+        name "Box"
+        position 3 0 -1.5
+        attributes {
+            phase 1
+            rate 2
+        }
+        children {
+            Spin {
+                id 198
+                speed 0 0.5 0
+            }
+            Script {
+                id 199
+                file "scripts/bobber.lua"
+            }
+        }
+    }
+    MeshPart {
+        id 60
+        name "Box"
+        position 3 0 0
+        attributes {
+            phase 2
+            rate 2
+        }
+        children {
+            Spin {
+                id 200
+                speed 0 0.5 0
+            }
+            Script {
+                id 201
+                file "scripts/bobber.lua"
+            }
+        }
+    }
+    MeshPart {
+        id 61
+        name "Box"
+        position 3 0 1.5
+        attributes {
+            phase 3
+            rate 2
+        }
+        children {
+            Spin {
+                id 202
+                speed 0 0.5 0
+            }
+            Script {
+                id 203
+                file "scripts/bobber.lua"
+            }
+        }
+    }
+    MeshPart {
+        id 62
+        name "Box"
+        position 3 0 3
+        attributes {
+            phase 4
+            rate 2
+        }
+        children {
+            Spin {
+                id 204
+                speed 0 0.5 0
+            }
+            Script {
+                id 205
+                file "scripts/bobber.lua"
+            }
+        }
+    }
+    MeshPart {
+        id 63
+        name "Box"
+        position 3 0 4.5
+        attributes {
+            phase 5
+            rate 2
+        }
+        children {
+            Spin {
+                id 206
+                speed 0 0.5 0
+            }
+            Script {
+                id 207
+                file "scripts/bobber.lua"
+            }
+        }
+    }
+    MeshPart {
+        id 64
+        name "Box"
+        position 3 0 6
+        attributes {
+            phase 6
+            rate 2
+        }
+        children {
+            Spin {
+                id 208
+                speed 0 0.5 0
+            }
+            Script {
+                id 209
+                file "scripts/bobber.lua"
+            }
+        }
+    }
+    MeshPart {
+        id 65
+        name "Box"
+        position 4.5 0 -6
+        attributes {
+            phase -1
+            rate 2
+        }
+        children {
+            Spin {
+                id 210
+                speed 0 0.5 0
+            }
+            Script {
+                id 211
+                file "scripts/bobber.lua"
+            }
+        }
+    }
+    MeshPart {
+        id 66
+        name "Box"
+        position 4.5 0 -4.5
+        attributes {
+            phase 0
+            rate 2
+        }
+        children {
+            Spin {
+                id 212
+                speed 0 0.5 0
+            }
+            Script {
+                id 213
+                file "scripts/bobber.lua"
+            }
+        }
+    }
+    MeshPart {
+        id 67
+        name "Box"
+        position 4.5 0 -3
+        attributes {
+            phase 1
+            rate 2
+        }
+        children {
+            Spin {
+                id 214
+                speed 0 0.5 0
+            }
+            Script {
+                id 215
+                file "scripts/bobber.lua"
+            }
+        }
+    }
+    MeshPart {
+        id 68
+        name "Box"
+        position 4.5 0 -1.5
+        attributes {
+            phase 2
+            rate 2
+        }
+        children {
+            Spin {
+                id 216
+                speed 0 0.5 0
+            }
+            Script {
+                id 217
+                file "scripts/bobber.lua"
+            }
+        }
+    }
+    MeshPart {
+        id 69
+        name "Box"
+        position 4.5 0 0
+        attributes {
+            phase 3
+            rate 2
+        }
+        children {
+            Spin {
+                id 218
+                speed 0 0.5 0
+            }
+            Script {
+                id 219
+                file "scripts/bobber.lua"
+            }
+        }
+    }
+    MeshPart {
+        id 70
+        name "Box"
+        position 4.5 0 1.5
+        attributes {
+            phase 4
+            rate 2
+        }
+        children {
+            Spin {
+                id 220
+                speed 0 0.5 0
+            }
+            Script {
+                id 221
+                file "scripts/bobber.lua"
+            }
+        }
+    }
+    MeshPart {
+        id 71
+        name "Box"
+        position 4.5 0 3
+        attributes {
+            phase 5
+            rate 2
+        }
+        children {
+            Spin {
+                id 222
+                speed 0 0.5 0
+            }
+            Script {
+                id 223
+                file "scripts/bobber.lua"
+            }
+        }
+    }
+    MeshPart {
+        id 72
+        name "Box"
+        position 4.5 0 4.5
+        attributes {
+            phase 6
+            rate 2
+        }
+        children {
+            Spin {
+                id 224
+                speed 0 0.5 0
+            }
+            Script {
+                id 225
+                file "scripts/bobber.lua"
+            }
+        }
+    }
+    MeshPart {
+        id 73
+        name "Box"
+        position 4.5 0 6
+        attributes {
+            phase 7
+            rate 2
+        }
+        children {
+            Spin {
+                id 226
+                speed 0 0.5 0
+            }
+            Script {
+                id 227
+                file "scripts/bobber.lua"
+            }
+        }
+    }
+    MeshPart {
+        id 74
+        name "Box"
+        position 6 0 -6
+        attributes {
+            phase 0
+            rate 2
+        }
+        children {
+            Spin {
+                id 228
+                speed 0 0.5 0
+            }
+            Script {
+                id 229
+                file "scripts/bobber.lua"
+            }
+        }
+    }
+    MeshPart {
+        id 75
+        name "Box"
+        position 6 0 -4.5
+        attributes {
+            phase 1
+            rate 2
+        }
+        children {
+            Spin {
+                id 230
+                speed 0 0.5 0
+            }
+            Script {
+                id 231
+                file "scripts/bobber.lua"
+            }
+        }
+    }
+    MeshPart {
+        id 76
+        name "Box"
+        position 6 0 -3
+        attributes {
+            phase 2
+            rate 2
+        }
+        children {
+            Spin {
+                id 232
+                speed 0 0.5 0
+            }
+            Script {
+                id 233
+                file "scripts/bobber.lua"
+            }
+        }
+    }
+    MeshPart {
+        id 77
+        name "Box"
+        position 6 0 -1.5
+        attributes {
+            phase 3
+            rate 2
+        }
+        children {
+            Spin {
+                id 234
+                speed 0 0.5 0
+            }
+            Script {
+                id 235
+                file "scripts/bobber.lua"
+            }
+        }
+    }
+    MeshPart {
+        id 78
+        name "Box"
+        position 6 0 0
+        attributes {
+            phase 4
+            rate 2
+        }
+        children {
+            Spin {
+                id 236
+                speed 0 0.5 0
+            }
+            Script {
+                id 237
+                file "scripts/bobber.lua"
+            }
+        }
+    }
+    MeshPart {
+        id 79
+        name "Box"
+        position 6 0 1.5
+        attributes {
+            phase 5
+            rate 2
+        }
+        children {
+            Spin {
+                id 238
+                speed 0 0.5 0
+            }
+            Script {
+                id 239
+                file "scripts/bobber.lua"
+            }
+        }
+    }
+    MeshPart {
+        id 80
+        name "Box"
+        position 6 0 3
+        attributes {
+            phase 6
+            rate 2
+        }
+        children {
+            Spin {
+                id 240
+                speed 0 0.5 0
+            }
+            Script {
+                id 241
+                file "scripts/bobber.lua"
+            }
+        }
+    }
+    MeshPart {
+        id 81
+        name "Box"
+        position 6 0 4.5
+        attributes {
+            phase 7
+            rate 2
+        }
+        children {
+            Spin {
+                id 242
+                speed 0 0.5 0
+            }
+            Script {
+                id 243
+                file "scripts/bobber.lua"
+            }
+        }
+    }
+    MeshPart {
+        id 82
+        name "Box"
+        position 6 0 6
+        attributes {
+            phase 8
+            rate 2
+        }
+        children {
+            Spin {
+                id 244
+                speed 0 0.5 0
+            }
+            Script {
+                id 245
+                file "scripts/bobber.lua"
+            }
+        }
+    }
+}

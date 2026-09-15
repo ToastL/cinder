@@ -1,0 +1,26 @@
+version 4
+nodes {
+    Group {
+        id 1
+        name "SelfTest"
+        children {
+            Script {
+                id 3
+                file "scripts/runner.lua"
+            }
+        }
+    }
+    Group {
+        id 2
+        name "Marked"
+        attributes {
+            mark 42
+        }
+        children {
+            Script {
+                id 4
+                file "scripts/marker.lua"
+            }
+        }
+    }
+}

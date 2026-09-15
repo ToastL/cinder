@@ -11,6 +11,8 @@ public:
     explicit GameLoop(int hz);
 
     void tick(Engine& engine);
+    void idle(Engine& engine);
+    void step(Engine& engine);
 
     int advance(double frameTime);
     float alpha() const;
@@ -18,6 +20,7 @@ public:
     static void requirePositiveHz(int hz, const char* what);
 
 private:
+    bool begin(Engine& engine);
     void resetClock();
 
     double fixedDt_;

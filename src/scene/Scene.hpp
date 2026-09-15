@@ -1,60 +1,79 @@
 #pragma once
 
 #include <memory>
+#include <optional>
 #include <string>
+#include <string_view>
 #include <unordered_map>
+#include <utility>
 #include <vector>
 
 namespace cinder::scene {
 
-class Actor;
-class Component;
-class Components;
 class DrawList;
+class Node;
+class NodeTypes;
+
+class SceneObserver {
+public:
+    virtual ~SceneObserver() = default;
+    virtual void attributeChanged(Node& node, const std::string& name) = 0;
+    virtual void childAdded(Node& parent, Node& child) = 0;
+    virtual void childRemoved(Node& parent, Node& child) = 0;
+    virtual void destroying(Node& node) = 0;
+};
 
 class Scene {
 public:
-    explicit Scene(Components& types);
+    explicit Scene(NodeTypes& types);
     ~Scene();
 
     Scene(const Scene&) = delete;
     Scene& operator=(const Scene&) = delete;
 
-    Components& types() const { return types_; }
+    NodeTypes& types() const { return types_; }
 
-    Actor* spawn(const std::string& name) { return spawn(name, nullptr); }
-    Actor* spawn(const std::string& name, Actor* parent) { return spawn(nextId_, name, parent); }
-    Actor* spawn(int id, const std::string& name, Actor* parent);
+    Node* insert(std::unique_ptr<Node> node, Node* parent, std::optional<int> id = std::nullopt);
+    Node* create(std::string_view className, Node* parent);
+    Node* clone(const Node& source, Node* parent);
 
-    Actor* byId(int id) const;
-    Actor* find(const std::string& name) const;
+    template <class T, class... Args>
+    T* create(Node* parent, Args&&... args) {
+        return static_cast<T*>(insert(std::make_unique<T>(std::forward<Args>(args)...), parent));
+    }
 
-    const std::vector<Actor*>& roots() const { return roots_; }
+    Node* byId(int id) const;
+    Node* find(std::string_view name) const;
+    const std::vector<Node*>& roots() const { return roots_; }
     int nextId() const { return nextId_; }
 
     void update(float dt);
     void render(float alpha, DrawList& draws);
 
-    void destroy(Actor* actor);
+    void destroy(Node* node);
+    void destroyNow(Node* node);
     void clear();
 
-    void queueStart(Component* component);
-    void unqueueStart(Component* component);
-    void attachRoot(Actor* actor);
-    void detachRoot(Actor* actor);
+    void setObserver(SceneObserver* observer) { observer_ = observer; }
+    void reparent(Node& node, Node* next);
+    void attributeChanged(Node& node, const std::string& name);
 
 private:
-    void update(Actor& actor, float dt);
-    void render(Actor& actor, float alpha, DrawList& draws);
+    void attach(Node& node, Node* parent);
+    void detach(Node& node);
+    void update(Node& node, float dt);
+    void render(Node& node, float alpha, DrawList& draws);
     void startPending();
     void flushDestroy();
-    void teardown(Actor& actor);
-    Actor* findIn(Actor& actor, const std::string& name) const;
+    void markDestroyed(Node& node);
+    void teardown(Node& node, bool notify);
+    void unqueueStart(Node* node);
 
-    Components& types_;
-    std::vector<Actor*> roots_;
-    std::unordered_map<int, std::unique_ptr<Actor>> actors_;
-    std::vector<Component*> pendingStart_;
+    NodeTypes& types_;
+    SceneObserver* observer_ = nullptr;
+    std::vector<Node*> roots_;
+    std::unordered_map<int, std::unique_ptr<Node>> nodes_;
+    std::vector<Node*> pendingStart_;
     std::vector<int> pendingDestroy_;
     int nextId_ = 1;
 };

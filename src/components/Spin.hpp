@@ -1,12 +1,12 @@
 #pragma once
 
-#include "scene/Component.hpp"
+#include "scene/Node.hpp"
 
 #include <glm/vec3.hpp>
 
 namespace cinder::components {
 
-class Spin final : public cinder::scene::Component {
+class Spin final : public cinder::scene::Node {
 public:
     const glm::vec3& speed() const { return speed_; }
 
@@ -14,7 +14,7 @@ public:
 
     void onUpdate(float dt) override;
 
-    CINDER_COMPONENT(Spin, cinder::scene::Component) { CINDER_PROP(speed_); }
+    CINDER_NODE(Spin, cinder::scene::Node) { CINDER_PROP(speed_); }
 
 private:
     glm::vec3 speed_{0.0f, 1.0f, 0.0f};

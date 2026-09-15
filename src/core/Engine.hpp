@@ -1,23 +1,25 @@
 #pragma once
 
-#include "core/GameConfig.hpp"
+#include "core/ProjectConfig.hpp"
 #include "gfx/Overlay.hpp"
 #include "gfx/Renderer.hpp"
 #include "gfx/vk/VkCtx.hpp"
 #include "platform/Input.hpp"
 #include "platform/Window.hpp"
-#include "scene/Components.hpp"
+#include "scene/NodeTypes.hpp"
 #include "scene/Scene.hpp"
 #include "script/LuaHost.hpp"
 
+#include <filesystem>
 #include <memory>
+#include <string>
 
 namespace cinder::core {
 
 class Engine {
 public:
-    explicit Engine(const GameConfig& config);
-    Engine(const GameConfig& config, const cinder::gfx::OverlayFactory& overlay);
+    explicit Engine(const ProjectConfig& config);
+    Engine(const ProjectConfig& config, const cinder::gfx::OverlayFactory& overlay);
     ~Engine();
 
     Engine(const Engine&) = delete;
@@ -26,24 +28,33 @@ public:
     bool running() const;
     bool minimized() const;
 
+    void loadScene(const std::string& source);
+    void openScene(const std::filesystem::path& path);
+    void saveScene(const std::filesystem::path& path);
+
     void beginFrame();
     void update(float dt);
     void render(float alpha);
+
     void quit() { quit_ = true; }
+    bool quitRequested() const { return quit_; }
+    void clearQuitRequest() { quit_ = false; }
 
     cinder::platform::Window& window() { return window_; }
     cinder::platform::Input& input() { return input_; }
     cinder::gfx::Renderer& renderer() { return renderer_; }
     cinder::scene::Scene& scene() { return scene_; }
-    cinder::scene::Components& types() { return types_; }
+    cinder::scene::NodeTypes& types() { return types_; }
     cinder::script::LuaHost& script() { return *script_; }
 
 private:
+    void reset();
+
     cinder::platform::Window window_;
     cinder::platform::Input input_;
     cinder::gfx::vk::VkCtx ctx_;
     cinder::gfx::Renderer renderer_;
-    cinder::scene::Components types_;
+    cinder::scene::NodeTypes types_;
     cinder::scene::Scene scene_{types_};
     std::unique_ptr<cinder::script::LuaHost> script_;
     bool quit_ = false;

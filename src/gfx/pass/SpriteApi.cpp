@@ -67,12 +67,6 @@ int screenSize(lua_State* state) {
     return 2;
 }
 
-int setVirtualSize(lua_State* state) {
-    self(state).setVirtualSize(static_cast<float>(lua_tonumber(state, 1)),
-                               static_cast<float>(lua_tonumber(state, 2)));
-    return 0;
-}
-
 int screenToWorld(lua_State* state) {
     const glm::vec3 world = self(state).screenToWorld(static_cast<float>(lua_tonumber(state, 1)),
                                                       static_cast<float>(lua_tonumber(state, 2)));
@@ -88,7 +82,6 @@ void registerSpriteApi(cinder::lua::LuaApi& api, SpritePass& pass) {
     api.bind("drawSpriteRegion", drawSpriteRegion, &pass);
     api.bind("drawRect", drawRect, &pass);
     api.bind("screenSize", screenSize, &pass);
-    api.bind("setVirtualSize", setVirtualSize, &pass);
     api.bind("screenToWorld", screenToWorld, &pass);
 }
 

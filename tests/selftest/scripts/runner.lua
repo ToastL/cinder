@@ -1,0 +1,163 @@
+local fails = 0
+local function check(what, ok)
+    if not ok then fails = fails + 1 end
+    engine.log((ok and "ok   " or "FAIL ") .. what)
+end
+local function near(a, b) return math.abs(a - b) < 1e-4 end
+
+check("script node",    script.className == "Script" and script.file == "scripts/runner.lua")
+check("script parent",  script.parent.name == "SelfTest")
+
+check("vec add",        vec3(1, 2, 3) + vec3(1, 1, 1) == vec3(2, 3, 4))
+check("vec sub",        vec3(5, 5, 5) - vec3(1, 2, 3) == vec3(4, 3, 2))
+check("vec scalar mul", vec3(1, 2, 3) * 2 == vec3(2, 4, 6))
+check("scalar vec mul", 2 * vec3(1, 2, 3) == vec3(2, 4, 6))
+check("vec negate",     -vec3(1, -2, 3) == vec3(-1, 2, -3))
+check("vec length",     near(vec3(3, 4, 0):length(), 5))
+check("vec normalized", near(vec3(0, 7, 0):normalized().y, 1))
+check("vec dot",        near(vec3(1, 2, 3):dot(vec3(4, 5, 6)), 32))
+check("vec cross",      vec3(1, 0, 0):cross(vec3(0, 1, 0)) == vec3(0, 0, 1))
+check("vec tostring",   tostring(vec2(1.5, 2)) == "(1.5, 2)")
+check("vec unpack",     select("#", vec4(1, 2, 3, 4):unpack()) == 4)
+check("vecSize",        vecSize(vec2(0, 0)) == 2 and vecSize(7) == nil)
+
+local c = rgba(0.1, 0.2, 0.3, 0.4)
+check("color channels", near(c.r, 0.1) and near(c.g, 0.2) and near(c.b, 0.3) and near(c.a, 0.4))
+c.r = 0.9
+check("color write",    near(c.x, 0.9))
+
+local a = scene:create("Group")
+check("create",         a ~= nil and a.className == "Group" and a.name == "Group")
+a.name = "Renamed"
+check("name write",     a.name == "Renamed")
+check("node identity",  scene:find("Renamed") == a)
+
+a.position = vec3(1, 2, 3)
+check("position rt",    a.position == vec3(1, 2, 3))
+a.position = a.position + vec3(0, 1, 0)
+check("position math",  a.position == vec3(1, 3, 3))
+a.scale = vec3(2, 2, 2)
+check("scale rt",       a.scale == vec3(2, 2, 2))
+
+local kid = a:add("Group")
+kid.name = "Kid"
+check("add child",      kid.parent == a)
+check("children list",  #a:getChildren() == 1)
+check("findFirstChild", a:findFirstChild("Kid") == kid)
+check("child by name",  a.Kid == kid)
+check("missing child",  a:findFirstChild("Nope") == nil)
+kid.parent = nil
+check("reparent nil",   kid.parent == nil)
+
+check("enabled default", a.enabled == true)
+a.enabled = false
+check("enabled write",  a.enabled == false)
+a.enabled = true
+
+local sprite = a:add("Sprite")
+check("sprite class",   sprite.className == "Sprite")
+sprite.size = vec2(12, 34)
+check("vec2 prop rt",   sprite.size == vec2(12, 34))
+sprite.color = rgba(0.5, 0.25, 0.125, 1)
+check("vec4 prop rt",   near(sprite.color.r, 0.5) and near(sprite.color.b, 0.125))
+sprite.texture = "none.png"
+check("string prop rt", sprite.texture == "none.png")
+sprite:add("Group").name = "texture"
+check("prop before child", sprite.texture == "none.png")
+
+local cam = a:add("Camera")
+cam.projection = "orthographic"
+check("enum prop rt",   cam.projection == "orthographic")
+cam.fov = 500
+check("clamp via proxy", near(cam.fov, 179))
+
+check("unknown prop errors", not pcall(function() a.nonsense = 1 end))
+
+local folder = scene:create("Folder")
+check("folder has no position", folder.position == nil
+      and not pcall(function() folder.position = vec3(1, 1, 1) end))
+
+local holder = scene:create("Group")
+holder.position = vec3(10, 0, 0)
+local inner = holder:add("Folder"):add("Group")
+inner.position = vec3(0, 1, 0)
+check("folder breaks the chain", inner.worldPosition == vec3(0, 1, 0))
+
+local copy = sprite:clone()
+check("clone",          copy ~= sprite and copy.texture == "none.png" and copy.parent == a
+      and copy:findFirstChild("texture") ~= nil)
+sprite.texture = ""
+copy.texture = ""
+
+a:setAttribute("hp", 10)
+check("attribute rt",   a:getAttribute("hp") == 10)
+a:setAttribute("offset", vec3(1, 2, 3))
+check("vec attribute rt", a:getAttribute("offset") == vec3(1, 2, 3))
+local all = a:getAttributes()
+check("getAttributes",  all.hp == 10 and all.offset == vec3(1, 2, 3))
+
+local hpChanges, lastChanged = 0, nil
+a:getAttributeChangedSignal("hp"):connect(function() hpChanges = hpChanges + 1 end)
+a.attributeChanged:connect(function(name) lastChanged = name end)
+a:setAttribute("hp", 5)
+a:setAttribute("hp", 5)
+check("attribute changed signal", hpChanges == 1)
+check("any attribute changed", lastChanged == "hp")
+a:setAttribute("hp", nil)
+check("attribute remove", a:getAttribute("hp") == nil and hpChanges == 2)
+
+check("invalid attribute errors", not pcall(function() a:setAttribute("bad", {}) end))
+check("invalid attribute name errors", not pcall(function() a:setAttribute("bad name", 1) end))
+
+local added, removed, destroyed = nil, nil, false
+a.childAdded:connect(function(child) added = child end)
+a.childRemoved:connect(function(child) removed = child end)
+local temp = a:add("Group")
+check("childAdded",     added == temp)
+temp.destroying:connect(function() destroyed = true end)
+temp:destroy()
+
+local spinner = scene:create("Group")
+spinner:add("Spin").speed = vec3(0, 1, 0)
+
+local ticks = 0
+stepped:connect(function(dt) ticks = ticks + 1 end)
+
+local waited = false
+task.spawn(function()
+    task.wait(0.1)
+    waited = true
+end)
+
+local delayed = false
+task.delay(0.15, function() delayed = true end)
+
+local spawned = scene:create("Group")
+spawned.name = "Spawned"
+spawned:setAttribute("mark", 7)
+spawned:add("Script").file = "scripts/marker.lua"
+
+local ticker = scene:create("Group")
+ticker:add("Script").file = "scripts/ticker.lua"
+local ticksAtDestroy = nil
+task.delay(0.1, function()
+    ticker:destroy()
+    task.delay(0.05, function() ticksAtDestroy = _G.selftestTicks end)
+end)
+
+task.delay(0.4, function()
+    local marks = _G.selftestMarks or {}
+    check("stepped signal", ticks > 5)
+    check("task.wait", waited)
+    check("task.delay", delayed)
+    check("childRemoved and destroying", removed == temp and destroyed)
+    check("spin rotates its parent", spinner.rotation.y > 0.1)
+    check("attribute from scene", marks.Marked == 42)
+    check("attribute before the script", marks.Spawned == 7)
+    check("script top level yields", _G.selftestYielded == true)
+    check("script globals are private", leaked == nil)
+    check("destroyed node stops its script",
+          ticksAtDestroy ~= nil and ticksAtDestroy > 0 and _G.selftestTicks == ticksAtDestroy)
+    engine.log(fails == 0 and "ALL PASS" or (fails .. " FAILED"))
+    engine.quit()
+end)

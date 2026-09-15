@@ -22,8 +22,8 @@ public:
     bool mousePressed(std::string_view name) const;
     bool mouseReleased(std::string_view name) const;
 
-    double mouseX() const { return mouseX_; }
-    double mouseY() const { return mouseY_; }
+    double mouseX() const { return mouseX_ - originX_; }
+    double mouseY() const { return mouseY_ - originY_; }
     double mouseDeltaX() const { return mouseX_ - lastMouseX_; }
     double mouseDeltaY() const { return mouseY_ - lastMouseY_; }
     double scrollX() const { return mouseSuppressed_ ? 0.0 : scrollX_; }
@@ -33,6 +33,7 @@ public:
     bool cursorLocked() const { return cursorLocked_; }
 
     void setSuppressed(bool keyboard, bool mouse);
+    void setViewportOrigin(double x, double y);
 
     void consume();
 
@@ -59,6 +60,8 @@ private:
     double mouseY_ = 0;
     double lastMouseX_ = 0;
     double lastMouseY_ = 0;
+    double originX_ = 0;
+    double originY_ = 0;
     double scrollX_ = 0;
     double scrollY_ = 0;
 

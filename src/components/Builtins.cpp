@@ -1,16 +1,20 @@
 #include "components/Builtins.hpp"
 
 #include "components/Camera.hpp"
-#include "components/MeshRenderer.hpp"
+#include "components/Folder.hpp"
+#include "components/Group.hpp"
+#include "components/MeshPart.hpp"
 #include "components/Spin.hpp"
-#include "components/SpriteRenderer.hpp"
-#include "scene/Components.hpp"
+#include "components/Sprite.hpp"
+#include "scene/NodeTypes.hpp"
 
 namespace cinder::components {
 
-void registerBuiltins(cinder::scene::Components& types) {
-    types.add<MeshRenderer>("MeshRenderer");
-    types.add<SpriteRenderer>("SpriteRenderer");
+void registerBuiltins(cinder::scene::NodeTypes& types) {
+    types.add<Group>("Group");
+    types.add<Folder>("Folder");
+    types.add<MeshPart>("MeshPart");
+    types.add<Sprite>("Sprite");
     types.add<Camera>("Camera");
     types.add<Spin>("Spin");
 }
