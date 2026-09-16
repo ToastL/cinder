@@ -5,7 +5,6 @@
 #include "lua/LuaApi.hpp"
 #include "scene/DrawList.hpp"
 
-#include <algorithm>
 #include <glm/gtc/matrix_transform.hpp>
 
 namespace cinder::gfx::pass {
@@ -87,11 +86,10 @@ int MeshPass::addCube(float r, float g, float b) {
     return static_cast<int>(meshes_.size()) - 1;
 }
 
-void MeshPass::record(VkCommandBuffer cmd, uint32_t frameInFlight) {
+void MeshPass::record(VkCommandBuffer cmd, uint32_t frameInFlight, const glm::mat4& viewProjection) {
     if (drawCount_ == 0) return;
 
-    PerspectiveCamera& view = override_ ? *override_ : camera_;
-    pipeline_.bind(cmd, view.viewProjection());
+    pipeline_.bind(cmd, viewProjection);
 
     int boundMesh = -1;
     int boundTexture = -1;
@@ -116,10 +114,6 @@ void MeshPass::record(VkCommandBuffer cmd, uint32_t frameInFlight) {
 void MeshPass::registerApi(LuaApi& api) {
     api.bind("newCube", newCube, this);
     api.bind("drawMesh", drawMesh, this);
-}
-
-void MeshPass::resize(int width, int height) {
-    camera_.setAspect(static_cast<float>(width) / static_cast<float>(std::max(1, height)));
 }
 
 }

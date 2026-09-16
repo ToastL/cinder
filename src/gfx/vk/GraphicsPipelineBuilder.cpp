@@ -41,6 +41,13 @@ GraphicsPipelineBuilder& GraphicsPipelineBuilder::attribute(uint32_t location, V
 
 GraphicsPipelineBuilder& GraphicsPipelineBuilder::depthTest() {
     depth_ = true;
+    depthWrite_ = true;
+    return *this;
+}
+
+GraphicsPipelineBuilder& GraphicsPipelineBuilder::depthRead() {
+    depth_ = true;
+    depthWrite_ = false;
     return *this;
 }
 
@@ -128,7 +135,7 @@ std::unique_ptr<GraphicsPipeline> GraphicsPipelineBuilder::build() {
     VkPipelineDepthStencilStateCreateInfo depthStencil{};
     depthStencil.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
     depthStencil.depthTestEnable = depth_ ? VK_TRUE : VK_FALSE;
-    depthStencil.depthWriteEnable = depth_ ? VK_TRUE : VK_FALSE;
+    depthStencil.depthWriteEnable = depthWrite_ ? VK_TRUE : VK_FALSE;
     if (depth_) depthStencil.depthCompareOp = VK_COMPARE_OP_LESS;
     depthStencil.depthBoundsTestEnable = VK_FALSE;
     depthStencil.stencilTestEnable = VK_FALSE;

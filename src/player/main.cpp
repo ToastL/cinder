@@ -38,16 +38,17 @@ int main(int argc, char** argv) {
     }
 
     try {
-        cinder::platform::setProjectRoot(project.empty()
+        const std::filesystem::path root = ProjectConfig::root(project.empty()
                 ? cinder::platform::executableDir() / "project"
                 : std::filesystem::path(project));
-        ProjectConfig config = ProjectConfig::load(cinder::platform::projectPath("project.lua"));
-        if (!scene.empty()) config.scene = scene;
+        cinder::platform::setProjectRoot(root);
+        ProjectConfig config = ProjectConfig::load(root);
+        if (!scene.empty()) config.startScene = scene;
 
         Glfw::acquire();
         {
             Engine engine(config);
-            engine.openScene(cinder::platform::projectPath(config.scene));
+            engine.openScene(cinder::platform::contentPath(config.startScene));
             GameLoop loop(config.fixedHz);
 
             int frames = 0;

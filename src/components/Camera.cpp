@@ -4,17 +4,21 @@
 
 namespace cinder::components {
 
+cinder::scene::View Camera::view() {
+    cinder::scene::View view;
+    view.world = transform()->world();
+    view.orthographic = projection_ == Projection::Orthographic;
+    view.fovDegrees = fov_;
+    view.nearClip = near_;
+    view.farClip = far_;
+    view.zoom = zoom_;
+    view.size = virtualSize_;
+    return view;
+}
+
 void Camera::onRender(float alpha, cinder::scene::DrawList& draws) {
-    cinder::scene::Transform& t = *transform();
     draws.background(clearColor_.r, clearColor_.g, clearColor_.b);
-
-    if (projection_ == Projection::Perspective) {
-        draws.camera3d(t.world(), fov_, near_, far_);
-        return;
-    }
-
-    const glm::vec3 position = t.worldPosition();
-    draws.camera2d(position.x, position.y, zoom_, t.rotation().z, virtualSize_.x, virtualSize_.y);
+    draws.camera(view());
 }
 
 }

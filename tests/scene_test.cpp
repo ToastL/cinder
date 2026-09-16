@@ -43,15 +43,9 @@ struct NullDraws : DrawList {
     int textureHandle(std::string_view path) override { return WHITE; }
     int meshHandle(std::string_view name) override { return 0; }
     void background(float r, float g, float b) override {}
-    void sprite(int texture, float x, float y, float w, float h, float rot,
-                float r, float g, float b, float a) override {}
-    void spriteRegion(int texture, float x, float y, float w, float h,
-                      float sx, float sy, float sw, float sh, float rot,
-                      float r, float g, float b, float a) override {}
+    void sprite(int texture, const glm::mat4& model, glm::vec2 size, const glm::vec4& color) override {}
     void mesh(int mesh, int texture, const glm::mat4& model) override {}
-    void camera3d(const glm::mat4& world, float fovDegrees, float near, float far) override {}
-    void camera2d(float x, float y, float zoom, float rotation,
-                  float virtualWidth, float virtualHeight) override {}
+    void camera(const cinder::scene::View& view) override {}
 };
 
 struct Suicide : Node {

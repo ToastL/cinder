@@ -9,9 +9,9 @@ target is a Unity/Unreal-shaped editor workflow — select a node, edit its fiel
 Stop, land back where you started. `TODO.md` is the authoritative roadmap; read it before proposing
 architectural work, since it records what is deliberately deferred and what is out of scope.
 
-The repo holds the engine only. A game is a **project folder** — a `project.lua`, its scenes and its
-scripts — that the editor opens and the player plays. `samples/` holds two example projects; nothing
-in them is compiled.
+The repo holds the engine only. A game is a **project folder** — a `.cinder` file, `Config/`,
+`Content/` and `Source/` — that the editor opens and the player plays; see *Projects and packaging*.
+`samples/` holds two example projects; nothing in them is compiled.
 
 ## Commands
 
@@ -36,8 +36,8 @@ ctest --test-dir build --output-on-failure
 viewport, the Explorer, Properties and the console, with the play toolbar in the main menu bar. It opens a project in **Edit
 mode**: the scene is loaded and drawn, and no game code runs.
 Play/Pause/Step/Stop are on the toolbar and on ⌘P, ⌘⇧P and ⌘⌥P; ⌘S saves the scene, and ⌘Z and ⌘⇧Z
-undo and redo edits. It takes
-`--scene <path>` (project-relative), `--play` (start in Play), `--frames <n>` and `--capture <png>`.
+undo and redo edits. It takes the project folder or its `.cinder` file, then
+`--scene <path>` (relative to `Content/`), `--play` (start in Play), `--frames <n>` and `--capture <png>`.
 The last two make it scriptable: `--frames 90 --capture out.png` runs headless-ish and writes a
 screenshot. See *The dev overlay* below for why this is a second executable rather than a flag.
 
@@ -57,9 +57,10 @@ Stages a runnable game in `build/dist/<project>/` — see *Projects and packagin
 
 Note that `--capture` reads back the **scene render target**, not the swapchain, so an overlay would
 never appear in a capture anyway. That is deliberate: it is the game's picture, not the editor's. In
-the editor that target is the size of the Scene panel, not the window, and in Edit mode its 3D view
-is the editor camera's — which starts as a copy of the scene's camera, so an unattended `--frames
---capture` still writes the game's frame. See *The editor camera*.
+the editor that target is the size of the Scene panel, not the window, and in Edit mode its view is
+the editor camera's — which starts as a copy of a perspective scene camera, so an unattended `--frames
+--capture` still writes the game's frame. An orthographic scene starts from a perspective view framing
+the same rectangle instead. See *The editor camera*.
 
 The first configure fetches every dependency and needs network — glfw, glm, lua, VMA, stb, volk,
 Vulkan-Headers, Dear ImGui and doctest, all pinned in `cmake/Dependencies.cmake`. Nothing needs
@@ -149,7 +150,7 @@ from the engine, so the edges cost nothing and create no cycle.
 `gfx` is split four ways and the seam that matters is `gfx/vk`: it knows Vulkan and knows nothing
 about this engine, which is what let `dev/ImGuiLayer` build the ImGui Vulkan backend on it without
 dragging in passes or assets. `gfx/asset` is what you draw with (`Assets`, `Texture`, `Mesh`),
-`gfx/pass` is how you draw it (`DrawPass` and its implementations, their pipelines and cameras), and
+`gfx/pass` is how you draw it (`DrawPass` and its implementations, their pipelines, and `ViewCamera`), and
 `gfx` itself is only the orchestrator — `Renderer`, `RenderTarget`, `CompositePipeline`,
 `RendererDrawList`. Nothing in a subdirectory includes its parent.
 
@@ -232,8 +233,8 @@ and `2.0` as equal — and `loadAttributes` never notifies.
 | `Group` | Spatial | — | moves its children |
 | `Folder` | Node | — | organizes; breaks the transform chain |
 | `MeshPart` | Spatial | `mesh`, `texture` | |
-| `Sprite` | Spatial | `texture`, `size`, `color` | sprite space is Y-down |
-| `Camera` | Spatial | `projection`, `fov`, clip planes, `zoom`, `clearColor`, `virtualSize` | |
+| `Sprite` | Spatial | `texture`, `size`, `color` | a quad in its local XY plane |
+| `Camera` | Spatial | `projection`, `fov`, clip planes, `zoom`, `clearColor`, `virtualSize` | `projection` is all that makes a scene 2D |
 | `Spin` | Node | `speed` | rotates its **parent** |
 | `Script` | Node | `file` | lives in `script`; see *Scripting* |
 
@@ -278,8 +279,8 @@ A game is a `.scene` file — a tree of nodes, some of them `Script`s. There is 
 Nothing runs a script until something calls `Scene::update`: `onStart` fires from `startPending()`
 at the top of the first update, and that is when a `Script` runs its file. `Scene::render` does
 **not** wait for `start` — it draws every enabled node — so a scene that is never updated is still
-fully drawn. That split *is* Edit mode: meshes, sprites and cameras draw, and scripts never run. The one thing the editor draws differently is the 3D view: Edit mode looks
-through its own camera and shows the scene's cameras as frustums — see *The editor camera*.
+fully drawn. That split *is* Edit mode: meshes, sprites and cameras draw, and scripts never run. The one thing the editor draws differently is the view: Edit mode looks
+through its own camera and shows the scene's cameras as gizmos — see *The editor camera*.
 
 `dev/PlaySession` owns the editor's state, `Edit | Playing | Paused`:
 
@@ -318,7 +319,7 @@ The target uses `swapchain.format()` (sRGB) so the encode/decode round trip is i
 target would visibly brighten everything.
 
 **The target follows the window unless the host embeds it.** `setViewportSize(w, h)`, in window
-points, detaches it: both targets are rebuilt at `w × h` times the framebuffer scale, the passes are
+points, detaches it: both targets are rebuilt at `w × h` times the framebuffer scale, the cameras are
 resized to `w × h`, and the present pass stops drawing the composite triangle — the overlay shows
 the target instead. While embedded, `createTargets` registers each target's image view with the
 overlay through `Overlay::addTexture`, and `Renderer::viewport()` returns the current frame's
@@ -333,17 +334,33 @@ The scene pass carries a second subpass dependency (`0 -> EXTERNAL`, color-write
 that orders the composite's sample after the scene's writes. Any new pass that reads a previous
 pass's output needs the same treatment.
 
-`DrawPass` (`beginFrame` / `record` / `registerApi` / `resize`) is the extension point. It is named
-`DrawPass`, not `RenderPass`, so that `renderPass` unambiguously means a `VkRenderPass`. A new pass
-means: implement the interface, add it to `passes_` in the `Renderer` constructor in draw order, and
-let it register its own Lua functions. Passes own their cameras (`MeshPass` -> `PerspectiveCamera`,
-`SpritePass` -> `OrthographicCamera`). `MeshPass` also holds an optional host override, set through
-`Renderer::overrideCamera3d`, that it draws with instead while it is set; the scene's `camera3d` keeps
-writing the pass's own camera underneath, which is what makes `releaseCamera3d` exact.
+`DrawPass` (`beginFrame` / `record` / `registerApi`) is the extension point. It is named `DrawPass`,
+not `RenderPass`, so that `renderPass` unambiguously means a `VkRenderPass`. A new pass means:
+implement the interface, add it to `passes_` in the `Renderer` constructor in draw order, and let it
+register its own Lua functions. A pass owns no camera: `record` is handed the frame's view-projection.
 
-Sprite space is **Y-down** — the ortho camera deliberately has no Y flip, so `y = 0` is the top of
-the screen. The perspective camera does flip, in the projection matrix rather than with a negative
-viewport height.
+**There is one camera, and 2D and 3D differ only in its projection** — Unity's model. `Renderer` owns
+a `gfx/pass/ViewCamera`, and the scene's `Camera` writes it every frame through `DrawList::camera` as a
+`scene::View`: the world matrix, `orthographic`, fov, clip planes, zoom and virtual size. A perspective
+view uses the fov at the view's aspect. An orthographic one covers `virtualSize / zoom` world units —
+or the view's own size in points when `virtualSize` is zero — centred on the camera and stretched to
+the view. Both clip at `near` and `far`, so an orthographic camera at `z = 0` cannot see a sprite at
+`z = 0`; `samples/sandbox2d` puts its camera at `z = 10`. Every pass draws through the one matrix, so
+meshes and sprites share a world, and a scene with several cameras draws through the last one rendered.
+
+`Renderer::overrideCamera(view)` sets a second `ViewCamera` that the frame draws through while it is
+set, and `releaseCamera` drops it. The scene keeps writing the first underneath, which is what makes a
+release exact. `engine.screenToWorld` and `engine.screenSize` are bound by `Renderer` and read the
+scene's camera, never the override; `screenToWorld` returns where the ray through a point meets the
+`z = 0` plane, which under an orthographic camera looking down -Z is just the point under the cursor.
+
+The world is **Y-up** through either projection: both flip Y in the projection matrix rather than with
+a negative viewport height. A `Sprite` is a quad of `size` in its node's local XY plane, pushed through
+its world matrix, so it moves, turns and scales in 3D like a mesh, with the texture's first row along
+its +Y edge. The sprite pipeline tests depth without writing it (`GraphicsPipelineBuilder::depthRead`):
+`MeshPass` has already written depth, so a mesh in front hides a sprite, while sprites still layer among
+themselves in submission order. `engine.drawSprite`, `drawSpriteRegion` and `drawRect` place a
+rectangle on `z = 0` with `x, y` at its bottom-left.
 
 Conventions used throughout, follow them:
 
@@ -360,11 +377,12 @@ Conventions used throughout, follow them:
 `MAX_TEXTURES = 256` is backed by a fixed-size descriptor pool.
 
 **Nodes never store those handles**, because a handle means nothing on the next run.
-`Sprite::texture` and `MeshPart::texture` / `mesh` are *names* — a project-relative path,
+`Sprite::texture` and `MeshPart::texture` / `mesh` are *names* — a path relative to `Content/`,
 or a primitive such as `"cube"` — resolved through `DrawList::textureHandle` / `meshHandle` on first
-draw and cached until `propChanged` says the name changed. A missing file logs once and draws white;
+draw and cached until `propChanged` says the name changed. `RendererDrawList` caches the handle by
+name, so a thousand sprites on one texture resolve its path once. A missing file logs once and draws white;
 an unknown mesh logs once and draws a cube. The clear colour and the 2D virtual size are `Camera`
-props, pushed to the renderer every frame through `DrawList::background` and `camera2d`, so a scene
+props, pushed to the renderer every frame through `DrawList::background` and `camera`, so a scene
 file carries them.
 
 `Renderer::capture(path)` reads the target back to a PNG. It stalls the device — a debug tool, not a
@@ -375,7 +393,7 @@ per-frame feature.
 **The dev tools are a separate link target, not a runtime flag.** `player` links `engine` and
 `editor` links `engine_dev`, so ImGui is physically absent from the shipping binary — `nm
 build/player | grep -i imgui` returns nothing. There is no `--dev`: to get the tools, run `editor`. `tests` links `engine_dev` as well, so the dev units
-with no ImGui in them — `History`, `Picking` — are tested headlessly.
+with no ImGui in them — `History`, `Picking`, `EditorCamera` — are tested headlessly.
 
 The seam is [`gfx/Overlay.hpp`](src/gfx/Overlay.hpp) — a pure interface (`beginFrame`, `record`,
 `discardFrame`, `setMinImageCount`, `addTexture`, `removeTexture`) plus an `OverlayFactory` typedef.
@@ -413,7 +431,7 @@ does not route through `Assets`: that pool has no `FREE_DESCRIPTOR_SET` flag. Im
 what lets `removeTexture` free the Scene panel's sets on every resize.
 
 `io.IniFilename` is `nullptr`, so no `imgui.ini` is written yet. Turning it on is the "editor layout
-persisted between runs" item in `TODO.md`.
+persisted between runs" item in `TODO.md`, and the file belongs in the project's `Saved/`.
 
 The toolbar is the main menu bar, not a window, so it takes no dock slot and the dockspace sits
 below it. Its shortcuts use `ImGui::Shortcut` with `ImGuiInputFlags_RouteGlobal`, so they work while
@@ -442,10 +460,10 @@ frame N's overlay and read by frame N+1's updates.
 
 In Edit mode a **left click** on the image picks. `dev/Picking` is a CPU raycast with no ImGui in it:
 the click unprojects through the editor camera and hits every enabled `MeshPart` as the unit cube
-`Mesh::cube` is — which is every mesh there is — and every enabled perspective `Camera` within 10 points
-of where it projects, taking the nearest. A `Sprite` is hit in sprite space, through
-`Renderer::screenToWorld2d`, against the centre, scaled size and rotation `Sprite::onRender` draws
-with, and because sprites draw over meshes a sprite hit wins. A disabled node hides its subtree, as it
+`Mesh::cube` is — which is every mesh there is — every enabled `Sprite` as the quad it draws, in its
+own plane and axes, and every enabled `Camera` within 10 points of where it projects, taking the
+nearest. A tie goes to the later node in render order, so of two sprites in one plane the one drawn
+on top wins. A disabled node hides its subtree, as it
 does from `Scene::render`. A click is a press and release that stays inside ImGui's drag threshold;
 past it, a left drag still looks around. A hit selects with `reveal`, so the Explorer, drawn later in
 the same frame, opens the node's ancestors and scrolls to its row; a miss clears the selection.
@@ -458,17 +476,19 @@ that is every launch.
 ### The editor camera
 
 In Edit mode the Scene window looks through `dev/EditorCamera`, not through the scene's `Camera`.
-`Viewport` hands it to `Renderer::overrideCamera3d` on every Edit frame and calls `releaseCamera3d`
-in every other state, so Play and Pause show the game's camera. The override sits in `MeshPass` next
-to the scene's camera rather than replacing it: the scene's `Camera` keeps writing
-`MeshPass::camera()` through `camera3d` the whole time, so a release restores exactly the camera the
-game set — or the default, for a scene without one — and Play still sees what the player sees. Only
-the 3D view is overridden; the sprite pass keeps the scene's 2D camera.
+`Viewport` hands its view to `Renderer::overrideCamera` on every Edit frame and calls `releaseCamera`
+in every other state, so Play and Pause show the game's camera. The override covers the whole frame,
+sprites included, so a 2D scene is flown around exactly like a 3D one — Unity's Scene view with 2D
+mode off.
 
-It is seeded once, on the first Edit frame, from the last enabled perspective `Camera` in render
-order — the one whose `camera3d` wins — taking its pose, fov and clip planes, so an Edit frame is the
-game's frame until you move. Stop does not reset it: like Unity's Scene view, it stays where you left
-it. It has no roll and is not saved.
+The editor camera is always perspective. It is seeded once, on the first Edit frame, from the last
+enabled `Camera` in render order — the one whose `DrawList::camera` call wins — taking its pose, fov
+and clip planes. From a perspective camera that is the game's frame exactly. From an orthographic one
+it backs away along the camera's forward axis until its fov frames the orthographic rectangle at the
+near plane, pushes its far plane back by the same distance, and flies at half that distance per
+second, so a 640-unit view does not crawl at 5 units a second; anything beyond the near plane looks
+slightly smaller than it will in Play. Stop does not reset it: like Unity's Scene view, it stays where
+you left it. It has no roll and is not saved. `tests/editor_camera_test` pins both seeds.
 
 Its controls are read from ImGui, not from `Input` — they are an interaction with a panel, and
 `Input` belongs to the game — and they only act on the Scene image. Hold the **right button** to look
@@ -477,20 +497,21 @@ speed; drag the **middle button** to pan; scroll with no button held to dolly. A
 makes the `InvisibleButton` the active item, so the drag keeps working past the panel's edge, and it
 focuses the Scene window, so fly keys never land in the console.
 
-`dev/Gizmos` draws a wireframe frustum for every enabled perspective `Camera` while editing: the near
-and far rectangles, the four edges joining them, and dimmer lines from the camera to the near
-corners. The corners come from `PerspectiveCamera::corners()` at the panel's aspect — the aspect Play
-renders at — and a test pins them to the projection's clip volume. They are drawn on the Scene
+`dev/Gizmos` draws every enabled `Camera` while editing. A perspective camera is a wireframe frustum:
+the near and far rectangles, the four edges joining them, and dimmer lines from the camera to the near
+corners. An orthographic camera is its near rectangle alone — every cross-section of its box is that
+rectangle, so it is exactly what the camera sees. The corners come from `ViewCamera::corners()` at the
+panel's size — the size Play renders at — and a test pins them to the clip volume of both
+projections. They are drawn on the Scene
 window's `ImDrawList`, projected through the editor camera and clipped in clip space against the near
 plane and the four sides before the divide, so a corner behind the editor camera cannot fold across
 the image. The sides are inset by `INSET`, so a camera the editor is looking straight through — as
 it is right after seeding — draws nothing, rather than a frame along the border that float noise
-leaves half-drawn. Being overlay, the frustums draw over geometry, cost the player nothing, and never
+leaves half-drawn. Being overlay, the gizmos draw over geometry, cost the player nothing, and never
 appear in a `--capture`.
 
 `drawSelection` outlines the selection on the same draw list, in orange: the twelve edges of a
-`MeshPart`'s cube, a `Camera`'s frustum, or a `Sprite`'s rectangle projected through the sprite pass's
-camera, `Renderer::viewProjection2d`.
+`MeshPart`'s cube, a `Camera`'s gizmo, or a `Sprite`'s quad, all through the editor camera.
 
 ### The Explorer and Properties
 
@@ -583,12 +604,12 @@ window does not — see *The Scene viewport*.
 
 ## Scripting
 
-A project's `project.lua` defines a global `project` table (`title`, `width`, `height`, `scene`,
-`fixed_hz`) parsed by `ProjectConfig::load` in a throwaway `lua_State`. `scene` is the scene both
-executables open; `--scene` overrides it.
+A project's settings are data, not code: `ProjectConfig::load` reads `Config/Game.ini` — `[Game]`
+`title`, `startScene`, `fixedHz` and `[Window]` `width`, `height` — without touching Lua, so opening a
+project runs nothing. `startScene` is the scene both executables open; `--scene` overrides it.
 
 There is **no entry script**. Game code lives in `Script` nodes, in Roblox's shape: a `Script` names a
-project file, and that file runs top to bottom, once, when the node starts, with `script.parent` the
+file in `Source/`, and that file runs top to bottom, once, when the node starts, with `script.parent` the
 node it sits in. Per-frame work is a `stepped:connect(fn)` handler, and the top level may `task.wait`,
 because it runs as a thread. Per-node settings are attributes, not script fields. Lua errors are
 caught and printed, not propagated.
@@ -634,7 +655,7 @@ key looks, in order, at:
 A prop therefore wins over a child with the same name. Writing a key that is neither a setter nor a
 prop **errors**, and so does writing a transform on a node that is not spatial, whose transform getters
 return nil. `scene:create(className, parent)` and `node:add(className)` make nodes, and
-`box:add("Script").file = "scripts/riser.lua"` is how a script attaches another.
+`box:add("Script").file = "riser.lua"` is how a script attaches another.
 
 These contracts are load-bearing and must not drift:
 
@@ -644,7 +665,8 @@ These contracts are load-bearing and must not drift:
 - Node ids and the handles `loadTexture`/`newCube` return push as **integers**; numeric prop values
   push as **floats**, string and enum props as strings.
 - Edge-triggered input clears in `consume()` **per fixed step**, not per frame.
-- `screenToWorld` takes **window points**, matching `mousePosition`.
+- `screenToWorld` takes **window points**, matching `mousePosition`, and returns the point on the
+  **`z = 0` plane** under them, through the scene's camera.
 - `getAttribute` returns **`nil`** for a missing attribute, and a 2–4-number attribute as a vector.
 
 `script/LuaProps` converts between Lua values and `PropValue` — scalars, arrays of scalars,
@@ -658,8 +680,8 @@ tests/selftest` prints `ALL PASS`. It needs a window, so it is not part of `ctes
 **Where to add a Lua function:** `LuaHost::registerApi()` builds the global `engine` table and binds
 the engine-wide calls (time, quit, log, input, textures), then hands the `LuaApi` to
 `registerSceneApi` and to `renderer.registerApi()`, which forwards it to every pass. Bind a function
-in the class that owns the state it touches — draw and camera calls belong in `SpritePass`/`MeshPass`,
-not in `LuaHost`.
+in the class that owns the state it touches — draw calls belong in `SpritePass`/`MeshPass` and camera
+calls in `Renderer`, not in `LuaHost`.
 
 `lua_CFunction` cannot capture, so each binding carries its receiver as a light-userdata upvalue:
 `api.bind("name", fn, &receiver)`, read back with `LuaApi::context<T>(state)`. Use
@@ -697,7 +719,8 @@ removes the observer before the state closes.
 Lua is built as C, so `luaL_error` longjmps past C++ destructors. A binding finishes its C++ work
 before it raises: `setAttribute` validates in a helper that returns a status, and errors only after
 that helper's `std::optional` is gone. No C++ exception may cross Lua either, which is why `setParent`
-checks for a cycle before it calls `Node::setParent`.
+checks for a cycle before it calls `Node::setParent`, and why `loadTexture` catches a failed load and
+calls `lua_error` only once the `catch` has ended.
 
 ### Ownership
 
@@ -771,28 +794,123 @@ type for delta encoding. Re-binding a name keeps its slot — so iteration order
 reboot — and drops its cached default, so a `Script` default cannot outlive the `lua_State` it
 closed over.
 
-`SceneCodec::VERSION` and `OLDEST` are both 4 — see *The scene file*. `tests/scene_files_test` loads and re-saves every `.scene` under `samples/` and
-`tests/selftest/` and requires the bytes to match, so shipped scenes stay canonical as the format
-moves.
+`SceneCodec::VERSION` and `OLDEST` are both 4 — see *The scene file*. `tests/scene_files_test` loads
+and re-saves every `.scene` and every project's `Config/Game.ini` under `samples/` and
+`tests/selftest/`, and requires the bytes to match, so shipped scenes and settings stay canonical as
+the formats move.
 
 ## Projects and packaging
 
-`platform/Assets` has two roots, and nothing else turns a name into a path:
+A project is a folder in Unreal's shape:
+
+```
+MyGame/
+  MyGame.cinder      the project descriptor, Unreal's .uproject — marks the folder as a project
+  Config/Game.ini    settings
+  Content/           scenes, textures, meshes — Scenes/ and Textures/ by convention, not by rule
+  Source/            scripts
+  Saved/             per-user and generated; gitignored, never packaged
+```
+
+`ProjectConfig::root` takes the folder or its `.cinder` file. `ProjectConfig::load` requires exactly
+one `*.cinder` in the folder, parses it into `config.descriptor`, then walks `Config/Game.ini`
+through `IniLoad`; a project with no `Game.ini` runs on defaults. `ProjectConfig::walk` serves both
+directions, like `SceneCodec::walk`, and `IniSave` writes only values that differ from the defaults and
+drops a section left empty — so a sample's `Game.ini` is usually just its title.
+
+**The `.cinder` file is the project descriptor**, Unreal's `.uproject` with camelCase keys: JSON that
+says what the project is and what it is made of, while `Config/` says how it is set up.
+
+```json
+{
+	"fileVersion": 1,
+	"engineAssociation": "0.1.0",
+	"category": "Games",
+	"description": "A short description for the project picker.",
+	"modules": [
+		{
+			"name": "Gameplay",
+			"type": "Runtime",
+			"loadingPhase": "Default"
+		}
+	],
+	"plugins": [
+		{
+			"name": "Physics",
+			"enabled": true,
+			"targetAllowList": [
+				"Editor"
+			]
+		}
+	],
+	"targetPlatforms": [
+		"macOS",
+		"Linux"
+	],
+	"postBuildSteps": {
+		"macOS": [
+			"codesign --force -s - $(StageDir)/player"
+		]
+	}
+}
+```
+
+`core/ProjectDescriptor` carries every `.uproject` field that means something outside Epic's own
+tooling — `EpicSampleNameHash` and `IsEnterpriseProject` are left out — and not all of them are read
+yet:
+
+- **`fileVersion`** must be `ProjectDescriptor::FILE_VERSION`, 1.
+- **`engineAssociation`** is the cinder version the project was made with. One that differs from
+  `ProjectDescriptor::engineVersion()` — CMake's `PROJECT_VERSION`, baked in as `CINDER_VERSION` —
+  logs a warning. Empty means the project lives in the engine's tree, which is Unreal's convention
+  and what the samples do.
+- **`targetPlatforms`** (`macOS`, `Linux`, `Windows`; empty means all) and **`preBuildSteps`** /
+  **`postBuildSteps`**, a platform name to command lines, are read by `package_game`, below.
+- **`category`** and **`description`** are for the project picker.
+- **`modules`**, **`plugins`**, **`additionalRootDirectories`**, **`additionalPluginDirectories`** and
+  **`disableEnginePluginsByDefault`** are parsed, type-checked and saved, and nothing reads them: they
+  wait for a plugin system and for `require`.
+
+`ProjectDescriptor::save` writes Unreal's layout — tabs, the first four keys always, everything else
+only when it is set — and `tests/scene_files_test` holds the shipped descriptors to it. A wrong type,
+or a module or plugin without a `name`, is an error that names the key, and `ProjectConfig::load`
+prefixes the file name. `serial/Json` is the format: `parseJson` builds a `PropValue` — objects are
+`PropRec`, arrays `PropSeq`, and `null` is rejected — and reports errors as `line:column`, and
+`JsonWriter` streams, so the descriptor rather than a sorted map decides the key order.
+
+`serial/IniLoad` and `serial/IniSave` are the `Archive` for INI: a record is a `[Section]`, a field is
+`key=value` with camelCase keys like props, a value runs raw to the end of its line, and numbers go
+through `from_chars`/`to_chars`. INI has no arrays, attribute bags or nested sections, and asking for
+one throws `std::logic_error`.
+
+`platform/Assets` is the only thing that turns a name into a path, and it has three roots:
 
 - **`enginePath`** — shaders and the prelude. `CINDER_ENGINE` if set; else `engine/` next to the
   executable, if it exists, which is the packaged layout; else the source tree's `engine/`, baked in
   at configure time as `CINDER_ENGINE_DEFAULT`.
-- **`projectPath`** — `project.lua`, scenes, scripts and textures. Set from the executable's first
-  argument, made absolute; the player falls back to `project/` next to itself.
+- **`contentPath`** — `Content/`: the scene to open, `Sprite.texture`, `MeshPart.texture` and
+  `engine.loadTexture`.
+- **`sourcePath`** — `Source/`: a `Script`'s `file`, through `__scriptRead`.
 
-Every path inside a project — a `Script`'s `file "scripts/bobber.lua"`, a `SpriteRenderer.texture` — is
-relative to the project root, so a project folder can live anywhere and runs from any working
-directory.
+The loader picks the root, so a path never names it — a scene says `file "bobber.lua"` and `texture
+"Textures/box.png"`. Both roots sit under the project root, which is made absolute, so a project
+folder can live anywhere and runs from any working directory; the player falls back to `project/`
+next to itself. A path that is absolute or climbs out of its root with `..` throws: a texture logs
+and draws white, a script or `loadTexture` raises a Lua error. It would work in the editor and break
+once packaged. A path that exists but differs in case from the disk logs `[assets] ... differs in
+case`: macOS is case-insensitive by default, and the same project would not find the file on a
+case-sensitive system.
 
 `cmake --build build --target package_game` builds `player` and runs `cmake/PackageGame.cmake`, which
-stages `build/dist/<project>/` as `player`, `engine/shaders/*.spv`, `engine/lua/*.lua` and
-`project/`. The cache variable `CINDER_PACKAGE_PROJECT` picks the project, defaulting to
-`samples/sandbox2d`.
+stages `build/dist/<name>/` as `player`, `engine/shaders/*.spv`, `engine/lua/*.lua` and `project/`
+holding the `.cinder` file, `Config/`, `Content/` and `Source/` — never `Saved/` or anything else in
+the folder. `<name>` is the `.cinder` file's stem. The cache variable `CINDER_PACKAGE_PROJECT` picks
+the project, defaulting to `samples/sandbox2d`.
+
+It reads the descriptor with CMake's own `string(JSON)`. Before staging it refuses a project whose
+`targetPlatforms` does not list the host and runs the host's `preBuildSteps`; after staging it runs
+`postBuildSteps`. Each step runs through `sh -c` — `cmd /c` on Windows — in the project folder, with
+`$(ProjectDir)`, `$(EngineDir)` and `$(StageDir)` expanded, and a step that fails stops the package.
 
 ## Conventions
 
@@ -806,9 +924,10 @@ stages `build/dist/<project>/` as `player`, `engine/shaders/*.spv`, `engine/lua/
 - `Input` is edge-triggered: `keyPressed`/`keyReleased` are true for exactly one fixed update,
   cleared by `input.consume()` at the end of `Engine::update` and on every `GameLoop::idle` frame.
 - **`std::to_chars` everywhere in `serial`** — never `printf` or `ostream`, which follow the locale.
-  A test pins the output under a Turkish locale.
+  A test pins the output under a Turkish locale, and `IniLoad` and `parseJson` parse with
+  `std::from_chars` for the same reason.
 - Sizes and view dimensions come in two flavours and they are not interchangeable: the swapchain and
-  render target are in **framebuffer pixels**, while cameras, `resize()` and `screenToWorld` are in
+  render target are in **framebuffer pixels**, while `ViewCamera` and `screenToWorld` are in
   **window points**. On a Retina display these differ by 2x. GLFW reports cursor positions in points,
   which is why the cameras use them. In the editor the view is the Scene panel rather than the
   window, and `setViewportSize` takes points and converts to pixels itself.

@@ -5,19 +5,19 @@ hit Play, hit Stop, and land back where you started.
 
 **Where we are:** a Vulkan renderer driving an ordered pass list into an offscreen target,
 composited to the swapchain by a fullscreen triangle. Sprite batch with atlas support, mesh pipeline
-with one directional light, per-pass cameras, edge-triggered input, and Lua scripts in Roblox's shape —
+with one directional light, one camera that every pass draws through, edge-triggered input, and Lua scripts in Roblox's shape —
 code that runs top to bottom, attributes on nodes, and per-file hot reload that stops what the old
 code started. A Roblox-style tree of nodes
 with a prop system that feeds the serializer and the script bindings from one declaration. A
-bidirectional `Archive` with a text backend, and games that are `.scene` files in project folders
-rather than scripts in the engine. Dear ImGui is up in a separate `engine_dev` target, with a
+bidirectional `Archive` with text and INI backends, and games that are project folders in Unreal's
+shape — a `.cinder` file, `Config/`, `Content/` and `Source/` — rather than scripts in the engine. Dear ImGui is up in a separate `engine_dev` target, with a
 dockspace holding the Scene viewport and a console with a live Lua REPL, and a play toolbar in the
 main menu bar — `player` ships without a byte of it. The editor opens a project in Edit mode, seen
-through a free-flying editor camera with a frustum drawn for every scene camera; Play serializes the
+through a free-flying editor camera — 2D scenes included — with a gizmo drawn for every scene camera; Play serializes the
 scene into a fresh Lua state and Stop restores it. An Explorer shows the whole node tree, scripts
 included, and Properties edits the selected node's fields and attributes with no per-type editor
 code. A click in the Scene view selects, every edit is undoable, and an unsaved scene is marked and
-guarded on close. 116 headless test cases and a 60-check Lua selftest.
+guarded on close. 150 headless test cases and a 60-check Lua selftest.
 
 Foundations, the scene model, the scripting ergonomics, serialization and the Edit/Play split are
 done. The editor shell is underway — ImGui, the console, the toolbar, the Scene viewport, the
@@ -44,16 +44,19 @@ editor camera, the Explorer, Properties, picking and undo have landed; transform
       class's props with one widget per `PropType` (enum combos, colour pickers), and its attributes
       with add and remove. An edit during Play fires the game's changed signals.
 - [ ] Properties: an asset-reference widget for texture and mesh names, and a node-reference widget
-- [ ] Gizmos — translate/rotate/scale handles, snapping. `dev/Gizmos` already draws a frustum for
-      every perspective `Camera` in Edit mode, on the Scene window's draw list.
+- [ ] Gizmos — translate/rotate/scale handles, snapping. `dev/Gizmos` already draws every
+      `Camera` in Edit mode — a frustum, or a rectangle for an orthographic one — on the Scene
+      window's draw list.
 - [x] Mouse picking — `dev/Picking`, a CPU raycast against each `MeshPart`'s cube, each `Sprite`'s
-      rectangle and each perspective `Camera`; the Explorer reveals the pick and `dev/Gizmos` outlines it
+      quad and each `Camera`; the Explorer reveals the pick and `dev/Gizmos` outlines it
 - [ ] Picking against real mesh bounds — every `MeshPart` draws a cube today, so the cube is exact;
       imported meshes will need their own bounds or triangles
 - [x] Editor camera, independent of the game camera — `dev/EditorCamera`, seeded from the scene's
-      camera and handed to `Renderer::overrideCamera3d` in Edit mode. Right-drag to look and fly
-      with WASD/QE, middle-drag to pan, scroll to dolly. Orthographic scenes still look through the
-      scene's 2D camera; a 2D pan/zoom for them is not done.
+      camera and handed to `Renderer::overrideCamera` in Edit mode, which every pass draws through, so
+      a 2D scene is flown like a 3D one. Right-drag to look and fly with WASD/QE, middle-drag to pan,
+      scroll to dolly.
+- [ ] Scene view 2D mode — Unity's toggle to an orthographic editor camera looking down -Z, panned and
+      zoomed rather than flown
 - [x] **Undo/redo** — `dev/History` snapshots the scene text through `SceneCodec` after each finished
       edit, so every edit is covered with no per-edit code; ⌘Z / ⌘⇧Z and toolbar buttons
 - [ ] Undo: a snapshot costs a full scene save per edit — fine at sample scale; move to diffed snapshots
@@ -62,11 +65,14 @@ editor camera, the Explorer, Properties, picking and undo have landed; transform
       sink. REPL line evaluates against the live `lua_State`, with history on up/down.
 - [x] Toolbar — Play / Pause / Step / Stop and Save, on ⌘P / ⌘⇧P / ⌘⌥P / ⌘S, in the main menu bar
 - [ ] Console: click a `file:line` to open it in `$EDITOR`; filter by level; search
-- [ ] Editor layout + window state persisted between runs — `io.IniFilename` is currently `nullptr`
-- [ ] Project picker and new-project template — the editor takes the project folder on the
-      command line
+- [ ] Editor layout + window state persisted between runs — `io.IniFilename` is currently `nullptr`;
+      the file belongs in the project's `Saved/`
+- [ ] Project picker and new-project template — the editor takes the project folder or its
+      `.cinder` file on the command line; the template writes `Content/Scenes/` and `Content/Textures/`,
+      and the picker lists each descriptor's `category` and `description`
+- [ ] Project Settings panel — `ProjectConfig::walk` already writes `Config/Game.ini` through `IniSave`
 - [ ] Scene switching — open, new and save-as. The editor edits the one scene named by
-      `project.lua` or `--scene`.
+      `startScene` in `Config/Game.ini` or `--scene`.
 
 **Done when:** adding `CINDER_PROP(bounciness_)` to any node class makes it appear in Properties, save
 to disk, and become undoable — with zero editor code.
@@ -102,7 +108,7 @@ sugar, never the primary surface.
 ## Asset pipeline
 
 - [ ] GUIDs — a `.meta` sidecar per asset, stable across renames and moves. Scenes currently store
-      the project-relative path, which a rename breaks.
+      the path relative to `Content/` or `Source/`, which a rename breaks.
 - [ ] Asset database: GUID -> path -> loaded handle. `DrawList::textureHandle` / `meshHandle` are
       already the lookup seam; they just need GUID lookup in front.
 - [ ] Import pipeline: source file -> cooked asset, cached, re-run on mtime change
@@ -121,7 +127,8 @@ sugar, never the primary surface.
 - [ ] **Audio** — clip loading, one-shot + looping sources, 3D positional, buses/volume
 - [ ] **Animation** — skeletal (skinning shader, joint palette), sprite sheet animation, and a
       clip/state machine
-- [ ] **UI system** — the current "HUD" is `SpriteBatch` with an ortho camera. Needs anchoring,
+- [ ] **UI system** — there is no screen-space layer: sprites live in the world, so a HUD has to be
+      placed in front of the camera. Needs a screen-space pass with its own projection, anchoring,
       layout, text rendering (MSDF or stb_truetype), input hit-testing.
 - [ ] **Particles** — emitters as nodes, GPU-driven if it matters
 - [ ] Scene queries — raycast, overlap, spatial partition (BVH or grid)
@@ -160,10 +167,15 @@ sugar, never the primary surface.
 - [ ] **Sprite batching is run-based** — `SpriteBatch::flush` only merges *consecutive* quads sharing
       a texture, so interleaved textures degrade to one draw call per quad. Sort by texture, or go
       bindless.
-- [ ] **No sorting anywhere**, in either pass. Submission order only.
+- [ ] **No sorting anywhere**, in either pass. Submission order only — sprites test depth against
+      meshes but never write it, so they layer among themselves by submission order, not by z.
 - [ ] **`endSingleTime` does a full `vkQueueWaitIdle`** per texture upload.
 - [ ] **Scripts cannot share code.** There is no `ModuleScript`/`require`: `package.path` does not
-      include the project, so a helper has to be copied or hung off `_G` by another script.
+      include the project, so a helper has to be copied or hung off `_G` by another script. `Source/`
+      is the natural root — `Source/?.lua`, with required files watched like scripts.
+- [ ] **Half the project descriptor is read by nothing.** `modules`, `plugins`,
+      `additionalRootDirectories`, `additionalPluginDirectories` and `disableEnginePluginsByDefault`
+      are parsed, checked and saved; they wait for a plugin system and `require`.
 - [ ] **The prelude is not watched** — editing `types.lua`, `scene.lua` or `task.lua` needs a restart.
 - [ ] **`poll()` stats every script it has read, every frame** — move to a watch service, or throttle.
 - [ ] **An attribute cannot name a node** — it holds numbers, strings, bools and small vectors. A node
@@ -185,7 +197,7 @@ sugar, never the primary surface.
 - [ ] **The layer graph is convention, not enforced.** See the Layering section of `CLAUDE.md`.
       `#include` cycles are invisible in a way package cycles are not, so this is worth re-checking
       by eye when adding a subdirectory.
-- [ ] **The points-vs-pixels split is implicit.** Cameras, `resize()` and `screenToWorld` are in
+- [ ] **The points-vs-pixels split is implicit.** `ViewCamera` and `screenToWorld` are in
       window points; the swapchain and render target are in framebuffer pixels. 2x apart on Retina.
       `cursor.lua` and `spawner.lua` in `samples/sandbox2d` depend on the current behaviour.
 - [ ] **The packaged player finds itself through `argv[0]`**, so launching it through a `PATH`

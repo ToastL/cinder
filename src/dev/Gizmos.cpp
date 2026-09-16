@@ -3,8 +3,7 @@
 #include "components/Camera.hpp"
 #include "components/MeshPart.hpp"
 #include "components/Sprite.hpp"
-#include "dev/Picking.hpp"
-#include "gfx/pass/PerspectiveCamera.hpp"
+#include "gfx/pass/ViewCamera.hpp"
 #include "scene/Node.hpp"
 #include "scene/Scene.hpp"
 #include "scene/Transform.hpp"
@@ -12,12 +11,10 @@
 #include <imgui.h>
 
 #include <glm/geometric.hpp>
-#include <glm/trigonometric.hpp>
 #include <glm/vec4.hpp>
 
 #include <algorithm>
 #include <array>
-#include <cmath>
 #include <cstddef>
 
 namespace cinder::dev {
@@ -84,20 +81,19 @@ void segment(ImDrawList& list, const Screen& screen, const glm::vec3& from, cons
 }
 
 void frustum(ImDrawList& list, const Screen& screen, Camera& camera, ImU32 edge, ImU32 sight) {
-    cinder::scene::Transform& transform = *camera.transform();
-
-    cinder::gfx::pass::PerspectiveCamera view;
-    view.setWorld(transform.world());
-    view.setFov(glm::radians(camera.fov()));
-    view.setAspect(screen.size.x / screen.size.y);
-    view.setClip(camera.nearClip(), camera.farClip());
+    const cinder::scene::View seen = camera.view();
+    cinder::gfx::pass::ViewCamera view;
+    view.setView(seen);
+    view.setViewSize(screen.size.x, screen.size.y);
 
     const std::array<glm::vec3, 8> corners = view.corners();
-    const glm::vec3 eye = transform.worldPosition();
+    const glm::vec3 eye(seen.world[3]);
     for (std::size_t i = 0; i < 4; ++i) {
         const std::size_t next = (i + 1) % 4;
-        segment(list, screen, eye, corners[i], sight);
         segment(list, screen, corners[i], corners[next], edge);
+        if (seen.orthographic) continue;
+
+        segment(list, screen, eye, corners[i], sight);
         segment(list, screen, corners[i + 4], corners[next + 4], edge);
         segment(list, screen, corners[i], corners[i + 4], edge);
     }
@@ -118,15 +114,10 @@ void box(ImDrawList& list, const Screen& screen, const glm::mat4& world) {
 }
 
 void outline(ImDrawList& list, const Screen& screen, const glm::mat4& world, glm::vec2 size) {
-    const SpriteRect rect = spriteRect(world, size);
-    const float cos = std::cos(rect.rotation);
-    const float sin = std::sin(rect.rotation);
-
+    const glm::vec2 half = size * 0.5f;
     std::array<glm::vec3, 4> corners{};
     for (std::size_t i = 0; i < corners.size(); ++i) {
-        const glm::vec2 offset = SIGNS[i] * rect.half;
-        corners[i] = glm::vec3(rect.centre.x + offset.x * cos - offset.y * sin,
-                               rect.centre.y + offset.x * sin + offset.y * cos, 0.0f);
+        corners[i] = glm::vec3(world * glm::vec4(SIGNS[i] * half, 0.0f, 1.0f));
     }
     for (std::size_t i = 0; i < corners.size(); ++i) {
         segment(list, screen, corners[i], corners[(i + 1) % corners.size()], SELECTED);
@@ -136,16 +127,13 @@ void outline(ImDrawList& list, const Screen& screen, const glm::mat4& world, glm
 void collect(cinder::scene::Node& node, std::vector<Camera*>& cameras) {
     if (node.destroyed() || !node.isEnabled()) return;
 
-    auto* camera = dynamic_cast<Camera*>(&node);
-    if (camera != nullptr && camera->projection() == Camera::Projection::Perspective) {
-        cameras.push_back(camera);
-    }
+    if (auto* camera = dynamic_cast<Camera*>(&node)) cameras.push_back(camera);
     for (cinder::scene::Node* child : node.children()) collect(*child, cameras);
 }
 
 }
 
-std::vector<Camera*> perspectiveCameras(cinder::scene::Scene& scene) {
+std::vector<Camera*> sceneCameras(cinder::scene::Scene& scene) {
     std::vector<Camera*> cameras;
     for (cinder::scene::Node* root : scene.roots()) collect(*root, cameras);
     return cameras;
@@ -160,18 +148,16 @@ void drawFrustums(ImDrawList& list, const std::vector<Camera*>& cameras,
 }
 
 void drawSelection(ImDrawList& list, cinder::scene::Node& node, const glm::mat4& viewProjection,
-                   const glm::mat4& viewProjection2d, glm::vec2 origin, glm::vec2 size) {
+                   glm::vec2 origin, glm::vec2 size) {
     const Screen screen{viewProjection, origin, size};
     list.PushClipRect(ImVec2(origin.x, origin.y), ImVec2(origin.x + size.x, origin.y + size.y), true);
 
     if (auto* part = dynamic_cast<cinder::components::MeshPart*>(&node)) {
         box(list, screen, part->transform()->world());
     } else if (auto* sprite = dynamic_cast<cinder::components::Sprite*>(&node)) {
-        outline(list, Screen{viewProjection2d, origin, size}, sprite->transform()->world(), sprite->size());
+        outline(list, screen, sprite->transform()->world(), sprite->size());
     } else if (auto* camera = dynamic_cast<Camera*>(&node)) {
-        if (camera->projection() == Camera::Projection::Perspective) {
-            frustum(list, screen, *camera, SELECTED, SELECTED_SIGHT);
-        }
+        frustum(list, screen, *camera, SELECTED, SELECTED_SIGHT);
     }
 
     list.PopClipRect();

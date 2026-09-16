@@ -48,7 +48,7 @@ private:
     void registerScripts();
     void registerApi();
     void loadPrelude();
-    void watch(const char* path);
+    void watch(const char* path, const std::filesystem::path& file);
     void reloadScript(const std::string& path);
     int reloadIn(cinder::scene::Node& node, const std::string& path);
     void close();

@@ -1,6 +1,7 @@
 #pragma once
 
-#include "gfx/pass/PerspectiveCamera.hpp"
+#include "gfx/pass/ViewCamera.hpp"
+#include "scene/View.hpp"
 
 #include <glm/mat4x4.hpp>
 #include <glm/vec2.hpp>
@@ -22,18 +23,19 @@ public:
     };
 
     bool seeded() const { return seeded_; }
-    void seed(cinder::components::Camera* camera);
+    void seed(cinder::components::Camera* camera, glm::vec2 viewSize);
 
-    void setAspect(float aspect) { camera_.setAspect(aspect); }
+    void setViewSize(glm::vec2 size) { camera_.setViewSize(size.x, size.y); }
     void update(const Controls& controls, float dt);
 
-    cinder::gfx::pass::PerspectiveCamera& camera() { return camera_; }
+    const cinder::scene::View& view() const { return camera_.view(); }
+    cinder::gfx::pass::ViewCamera& camera() { return camera_; }
 
 private:
     glm::mat4 orientation() const;
     void place();
 
-    cinder::gfx::pass::PerspectiveCamera camera_;
+    cinder::gfx::pass::ViewCamera camera_;
     glm::vec3 position_{0.0f};
     float yaw_ = 0.0f;
     float pitch_ = 0.0f;

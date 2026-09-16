@@ -7,25 +7,20 @@
 #include "gfx/pass/MeshPipeline.hpp"
 #include "gfx/Overlay.hpp"
 #include "gfx/pass/SpritePipeline.hpp"
+#include "gfx/pass/ViewCamera.hpp"
 #include "gfx/vk/FrameSync.hpp"
 #include "gfx/vk/Swapchain.hpp"
 
-#include <glm/mat4x4.hpp>
-#include <glm/vec3.hpp>
+#include <glm/vec2.hpp>
 
 #include <functional>
 #include <memory>
+#include <optional>
 #include <string>
 #include <vector>
 
 namespace cinder::platform { class Window; }
 namespace cinder::scene { class DrawList; }
-
-namespace cinder::gfx::pass {
-class MeshPass;
-class PerspectiveCamera;
-class SpritePass;
-}
 
 namespace cinder::gfx {
 
@@ -42,15 +37,14 @@ public:
 
     void setClearColor(float r, float g, float b);
     void setViewportSize(int width, int height);
-    void overrideCamera3d(const cinder::gfx::pass::PerspectiveCamera& camera);
-    void releaseCamera3d();
-    glm::vec3 screenToWorld2d(float x, float y);
-    glm::mat4 viewProjection2d();
+    void overrideCamera(const cinder::scene::View& view);
+    void releaseCamera();
     void beginFrame();
     void drawFrame();
     void capture(const std::string& path);
 
     cinder::gfx::asset::Assets& assets() { return *assets_; }
+    cinder::gfx::pass::ViewCamera& camera() { return camera_; }
     VkDescriptorSet viewport() const;
     cinder::scene::DrawList& draws();
 
@@ -60,11 +54,12 @@ public:
 
 private:
     bool embedded() const { return viewportWidth_ > 0; }
+    glm::vec2 viewSize() const;
     VkExtent2D targetExtent() const;
     void createTargets();
     void destroyTargets();
     void createCommandBuffers();
-    void resizePasses();
+    void resizeCameras();
     void recreateSwapchain();
     void recordCommandBuffer(VkCommandBuffer cmd, uint32_t imageIndex);
     static void setViewport(VkCommandBuffer cmd, uint32_t width, uint32_t height);
@@ -88,11 +83,12 @@ private:
     std::unique_ptr<cinder::gfx::pass::MeshPipeline> meshPipeline_;
     std::unique_ptr<CompositePipeline> compositePipeline_;
     std::vector<std::unique_ptr<cinder::gfx::pass::DrawPass>> passes_;
-    cinder::gfx::pass::MeshPass* meshPass_ = nullptr;
-    cinder::gfx::pass::SpritePass* spritePass_ = nullptr;
     std::unique_ptr<cinder::scene::DrawList> draws_;
     std::unique_ptr<Overlay> overlay_;
     std::function<void()> overlayDraw_;
+
+    cinder::gfx::pass::ViewCamera camera_;
+    std::optional<cinder::gfx::pass::ViewCamera> override_;
 
     uint32_t lastFrame_ = 0;
     int viewportWidth_ = 0;

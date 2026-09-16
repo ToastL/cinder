@@ -13,16 +13,17 @@ SpritePipeline::SpritePipeline(const cinder::gfx::vk::VkCtx& ctx, VkRenderPass r
                         .shaders("sprite.vert", "sprite.frag")
                         .pushConstants(GraphicsPipeline::MATRIX_BYTES)
                         .vertexStride(VERTEX_STRIDE)
-                        .attribute(0, VK_FORMAT_R32G32_SFLOAT, 0)
-                        .attribute(1, VK_FORMAT_R32G32_SFLOAT, 2 * sizeof(float))
-                        .attribute(2, VK_FORMAT_R32G32B32A32_SFLOAT, 4 * sizeof(float))
+                        .attribute(0, VK_FORMAT_R32G32B32_SFLOAT, 0)
+                        .attribute(1, VK_FORMAT_R32G32_SFLOAT, 3 * sizeof(float))
+                        .attribute(2, VK_FORMAT_R32G32B32A32_SFLOAT, 5 * sizeof(float))
+                        .depthRead()
                         .alphaBlend()
                         .build();
 }
 
-void SpritePipeline::bind(VkCommandBuffer cmd, const glm::mat4& projection) const {
+void SpritePipeline::bind(VkCommandBuffer cmd, const glm::mat4& viewProjection) const {
     pipeline_->bind(cmd);
-    pipeline_->push(cmd, 0, projection);
+    pipeline_->push(cmd, 0, viewProjection);
 }
 
 }

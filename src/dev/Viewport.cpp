@@ -7,6 +7,7 @@
 #include "dev/Selection.hpp"
 #include "scene/Node.hpp"
 
+#include <GLFW/glfw3.h>
 #include <imgui.h>
 
 #include <algorithm>
@@ -18,11 +19,15 @@ namespace {
 constexpr ImGuiButtonFlags ANY_BUTTON = ImGuiButtonFlags_MouseButtonLeft
         | ImGuiButtonFlags_MouseButtonRight | ImGuiButtonFlags_MouseButtonMiddle;
 
-float axis(ImGuiKey negative, ImGuiKey positive) {
-    return (ImGui::IsKeyDown(positive) ? 1.0f : 0.0f) - (ImGui::IsKeyDown(negative) ? 1.0f : 0.0f);
+bool held(GLFWwindow* window, int key) {
+    return glfwGetKey(window, key) == GLFW_PRESS;
 }
 
-EditorCamera::Controls readControls(bool focused) {
+float axis(GLFWwindow* window, int negative, int positive) {
+    return (held(window, positive) ? 1.0f : 0.0f) - (held(window, negative) ? 1.0f : 0.0f);
+}
+
+EditorCamera::Controls readControls(GLFWwindow* window, bool focused) {
     const ImGuiIO& io = ImGui::GetIO();
     const bool active = ImGui::IsItemActive();
     const bool left = active && ImGui::IsMouseDown(ImGuiMouseButton_Left);
@@ -35,8 +40,9 @@ EditorCamera::Controls readControls(bool focused) {
     if (controls.looking) controls.look = drag;
     if (middle || (left && io.KeyAlt)) controls.pan = drag;
     if ((focused || active) && !io.KeyCtrl && !io.KeySuper) {
-        controls.move = glm::vec3(axis(ImGuiKey_A, ImGuiKey_D), axis(ImGuiKey_Q, ImGuiKey_E),
-                                  axis(ImGuiKey_S, ImGuiKey_W));
+        controls.move = glm::vec3(axis(window, GLFW_KEY_A, GLFW_KEY_D),
+                                  axis(window, GLFW_KEY_Q, GLFW_KEY_E),
+                                  axis(window, GLFW_KEY_S, GLFW_KEY_W));
         controls.fast = io.KeyShift;
     }
     if (active || ImGui::IsItemHovered()) controls.scroll = io.MouseWheel;
@@ -70,10 +76,7 @@ void Viewport::draw() {
     playing_ = playing;
 
     std::vector<cinder::components::Camera*> cameras;
-    if (editing) {
-        cameras = perspectiveCameras(engine_.scene());
-        if (!camera_.seeded()) camera_.seed(cameras.empty() ? nullptr : cameras.back());
-    }
+    if (editing) cameras = sceneCameras(engine_.scene());
 
     ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.0f, 0.0f));
     const bool visible = ImGui::Begin(TITLE, nullptr,
@@ -102,8 +105,9 @@ void Viewport::draw() {
         const bool picking = editing && clicked(io);
 
         if (editing) {
-            camera_.setAspect(size.x / size.y);
-            camera_.update(readControls(focused), io.DeltaTime);
+            if (!camera_.seeded()) camera_.seed(cameras.empty() ? nullptr : cameras.back(), extent);
+            camera_.setViewSize(extent);
+            camera_.update(readControls(engine_.window().handle(), focused), io.DeltaTime);
         }
         if (picking) pickAt(glm::vec2(io.MousePos.x, io.MousePos.y) - corner, extent);
 
@@ -114,21 +118,20 @@ void Viewport::draw() {
             const glm::mat4& viewProjection = camera_.camera().viewProjection();
             drawFrustums(list, cameras, viewProjection, corner, extent);
             if (cinder::scene::Node* selected = selection_.resolve(engine_.scene())) {
-                drawSelection(list, *selected, viewProjection, renderer.viewProjection2d(), corner, extent);
+                drawSelection(list, *selected, viewProjection, corner, extent);
             }
         }
     }
     ImGui::End();
 
-    if (editing) renderer.overrideCamera3d(camera_.camera());
-    else renderer.releaseCamera3d();
+    if (editing && camera_.seeded()) renderer.overrideCamera(camera_.view());
+    else renderer.releaseCamera();
 
     input.setSuppressed(!locked && !focused, !locked && !hovered);
 }
 
 void Viewport::pickAt(glm::vec2 point, glm::vec2 size) {
-    const glm::vec3 world2d = engine_.renderer().screenToWorld2d(point.x, point.y);
-    const PickView view{camera_.camera().viewProjection(), point, size, glm::vec2(world2d)};
+    const PickView view{camera_.camera().viewProjection(), point, size};
 
     if (cinder::scene::Node* node = pick(engine_.scene(), view)) selection_.select(node->id(), true);
     else selection_.clear();
