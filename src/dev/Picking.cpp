@@ -30,7 +30,6 @@ constexpr float DEGENERATE = 1e-12f;
 constexpr float PARALLEL = 1e-8f;
 
 struct Hits {
-    Node* sprite = nullptr;
     Node* nearest = nullptr;
     float distance = FLT_MAX;
 };
@@ -52,14 +51,12 @@ void visit(Node& node, const PickView& view, const Ray& ray, Hits& hits) {
     if (auto* part = dynamic_cast<MeshPart*>(&node)) {
         distance = hitCube(ray, part->transform()->world());
     } else if (auto* sprite = dynamic_cast<Sprite*>(&node)) {
-        if (hitSprite(view.world2d, sprite->transform()->world(), sprite->size())) hits.sprite = &node;
+        distance = hitSprite(ray, sprite->transform()->world(), sprite->size());
     } else if (auto* camera = dynamic_cast<Camera*>(&node)) {
-        if (camera->projection() == Camera::Projection::Perspective) {
-            distance = hitMarker(view, ray, camera->transform()->worldPosition());
-        }
+        distance = hitMarker(view, ray, camera->transform()->worldPosition());
     }
 
-    if (distance && *distance < hits.distance) {
+    if (distance && *distance <= hits.distance) {
         hits.distance = *distance;
         hits.nearest = &node;
     }
@@ -108,25 +105,38 @@ std::optional<float> hitCube(const Ray& ray, const glm::mat4& world) {
     return std::max(enter, 0.0f);
 }
 
-SpriteRect spriteRect(const glm::mat4& world, glm::vec2 size) {
-    const glm::vec2 scaled(size.x * glm::length(glm::vec3(world[0])), size.y * glm::length(glm::vec3(world[1])));
-    return SpriteRect{glm::vec2(world[3]), scaled * 0.5f, std::atan2(world[0][1], world[0][0])};
-}
+std::optional<float> hitSprite(const Ray& ray, const glm::mat4& world, glm::vec2 size) {
+    const glm::vec3 across(world[0]);
+    const glm::vec3 up(world[1]);
+    const glm::vec3 normal = glm::cross(across, up);
+    const float area = glm::dot(normal, normal);
+    if (area < DEGENERATE) return std::nullopt;
 
-bool hitSprite(glm::vec2 point, const glm::mat4& world, glm::vec2 size) {
-    const SpriteRect rect = spriteRect(world, size);
-    const glm::vec2 offset = point - rect.centre;
-    const float cos = std::cos(rect.rotation);
-    const float sin = std::sin(rect.rotation);
-    const glm::vec2 local(offset.x * cos + offset.y * sin, -offset.x * sin + offset.y * cos);
-    return std::abs(local.x) <= rect.half.x && std::abs(local.y) <= rect.half.y;
+    const glm::vec3 unit = normal / std::sqrt(area);
+    const float facing = glm::dot(ray.direction, unit);
+    if (std::abs(facing) < PARALLEL) return std::nullopt;
+
+    const glm::vec3 centre(world[3]);
+    const float distance = glm::dot(centre - ray.origin, unit) / facing;
+    if (distance < 0.0f) return std::nullopt;
+
+    const glm::vec3 offset = ray.origin + ray.direction * distance - centre;
+    const float shear = glm::dot(across, up);
+    const float alongAcross = glm::dot(offset, across);
+    const float alongUp = glm::dot(offset, up);
+    const glm::vec2 local((alongAcross * glm::dot(up, up) - alongUp * shear) / area,
+                          (alongUp * glm::dot(across, across) - alongAcross * shear) / area);
+
+    const glm::vec2 half = size * 0.5f;
+    if (std::abs(local.x) > half.x || std::abs(local.y) > half.y) return std::nullopt;
+    return distance;
 }
 
 Node* pick(cinder::scene::Scene& scene, const PickView& view) {
     const Ray ray = rayThrough(view.viewProjection, view.point, view.size);
     Hits hits;
     for (Node* root : scene.roots()) visit(*root, view, ray, hits);
-    return hits.sprite != nullptr ? hits.sprite : hits.nearest;
+    return hits.nearest;
 }
 
 }

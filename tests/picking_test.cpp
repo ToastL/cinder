@@ -1,20 +1,24 @@
 #include <doctest/doctest.h>
 
 #include "components/Builtins.hpp"
+#include "components/Camera.hpp"
 #include "components/Sprite.hpp"
 #include "dev/Picking.hpp"
-#include "gfx/pass/PerspectiveCamera.hpp"
+#include "gfx/pass/ViewCamera.hpp"
 #include "scene/Node.hpp"
 #include "scene/NodeTypes.hpp"
 #include "scene/Scene.hpp"
 #include "scene/Transform.hpp"
+#include "scene/View.hpp"
 
+#include <glm/geometric.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/trigonometric.hpp>
 
 #include <optional>
 #include <string_view>
 
+using cinder::components::Camera;
 using cinder::components::Sprite;
 using cinder::dev::PickView;
 using cinder::dev::Ray;
@@ -29,18 +33,20 @@ namespace {
 
 const glm::vec2 SIZE(200.0f, 100.0f);
 const glm::vec2 CENTRE(100.0f, 50.0f);
-const glm::vec2 NOWHERE(1.0e6f, 1.0e6f);
 
 struct World {
     NodeTypes types;
     Scene scene{types};
-    cinder::gfx::pass::PerspectiveCamera camera;
+    cinder::gfx::pass::ViewCamera camera;
 
     World() {
         cinder::components::registerBuiltins(types);
-        camera.setFov(glm::radians(60.0f));
-        camera.setAspect(SIZE.x / SIZE.y);
-        camera.setClip(0.1f, 100.0f);
+        cinder::scene::View view;
+        view.fovDegrees = 60.0f;
+        view.nearClip = 0.1f;
+        view.farClip = 100.0f;
+        camera.setView(view);
+        camera.setViewSize(SIZE.x, SIZE.y);
     }
 
     Node* add(std::string_view className, float z, Node* parent = nullptr) {
@@ -49,8 +55,8 @@ struct World {
         return node;
     }
 
-    Node* pickAt(glm::vec2 point, glm::vec2 world2d = NOWHERE) {
-        return cinder::dev::pick(scene, PickView{camera.viewProjection(), point, SIZE, world2d});
+    Node* pickAt(glm::vec2 point) {
+        return cinder::dev::pick(scene, PickView{camera.viewProjection(), point, SIZE});
     }
 };
 
@@ -99,25 +105,51 @@ TEST_CASE("the nearer of two cubes is picked") {
     CHECK(world.pickAt(glm::vec2(0.0f, 0.0f)) == nullptr);
 }
 
-TEST_CASE("a sprite under the cursor wins over a cube") {
-    World world;
-    Node* cube = world.add("MeshPart", -5.0f);
-    Sprite* sprite = world.scene.create<Sprite>(nullptr);
-    sprite->transform()->setPosition(20.0f, 30.0f, 0.0f);
+TEST_CASE("a ray hits a sprite in its own plane, scaled, and never edge-on") {
+    const glm::mat4 placed = glm::scale(glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, 0.0f, -5.0f)),
+                                        glm::vec3(2.0f, 3.0f, 0.0f));
 
-    CHECK(world.pickAt(CENTRE, glm::vec2(20.0f, 30.0f)) == sprite);
-    CHECK(world.pickAt(CENTRE) == cube);
+    const std::optional<float> distance = hitSprite(Ray{}, placed, glm::vec2(1.0f));
+    REQUIRE(distance);
+    CHECK(*distance == doctest::Approx(5.0f));
+
+    CHECK(hitSprite(Ray{glm::vec3(0.9f, 1.4f, 0.0f), glm::vec3(0.0f, 0.0f, -1.0f)}, placed, glm::vec2(1.0f)));
+    CHECK_FALSE(hitSprite(Ray{glm::vec3(1.1f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, -1.0f)}, placed,
+                          glm::vec2(1.0f)));
+    CHECK_FALSE(hitSprite(Ray{glm::vec3(0.0f, 0.0f, -10.0f), glm::vec3(0.0f, 0.0f, -1.0f)}, placed,
+                          glm::vec2(1.0f)));
+
+    const glm::mat4 edgeOn =
+            glm::rotate(glm::mat4(1.0f), glm::radians(90.0f), glm::vec3(0.0f, 1.0f, 0.0f)) * placed;
+    CHECK_FALSE(hitSprite(Ray{}, edgeOn, glm::vec2(1.0f)));
 }
 
 TEST_CASE("a rotated sprite is hit inside its turned rectangle") {
     World world;
     Sprite* sprite = world.scene.create<Sprite>(nullptr);
     sprite->setSize(10.0f, 2.0f);
+    sprite->transform()->setPosition(0.0f, 0.0f, -5.0f);
     sprite->transform()->setRotation(0.0f, 0.0f, glm::radians(90.0f));
     const glm::mat4& placed = sprite->transform()->world();
 
-    CHECK(hitSprite(glm::vec2(0.0f, 4.0f), placed, sprite->size()));
-    CHECK_FALSE(hitSprite(glm::vec2(4.0f, 0.0f), placed, sprite->size()));
+    CHECK(hitSprite(Ray{glm::vec3(0.0f), glm::normalize(glm::vec3(0.0f, 4.0f, -5.0f))}, placed,
+                    sprite->size()));
+    CHECK_FALSE(hitSprite(Ray{glm::vec3(0.0f), glm::normalize(glm::vec3(4.0f, 0.0f, -5.0f))}, placed,
+                          sprite->size()));
+}
+
+TEST_CASE("sprites and cubes are picked by depth, and a later sprite in the same plane wins") {
+    World world;
+    Node* cube = world.add("MeshPart", -5.0f);
+    Node* front = world.add("Sprite", -3.0f);
+    CHECK(world.pickAt(CENTRE) == front);
+
+    Node* above = world.add("Sprite", -3.0f);
+    CHECK(world.pickAt(CENTRE) == above);
+
+    front->transform()->setPosition(0.0f, 0.0f, -8.0f);
+    above->transform()->setPosition(0.0f, 0.0f, -8.0f);
+    CHECK(world.pickAt(CENTRE) == cube);
 }
 
 TEST_CASE("a disabled node hides its subtree from picking") {
@@ -132,9 +164,12 @@ TEST_CASE("a disabled node hides its subtree from picking") {
     CHECK(world.pickAt(CENTRE) == cube);
 }
 
-TEST_CASE("a perspective camera is picked near its projected position") {
+TEST_CASE("a camera of either projection is picked near its projected position") {
     World world;
-    Node* camera = world.add("Camera", -5.0f);
+    auto* camera = static_cast<Camera*>(world.add("Camera", -5.0f));
     CHECK(world.pickAt(CENTRE) == camera);
     CHECK(world.pickAt(CENTRE + glm::vec2(40.0f, 0.0f)) == nullptr);
+
+    camera->setProjection(Camera::Projection::Orthographic);
+    CHECK(world.pickAt(CENTRE) == camera);
 }

@@ -1,7 +1,6 @@
 #include "dev/EditorCamera.hpp"
 
 #include "components/Camera.hpp"
-#include "scene/Transform.hpp"
 
 #include <glm/geometric.hpp>
 #include <glm/gtc/matrix_transform.hpp>
@@ -19,21 +18,38 @@ constexpr float FAST_MULTIPLIER = 4.0f;
 constexpr float SPEED_STEP = 1.2f;
 constexpr float MIN_SPEED = 0.25f;
 constexpr float MAX_SPEED = 250.0f;
+constexpr float SEED_SPEED_PER_UNIT = 0.5f;
 constexpr float DOLLY_SECONDS = 0.2f;
 constexpr float PAN_SECONDS_PER_POINT = 0.004f;
 
 }
 
-void EditorCamera::seed(cinder::components::Camera* camera) {
+void EditorCamera::seed(cinder::components::Camera* camera, glm::vec2 viewSize) {
     seeded_ = true;
+    camera_.setViewSize(viewSize.x, viewSize.y);
     if (camera != nullptr) {
-        const glm::mat4& world = camera->transform()->world();
-        const glm::vec3 forward = glm::normalize(-glm::vec3(world[2]));
-        position_ = glm::vec3(world[3]);
+        cinder::gfx::pass::ViewCamera seen;
+        seen.setView(camera->view());
+        seen.setViewSize(viewSize.x, viewSize.y);
+        const cinder::scene::View& source = seen.view();
+
+        const glm::vec3 forward = glm::normalize(-glm::vec3(source.world[2]));
+        position_ = glm::vec3(source.world[3]);
         pitch_ = std::asin(std::clamp(forward.y, -1.0f, 1.0f));
         yaw_ = std::atan2(-forward.x, -forward.z);
-        camera_.setFov(glm::radians(camera->fov()));
-        camera_.setClip(camera->nearClip(), camera->farClip());
+
+        cinder::scene::View view;
+        view.fovDegrees = source.fovDegrees;
+        view.nearClip = source.nearClip;
+        view.farClip = source.farClip;
+        if (source.orthographic) {
+            const float distance =
+                    seen.extent().y * 0.5f / std::tan(glm::radians(source.fovDegrees) * 0.5f);
+            position_ += forward * (source.nearClip - distance);
+            view.farClip += distance;
+            speed_ = std::clamp(distance * SEED_SPEED_PER_UNIT, MIN_SPEED, MAX_SPEED);
+        }
+        camera_.setView(view);
     }
     place();
 }
@@ -70,7 +86,9 @@ glm::mat4 EditorCamera::orientation() const {
 }
 
 void EditorCamera::place() {
-    camera_.setWorld(glm::translate(glm::mat4(1.0f), position_) * orientation());
+    cinder::scene::View view = camera_.view();
+    view.world = glm::translate(glm::mat4(1.0f), position_) * orientation();
+    camera_.setView(view);
 }
 
 }

@@ -16,12 +16,12 @@ class Scene;
 
 namespace cinder::dev {
 
-std::vector<cinder::components::Camera*> perspectiveCameras(cinder::scene::Scene& scene);
+std::vector<cinder::components::Camera*> sceneCameras(cinder::scene::Scene& scene);
 
 void drawFrustums(ImDrawList& list, const std::vector<cinder::components::Camera*>& cameras,
                   const glm::mat4& viewProjection, glm::vec2 origin, glm::vec2 size);
 
 void drawSelection(ImDrawList& list, cinder::scene::Node& node, const glm::mat4& viewProjection,
-                   const glm::mat4& viewProjection2d, glm::vec2 origin, glm::vec2 size);
+                   glm::vec2 origin, glm::vec2 size);
 
 }

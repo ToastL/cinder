@@ -2,6 +2,7 @@ version 4
 nodes {
     Camera {
         id 1
+        position 0 0 10
         projection "orthographic"
         clearColor 0.05 0.05 0.08 1
         virtualSize 640 360

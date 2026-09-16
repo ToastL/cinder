@@ -10,37 +10,19 @@ SpritePass::SpritePass(const cinder::gfx::vk::VkCtx& ctx, cinder::gfx::asset::As
 
 void SpritePass::beginFrame() { batch_.reset(); }
 
-void SpritePass::record(VkCommandBuffer cmd, uint32_t frameInFlight) {
-    batch_.flush(cmd, frameInFlight, camera_.viewProjection());
+void SpritePass::record(VkCommandBuffer cmd, uint32_t frameInFlight, const glm::mat4& viewProjection) {
+    batch_.flush(cmd, frameInFlight, viewProjection);
 }
 
 void SpritePass::registerApi(cinder::lua::LuaApi& api) { registerSpriteApi(api, *this); }
 
-void SpritePass::resize(int width, int height) {
-    viewWidth_ = static_cast<float>(width);
-    viewHeight_ = static_cast<float>(height);
-    if (!virtualSizeExplicit_) camera_.setVirtualSize(viewWidth_, viewHeight_);
+void SpritePass::draw(int texture, const glm::mat4& model, glm::vec2 size, const glm::vec4& color) {
+    batch_.draw(texture, model, size, color);
 }
 
-void SpritePass::draw(int texture, float x, float y, float w, float h, float rot,
-                      float r, float g, float b, float a) {
-    batch_.draw(texture, x, y, w, h, rot, r, g, b, a);
-}
-
-void SpritePass::drawRegion(int texture, float x, float y, float w, float h,
-                            float sx, float sy, float sw, float sh, float rot,
-                            float r, float g, float b, float a) {
-    batch_.drawRegion(texture, x, y, w, h, sx, sy, sw, sh, rot, r, g, b, a);
-}
-
-void SpritePass::setVirtualSize(float width, float height) {
-    virtualSizeExplicit_ = width > 0.0f && height > 0.0f;
-    if (virtualSizeExplicit_) camera_.setVirtualSize(width, height);
-    else camera_.setVirtualSize(viewWidth_, viewHeight_);
-}
-
-glm::vec3 SpritePass::screenToWorld(float screenX, float screenY) {
-    return camera_.screenToWorld(screenX, screenY, viewWidth_, viewHeight_);
+void SpritePass::drawRegion(int texture, const glm::mat4& model, glm::vec2 size,
+                            const glm::vec4& region, const glm::vec4& color) {
+    batch_.drawRegion(texture, model, size, region, color);
 }
 
 }

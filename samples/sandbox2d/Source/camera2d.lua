@@ -9,8 +9,8 @@ stepped:connect(function(dt)
 
     if engine.keyDown("a") or engine.keyDown("left")  then move.x = move.x - 1 end
     if engine.keyDown("d") or engine.keyDown("right") then move.x = move.x + 1 end
-    if engine.keyDown("w") or engine.keyDown("up")    then move.y = move.y - 1 end
-    if engine.keyDown("s") or engine.keyDown("down")  then move.y = move.y + 1 end
+    if engine.keyDown("w") or engine.keyDown("up")    then move.y = move.y + 1 end
+    if engine.keyDown("s") or engine.keyDown("down")  then move.y = move.y - 1 end
 
     camera.position = camera.position + move * (camera:getAttribute("speed") * dt / camera.zoom)
 

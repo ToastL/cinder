@@ -4,6 +4,11 @@
 #include "gfx/pass/SpritePipeline.hpp"
 #include "gfx/vk/GpuBuffer.hpp"
 
+#include <glm/mat4x4.hpp>
+#include <glm/vec2.hpp>
+#include <glm/vec3.hpp>
+#include <glm/vec4.hpp>
+
 #include <memory>
 #include <vector>
 
@@ -19,18 +24,16 @@ public:
 
     void reset() { quadCount_ = 0; }
 
-    void draw(int texture, float x, float y, float w, float h, float rot,
-              float r, float g, float b, float a);
-    void drawRegion(int texture, float x, float y, float w, float h,
-                    float sx, float sy, float sw, float sh, float rot,
-                    float r, float g, float b, float a);
+    void draw(int texture, const glm::mat4& model, glm::vec2 size, const glm::vec4& color);
+    void drawRegion(int texture, const glm::mat4& model, glm::vec2 size, const glm::vec4& region,
+                    const glm::vec4& color);
 
-    void flush(VkCommandBuffer cmd, uint32_t frameIndex, const glm::mat4& projection);
+    void flush(VkCommandBuffer cmd, uint32_t frameIndex, const glm::mat4& viewProjection);
 
 private:
-    void vertex(uint32_t& cursor, float cx, float cy, float cos, float sin,
-                float ox, float oy, float u, float v,
-                float r, float g, float b, float a);
+    void quad(int texture, const glm::mat4& model, glm::vec2 size, const glm::vec4& uv,
+              const glm::vec4& color);
+    void vertex(uint32_t& cursor, const glm::vec3& position, float u, float v, const glm::vec4& color);
 
     cinder::gfx::asset::Assets& assets_;
     const SpritePipeline& pipeline_;

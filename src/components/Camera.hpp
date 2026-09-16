@@ -1,6 +1,7 @@
 #pragma once
 
 #include "scene/Spatial.hpp"
+#include "scene/View.hpp"
 
 #include <glm/vec2.hpp>
 #include <glm/vec4.hpp>
@@ -31,6 +32,8 @@ public:
         virtualSize_ = glm::vec2(width, height);
         return *this;
     }
+
+    cinder::scene::View view();
 
     void onRender(float alpha, cinder::scene::DrawList& draws) override;
 

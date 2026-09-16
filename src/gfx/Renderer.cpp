@@ -7,6 +7,7 @@
 #include "gfx/vk/VkCtx.hpp"
 #include "gfx/vk/VkRenderPasses.hpp"
 #include "gfx/vk/VkUtil.hpp"
+#include "lua/LuaApi.hpp"
 #include "platform/Window.hpp"
 #include "scene/DrawList.hpp"
 
@@ -28,6 +29,27 @@ using cinder::gfx::vk::Swapchain;
 using cinder::gfx::vk::VkCtx;
 using cinder::gfx::vk::check;
 namespace renderPasses = cinder::gfx::vk::renderPasses;
+
+namespace {
+
+Renderer& self(lua_State* state) { return *cinder::lua::LuaApi::context<Renderer>(state); }
+
+int screenSize(lua_State* state) {
+    const glm::vec2 size = self(state).camera().size();
+    lua_pushnumber(state, size.x);
+    lua_pushnumber(state, size.y);
+    return 2;
+}
+
+int screenToWorld(lua_State* state) {
+    const glm::vec3 world = self(state).camera().screenToWorld(static_cast<float>(lua_tonumber(state, 1)),
+                                                              static_cast<float>(lua_tonumber(state, 2)));
+    lua_pushnumber(state, world.x);
+    lua_pushnumber(state, world.y);
+    return 2;
+}
+
+}
 
 Renderer::Renderer(const VkCtx& ctx, cinder::platform::Window& window,
                    const OverlayFactory& overlay)
@@ -55,14 +77,12 @@ Renderer::Renderer(const VkCtx& ctx, cinder::platform::Window& window,
     auto spritePass = std::make_unique<cinder::gfx::pass::SpritePass>(
             ctx, *assets_, *spritePipeline_, FRAMES_IN_FLIGHT);
 
-    meshPass_ = meshPass.get();
-    spritePass_ = spritePass.get();
     draws_ = std::make_unique<RendererDrawList>(*this, *meshPass, *spritePass);
 
     passes_.push_back(std::move(meshPass));
     passes_.push_back(std::move(spritePass));
 
-    resizePasses();
+    resizeCameras();
 
     if (overlay) {
         overlay_ = overlay(ctx, window, presentRenderPass_, swapchain_->imageCount(),
@@ -133,10 +153,15 @@ void Renderer::createCommandBuffers() {
           "vkAllocateCommandBuffers");
 }
 
-void Renderer::resizePasses() {
-    const int width = embedded() ? viewportWidth_ : window_.logicalWidth();
-    const int height = embedded() ? viewportHeight_ : window_.logicalHeight();
-    for (const std::unique_ptr<DrawPass>& pass : passes_) pass->resize(width, height);
+glm::vec2 Renderer::viewSize() const {
+    if (embedded()) return glm::vec2(viewportWidth_, viewportHeight_);
+    return glm::vec2(window_.logicalWidth(), window_.logicalHeight());
+}
+
+void Renderer::resizeCameras() {
+    const glm::vec2 size = viewSize();
+    camera_.setViewSize(size.x, size.y);
+    if (override_) override_->setViewSize(size.x, size.y);
 }
 
 void Renderer::setClearColor(float r, float g, float b) {
@@ -152,18 +177,15 @@ void Renderer::setViewportSize(int width, int height) {
     viewportWidth_ = width;
     viewportHeight_ = height;
     createTargets();
-    resizePasses();
+    resizeCameras();
 }
 
-void Renderer::overrideCamera3d(const cinder::gfx::pass::PerspectiveCamera& camera) {
-    meshPass_->overrideCamera(camera);
+void Renderer::overrideCamera(const cinder::scene::View& view) {
+    if (!override_) override_.emplace(camera_);
+    override_->setView(view);
 }
 
-void Renderer::releaseCamera3d() { meshPass_->releaseCamera(); }
-
-glm::vec3 Renderer::screenToWorld2d(float x, float y) { return spritePass_->screenToWorld(x, y); }
-
-glm::mat4 Renderer::viewProjection2d() { return spritePass_->camera().viewProjection(); }
+void Renderer::releaseCamera() { override_.reset(); }
 
 void Renderer::beginFrame() {
     for (const std::unique_ptr<DrawPass>& pass : passes_) pass->beginFrame();
@@ -179,6 +201,8 @@ VkDescriptorSet Renderer::viewport() const {
 }
 
 void Renderer::registerApi(cinder::lua::LuaApi& api) {
+    api.bind("screenSize", screenSize, this);
+    api.bind("screenToWorld", screenToWorld, this);
     for (const std::unique_ptr<DrawPass>& pass : passes_) pass->registerApi(api);
 }
 
@@ -220,7 +244,8 @@ void Renderer::recordCommandBuffer(VkCommandBuffer cmd, uint32_t imageIndex) {
 
     vkCmdBeginRenderPass(cmd, &scene, VK_SUBPASS_CONTENTS_INLINE);
     setViewport(cmd, target.width(), target.height());
-    for (const std::unique_ptr<DrawPass>& pass : passes_) pass->record(cmd, sync_->frame());
+    const glm::mat4& viewProjection = override_ ? override_->viewProjection() : camera_.viewProjection();
+    for (const std::unique_ptr<DrawPass>& pass : passes_) pass->record(cmd, sync_->frame(), viewProjection);
     vkCmdEndRenderPass(cmd);
 
     VkClearValue presentClear{};
@@ -325,7 +350,7 @@ void Renderer::recreateSwapchain() {
 
     createTargets();
     swapchain_->createFramebuffers(presentRenderPass_);
-    resizePasses();
+    resizeCameras();
     sync_->resize(swapchain_->imageCount());
     if (overlay_ != nullptr) overlay_->setMinImageCount(swapchain_->imageCount());
 

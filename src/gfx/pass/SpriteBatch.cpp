@@ -3,7 +3,6 @@
 #include "gfx/pass/Overflow.hpp"
 #include "gfx/vk/VkCtx.hpp"
 
-#include <cmath>
 #include <cstring>
 
 namespace cinder::gfx::pass {
@@ -40,65 +39,62 @@ SpriteBatch::SpriteBatch(const VkCtx& ctx, cinder::gfx::asset::Assets& assets,
     }
 }
 
-void SpriteBatch::vertex(uint32_t& cursor, float cx, float cy, float cos, float sin,
-                         float ox, float oy, float u, float v,
-                         float r, float g, float b, float a) {
-    vertices_[cursor++] = cx + ox * cos - oy * sin;
-    vertices_[cursor++] = cy + ox * sin + oy * cos;
+void SpriteBatch::vertex(uint32_t& cursor, const glm::vec3& position, float u, float v,
+                         const glm::vec4& color) {
+    vertices_[cursor++] = position.x;
+    vertices_[cursor++] = position.y;
+    vertices_[cursor++] = position.z;
     vertices_[cursor++] = u;
     vertices_[cursor++] = v;
-    vertices_[cursor++] = r;
-    vertices_[cursor++] = g;
-    vertices_[cursor++] = b;
-    vertices_[cursor++] = a;
+    vertices_[cursor++] = color.r;
+    vertices_[cursor++] = color.g;
+    vertices_[cursor++] = color.b;
+    vertices_[cursor++] = color.a;
 }
 
-void SpriteBatch::drawRegion(int texture, float x, float y, float w, float h,
-                             float sx, float sy, float sw, float sh, float rot,
-                             float r, float g, float b, float a) {
+void SpriteBatch::quad(int texture, const glm::mat4& model, glm::vec2 size, const glm::vec4& uv,
+                       const glm::vec4& color) {
     if (quadCount_ >= MAX_QUADS) {
         overflowWarned_ = warnOverflow(overflowWarned_, "sprite batch", "10000 quads");
         return;
     }
 
-    const cinder::gfx::asset::Texture& tex = assets_.get(texture);
-    const float u0 = sx / static_cast<float>(tex.width());
-    const float v0 = sy / static_cast<float>(tex.height());
-    const float u1 = (sx + sw) / static_cast<float>(tex.width());
-    const float v1 = (sy + sh) / static_cast<float>(tex.height());
-
-    const float hw = w * 0.5f;
-    const float hh = h * 0.5f;
-    const float cx = x + hw;
-    const float cy = y + hh;
-    const float cos = std::cos(rot);
-    const float sin = std::sin(rot);
+    const glm::vec2 half = size * 0.5f;
+    const glm::vec3 topLeft(model * glm::vec4(-half.x, half.y, 0.0f, 1.0f));
+    const glm::vec3 topRight(model * glm::vec4(half.x, half.y, 0.0f, 1.0f));
+    const glm::vec3 bottomRight(model * glm::vec4(half.x, -half.y, 0.0f, 1.0f));
+    const glm::vec3 bottomLeft(model * glm::vec4(-half.x, -half.y, 0.0f, 1.0f));
 
     uint32_t cursor = quadCount_ * FLOATS_PER_QUAD;
-    vertex(cursor, cx, cy, cos, sin, -hw, -hh, u0, v0, r, g, b, a);
-    vertex(cursor, cx, cy, cos, sin, hw, -hh, u1, v0, r, g, b, a);
-    vertex(cursor, cx, cy, cos, sin, hw, hh, u1, v1, r, g, b, a);
-    vertex(cursor, cx, cy, cos, sin, -hw, hh, u0, v1, r, g, b, a);
+    vertex(cursor, topLeft, uv.x, uv.y, color);
+    vertex(cursor, topRight, uv.z, uv.y, color);
+    vertex(cursor, bottomRight, uv.z, uv.w, color);
+    vertex(cursor, bottomLeft, uv.x, uv.w, color);
 
     quadTexture_[quadCount_] = texture;
     quadCount_++;
 }
 
-void SpriteBatch::draw(int texture, float x, float y, float w, float h, float rot,
-                       float r, float g, float b, float a) {
-    const cinder::gfx::asset::Texture& tex = assets_.get(texture);
-    drawRegion(texture, x, y, w, h, 0, 0,
-               static_cast<float>(tex.width()), static_cast<float>(tex.height()),
-               rot, r, g, b, a);
+void SpriteBatch::draw(int texture, const glm::mat4& model, glm::vec2 size, const glm::vec4& color) {
+    quad(texture, model, size, glm::vec4(0.0f, 0.0f, 1.0f, 1.0f), color);
 }
 
-void SpriteBatch::flush(VkCommandBuffer cmd, uint32_t frameIndex, const glm::mat4& projection) {
+void SpriteBatch::drawRegion(int texture, const glm::mat4& model, glm::vec2 size,
+                             const glm::vec4& region, const glm::vec4& color) {
+    const cinder::gfx::asset::Texture& tex = assets_.get(texture);
+    const glm::vec2 texels(static_cast<float>(tex.width()), static_cast<float>(tex.height()));
+    const glm::vec2 from = glm::vec2(region.x, region.y) / texels;
+    const glm::vec2 to = glm::vec2(region.x + region.z, region.y + region.w) / texels;
+    quad(texture, model, size, glm::vec4(from, to), color);
+}
+
+void SpriteBatch::flush(VkCommandBuffer cmd, uint32_t frameIndex, const glm::mat4& viewProjection) {
     if (quadCount_ == 0) return;
 
     std::memcpy(vertexBuffers_[frameIndex].mapped(), vertices_.data(),
                 static_cast<std::size_t>(quadCount_) * FLOATS_PER_QUAD * sizeof(float));
 
-    pipeline_.bind(cmd, projection);
+    pipeline_.bind(cmd, viewProjection);
 
     const VkBuffer vertexBuffer = vertexBuffers_[frameIndex].handle();
     const VkDeviceSize offset = 0;

@@ -70,10 +70,7 @@ void Viewport::draw() {
     playing_ = playing;
 
     std::vector<cinder::components::Camera*> cameras;
-    if (editing) {
-        cameras = perspectiveCameras(engine_.scene());
-        if (!camera_.seeded()) camera_.seed(cameras.empty() ? nullptr : cameras.back());
-    }
+    if (editing) cameras = sceneCameras(engine_.scene());
 
     ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.0f, 0.0f));
     const bool visible = ImGui::Begin(TITLE, nullptr,
@@ -102,7 +99,8 @@ void Viewport::draw() {
         const bool picking = editing && clicked(io);
 
         if (editing) {
-            camera_.setAspect(size.x / size.y);
+            if (!camera_.seeded()) camera_.seed(cameras.empty() ? nullptr : cameras.back(), extent);
+            camera_.setViewSize(extent);
             camera_.update(readControls(focused), io.DeltaTime);
         }
         if (picking) pickAt(glm::vec2(io.MousePos.x, io.MousePos.y) - corner, extent);
@@ -114,21 +112,20 @@ void Viewport::draw() {
             const glm::mat4& viewProjection = camera_.camera().viewProjection();
             drawFrustums(list, cameras, viewProjection, corner, extent);
             if (cinder::scene::Node* selected = selection_.resolve(engine_.scene())) {
-                drawSelection(list, *selected, viewProjection, renderer.viewProjection2d(), corner, extent);
+                drawSelection(list, *selected, viewProjection, corner, extent);
             }
         }
     }
     ImGui::End();
 
-    if (editing) renderer.overrideCamera3d(camera_.camera());
-    else renderer.releaseCamera3d();
+    if (editing && camera_.seeded()) renderer.overrideCamera(camera_.view());
+    else renderer.releaseCamera();
 
     input.setSuppressed(!locked && !focused, !locked && !hovered);
 }
 
 void Viewport::pickAt(glm::vec2 point, glm::vec2 size) {
-    const glm::vec3 world2d = engine_.renderer().screenToWorld2d(point.x, point.y);
-    const PickView view{camera_.camera().viewProjection(), point, size, glm::vec2(world2d)};
+    const PickView view{camera_.camera().viewProjection(), point, size};
 
     if (cinder::scene::Node* node = pick(engine_.scene(), view)) selection_.select(node->id(), true);
     else selection_.clear();

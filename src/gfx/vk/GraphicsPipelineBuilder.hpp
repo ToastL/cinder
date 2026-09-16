@@ -20,6 +20,7 @@ public:
     GraphicsPipelineBuilder& vertexStride(uint32_t stride);
     GraphicsPipelineBuilder& attribute(uint32_t location, VkFormat format, uint32_t offset);
     GraphicsPipelineBuilder& depthTest();
+    GraphicsPipelineBuilder& depthRead();
     GraphicsPipelineBuilder& alphaBlend();
     GraphicsPipelineBuilder& frontFace(VkFrontFace face);
 
@@ -36,6 +37,7 @@ private:
     uint32_t vertexStride_ = 0;
     std::vector<VkVertexInputAttributeDescription> attributes_;
     bool depth_ = false;
+    bool depthWrite_ = false;
     bool alphaBlend_ = false;
     VkFrontFace frontFace_ = VK_FRONT_FACE_COUNTER_CLOCKWISE;
 };

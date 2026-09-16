@@ -4,9 +4,7 @@
 #include "gfx/asset/Mesh.hpp"
 #include "gfx/pass/DrawPass.hpp"
 #include "gfx/pass/MeshPipeline.hpp"
-#include "gfx/pass/PerspectiveCamera.hpp"
 
-#include <optional>
 #include <string>
 #include <string_view>
 #include <unordered_map>
@@ -22,17 +20,12 @@ public:
              const MeshPipeline& pipeline);
 
     void beginFrame() override;
-    void record(VkCommandBuffer cmd, uint32_t frameInFlight) override;
+    void record(VkCommandBuffer cmd, uint32_t frameInFlight, const glm::mat4& viewProjection) override;
     void registerApi(cinder::lua::LuaApi& api) override;
-    void resize(int width, int height) override;
 
     void submit(int mesh, int texture, const glm::mat4& model);
     int addCube(float r, float g, float b);
     int meshNamed(std::string_view name) const;
-
-    PerspectiveCamera& camera() { return camera_; }
-    void overrideCamera(const PerspectiveCamera& camera) { override_ = camera; }
-    void releaseCamera() { override_.reset(); }
 
 private:
     bool accept(int mesh);
@@ -48,9 +41,6 @@ private:
     std::vector<glm::mat4> drawModel_;
     uint32_t drawCount_ = 0;
     bool overflowWarned_ = false;
-
-    PerspectiveCamera camera_;
-    std::optional<PerspectiveCamera> override_;
 };
 
 }
