@@ -7,6 +7,7 @@
 #include "dev/Selection.hpp"
 #include "scene/Node.hpp"
 
+#include <GLFW/glfw3.h>
 #include <imgui.h>
 
 #include <algorithm>
@@ -18,11 +19,15 @@ namespace {
 constexpr ImGuiButtonFlags ANY_BUTTON = ImGuiButtonFlags_MouseButtonLeft
         | ImGuiButtonFlags_MouseButtonRight | ImGuiButtonFlags_MouseButtonMiddle;
 
-float axis(ImGuiKey negative, ImGuiKey positive) {
-    return (ImGui::IsKeyDown(positive) ? 1.0f : 0.0f) - (ImGui::IsKeyDown(negative) ? 1.0f : 0.0f);
+bool held(GLFWwindow* window, int key) {
+    return glfwGetKey(window, key) == GLFW_PRESS;
 }
 
-EditorCamera::Controls readControls(bool focused) {
+float axis(GLFWwindow* window, int negative, int positive) {
+    return (held(window, positive) ? 1.0f : 0.0f) - (held(window, negative) ? 1.0f : 0.0f);
+}
+
+EditorCamera::Controls readControls(GLFWwindow* window, bool focused) {
     const ImGuiIO& io = ImGui::GetIO();
     const bool active = ImGui::IsItemActive();
     const bool left = active && ImGui::IsMouseDown(ImGuiMouseButton_Left);
@@ -35,8 +40,9 @@ EditorCamera::Controls readControls(bool focused) {
     if (controls.looking) controls.look = drag;
     if (middle || (left && io.KeyAlt)) controls.pan = drag;
     if ((focused || active) && !io.KeyCtrl && !io.KeySuper) {
-        controls.move = glm::vec3(axis(ImGuiKey_A, ImGuiKey_D), axis(ImGuiKey_Q, ImGuiKey_E),
-                                  axis(ImGuiKey_S, ImGuiKey_W));
+        controls.move = glm::vec3(axis(window, GLFW_KEY_A, GLFW_KEY_D),
+                                  axis(window, GLFW_KEY_Q, GLFW_KEY_E),
+                                  axis(window, GLFW_KEY_S, GLFW_KEY_W));
         controls.fast = io.KeyShift;
     }
     if (active || ImGui::IsItemHovered()) controls.scroll = io.MouseWheel;
@@ -101,7 +107,7 @@ void Viewport::draw() {
         if (editing) {
             if (!camera_.seeded()) camera_.seed(cameras.empty() ? nullptr : cameras.back(), extent);
             camera_.setViewSize(extent);
-            camera_.update(readControls(focused), io.DeltaTime);
+            camera_.update(readControls(engine_.window().handle(), focused), io.DeltaTime);
         }
         if (picking) pickAt(glm::vec2(io.MousePos.x, io.MousePos.y) - corner, extent);
 
