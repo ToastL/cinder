@@ -80,7 +80,7 @@ int main(int argc, char** argv) {
             History history(engine.scene());
             Console console(engine.script(), history, selection);
             Toolbar toolbar(session, history, selection, scenePath);
-            Viewport viewport(session, selection, engine);
+            Viewport viewport(session, selection, history, engine);
             Explorer explorer(selection, history, engine.scene());
             Properties properties(selection, history, engine.scene());
             engine.renderer().setOverlayDraw(

@@ -16,12 +16,13 @@ main menu bar — `player` ships without a byte of it. The editor opens a projec
 through a free-flying editor camera — 2D scenes included — with a gizmo drawn for every scene camera; Play serializes the
 scene into a fresh Lua state and Stop restores it. An Explorer shows the whole node tree, scripts
 included, and Properties edits the selected node's fields and attributes with no per-type editor
-code. A click in the Scene view selects, every edit is undoable, and an unsaved scene is marked and
-guarded on close. 150 headless test cases and a 60-check Lua selftest.
+code. A click in the Scene view selects, gizmos move, rotate and scale the selection, every edit is
+undoable, and an unsaved scene is marked and guarded on close. 167 headless test cases and a 60-check
+Lua selftest.
 
 Foundations, the scene model, the scripting ergonomics, serialization and the Edit/Play split are
 done. The editor shell is underway — ImGui, the console, the toolbar, the Scene viewport, the
-editor camera, the Explorer, Properties, picking and undo have landed; transform gizmos are next.
+editor camera, the Explorer, Properties, picking, undo and transform gizmos have landed.
 
 ---
 
@@ -44,9 +45,15 @@ editor camera, the Explorer, Properties, picking and undo have landed; transform
       class's props with one widget per `PropType` (enum combos, colour pickers), and its attributes
       with add and remove. An edit during Play fires the game's changed signals.
 - [ ] Properties: an asset-reference widget for texture and mesh names, and a node-reference widget
-- [ ] Gizmos — translate/rotate/scale handles, snapping. `dev/Gizmos` already draws every
-      `Camera` in Edit mode — a frustum, or a rectangle for an orthographic one — on the Scene
-      window's draw list.
+- [x] **Gizmos** — `dev/Manipulator` moves along world or local axes and planes, rotates on gimbal
+      rings that each turn one Euler angle, and scales along local axes or uniformly; ⌘ snaps and
+      Esc cancels. 1/2/3 pick the tool and X toggles World/Local. `dev/Gizmos` draws the handles from
+      the same shapes the hit test uses, and every scene `Camera` as a frustum.
+- [ ] Gizmos: world- and local-space rotation rings and a view-facing ring — rotation is gimbal-only
+- [ ] Gizmos: snapping to absolute grid positions, and snap steps set in the editor
+- [ ] Gizmos during Play — like picking, they only exist in Edit mode
+- [ ] Gizmos for a multi-selection, about the pivot or the selection's centre — waits for Explorer
+      multi-select
 - [x] Mouse picking — `dev/Picking`, a CPU raycast against each `MeshPart`'s cube, each `Sprite`'s
       quad and each `Camera`; the Explorer reveals the pick and `dev/Gizmos` outlines it
 - [ ] Picking against real mesh bounds — every `MeshPart` draws a cube today, so the cube is exact;
@@ -69,7 +76,8 @@ editor camera, the Explorer, Properties, picking and undo have landed; transform
       the file belongs in the project's `Saved/`
 - [ ] Project picker and new-project template — the editor takes the project folder or its
       `.cinder` file on the command line; the template writes `Content/Scenes/` and `Content/Textures/`,
-      and the picker lists each descriptor's `category` and `description`
+      and the picker lists each descriptor's `category` and `description`. Built as the *Project
+      browser* under *UI framework*, not in ImGui.
 - [ ] Project Settings panel — `ProjectConfig::walk` already writes `Config/Game.ini` through `IniSave`
 - [ ] Scene switching — open, new and save-as. The editor edits the one scene named by
       `startScene` in `Config/Game.ini` or `--scene`.
@@ -81,6 +89,48 @@ to disk, and become undoable — with zero editor code.
 the round trip — watch, reload per file, preserve state, report errors with a real `file:line` — not
 a text buffer that competes with VS Code and loses. An embedded editor for quick tweaks is optional
 sugar, never the primary surface.
+
+## UI framework
+
+**The editor's UI is our own, by decision** — not Qt, not RmlUi, and ImGui only until the replacement
+reaches parity. Unreal (Slate), Unity (UI Toolkit) and Godot (`Control` nodes) each build their editor
+on the UI system their games use, and so does this engine: one framework is both the game UI system and
+the editor's toolkit. Qt would be a second UI system, an installed dependency with LGPL terms, and it
+and GLFW both want to own the macOS app; RmlUi would still leave every editor widget, docking and
+multiple windows to build. ImGui stays the working editor until the last panel is ported.
+
+- [ ] **Text** — a `text/` leaf (-> `platform`) on FreeType and HarfBuzz, fetched like every other
+      dependency: load a font, shape and measure a string, rasterize glyphs to CPU bitmaps. No GPU, so
+      layout measures text without an edge to `gfx`, and it tests headlessly. `stb_truetype` is already
+      fetched but has no hinting, which small editor text needs on a 1x display, and HarfBuzz is what
+      reads GPOS kerning.
+- [ ] **UI pass** — `gfx/pass/UiPass` after `SpritePass`, in window points: scissor clipping, rounded
+      rectangles and borders as an SDF in the shader, images, and glyphs from an atlas rasterized at
+      the framebuffer scale. `DrawList` gets matching calls, so `scene` still never includes `gfx`.
+- [ ] **Controls as nodes** — a `ui/` layer (-> `scene`, `reflect`, `text`, `platform`). `Control` holds
+      a rect with anchors and offsets, as Godot's does, under `Panel`, `Label`, `Image`, `Button` and
+      HBox, VBox, Margin and Scroll containers, with layout, hit-testing and focus. Their fields are
+      `CINDER_PROP`s, so they save, script and show in Properties with no extra code. `Input` needs an
+      ordered event queue and a character callback; today it holds per-key edge state only. This is the
+      *UI system* under *Gameplay systems*.
+- [ ] **Project browser** — the first editor screen on the new UI, with the first few widgets: `editor`
+      with no argument lists recent projects and templates, as Unreal's Project Browser and Godot's
+      Project Manager do. A list, a text field, buttons and a native folder picker
+      (`nativefiledialog-extended`), and no docking or viewport. A separate Hub-style launcher only pays
+      off once several engine versions install side by side; `engineAssociation` is the field it would
+      read.
+- [ ] **Editor widgets** — a text field with selection, clipboard and undo; a number drag field,
+      checkbox, dropdown and colour picker; a tree view that builds only visible rows; tabs, splitters,
+      menus, context menus, modals, tooltips, drag and drop; a theme
+- [ ] **Shell** — docking with tabs and splitters in one window, then panels floating in their own OS
+      windows, which needs `VkCtx` to stop owning the one GLFW surface: one device, a swapchain per
+      window. A Scene view and a Game view side by side need a second render target set. A native macOS
+      menu bar needs an Objective-C++ file. The editor's UI is its own tree, never the game's `Scene`,
+      so Play and Stop never touch it.
+- [ ] **Port the panels** into a new executable beside `editor`, one at a time, then delete ImGui and
+      `gfx::Overlay`. `PlaySession`, `History`, `Selection`, `Picking`, `EditorCamera` and `Manipulator`
+      have no ImGui in them and move over as they are; `Viewport`, `Explorer`, `Properties`, `Console`,
+      `Toolbar`, `Dockspace`, `Probe`, the drawing half of `Gizmos` and `ImGuiLayer` are rewritten.
 
 ## Play mode
 
@@ -129,7 +179,8 @@ sugar, never the primary surface.
       clip/state machine
 - [ ] **UI system** — there is no screen-space layer: sprites live in the world, so a HUD has to be
       placed in front of the camera. Needs a screen-space pass with its own projection, anchoring,
-      layout, text rendering (MSDF or stb_truetype), input hit-testing.
+      layout, text rendering, input hit-testing. Built as the first three items of *UI framework*,
+      the same system the editor moves onto. World-space text may still want MSDF later.
 - [ ] **Particles** — emitters as nodes, GPU-driven if it matters
 - [ ] Scene queries — raycast, overlap, spatial partition (BVH or grid)
 - [ ] Timers, event bus

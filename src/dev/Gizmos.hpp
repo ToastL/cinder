@@ -1,5 +1,7 @@
 #pragma once
 
+#include "dev/Manipulator.hpp"
+
 #include <glm/mat4x4.hpp>
 #include <glm/vec2.hpp>
 
@@ -23,5 +25,8 @@ void drawFrustums(ImDrawList& list, const std::vector<cinder::components::Camera
 
 void drawSelection(ImDrawList& list, cinder::scene::Node& node, const glm::mat4& viewProjection,
                    glm::vec2 origin, glm::vec2 size);
+
+void drawManipulator(ImDrawList& list, const std::vector<HandleShape>& shapes, Handle hot,
+                     const glm::mat4& viewProjection, glm::vec2 origin, glm::vec2 size);
 
 }

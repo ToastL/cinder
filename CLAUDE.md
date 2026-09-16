@@ -36,7 +36,7 @@ ctest --test-dir build --output-on-failure
 viewport, the Explorer, Properties and the console, with the play toolbar in the main menu bar. It opens a project in **Edit
 mode**: the scene is loaded and drawn, and no game code runs.
 Play/Pause/Step/Stop are on the toolbar and on ⌘P, ⌘⇧P and ⌘⌥P; ⌘S saves the scene, and ⌘Z and ⌘⇧Z
-undo and redo edits. It takes the project folder or its `.cinder` file, then
+undo and redo edits. In the Scene view 1, 2 and 3 pick the move, rotate and scale gizmos. It takes the project folder or its `.cinder` file, then
 `--scene <path>` (relative to `Content/`), `--play` (start in Play), `--frames <n>` and `--capture <png>`.
 The last two make it scriptable: `--frames 90 --capture out.png` runs headless-ish and writes a
 screenshot. See *The dev overlay* below for why this is a second executable rather than a flag.
@@ -393,7 +393,7 @@ per-frame feature.
 **The dev tools are a separate link target, not a runtime flag.** `player` links `engine` and
 `editor` links `engine_dev`, so ImGui is physically absent from the shipping binary — `nm
 build/player | grep -i imgui` returns nothing. There is no `--dev`: to get the tools, run `editor`. `tests` links `engine_dev` as well, so the dev units
-with no ImGui in them — `History`, `Picking`, `EditorCamera` — are tested headlessly.
+with no ImGui in them — `History`, `Picking`, `EditorCamera`, `Manipulator` — are tested headlessly.
 
 The seam is [`gfx/Overlay.hpp`](src/gfx/Overlay.hpp) — a pure interface (`beginFrame`, `record`,
 `discardFrame`, `setMinImageCount`, `addTexture`, `removeTexture`) plus an `OverlayFactory` typedef.
@@ -466,7 +466,9 @@ nearest. A tie goes to the later node in render order, so of two sprites in one 
 on top wins. A disabled node hides its subtree, as it
 does from `Scene::render`. A click is a press and release that stays inside ImGui's drag threshold;
 past it, a left drag still looks around. A hit selects with `reveal`, so the Explorer, drawn later in
-the same frame, opens the node's ancestors and scrolls to its row; a miss clears the selection.
+the same frame, opens the node's ancestors and scrolls to its row; a miss clears the selection. A press
+on a gizmo handle comes first: it drags the handle, and its release never picks — see *Transform
+gizmos*.
 
 `dev/Dockspace` builds the default layout — Properties down the right, Console along the bottom,
 Explorer left of the Scene — with the `DockBuilder` API from `imgui_internal.h`, once, when the
@@ -490,10 +492,12 @@ second, so a 640-unit view does not crawl at 5 units a second; anything beyond t
 slightly smaller than it will in Play. Stop does not reset it: like Unity's Scene view, it stays where
 you left it. It has no roll and is not saved. `tests/editor_camera_test` pins both seeds.
 
-Its controls are read from ImGui, not from `Input` — they are an interaction with a panel, and
-`Input` belongs to the game — and they only act on the Scene image. Hold the **right button** to look
-around and fly with **WASD**, **Q/E** for down/up, **Shift** to go faster and the wheel to change
-speed; drag the **middle button** to pan; scroll with no button held to dolly. A press on the image
+Its controls are not read from `Input` — they are an interaction with a panel, and `Input` belongs to
+the game — and they only act on the Scene image: the mouse comes from ImGui, and the keys are polled
+with `glfwGetKey`. **WASD** fly, **Q/E** go down and up and **Shift** goes faster whenever the Scene window
+is focused, with no button held. Hold the **right button** to look around, and turn the wheel while
+looking to change fly speed. A left drag that does not start on a handle also looks around; drag the **middle
+button**, or left with **Alt**, to pan; scroll with no button held to dolly. A press on the image
 makes the `InvisibleButton` the active item, so the drag keeps working past the panel's edge, and it
 focuses the Scene window, so fly keys never land in the console.
 
@@ -512,6 +516,60 @@ appear in a `--capture`.
 
 `drawSelection` outlines the selection on the same draw list, in orange: the twelve edges of a
 `MeshPart`'s cube, a `Camera`'s gizmo, or a `Sprite`'s quad, all through the editor camera.
+
+### Transform gizmos
+
+In Edit mode a spatial selection gets a gizmo, drawn over it by `Gizmos::drawManipulator`. The Scene
+window's menu bar picks the tool — **Move**, **Rotate** or **Scale**, or **1**, **2** and **3** while the
+Scene window is focused — and, for Move, **World** or **Local** axes, toggled with **X**. The tools are not
+Unity's W/E/R because WASD and Q/E fly the editor camera with no button held. `Viewport` polls the keys
+with `glfwGetKey`, as it does the fly keys, and edge-detects them itself.
+
+`dev/Manipulator` is everything that is not drawing, with no ImGui in it:
+
+- `gizmoFor` places the gizmo at the node's world position, `GIZMO_POINTS` long on screen at that depth,
+  so it keeps its size at any distance. There is none behind the editor camera, or under a parent whose
+  matrix cannot be inverted.
+- `shapes` is **the one handle geometry** — world-space points per handle — that `drawManipulator`
+  draws and `hitHandle` measures in screen points, so what is drawn is exactly what can be grabbed. An
+  axis within about 15° of the view ray and a plane handle within about 15° of edge-on are left out,
+  which is what hides the Z arrow in a 2D scene. Ties go to the earlier shape: the centre square, then
+  the planes, then the axes.
+- `Manipulation` is one drag. It holds the node's **id**, as `Selection` does, and the transform as it
+  was at the press, and computes every frame from that start rather than from the last frame, so
+  snapping is exact and cancelling is a write of the start values.
+
+**Move** has an arrow per axis, a square per plane, and a camera-facing square in the centre that drags
+in the plane facing the view. An axis drag takes the point on the axis nearest the mouse ray, and a plane
+drag intersects the ray with the plane. The travel is a world-space vector, taken into the parent's
+space through the inverse of the parent's world matrix — applied as a direction, so a zero travel adds
+exactly zero. Under a `Folder` the parent matrix is the identity, because a `Folder` breaks the chain.
+
+**Rotate's rings are the Euler axes, not world or local ones** — Blender's Gimbal orientation.
+`Transform::local()` is T·Ry·Rx·Rz·S, so the Y ring turns about the parent's Y, the X ring about X after
+yaw, and the Z ring about the node's own Z, and a ring changes exactly one component of `rotation`.
+Nothing is decomposed back into angles, which is where a gizmo picks up flips near ±90° pitch and float
+noise in the angles it did not touch; the price is that the rings are not perpendicular once a node is
+pitched. A ring facing the camera follows the mouse round its plane, and one nearly edge-on turns with
+the mouse along its screen tangent. Only a ring's front half can be grabbed, unless the ring mostly
+faces the camera — perspective would otherwise put half of a face-on ring beside the centre of the view
+"behind" the pivot. A mirrored parent negates the angle.
+
+**Scale** is always local: a world-axis scale on a rotated node needs shear, which `Transform` cannot
+hold. An axis handle multiplies its component by the mouse's travel along the axis over the gizmo's
+length; the centre square multiplies all three by the drag right and up.
+
+Holding **Ctrl — ⌘ on macOS** — snaps the change, not the value: `MOVE_SNAP` units along each dragged
+axis, `ROTATE_SNAP_DEGREES`, and factors in steps of `SCALE_SNAP`. **Esc** cancels a drag.
+
+`Viewport` hit-tests on hover and on the press that activates its `InvisibleButton`, through the editor
+camera as it was last drawn. A press on a handle starts the drag, stops the left button looking around
+and keeps the release from picking, until the button deactivates. Every write goes through `PropDef`, as
+Properties' writes do, and calls `History::touch`, so a drag is one undo step labelled like "Move Box",
+and a cancelled drag saves to the same text and records nothing. While the mouse is still where it was
+pressed, a drag writes the start values themselves: arm64 fuses multiply-adds, so `cross(v, v)` is not
+exactly zero, and a recomputed angle would move a click by an ulp and record a step. Leaving Edit mode
+ends a drag.
 
 ### The Explorer and Properties
 
@@ -552,7 +610,7 @@ popup for a name and a type. Every attribute number is edited as a float drag, i
 saved `40` to `40.5`. Writes go through `Node::setAttribute`, so an edit during Play fires the game's
 changed signals.
 
-Every edit either panel makes is undoable and marks the scene dirty — see *Undo, redo and unsaved
+Every edit either panel or a gizmo makes is undoable and marks the scene dirty — see *Undo, redo and unsaved
 changes*.
 
 ### Undo, redo and unsaved changes
@@ -564,7 +622,7 @@ undoable: a prop, an attribute, an insert, a delete, a reparent and a console li
 kind of step, which is what makes a new `CINDER_PROP` undoable with zero editor code. It costs one
 scene save per finished edit and one load per undo.
 
-Panels never push steps. They call `touch(label, selection)` when they write, and `dev/Toolbar` calls
+Panels and gizmos never push steps. They call `touch(label, selection)` when they write, and `dev/Toolbar` calls
 `settle` at the top of every overlay frame, which commits only once no ImGui item is active. A drag that
 writes on forty frames is therefore one step, carrying the label and selection of its first frame, and
 an edit that saves to the same text as before records nothing. `MAX_STEPS` is 100.

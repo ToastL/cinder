@@ -16,6 +16,7 @@
 #include <algorithm>
 #include <array>
 #include <cstddef>
+#include <optional>
 
 namespace cinder::dev {
 
@@ -27,7 +28,18 @@ constexpr ImU32 EDGE = IM_COL32(235, 235, 235, 255);
 constexpr ImU32 SIGHT = IM_COL32(235, 235, 235, 110);
 constexpr ImU32 SELECTED = IM_COL32(255, 176, 46, 255);
 constexpr ImU32 SELECTED_SIGHT = IM_COL32(255, 176, 46, 110);
+constexpr ImU32 AXIS_X = IM_COL32(232, 72, 72, 255);
+constexpr ImU32 AXIS_Y = IM_COL32(120, 204, 80, 255);
+constexpr ImU32 AXIS_Z = IM_COL32(72, 128, 240, 255);
+constexpr ImU32 NEUTRAL = IM_COL32(235, 235, 235, 255);
+constexpr ImU32 HOT = IM_COL32(255, 226, 64, 255);
 constexpr float THICKNESS = 1.5f;
+constexpr float HANDLE_THICKNESS = 2.5f;
+constexpr float ARROW_LENGTH = 12.0f;
+constexpr float ARROW_WIDTH = 5.0f;
+constexpr float BOX_HALF = 4.5f;
+constexpr int FILL_ALPHA = 80;
+constexpr int BACK_ALPHA = 70;
 constexpr float INSET = 0.999f;
 constexpr float HALF_EXTENT = 0.5f;
 
@@ -74,10 +86,10 @@ ImVec2 project(const Screen& screen, const glm::vec4& position) {
 }
 
 void segment(ImDrawList& list, const Screen& screen, const glm::vec3& from, const glm::vec3& to,
-             ImU32 color) {
+             ImU32 color, float thickness = THICKNESS) {
     glm::vec4 a = screen.viewProjection * glm::vec4(from, 1.0f);
     glm::vec4 b = screen.viewProjection * glm::vec4(to, 1.0f);
-    if (clipSegment(a, b)) list.AddLine(project(screen, a), project(screen, b), color, THICKNESS);
+    if (clipSegment(a, b)) list.AddLine(project(screen, a), project(screen, b), color, thickness);
 }
 
 void frustum(ImDrawList& list, const Screen& screen, Camera& camera, ImU32 edge, ImU32 sight) {
@@ -124,6 +136,73 @@ void outline(ImDrawList& list, const Screen& screen, const glm::mat4& world, glm
     }
 }
 
+ImU32 colorOf(Handle handle) {
+    switch (handle) {
+        case Handle::X:
+        case Handle::YZ: return AXIS_X;
+        case Handle::Y:
+        case Handle::ZX: return AXIS_Y;
+        case Handle::Z:
+        case Handle::XY: return AXIS_Z;
+        default: return NEUTRAL;
+    }
+}
+
+ImU32 withAlpha(ImU32 color, int alpha) {
+    return (color & ~IM_COL32_A_MASK) | (static_cast<ImU32>(alpha) << IM_COL32_A_SHIFT);
+}
+
+std::optional<ImVec2> point(const Screen& screen, const glm::vec3& position) {
+    const glm::vec4 clip = screen.viewProjection * glm::vec4(position, 1.0f);
+    if (clip.w <= 0.0f || clip.z < 0.0f) return std::nullopt;
+    return project(screen, clip);
+}
+
+void fill(ImDrawList& list, const Screen& screen, const HandleShape& shape, ImU32 color) {
+    std::vector<ImVec2> corners;
+    for (const glm::vec3& position : shape.points) {
+        std::optional<ImVec2> corner = point(screen, position);
+        if (!corner) return;
+        corners.push_back(*corner);
+    }
+
+    float area = 0.0f;
+    for (std::size_t i = 0; i < corners.size(); ++i) {
+        const ImVec2& a = corners[i];
+        const ImVec2& b = corners[(i + 1) % corners.size()];
+        area += a.x * b.y - b.x * a.y;
+    }
+    if (area < 0.0f) std::reverse(corners.begin(), corners.end());
+
+    const int count = static_cast<int>(corners.size());
+    list.AddConvexPolyFilled(corners.data(), count, withAlpha(color, FILL_ALPHA));
+    list.AddPolyline(corners.data(), count, color, ImDrawFlags_Closed, THICKNESS);
+}
+
+void tip(ImDrawList& list, const Screen& screen, const HandleShape& shape, ImU32 color) {
+    if (shape.tip == Tip::None || shape.points.size() < 2) return;
+    std::optional<ImVec2> from = point(screen, shape.points[shape.points.size() - 2]);
+    std::optional<ImVec2> to = point(screen, shape.points.back());
+    if (!from || !to) return;
+
+    if (shape.tip == Tip::Box) {
+        list.AddRectFilled(ImVec2(to->x - BOX_HALF, to->y - BOX_HALF), ImVec2(to->x + BOX_HALF, to->y + BOX_HALF),
+                           color);
+        return;
+    }
+
+    const glm::vec2 delta(to->x - from->x, to->y - from->y);
+    const float length = glm::length(delta);
+    if (length <= 0.0f) return;
+    const glm::vec2 along = delta / length;
+    const glm::vec2 side(-along.y, along.x);
+    const glm::vec2 end(to->x, to->y);
+    const glm::vec2 apex = end + along * ARROW_LENGTH;
+    const glm::vec2 left = end + side * ARROW_WIDTH;
+    const glm::vec2 right = end - side * ARROW_WIDTH;
+    list.AddTriangleFilled(ImVec2(apex.x, apex.y), ImVec2(left.x, left.y), ImVec2(right.x, right.y), color);
+}
+
 void collect(cinder::scene::Node& node, std::vector<Camera*>& cameras) {
     if (node.destroyed() || !node.isEnabled()) return;
 
@@ -158,6 +237,30 @@ void drawSelection(ImDrawList& list, cinder::scene::Node& node, const glm::mat4&
         outline(list, screen, sprite->transform()->world(), sprite->size());
     } else if (auto* camera = dynamic_cast<Camera*>(&node)) {
         frustum(list, screen, *camera, SELECTED, SELECTED_SIGHT);
+    }
+
+    list.PopClipRect();
+}
+
+void drawManipulator(ImDrawList& list, const std::vector<HandleShape>& shapes, Handle hot,
+                     const glm::mat4& viewProjection, glm::vec2 origin, glm::vec2 size) {
+    const Screen screen{viewProjection, origin, size};
+    list.PushClipRect(ImVec2(origin.x, origin.y), ImVec2(origin.x + size.x, origin.y + size.y), true);
+
+    for (const bool back : {true, false}) {
+        for (const HandleShape& shape : shapes) {
+            if (shape.back != back) continue;
+            const ImU32 color = shape.handle == hot ? HOT : colorOf(shape.handle);
+            if (shape.filled) {
+                fill(list, screen, shape, color);
+                continue;
+            }
+            const ImU32 line = back ? withAlpha(color, BACK_ALPHA) : color;
+            for (std::size_t i = 1; i < shape.points.size(); ++i) {
+                segment(list, screen, shape.points[i - 1], shape.points[i], line, back ? THICKNESS : HANDLE_THICKNESS);
+            }
+            tip(list, screen, shape, color);
+        }
     }
 
     list.PopClipRect();
