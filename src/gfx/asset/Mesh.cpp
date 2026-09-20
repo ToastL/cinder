@@ -2,6 +2,8 @@
 
 #include "gfx/vk/VkCtx.hpp"
 
+#include <glm/gtc/constants.hpp>
+
 #include <cmath>
 #include <cstring>
 
@@ -83,6 +85,39 @@ Mesh Mesh::cube(const VkCtx& ctx, float r, float g, float b) {
         indices[i++] = base + 2;
         indices[i++] = base + 3;
         indices[i++] = base;
+    }
+
+    return Mesh(ctx, vertices, indices);
+}
+
+Mesh Mesh::sphere(const VkCtx& ctx, float r, float g, float b) {
+    constexpr int SEGMENTS = 32;
+    constexpr int RINGS = 16;
+
+    std::vector<float> vertices;
+    std::vector<uint32_t> indices;
+    vertices.reserve(static_cast<std::size_t>((RINGS + 1) * (SEGMENTS + 1) * 12));
+    indices.reserve(static_cast<std::size_t>(RINGS * SEGMENTS * 6));
+
+    for (int ring = 0; ring <= RINGS; ++ring) {
+        const float polar = glm::pi<float>() * static_cast<float>(ring) / RINGS;
+        for (int segment = 0; segment <= SEGMENTS; ++segment) {
+            const float u = static_cast<float>(segment) / SEGMENTS;
+            const float azimuth = glm::two_pi<float>() * u;
+            const float nx = std::sin(polar) * std::cos(azimuth);
+            const float ny = std::cos(polar);
+            const float nz = std::sin(polar) * std::sin(azimuth);
+            const float v = 1.0f - static_cast<float>(ring) / RINGS;
+            vertices.insert(vertices.end(), {nx * 0.5f, ny * 0.5f, nz * 0.5f, nx, ny, nz, u, v, r, g, b, 1.0f});
+        }
+    }
+
+    for (int ring = 0; ring < RINGS; ++ring) {
+        for (int segment = 0; segment < SEGMENTS; ++segment) {
+            const uint32_t top = static_cast<uint32_t>(ring * (SEGMENTS + 1) + segment);
+            const uint32_t bottom = top + SEGMENTS + 1;
+            indices.insert(indices.end(), {top, top + 1, bottom, bottom, top + 1, bottom + 1});
+        }
     }
 
     return Mesh(ctx, vertices, indices);

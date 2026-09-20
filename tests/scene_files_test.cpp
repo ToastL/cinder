@@ -2,6 +2,7 @@
 
 #include "components/Builtins.hpp"
 #include "core/ProjectConfig.hpp"
+#include "physics/Nodes.hpp"
 #include "scene/NodeTypes.hpp"
 #include "scene/Scene.hpp"
 #include "script/Script.hpp"
@@ -76,6 +77,7 @@ TEST_CASE("every shipped scene is canonical") {
     {
         NodeTypes types;
         cinder::components::registerBuiltins(types);
+        cinder::physics::registerNodes(types);
         types.add<Script>("Script", [state] { return std::make_unique<Script>(state); });
         Scene scene{types};
 

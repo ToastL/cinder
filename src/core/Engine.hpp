@@ -4,6 +4,7 @@
 #include "gfx/Overlay.hpp"
 #include "gfx/Renderer.hpp"
 #include "gfx/vk/VkCtx.hpp"
+#include "physics/World.hpp"
 #include "platform/Input.hpp"
 #include "platform/Window.hpp"
 #include "scene/NodeTypes.hpp"
@@ -44,6 +45,7 @@ public:
     cinder::platform::Input& input() { return input_; }
     cinder::gfx::Renderer& renderer() { return renderer_; }
     cinder::scene::Scene& scene() { return scene_; }
+    cinder::physics::World& physics() { return physics_; }
     cinder::scene::NodeTypes& types() { return types_; }
     cinder::script::LuaHost& script() { return *script_; }
 
@@ -56,6 +58,7 @@ private:
     cinder::gfx::Renderer renderer_;
     cinder::scene::NodeTypes types_;
     cinder::scene::Scene scene_{types_};
+    cinder::physics::World physics_{scene_};
     std::unique_ptr<cinder::script::LuaHost> script_;
     bool quit_ = false;
 };

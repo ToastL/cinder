@@ -1,0 +1,137 @@
+version 4
+nodes {
+    Camera {
+        id 1
+        position 0 9 26
+        rotation -0.3 0 0
+        fov 70
+        clearColor 0.05 0.06 0.09 1
+        attributes {
+            sensitivity 0.0021
+            speed 8
+            sprint 24
+        }
+        children {
+            Script {
+                id 2
+                file "flycam.lua"
+            }
+        }
+    }
+    MeshPart {
+        id 3
+        name "Floor"
+        position 0 -0.5 0
+        scale 24 1 24
+        children {
+            Collider {
+                id 4
+            }
+        }
+    }
+    MeshPart {
+        id 5
+        name "Ramp"
+        position -6 2.5 0
+        rotation 0 0 -0.4
+        scale 10 0.5 8
+        children {
+            Collider {
+                id 6
+            }
+        }
+    }
+    MeshPart {
+        id 7
+        name "Step"
+        position 6 1 -2
+        scale 4 2 4
+        children {
+            Collider {
+                id 8
+            }
+        }
+    }
+    Body {
+        id 9
+        name "Ball"
+        position -9.5 8 0
+        children {
+            MeshPart {
+                id 10
+                mesh "sphere"
+            }
+            Collider {
+                id 11
+                shape "sphere"
+                restitution 0.4
+            }
+        }
+    }
+    Body {
+        id 12
+        name "Beachball"
+        position 0 10 0
+        scale 1.5 1.5 1.5
+        mass 3
+        children {
+            MeshPart {
+                id 13
+                mesh "sphere"
+            }
+            Collider {
+                id 14
+                shape "sphere"
+                restitution 0.6
+            }
+        }
+    }
+    Body {
+        id 15
+        name "Ball"
+        position 6 9 -2
+        children {
+            MeshPart {
+                id 16
+                mesh "sphere"
+            }
+            Collider {
+                id 17
+                shape "sphere"
+                restitution 0.4
+            }
+        }
+    }
+    Body {
+        id 18
+        name "Bouncer"
+        position 2 12 3
+        children {
+            MeshPart {
+                id 19
+                mesh "sphere"
+            }
+            Collider {
+                id 20
+                shape "sphere"
+                restitution 0.8
+            }
+        }
+    }
+    Group {
+        id 21
+        name "Dropper"
+        position 0 15 0
+        attributes {
+            interval 0.7
+            lifetime 9
+            spread 6
+        }
+        children {
+            Script {
+                id 22
+                file "dropper.lua"
+            }
+        }
+    }
+}

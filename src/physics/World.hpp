@@ -1,0 +1,89 @@
+#pragma once
+
+#include "physics/Geometry.hpp"
+
+#include <glm/mat3x3.hpp>
+#include <glm/vec3.hpp>
+
+#include <vector>
+
+namespace cinder::scene {
+class Node;
+class Scene;
+}
+
+namespace cinder::physics {
+
+class Body;
+class Collider;
+struct ContactPoint;
+
+class World {
+public:
+    static constexpr int ITERATIONS = 10;
+    static constexpr float SLOP = 0.005f;
+    static constexpr float BAUMGARTE = 0.2f;
+    static constexpr float BOUNCE_THRESHOLD = 1.0f;
+
+    explicit World(cinder::scene::Scene& scene) : scene_(scene) {}
+
+    World(const World&) = delete;
+    World& operator=(const World&) = delete;
+
+    const glm::vec3& gravity() const { return gravity_; }
+    void setGravity(const glm::vec3& gravity) { gravity_ = gravity; }
+
+    void step(float dt);
+
+private:
+    struct State {
+        Body* body = nullptr;
+        glm::vec3 center{0.0f};
+        glm::vec3 velocity{0.0f};
+        glm::vec3 angularVelocity{0.0f};
+        float inverseMass = 0.0f;
+        glm::mat3 inverseInertia{0.0f};
+        float volume = 0.0f;
+        glm::vec3 moment{0.0f};
+        glm::mat3 inertia{0.0f};
+    };
+
+    struct Proxy {
+        Collider* collider = nullptr;
+        int owner = 0;
+        Geometry geometry;
+        Bounds bounds;
+    };
+
+    struct Contact {
+        int a = 0;
+        int b = 0;
+        glm::vec3 normal{0.0f};
+        glm::vec3 fromA{0.0f};
+        glm::vec3 fromB{0.0f};
+        float normalMass = 0.0f;
+        float bias = 0.0f;
+        float impulse = 0.0f;
+    };
+
+    void gather(cinder::scene::Node& node, int owner);
+    void place(State& state, float dt);
+    void weigh();
+    void accelerate(State& state, float dt);
+    void detect(float dt);
+    void addContact(int a, int b, const glm::vec3& normal, const ContactPoint& point,
+                    float restitution, float dt);
+    void solve();
+    void advance(State& state, float dt);
+    void write(Body& body);
+    bool dynamic(int index) const;
+    glm::vec3 approach(const Contact& contact) const;
+
+    cinder::scene::Scene& scene_;
+    glm::vec3 gravity_{0.0f, -9.81f, 0.0f};
+    std::vector<State> states_;
+    std::vector<Proxy> proxies_;
+    std::vector<Contact> contacts_;
+};
+
+}

@@ -17,8 +17,9 @@ through a free-flying editor camera — 2D scenes included — with a gizmo draw
 scene into a fresh Lua state and Stop restores it. An Explorer shows the whole node tree, scripts
 included, and Properties edits the selected node's fields and attributes with no per-type editor
 code. A click in the Scene view selects, gizmos move, rotate and scale the selection, every edit is
-undoable, and an unsaved scene is marked and guarded on close. 167 headless test cases and a 60-check
-Lua selftest.
+undoable, and an unsaved scene is marked and guarded on close. A physics engine of our own has
+started: bodies and colliders as nodes, spheres and boxes, and a sequential-impulse solver that never
+runs in Edit mode. 191 headless test cases and a 60-check Lua selftest.
 
 Foundations, the scene model, the scripting ergonomics, serialization and the Edit/Play split are
 done. The editor shell is underway — ImGui, the console, the toolbar, the Scene viewport, the
@@ -56,8 +57,8 @@ editor camera, the Explorer, Properties, picking, undo and transform gizmos have
       multi-select
 - [x] Mouse picking — `dev/Picking`, a CPU raycast against each `MeshPart`'s cube, each `Sprite`'s
       quad and each `Camera`; the Explorer reveals the pick and `dev/Gizmos` outlines it
-- [ ] Picking against real mesh bounds — every `MeshPart` draws a cube today, so the cube is exact;
-      imported meshes will need their own bounds or triangles
+- [ ] Picking against real mesh bounds — `MeshPass` now has a `sphere` primitive that `Picking` still
+      treats as a cube, and imported meshes will need their own bounds or triangles
 - [x] Editor camera, independent of the game camera — `dev/EditorCamera`, seeded from the scene's
       camera and handed to `Renderer::overrideCamera` in Edit mode, which every pass draws through, so
       a 2D scene is flown like a 3D one. Right-drag to look and fly with WASD/QE, middle-drag to pan,
@@ -172,8 +173,23 @@ multiple windows to build. ImGui stays the working editor until the last panel i
 
 ## Gameplay systems
 
-- [ ] **Physics** — rigid bodies, colliders, raycasts, triggers; collision callbacks routed to
-      scripts; debug draw for colliders
+- [x] **Physics, phase 1** — our own engine in `physics/`, not Jolt or Box2D: `Body` and `Collider` as
+      nodes, sphere and box shapes, compound mass and inertia about the centre of mass, a brute-force
+      broadphase, exact sphere–sphere and sphere–box contacts, and sequential impulses with Baumgarte
+      correction and restitution. `World::step` walks the scene, so Play, Stop, disable and reparent
+      need no bookkeeping, and Edit mode never simulates. `dev/Gizmos` draws collider wireframes from
+      the same geometry the solver collides. `samples/physics` is the sample.
+- [ ] Physics, phase 2 — box–box contacts (SAT with face clipping), friction, and warm starting from
+      persistent contacts. Done when a stack of 10 crates stands for 600 steps.
+- [ ] Physics, phase 3 — the Lua API: `applyImpulse` / `applyForce`, `touched` and `touchEnded` through
+      a `ContactObserver` that `script/SceneApi` implements, `physics.raycast`, a `planar` lock so a 2D
+      scene is the same engine with three degrees of freedom removed, and `[Physics] gravity` /
+      `unitsPerMeter` in `Game.ini`
+- [ ] Physics, phase 4 — capsules, a dynamic AABB tree shared with raycasts, and sleeping islands
+- [ ] Physics, phase 5 — joints, CCD, collision layers, a character controller, convex hulls
+- [ ] Render interpolation — `alpha` reaches `onRender` and nothing uses it, so at `fixedHz` 60 on a
+      120 Hz display a body visibly steps. Keeping the previous transform and interpolating in render
+      fixes scripted motion too.
 - [ ] **Audio** — clip loading, one-shot + looping sources, 3D positional, buses/volume
 - [ ] **Animation** — skeletal (skinning shader, joint palette), sprite sheet animation, and a
       clip/state machine
@@ -213,6 +229,15 @@ multiple windows to build. ImGui stays the working editor until the last panel i
 
 ## Known issues & tech debt
 
+- [ ] **Two boxes pass through each other.** Box–box narrowphase is physics phase 2; only
+      sphere–sphere and sphere–box are detected today, and there is no friction, so nothing ever stops
+      sliding and nothing stacks.
+- [ ] **The physics broadphase is O(n²)** and contacts are rebuilt from scratch every step — no
+      persistence, no warm starting, no sleeping. Fine for a sample, not for a level.
+- [ ] **Fast bodies tunnel.** There is no CCD, so a small body moving more than its own size in one
+      fixed step can pass through a thin collider.
+- [ ] **A body's rotation is stored as Euler angles.** The world keeps a quaternion and the conversion
+      is exact, but the angles Properties shows flip near ±90° pitch.
 - [ ] **Everything is host-visible memory.** `GpuBuffer` always maps; `Mesh` writes vertices straight
       into a mapped buffer. Static geometry wants device-local + staging.
 - [ ] **Sprite batching is run-based** — `SpriteBatch::flush` only merges *consecutive* quads sharing

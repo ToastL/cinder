@@ -55,6 +55,8 @@ MeshPass::MeshPass(const cinder::gfx::vk::VkCtx& ctx, cinder::gfx::asset::Assets
       drawMesh_(MAX_DRAWS), drawTexture_(MAX_DRAWS), drawModel_(MAX_DRAWS, glm::mat4(1.0f)) {
     meshes_.push_back(Mesh::cube(ctx, 1.0f, 1.0f, 1.0f));
     named_.emplace("cube", 0);
+    meshes_.push_back(Mesh::sphere(ctx, 1.0f, 1.0f, 1.0f));
+    named_.emplace("sphere", 1);
 }
 
 int MeshPass::meshNamed(std::string_view name) const {

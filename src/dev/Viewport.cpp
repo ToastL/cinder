@@ -161,6 +161,7 @@ void Viewport::draw() {
         if (editing) {
             const glm::mat4& viewProjection = camera_.camera().viewProjection();
             drawFrustums(list, cameras, viewProjection, corner, extent);
+            drawColliders(list, engine_.scene(), viewProjection, corner, extent);
             if (cinder::scene::Node* selected = selection_.resolve(engine_.scene())) {
                 drawSelection(list, *selected, viewProjection, corner, extent);
                 drawGizmo(*selected, hot, corner, extent);

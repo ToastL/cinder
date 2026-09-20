@@ -23,6 +23,9 @@ std::vector<cinder::components::Camera*> sceneCameras(cinder::scene::Scene& scen
 void drawFrustums(ImDrawList& list, const std::vector<cinder::components::Camera*>& cameras,
                   const glm::mat4& viewProjection, glm::vec2 origin, glm::vec2 size);
 
+void drawColliders(ImDrawList& list, cinder::scene::Scene& scene, const glm::mat4& viewProjection,
+                   glm::vec2 origin, glm::vec2 size);
+
 void drawSelection(ImDrawList& list, cinder::scene::Node& node, const glm::mat4& viewProjection,
                    glm::vec2 origin, glm::vec2 size);
 

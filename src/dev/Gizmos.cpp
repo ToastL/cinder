@@ -4,6 +4,7 @@
 #include "components/MeshPart.hpp"
 #include "components/Sprite.hpp"
 #include "gfx/pass/ViewCamera.hpp"
+#include "physics/Collider.hpp"
 #include "scene/Node.hpp"
 #include "scene/Scene.hpp"
 #include "scene/Transform.hpp"
@@ -11,10 +12,12 @@
 #include <imgui.h>
 
 #include <glm/geometric.hpp>
+#include <glm/gtc/constants.hpp>
 #include <glm/vec4.hpp>
 
 #include <algorithm>
 #include <array>
+#include <cmath>
 #include <cstddef>
 #include <optional>
 
@@ -33,6 +36,7 @@ constexpr ImU32 AXIS_Y = IM_COL32(120, 204, 80, 255);
 constexpr ImU32 AXIS_Z = IM_COL32(72, 128, 240, 255);
 constexpr ImU32 NEUTRAL = IM_COL32(235, 235, 235, 255);
 constexpr ImU32 HOT = IM_COL32(255, 226, 64, 255);
+constexpr ImU32 COLLIDER = IM_COL32(110, 220, 130, 200);
 constexpr float THICKNESS = 1.5f;
 constexpr float HANDLE_THICKNESS = 2.5f;
 constexpr float ARROW_LENGTH = 12.0f;
@@ -42,6 +46,7 @@ constexpr int FILL_ALPHA = 80;
 constexpr int BACK_ALPHA = 70;
 constexpr float INSET = 0.999f;
 constexpr float HALF_EXTENT = 0.5f;
+constexpr int CIRCLE_SEGMENTS = 48;
 
 const std::array<glm::vec4, 5> CLIP_PLANES = {
     glm::vec4(1.0f, 0.0f, 0.0f, INSET),
@@ -111,7 +116,7 @@ void frustum(ImDrawList& list, const Screen& screen, Camera& camera, ImU32 edge,
     }
 }
 
-void box(ImDrawList& list, const Screen& screen, const glm::mat4& world) {
+void box(ImDrawList& list, const Screen& screen, const glm::mat4& world, ImU32 color) {
     std::array<glm::vec3, 8> corners{};
     for (std::size_t i = 0; i < corners.size(); ++i) {
         const glm::vec3 local((i & 1) != 0 ? HALF_EXTENT : -HALF_EXTENT, (i & 2) != 0 ? HALF_EXTENT : -HALF_EXTENT,
@@ -120,7 +125,7 @@ void box(ImDrawList& list, const Screen& screen, const glm::mat4& world) {
     }
     for (std::size_t i = 0; i < corners.size(); ++i) {
         for (std::size_t bit = 1; bit < corners.size(); bit <<= 1) {
-            if ((i & bit) == 0) segment(list, screen, corners[i], corners[i | bit], SELECTED);
+            if ((i & bit) == 0) segment(list, screen, corners[i], corners[i | bit], color);
         }
     }
 }
@@ -134,6 +139,37 @@ void outline(ImDrawList& list, const Screen& screen, const glm::mat4& world, glm
     for (std::size_t i = 0; i < corners.size(); ++i) {
         segment(list, screen, corners[i], corners[(i + 1) % corners.size()], SELECTED);
     }
+}
+
+void shape(ImDrawList& list, const Screen& screen, const cinder::physics::Geometry& geometry, ImU32 color) {
+    if (geometry.shape == cinder::physics::Shape::Box) {
+        glm::mat4 world(1.0f);
+        for (int i = 0; i < 3; ++i) world[i] = glm::vec4(geometry.axes[i] * (2.0f * geometry.halfExtents[i]), 0.0f);
+        world[3] = glm::vec4(geometry.center, 1.0f);
+        box(list, screen, world, color);
+        return;
+    }
+
+    for (int axis = 0; axis < 3; ++axis) {
+        const glm::vec3 u = geometry.axes[axis] * geometry.radius;
+        const glm::vec3 v = geometry.axes[(axis + 1) % 3] * geometry.radius;
+        glm::vec3 previous = geometry.center + u;
+        for (int i = 1; i <= CIRCLE_SEGMENTS; ++i) {
+            const float angle = glm::two_pi<float>() * static_cast<float>(i) / CIRCLE_SEGMENTS;
+            const glm::vec3 next = geometry.center + u * std::cos(angle) + v * std::sin(angle);
+            segment(list, screen, previous, next, color);
+            previous = next;
+        }
+    }
+}
+
+void colliders(ImDrawList& list, const Screen& screen, cinder::scene::Node& node) {
+    if (node.destroyed() || !node.isEnabled()) return;
+
+    if (auto* collider = dynamic_cast<cinder::physics::Collider*>(&node)) {
+        shape(list, screen, collider->geometry(), COLLIDER);
+    }
+    for (cinder::scene::Node* child : node.children()) colliders(list, screen, *child);
 }
 
 ImU32 colorOf(Handle handle) {
@@ -226,17 +262,27 @@ void drawFrustums(ImDrawList& list, const std::vector<Camera*>& cameras,
     list.PopClipRect();
 }
 
+void drawColliders(ImDrawList& list, cinder::scene::Scene& scene, const glm::mat4& viewProjection,
+                   glm::vec2 origin, glm::vec2 size) {
+    const Screen screen{viewProjection, origin, size};
+    list.PushClipRect(ImVec2(origin.x, origin.y), ImVec2(origin.x + size.x, origin.y + size.y), true);
+    for (cinder::scene::Node* root : scene.roots()) colliders(list, screen, *root);
+    list.PopClipRect();
+}
+
 void drawSelection(ImDrawList& list, cinder::scene::Node& node, const glm::mat4& viewProjection,
                    glm::vec2 origin, glm::vec2 size) {
     const Screen screen{viewProjection, origin, size};
     list.PushClipRect(ImVec2(origin.x, origin.y), ImVec2(origin.x + size.x, origin.y + size.y), true);
 
     if (auto* part = dynamic_cast<cinder::components::MeshPart*>(&node)) {
-        box(list, screen, part->transform()->world());
+        box(list, screen, part->transform()->world(), SELECTED);
     } else if (auto* sprite = dynamic_cast<cinder::components::Sprite*>(&node)) {
         outline(list, screen, sprite->transform()->world(), sprite->size());
     } else if (auto* camera = dynamic_cast<Camera*>(&node)) {
         frustum(list, screen, *camera, SELECTED, SELECTED_SIGHT);
+    } else if (auto* collider = dynamic_cast<cinder::physics::Collider*>(&node)) {
+        shape(list, screen, collider->geometry(), SELECTED);
     }
 
     list.PopClipRect();

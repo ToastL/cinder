@@ -15,6 +15,7 @@ public:
          const std::vector<uint32_t>& indices);
 
     static Mesh cube(const cinder::gfx::vk::VkCtx& ctx, float r, float g, float b);
+    static Mesh sphere(const cinder::gfx::vk::VkCtx& ctx, float r, float g, float b);
 
     void bind(VkCommandBuffer cmd) const;
     uint32_t indexCount() const { return indexCount_; }

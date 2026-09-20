@@ -11,7 +11,7 @@ architectural work, since it records what is deliberately deferred and what is o
 
 The repo holds the engine only. A game is a **project folder** — a `.cinder` file, `Config/`,
 `Content/` and `Source/` — that the editor opens and the player plays; see *Projects and packaging*.
-`samples/` holds two example projects; nothing in them is compiled.
+`samples/` holds three example projects; nothing in them is compiled.
 
 ## Commands
 
@@ -101,10 +101,11 @@ cinder/
   CMakeLists.txt
   cmake/          dependency, Lua, shader-compilation and packaging modules
   engine/         engine data: shaders/ (GLSL and the compiled .spv) and lua/ (the prelude)
-  samples/        sandbox2d/ and sandbox3d/ — example projects
+  samples/        sandbox2d/, sandbox3d/ and physics/ — example projects
   src/
     reflect/ lua/ platform/          leaves
     scene/ serial/ components/       the world model
+    physics/                         rigid bodies, collision and the solver
     gfx/ gfx/vk/ gfx/asset/ gfx/pass/  the renderer
     script/ core/                    the Lua host and the engine
     dev/                             ImGui, panels, dockspace, play session; NOT part of `engine`
@@ -127,6 +128,7 @@ lua                        -> platform
 scene                      -> reflect
 serial                     -> scene, reflect, platform
 components                 -> scene, reflect
+physics                    -> scene, reflect
 gfx/vk                     -> platform
 gfx/asset                  -> gfx/vk, scene
 gfx/pass                   -> gfx/asset, gfx/vk, scene, lua, platform
@@ -177,8 +179,8 @@ happens next. The player calls `GameLoop::tick` every iteration. The editor call
   1. `Glfw::pollEvents()`, then `engine.beginFrame()` -> `script->poll()` (script hot reload)
   2. minimized -> `Glfw::waitEvents()`, reset the clock, skip the frame
   3. `GameLoop::advance()` accumulates real time, clamped at `MAX_FRAME_TIME = 0.25s`
-  4. `engine.update(fixedDt)` N times — fixed timestep; `script->update`, `scene.update`, then
-     `input.consume()`
+  4. `engine.update(fixedDt)` N times — fixed timestep; `script->update`, `scene.update`,
+     `physics.step`, then `input.consume()`
   5. `engine.render(alpha())` once — `renderer.beginFrame()`, `script->render(alpha)`,
      `scene.render(alpha, draws)`, `renderer.drawFrame()`
 - **`idle`** — Edit mode and Paused: steps 1–2, then it resets the clock, calls `input.consume()` and
@@ -236,10 +238,13 @@ and `2.0` as equal — and `loadAttributes` never notifies.
 | `Sprite` | Spatial | `texture`, `size`, `color` | a quad in its local XY plane |
 | `Camera` | Spatial | `projection`, `fov`, clip planes, `zoom`, `clearColor`, `virtualSize` | `projection` is all that makes a scene 2D |
 | `Spin` | Node | `speed` | rotates its **parent** |
+| `Body` | Spatial | `motion`, `mass`, `gravityScale`, damping, `velocity` | physics moves it; lives in `physics` |
+| `Collider` | Spatial | `shape`, `size`, `restitution` | a shape of its nearest `Body`; see *Physics* |
 | `Script` | Node | `file` | lives in `script`; see *Scripting* |
 
 A new class derives from `Node` or `Spatial`, declares its props with `CINDER_NODE`, and is
-registered — engine classes in `components::registerBuiltins`. The serializer, Lua and the editor
+registered — engine classes in `components::registerBuiltins`, physics ones in
+`physics::registerNodes`. The serializer, Lua and the editor
 need no change.
 
 ### The scene file
@@ -387,6 +392,69 @@ file carries them.
 
 `Renderer::capture(path)` reads the target back to a PNG. It stalls the device — a debug tool, not a
 per-frame feature.
+
+## Physics
+
+**The physics engine is our own**, like the renderer and the coming UI framework — not Jolt, not Box2D.
+It is `src/physics/`: a layer over `scene` and `reflect` with no Vulkan, no window and no Lua in it, so
+all of it runs headlessly in `ctest`.
+
+`Engine` owns a `physics::World` and steps it in `Engine::update`, after `Scene::update` and before
+`input.consume()`. Edit mode never calls `Engine::update`, so **physics never runs while you edit** —
+the same split that keeps scripts from running, at no cost in code.
+
+Two node classes, registered by `physics::registerNodes`:
+
+- **`Body`** is what physics moves: `motion` (`static | kinematic | dynamic`), `mass`, `gravityScale`,
+  `linearDamping`, `angularDamping`, `velocity` and `angularVelocity`. Velocity is a prop like any
+  other, so a scene file carries a starting velocity, Properties shows it live during Play, and
+  `ball.velocity = vec3(0, 5, 0)` will work from Lua — with no code in the scripting layer or the
+  editor.
+- **`Collider`** is a shape: `shape` (`box | sphere`), `size` and `restitution`. Its own transform
+  offsets it from the body, and `size` is the box the shape fits in — a sphere takes the largest of the
+  three — so the default `1 1 1` is exactly the unit cube a `MeshPart` draws.
+
+**A collider belongs to its nearest `Body` ancestor**, which is Unreal's welding rule: every shape under
+one body is one rigid compound. A collider with no `Body` above it is static, so a floor is a `MeshPart`
+with a `Collider` inside it and nothing else — Unity's and Unreal's behaviour, where Godot would want
+the body spelled out.
+
+`World::step` **walks the scene** every step rather than keeping a registry, which is what makes
+inserting, destroying, disabling and reparenting a body need no bookkeeping: a disabled subtree is
+skipped exactly as `Scene::update` skips it, and `Scene::clear` on Stop empties the world by
+construction. The walk is in tree order and nothing iterates an `unordered_map`, so a scene steps
+identically every run; `tests/physics_test` pins that bit for bit.
+
+The step, in order:
+
+1. **Place** — a body whose node matrix is not the one physics last wrote has been moved by something
+   else — a script, Properties, or a parent moving — so it teleports there, keeping its velocity. A
+   kinematic body always takes its pose from its node and derives its velocity from how far it moved.
+2. **Geometry** — each collider's world shape, from its node matrix, through `geometryOf`. `dev/Gizmos`
+   draws the wireframes from the same function, so what is drawn is what collides.
+3. **Weigh** — a body's mass is split between its colliders by volume, giving a centre of mass and a
+   full inertia tensor through the parallel axis theorem. **A body turns about its centre of mass**,
+   not its origin, so a collider hung off to one side behaves like the weight it is.
+4. **Integrate velocities** — gravity, then damping.
+5. **Detect** — every pair of shapes whose bounds overlap where at least one side is dynamic, brute
+   force for now. Sphere–sphere and sphere–box are exact; **box–box is phase 2** and reports no contact,
+   so two boxes pass through each other today.
+6. **Solve** — sequential impulses: one accumulated normal impulse per contact, clamped to push only,
+   `ITERATIONS` passes, with Baumgarte correction of anything deeper than `SLOP` and restitution above
+   `BOUNCE_THRESHOLD`. There is no friction and no warm starting yet, which is why stacking waits for
+   phase 2.
+7. **Advance** — integrate the centre of mass and the orientation quaternion, then write the pose back
+   as the node's local position and the Euler angles in the order `Transform::local()` composes them
+   (Y, then X, then Z). The world keeps the quaternion, so a tumbling body simulates exactly through
+   ±90° pitch even though the angles Properties shows flip there.
+
+`samples/physics` is the sample: a floor, a ramp and a step as static colliders, a few balls, and a
+`Script` that drops more. `MeshPass` has a second primitive, `sphere`, so a ball can be seen; `Picking`
+still treats every `MeshPart` as a cube.
+
+What is missing is tracked in `TODO.md`: friction, box–box, warm starting, sleeping, a broadphase tree,
+CCD, joints, the Lua API and 2D locking. So is the one that is not physics' fault — nothing interpolates
+transforms, so at `fixedHz` 60 on a 120 Hz display a falling body visibly steps.
 
 ## The dev overlay
 

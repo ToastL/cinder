@@ -1,6 +1,7 @@
 #include "core/Engine.hpp"
 
 #include "components/Builtins.hpp"
+#include "physics/Nodes.hpp"
 #include "serial/SceneCodec.hpp"
 
 namespace cinder::core {
@@ -13,6 +14,7 @@ Engine::Engine(const ProjectConfig& config, const cinder::gfx::OverlayFactory& o
       ctx_(window_),
       renderer_(ctx_, window_, overlay) {
     cinder::components::registerBuiltins(types_);
+    cinder::physics::registerNodes(types_);
 
     script_ = std::make_unique<cinder::script::LuaHost>(scene_, input_, renderer_,
                                                         [this] { quit(); });
@@ -48,6 +50,7 @@ void Engine::beginFrame() { script_->poll(); }
 void Engine::update(float dt) {
     script_->update(dt);
     scene_.update(dt);
+    physics_.step(dt);
     input_.consume();
 }
 

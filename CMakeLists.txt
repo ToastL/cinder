@@ -22,6 +22,7 @@ file(GLOB_RECURSE ENGINE_SOURCES CONFIGURE_DEPENDS
     src/core/*.cpp
     src/gfx/*.cpp
     src/lua/*.cpp
+    src/physics/*.cpp
     src/platform/*.cpp
     src/reflect/*.cpp
     src/scene/*.cpp

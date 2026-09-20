@@ -1,0 +1,430 @@
+#include <doctest/doctest.h>
+
+#include "components/Builtins.hpp"
+#include "components/Group.hpp"
+#include "physics/Body.hpp"
+#include "physics/Collide.hpp"
+#include "physics/Collider.hpp"
+#include "physics/Geometry.hpp"
+#include "physics/Nodes.hpp"
+#include "physics/Pose.hpp"
+#include "physics/World.hpp"
+#include "scene/NodeTypes.hpp"
+#include "scene/Scene.hpp"
+#include "scene/Transform.hpp"
+#include "serial/SceneCodec.hpp"
+
+#include <glm/geometric.hpp>
+#include <glm/gtc/constants.hpp>
+#include <glm/gtc/matrix_transform.hpp>
+#include <glm/gtc/quaternion.hpp>
+
+#include <algorithm>
+#include <cmath>
+#include <string>
+#include <vector>
+
+using cinder::physics::Body;
+using cinder::physics::Collider;
+using cinder::physics::Geometry;
+using cinder::physics::Manifold;
+using cinder::physics::Shape;
+using cinder::physics::World;
+using cinder::scene::Node;
+using cinder::scene::NodeTypes;
+using cinder::scene::Scene;
+
+namespace {
+
+constexpr float DT = 1.0f / 60.0f;
+
+struct Fixture {
+    NodeTypes types;
+    Scene scene{types};
+    World world{scene};
+
+    Fixture() {
+        cinder::components::registerBuiltins(types);
+        cinder::physics::registerNodes(types);
+    }
+
+    void run(int steps) {
+        for (int i = 0; i < steps; ++i) {
+            scene.update(DT);
+            world.step(DT);
+        }
+    }
+
+    Collider* floor(Node* parent = nullptr) {
+        Collider* collider = scene.create<Collider>(parent);
+        collider->setSize(20.0f, 1.0f, 20.0f);
+        collider->transform()->setPosition(0.0f, -0.5f, 0.0f);
+        return collider;
+    }
+
+    Body* ball(float x, float y, float z, Node* parent = nullptr) {
+        Body* body = scene.create<Body>(parent);
+        body->transform()->setPosition(x, y, z);
+        scene.create<Collider>(body)->setShape(Shape::Sphere);
+        return body;
+    }
+};
+
+Geometry sphereAt(const glm::vec3& center, float radius) {
+    Geometry geometry;
+    geometry.shape = Shape::Sphere;
+    geometry.center = center;
+    geometry.radius = radius;
+    geometry.halfExtents = glm::vec3(radius);
+    return geometry;
+}
+
+Geometry boxAt(const glm::vec3& center, const glm::vec3& halfExtents) {
+    Geometry geometry;
+    geometry.center = center;
+    geometry.halfExtents = halfExtents;
+    return geometry;
+}
+
+void checkVec(const glm::vec3& actual, const glm::vec3& expected, double epsilon = 1e-4) {
+    CHECK(actual.x == doctest::Approx(expected.x).epsilon(epsilon));
+    CHECK(actual.y == doctest::Approx(expected.y).epsilon(epsilon));
+    CHECK(actual.z == doctest::Approx(expected.z).epsilon(epsilon));
+}
+
+glm::vec3 worldOf(Node* node) { return node->transform()->worldPosition(); }
+
+}
+
+TEST_CASE("a box collider's geometry follows its world transform") {
+    const glm::mat4 world = glm::scale(
+        glm::rotate(glm::translate(glm::mat4(1.0f), glm::vec3(1.0f, 2.0f, 3.0f)), glm::half_pi<float>(),
+                    glm::vec3(0.0f, 0.0f, 1.0f)),
+        glm::vec3(2.0f, 3.0f, 4.0f));
+
+    const Geometry box = cinder::physics::geometryOf(Shape::Box, glm::vec3(1.0f, 2.0f, 1.0f), world);
+    checkVec(box.center, glm::vec3(1.0f, 2.0f, 3.0f));
+    checkVec(box.halfExtents, glm::vec3(1.0f, 3.0f, 2.0f));
+    checkVec(box.axes[0], glm::vec3(0.0f, 1.0f, 0.0f));
+
+    const cinder::physics::Bounds bounds = cinder::physics::boundsOf(box);
+    checkVec(bounds.min, glm::vec3(-2.0f, 1.0f, 1.0f));
+    checkVec(bounds.max, glm::vec3(4.0f, 3.0f, 5.0f));
+}
+
+TEST_CASE("a sphere collider fits the largest side of its scaled size") {
+    const glm::mat4 world = glm::scale(glm::mat4(1.0f), glm::vec3(1.0f, 3.0f, 2.0f));
+    const Geometry sphere = cinder::physics::geometryOf(Shape::Sphere, glm::vec3(1.0f), world);
+    CHECK(sphere.radius == doctest::Approx(1.5f));
+}
+
+TEST_CASE("overlapping spheres touch along the line between their centres") {
+    Manifold manifold;
+    REQUIRE(cinder::physics::collide(sphereAt(glm::vec3(0.0f), 1.0f), sphereAt(glm::vec3(1.5f, 0.0f, 0.0f), 1.0f),
+                                     manifold));
+    CHECK(manifold.count == 1);
+    checkVec(manifold.normal, glm::vec3(1.0f, 0.0f, 0.0f));
+    CHECK(manifold.points[0].depth == doctest::Approx(0.5f));
+    checkVec(manifold.points[0].position, glm::vec3(0.75f, 0.0f, 0.0f));
+
+    CHECK_FALSE(cinder::physics::collide(sphereAt(glm::vec3(0.0f), 1.0f),
+                                         sphereAt(glm::vec3(2.5f, 0.0f, 0.0f), 1.0f), manifold));
+}
+
+TEST_CASE("a sphere resting on a box face touches along the face normal") {
+    Manifold manifold;
+    const Geometry ball = sphereAt(glm::vec3(0.3f, 0.9f, 0.0f), 0.5f);
+    const Geometry floor = boxAt(glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(2.0f, 0.5f, 2.0f));
+
+    REQUIRE(cinder::physics::collide(ball, floor, manifold));
+    checkVec(manifold.normal, glm::vec3(0.0f, -1.0f, 0.0f));
+    CHECK(manifold.points[0].depth == doctest::Approx(0.1f));
+    checkVec(manifold.points[0].position, glm::vec3(0.3f, 0.5f, 0.0f));
+
+    REQUIRE(cinder::physics::collide(floor, ball, manifold));
+    checkVec(manifold.normal, glm::vec3(0.0f, 1.0f, 0.0f));
+}
+
+TEST_CASE("a sphere near a box corner touches along the line to the corner") {
+    Manifold manifold;
+    const Geometry ball = sphereAt(glm::vec3(1.3f, 1.4f, 0.0f), 0.6f);
+    const Geometry box = boxAt(glm::vec3(0.0f), glm::vec3(1.0f));
+
+    REQUIRE(cinder::physics::collide(ball, box, manifold));
+    checkVec(manifold.normal, -glm::normalize(glm::vec3(0.3f, 0.4f, 0.0f)));
+    CHECK(manifold.points[0].depth == doctest::Approx(0.1f));
+    checkVec(manifold.points[0].position, glm::vec3(1.0f, 1.0f, 0.0f));
+}
+
+TEST_CASE("a sphere whose centre is inside a box leaves through the nearest face") {
+    Manifold manifold;
+    const Geometry ball = sphereAt(glm::vec3(0.2f, 0.0f, -0.9f), 0.25f);
+    const Geometry box = boxAt(glm::vec3(0.0f), glm::vec3(1.0f));
+
+    REQUIRE(cinder::physics::collide(ball, box, manifold));
+    checkVec(manifold.normal, glm::vec3(0.0f, 0.0f, 1.0f));
+    CHECK(manifold.points[0].depth == doctest::Approx(0.35f));
+}
+
+TEST_CASE("box against box is not detected yet") {
+    Manifold manifold;
+    CHECK_FALSE(cinder::physics::collide(boxAt(glm::vec3(0.0f), glm::vec3(1.0f)),
+                                         boxAt(glm::vec3(0.5f), glm::vec3(1.0f)), manifold));
+}
+
+TEST_CASE("written rotations compose back into the orientation they came from") {
+    const std::vector<glm::quat> orientations = {
+        glm::angleAxis(0.7f, glm::normalize(glm::vec3(1.0f, 2.0f, 3.0f))),
+        glm::angleAxis(2.9f, glm::normalize(glm::vec3(-3.0f, 0.5f, 1.0f))),
+        glm::angleAxis(glm::half_pi<float>() - 0.001f, glm::vec3(1.0f, 0.0f, 0.0f)),
+        glm::quat(1.0f, 0.0f, 0.0f, 0.0f),
+    };
+
+    NodeTypes types;
+    Scene scene{types};
+    cinder::components::registerBuiltins(types);
+    Node* node = scene.create<cinder::components::Group>(nullptr);
+
+    for (const glm::quat& orientation : orientations) {
+        const glm::vec3 rotation = cinder::physics::rotationOf(orientation);
+        node->transform()->setRotation(rotation.x, rotation.y, rotation.z);
+        const glm::mat3 expected = glm::mat3_cast(orientation);
+        const glm::mat3 actual(node->transform()->local());
+        for (int i = 0; i < 3; ++i) checkVec(actual[i], expected[i], 1e-3);
+    }
+}
+
+TEST_CASE("a dynamic body falls under gravity with semi-implicit Euler") {
+    Fixture f;
+    Body* body = f.scene.create<Body>(nullptr);
+    body->transform()->setPosition(0.0f, 10.0f, 0.0f);
+
+    f.run(1);
+    CHECK(body->velocity().y == doctest::Approx(-9.81f * DT));
+    CHECK(body->transform()->position().y == doctest::Approx(10.0f - 9.81f * DT * DT));
+
+    body->setGravityScale(0.0f);
+    const float speed = body->velocity().y;
+    f.run(1);
+    CHECK(body->velocity().y == doctest::Approx(speed));
+}
+
+TEST_CASE("physics never moves a scene that is not stepped") {
+    Fixture f;
+    Body* body = f.ball(0.0f, 5.0f, 0.0f);
+    for (int i = 0; i < 10; ++i) f.scene.update(DT);
+    checkVec(worldOf(body), glm::vec3(0.0f, 5.0f, 0.0f));
+}
+
+TEST_CASE("a sphere comes to rest on a collider with no body") {
+    Fixture f;
+    f.floor();
+    Body* body = f.ball(0.0f, 3.0f, 0.0f);
+
+    f.run(300);
+    CHECK(worldOf(body).y == doctest::Approx(0.5f).epsilon(0.01));
+    CHECK(glm::length(body->velocity()) < 0.05f);
+    CHECK(worldOf(body).x == 0.0f);
+    CHECK(worldOf(body).z == 0.0f);
+}
+
+TEST_CASE("a static body is a floor too, and a kinematic one ignores gravity") {
+    Fixture f;
+    Body* ground = f.scene.create<Body>(nullptr);
+    ground->setMotion(Body::Motion::Static);
+    f.floor(ground);
+    Body* lift = f.ball(3.0f, 2.0f, 0.0f);
+    lift->setMotion(Body::Motion::Kinematic);
+    Body* body = f.ball(0.0f, 3.0f, 0.0f);
+
+    f.run(300);
+    CHECK(worldOf(body).y == doctest::Approx(0.5f).epsilon(0.01));
+    checkVec(worldOf(ground), glm::vec3(0.0f));
+    checkVec(worldOf(lift), glm::vec3(3.0f, 2.0f, 0.0f));
+}
+
+TEST_CASE("restitution bounces a falling sphere back up") {
+    Fixture f;
+    f.floor();
+    Body* body = f.ball(0.0f, 5.5f, 0.0f);
+    static_cast<Collider*>(body->children().front())->setRestitution(0.8f);
+
+    float peak = 0.0f;
+    bool bounced = false;
+    for (int i = 0; i < 180; ++i) {
+        f.run(1);
+        if (body->velocity().y > 0.0f) bounced = true;
+        if (bounced) peak = std::max(peak, worldOf(body).y);
+    }
+
+    REQUIRE(bounced);
+    const float ratio = (peak - 0.5f) / 5.0f;
+    CHECK(ratio > 0.5f);
+    CHECK(ratio < 0.8f);
+}
+
+TEST_CASE("equal spheres swap velocities in an elastic head-on collision") {
+    Fixture f;
+    f.world.setGravity(glm::vec3(0.0f));
+    Body* left = f.ball(-2.0f, 0.0f, 0.0f);
+    Body* right = f.ball(2.0f, 0.0f, 0.0f);
+    left->setVelocity(3.0f, 0.0f, 0.0f);
+    right->setVelocity(-1.0f, 0.0f, 0.0f);
+    static_cast<Collider*>(left->children().front())->setRestitution(1.0f);
+
+    f.run(120);
+    CHECK(left->velocity().x == doctest::Approx(-1.0f).epsilon(0.02));
+    CHECK(right->velocity().x == doctest::Approx(3.0f).epsilon(0.02));
+    CHECK(left->velocity().x + right->velocity().x == doctest::Approx(2.0f).epsilon(1e-4));
+    CHECK(glm::length(left->angularVelocity()) < 1e-4f);
+}
+
+TEST_CASE("a kinematic body pushes a dynamic one and takes its velocity from its motion") {
+    Fixture f;
+    f.world.setGravity(glm::vec3(0.0f));
+    Body* pusher = f.ball(-2.0f, 0.0f, 0.0f);
+    pusher->setMotion(Body::Motion::Kinematic);
+    Body* target = f.ball(0.0f, 0.0f, 0.0f);
+
+    for (int i = 0; i < 60; ++i) {
+        pusher->transform()->translate(2.0f * DT, 0.0f, 0.0f);
+        f.run(1);
+    }
+
+    CHECK(pusher->velocity().x == doctest::Approx(2.0f).epsilon(1e-3));
+    CHECK(worldOf(pusher).x == doctest::Approx(0.0f).epsilon(1e-3));
+    CHECK(target->velocity().x > 1.5f);
+    CHECK(worldOf(target).x > worldOf(pusher).x + 0.9f);
+}
+
+TEST_CASE("writing a body's position teleports it and keeps its velocity") {
+    Fixture f;
+    f.world.setGravity(glm::vec3(0.0f));
+    Body* body = f.scene.create<Body>(nullptr);
+    body->setVelocity(1.0f, 0.0f, 0.0f);
+
+    f.run(10);
+    body->transform()->setPosition(0.0f, 7.0f, 0.0f);
+    f.run(1);
+    checkVec(worldOf(body), glm::vec3(DT, 7.0f, 0.0f));
+    CHECK(body->velocity().x == 1.0f);
+}
+
+TEST_CASE("moving a body's parent carries the body with it") {
+    Fixture f;
+    f.world.setGravity(glm::vec3(0.0f));
+    Node* group = f.scene.create<cinder::components::Group>(nullptr);
+    Body* body = f.scene.create<Body>(group);
+    body->transform()->setPosition(0.0f, 5.0f, 0.0f);
+    body->setVelocity(1.0f, 0.0f, 0.0f);
+
+    f.run(1);
+    group->transform()->setPosition(10.0f, 0.0f, 0.0f);
+    f.run(1);
+    checkVec(worldOf(body), glm::vec3(10.0f + 2.0f * DT, 5.0f, 0.0f));
+}
+
+TEST_CASE("a body under a rotated parent keeps its world pose when written back") {
+    Fixture f;
+    f.world.setGravity(glm::vec3(0.0f));
+    Node* group = f.scene.create<cinder::components::Group>(nullptr);
+    group->transform()->setPosition(1.0f, 2.0f, 3.0f).setRotation(0.4f, 1.1f, -0.3f);
+    Body* body = f.scene.create<Body>(group);
+
+    f.run(1);
+    const glm::vec3 before = worldOf(body);
+    body->setVelocity(0.0f, 1.0f, 0.0f);
+    f.run(60);
+    checkVec(worldOf(body), before + glm::vec3(0.0f, 1.0f, 0.0f), 1e-3);
+}
+
+TEST_CASE("a spinning body turns about its centre of mass") {
+    Fixture f;
+    f.world.setGravity(glm::vec3(0.0f));
+    Body* body = f.scene.create<Body>(nullptr);
+    Collider* collider = f.scene.create<Collider>(body);
+    collider->setShape(Shape::Sphere);
+    collider->transform()->setPosition(1.0f, 0.0f, 0.0f);
+    body->setAngularVelocity(0.0f, glm::pi<float>(), 0.0f);
+
+    f.run(60);
+    checkVec(worldOf(collider), glm::vec3(1.0f, 0.0f, 0.0f), 1e-3);
+    checkVec(worldOf(body), glm::vec3(2.0f, 0.0f, 0.0f), 1e-3);
+}
+
+TEST_CASE("a body two spheres wide rests level on the floor") {
+    Fixture f;
+    f.floor();
+    Body* body = f.scene.create<Body>(nullptr);
+    body->transform()->setPosition(0.0f, 2.0f, 0.0f);
+    for (const float x : {-1.0f, 1.0f}) {
+        Collider* collider = f.scene.create<Collider>(body);
+        collider->setShape(Shape::Sphere);
+        collider->transform()->setPosition(x, 0.0f, 0.0f);
+    }
+
+    f.run(300);
+    CHECK(worldOf(body).y == doctest::Approx(0.5f).epsilon(0.01));
+    CHECK(std::abs(body->transform()->rotation().z) < 5e-3f);
+}
+
+TEST_CASE("disabled bodies and colliders take no part in the step") {
+    Fixture f;
+    Collider* floor = f.floor();
+    Body* body = f.ball(0.0f, 3.0f, 0.0f);
+    Node* group = f.scene.create<cinder::components::Group>(nullptr);
+    Body* hidden = f.ball(5.0f, 3.0f, 0.0f, group);
+    group->setEnabled(false);
+    floor->setEnabled(false);
+
+    f.run(60);
+    CHECK(worldOf(body).y < 0.0f);
+    checkVec(worldOf(hidden), glm::vec3(5.0f, 3.0f, 0.0f));
+}
+
+TEST_CASE("a destroyed body leaves the world") {
+    Fixture f;
+    f.floor();
+    Body* body = f.ball(0.0f, 3.0f, 0.0f);
+    Body* other = f.ball(0.0f, 1.0f, 0.0f);
+    f.run(5);
+    other->destroy();
+    f.run(300);
+    CHECK(worldOf(body).y == doctest::Approx(0.5f).epsilon(0.01));
+}
+
+TEST_CASE("the same scene steps to the same bits") {
+    auto simulate = [] {
+        Fixture f;
+        f.floor();
+        for (int i = 0; i < 6; ++i) {
+            f.ball(0.3f * static_cast<float>(i % 3), 1.0f + 1.1f * static_cast<float>(i), 0.2f * static_cast<float>(i % 2));
+        }
+        f.run(240);
+        std::vector<float> out;
+        for (Node* root : f.scene.roots()) {
+            const glm::vec3 p = root->transform()->position();
+            const glm::vec3 r = root->transform()->rotation();
+            out.insert(out.end(), {p.x, p.y, p.z, r.x, r.y, r.z});
+        }
+        return out;
+    };
+
+    CHECK(simulate() == simulate());
+}
+
+TEST_CASE("bodies and colliders round-trip through the scene file") {
+    Fixture f;
+    Body* body = f.scene.create<Body>(nullptr);
+    body->setMotion(Body::Motion::Kinematic).setMass(2.5f).setVelocity(1.0f, 0.0f, 0.0f);
+    Collider* collider = f.scene.create<Collider>(body);
+    collider->setShape(Shape::Sphere).setSize(2.0f, 2.0f, 2.0f).setRestitution(0.25f);
+
+    const std::string text = cinder::serial::SceneCodec::save(f.scene);
+    CHECK(text.find("motion \"kinematic\"") != std::string::npos);
+    CHECK(text.find("shape \"sphere\"") != std::string::npos);
+
+    Fixture g;
+    cinder::serial::SceneCodec::load(text, g.scene);
+    CHECK(cinder::serial::SceneCodec::save(g.scene) == text);
+}
