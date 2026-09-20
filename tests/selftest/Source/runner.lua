@@ -118,7 +118,9 @@ temp.destroying:connect(function() destroyed = true end)
 temp:destroy()
 
 local spinner = scene:create("Group")
-spinner:add("Spin").speed = vec3(0, 1, 0)
+stepped:connect(function(dt)
+    spinner.rotation = spinner.rotation + vec3(0, 1, 0) * dt
+end)
 
 local ticks = 0
 stepped:connect(function(dt) ticks = ticks + 1 end)
@@ -165,7 +167,7 @@ task.delay(0.4, function()
     check("task.wait", waited)
     check("task.delay", delayed)
     check("childRemoved and destroying", removed == temp and destroyed)
-    check("spin rotates its parent", spinner.rotation.y > 0.1)
+    check("a stepped handler rotates a node", spinner.rotation.y > 0.1)
     check("attribute from scene", marks.Marked == 42)
     check("attribute before the script", marks.Spawned == 7)
     check("script top level yields", _G.selftestYielded == true)

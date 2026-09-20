@@ -27,9 +27,12 @@ nodes {
             rate 2
         }
         children {
-            Spin {
+            Script {
                 id 84
-                speed 0 0.5 0
+                file "spinner.lua"
+                attributes {
+                    speed 0 0.5 0
+                }
             }
             Script {
                 id 85
@@ -47,9 +50,12 @@ nodes {
             rate 2
         }
         children {
-            Spin {
+            Script {
                 id 86
-                speed 0 0.5 0
+                file "spinner.lua"
+                attributes {
+                    speed 0 0.5 0
+                }
             }
             Script {
                 id 87
@@ -66,9 +72,12 @@ nodes {
             rate 2
         }
         children {
-            Spin {
+            Script {
                 id 88
-                speed 0 0.5 0
+                file "spinner.lua"
+                attributes {
+                    speed 0 0.5 0
+                }
             }
             Script {
                 id 89
@@ -85,9 +94,12 @@ nodes {
             rate 2
         }
         children {
-            Spin {
+            Script {
                 id 90
-                speed 0 0.5 0
+                file "spinner.lua"
+                attributes {
+                    speed 0 0.5 0
+                }
             }
             Script {
                 id 91
@@ -104,9 +116,12 @@ nodes {
             rate 2
         }
         children {
-            Spin {
+            Script {
                 id 92
-                speed 0 0.5 0
+                file "spinner.lua"
+                attributes {
+                    speed 0 0.5 0
+                }
             }
             Script {
                 id 93
@@ -123,9 +138,12 @@ nodes {
             rate 2
         }
         children {
-            Spin {
+            Script {
                 id 94
-                speed 0 0.5 0
+                file "spinner.lua"
+                attributes {
+                    speed 0 0.5 0
+                }
             }
             Script {
                 id 95
@@ -142,9 +160,12 @@ nodes {
             rate 2
         }
         children {
-            Spin {
+            Script {
                 id 96
-                speed 0 0.5 0
+                file "spinner.lua"
+                attributes {
+                    speed 0 0.5 0
+                }
             }
             Script {
                 id 97
@@ -161,9 +182,12 @@ nodes {
             rate 2
         }
         children {
-            Spin {
+            Script {
                 id 98
-                speed 0 0.5 0
+                file "spinner.lua"
+                attributes {
+                    speed 0 0.5 0
+                }
             }
             Script {
                 id 99
@@ -180,9 +204,12 @@ nodes {
             rate 2
         }
         children {
-            Spin {
+            Script {
                 id 100
-                speed 0 0.5 0
+                file "spinner.lua"
+                attributes {
+                    speed 0 0.5 0
+                }
             }
             Script {
                 id 101
@@ -199,9 +226,12 @@ nodes {
             rate 2
         }
         children {
-            Spin {
+            Script {
                 id 102
-                speed 0 0.5 0
+                file "spinner.lua"
+                attributes {
+                    speed 0 0.5 0
+                }
             }
             Script {
                 id 103
@@ -218,9 +248,12 @@ nodes {
             rate 2
         }
         children {
-            Spin {
+            Script {
                 id 104
-                speed 0 0.5 0
+                file "spinner.lua"
+                attributes {
+                    speed 0 0.5 0
+                }
             }
             Script {
                 id 105
@@ -237,9 +270,12 @@ nodes {
             rate 2
         }
         children {
-            Spin {
+            Script {
                 id 106
-                speed 0 0.5 0
+                file "spinner.lua"
+                attributes {
+                    speed 0 0.5 0
+                }
             }
             Script {
                 id 107
@@ -256,9 +292,12 @@ nodes {
             rate 2
         }
         children {
-            Spin {
+            Script {
                 id 108
-                speed 0 0.5 0
+                file "spinner.lua"
+                attributes {
+                    speed 0 0.5 0
+                }
             }
             Script {
                 id 109
@@ -275,9 +314,12 @@ nodes {
             rate 2
         }
         children {
-            Spin {
+            Script {
                 id 110
-                speed 0 0.5 0
+                file "spinner.lua"
+                attributes {
+                    speed 0 0.5 0
+                }
             }
             Script {
                 id 111
@@ -294,9 +336,12 @@ nodes {
             rate 2
         }
         children {
-            Spin {
+            Script {
                 id 112
-                speed 0 0.5 0
+                file "spinner.lua"
+                attributes {
+                    speed 0 0.5 0
+                }
             }
             Script {
                 id 113
@@ -313,9 +358,12 @@ nodes {
             rate 2
         }
         children {
-            Spin {
+            Script {
                 id 114
-                speed 0 0.5 0
+                file "spinner.lua"
+                attributes {
+                    speed 0 0.5 0
+                }
             }
             Script {
                 id 115
@@ -332,9 +380,12 @@ nodes {
             rate 2
         }
         children {
-            Spin {
+            Script {
                 id 116
-                speed 0 0.5 0
+                file "spinner.lua"
+                attributes {
+                    speed 0 0.5 0
+                }
             }
             Script {
                 id 117
@@ -351,9 +402,12 @@ nodes {
             rate 2
         }
         children {
-            Spin {
+            Script {
                 id 118
-                speed 0 0.5 0
+                file "spinner.lua"
+                attributes {
+                    speed 0 0.5 0
+                }
             }
             Script {
                 id 119
@@ -370,9 +424,12 @@ nodes {
             rate 2
         }
         children {
-            Spin {
+            Script {
                 id 120
-                speed 0 0.5 0
+                file "spinner.lua"
+                attributes {
+                    speed 0 0.5 0
+                }
             }
             Script {
                 id 121
@@ -389,9 +446,12 @@ nodes {
             rate 2
         }
         children {
-            Spin {
+            Script {
                 id 122
-                speed 0 0.5 0
+                file "spinner.lua"
+                attributes {
+                    speed 0 0.5 0
+                }
             }
             Script {
                 id 123
@@ -408,9 +468,12 @@ nodes {
             rate 2
         }
         children {
-            Spin {
+            Script {
                 id 124
-                speed 0 0.5 0
+                file "spinner.lua"
+                attributes {
+                    speed 0 0.5 0
+                }
             }
             Script {
                 id 125
@@ -427,9 +490,12 @@ nodes {
             rate 2
         }
         children {
-            Spin {
+            Script {
                 id 126
-                speed 0 0.5 0
+                file "spinner.lua"
+                attributes {
+                    speed 0 0.5 0
+                }
             }
             Script {
                 id 127
@@ -446,9 +512,12 @@ nodes {
             rate 2
         }
         children {
-            Spin {
+            Script {
                 id 128
-                speed 0 0.5 0
+                file "spinner.lua"
+                attributes {
+                    speed 0 0.5 0
+                }
             }
             Script {
                 id 129
@@ -465,9 +534,12 @@ nodes {
             rate 2
         }
         children {
-            Spin {
+            Script {
                 id 130
-                speed 0 0.5 0
+                file "spinner.lua"
+                attributes {
+                    speed 0 0.5 0
+                }
             }
             Script {
                 id 131
@@ -484,9 +556,12 @@ nodes {
             rate 2
         }
         children {
-            Spin {
+            Script {
                 id 132
-                speed 0 0.5 0
+                file "spinner.lua"
+                attributes {
+                    speed 0 0.5 0
+                }
             }
             Script {
                 id 133
@@ -503,9 +578,12 @@ nodes {
             rate 2
         }
         children {
-            Spin {
+            Script {
                 id 134
-                speed 0 0.5 0
+                file "spinner.lua"
+                attributes {
+                    speed 0 0.5 0
+                }
             }
             Script {
                 id 135
@@ -522,9 +600,12 @@ nodes {
             rate 2
         }
         children {
-            Spin {
+            Script {
                 id 136
-                speed 0 0.5 0
+                file "spinner.lua"
+                attributes {
+                    speed 0 0.5 0
+                }
             }
             Script {
                 id 137
@@ -541,9 +622,12 @@ nodes {
             rate 2
         }
         children {
-            Spin {
+            Script {
                 id 138
-                speed 0 0.5 0
+                file "spinner.lua"
+                attributes {
+                    speed 0 0.5 0
+                }
             }
             Script {
                 id 139
@@ -560,9 +644,12 @@ nodes {
             rate 2
         }
         children {
-            Spin {
+            Script {
                 id 140
-                speed 0 0.5 0
+                file "spinner.lua"
+                attributes {
+                    speed 0 0.5 0
+                }
             }
             Script {
                 id 141
@@ -579,9 +666,12 @@ nodes {
             rate 2
         }
         children {
-            Spin {
+            Script {
                 id 142
-                speed 0 0.5 0
+                file "spinner.lua"
+                attributes {
+                    speed 0 0.5 0
+                }
             }
             Script {
                 id 143
@@ -598,9 +688,12 @@ nodes {
             rate 2
         }
         children {
-            Spin {
+            Script {
                 id 144
-                speed 0 0.5 0
+                file "spinner.lua"
+                attributes {
+                    speed 0 0.5 0
+                }
             }
             Script {
                 id 145
@@ -617,9 +710,12 @@ nodes {
             rate 2
         }
         children {
-            Spin {
+            Script {
                 id 146
-                speed 0 0.5 0
+                file "spinner.lua"
+                attributes {
+                    speed 0 0.5 0
+                }
             }
             Script {
                 id 147
@@ -636,9 +732,12 @@ nodes {
             rate 2
         }
         children {
-            Spin {
+            Script {
                 id 148
-                speed 0 0.5 0
+                file "spinner.lua"
+                attributes {
+                    speed 0 0.5 0
+                }
             }
             Script {
                 id 149
@@ -655,9 +754,12 @@ nodes {
             rate 2
         }
         children {
-            Spin {
+            Script {
                 id 150
-                speed 0 0.5 0
+                file "spinner.lua"
+                attributes {
+                    speed 0 0.5 0
+                }
             }
             Script {
                 id 151
@@ -674,9 +776,12 @@ nodes {
             rate 2
         }
         children {
-            Spin {
+            Script {
                 id 152
-                speed 0 0.5 0
+                file "spinner.lua"
+                attributes {
+                    speed 0 0.5 0
+                }
             }
             Script {
                 id 153
@@ -693,9 +798,12 @@ nodes {
             rate 2
         }
         children {
-            Spin {
+            Script {
                 id 154
-                speed 0 0.5 0
+                file "spinner.lua"
+                attributes {
+                    speed 0 0.5 0
+                }
             }
             Script {
                 id 155
@@ -712,9 +820,12 @@ nodes {
             rate 2
         }
         children {
-            Spin {
+            Script {
                 id 156
-                speed 0 0.5 0
+                file "spinner.lua"
+                attributes {
+                    speed 0 0.5 0
+                }
             }
             Script {
                 id 157
@@ -731,9 +842,12 @@ nodes {
             rate 2
         }
         children {
-            Spin {
+            Script {
                 id 158
-                speed 0 0.5 0
+                file "spinner.lua"
+                attributes {
+                    speed 0 0.5 0
+                }
             }
             Script {
                 id 159
@@ -750,9 +864,12 @@ nodes {
             rate 2
         }
         children {
-            Spin {
+            Script {
                 id 160
-                speed 0 0.5 0
+                file "spinner.lua"
+                attributes {
+                    speed 0 0.5 0
+                }
             }
             Script {
                 id 161
@@ -769,9 +886,12 @@ nodes {
             rate 2
         }
         children {
-            Spin {
+            Script {
                 id 162
-                speed 0 0.5 0
+                file "spinner.lua"
+                attributes {
+                    speed 0 0.5 0
+                }
             }
             Script {
                 id 163
@@ -787,9 +907,12 @@ nodes {
             rate 2
         }
         children {
-            Spin {
+            Script {
                 id 164
-                speed 0 0.5 0
+                file "spinner.lua"
+                attributes {
+                    speed 0 0.5 0
+                }
             }
             Script {
                 id 165
@@ -806,9 +929,12 @@ nodes {
             rate 2
         }
         children {
-            Spin {
+            Script {
                 id 166
-                speed 0 0.5 0
+                file "spinner.lua"
+                attributes {
+                    speed 0 0.5 0
+                }
             }
             Script {
                 id 167
@@ -825,9 +951,12 @@ nodes {
             rate 2
         }
         children {
-            Spin {
+            Script {
                 id 168
-                speed 0 0.5 0
+                file "spinner.lua"
+                attributes {
+                    speed 0 0.5 0
+                }
             }
             Script {
                 id 169
@@ -844,9 +973,12 @@ nodes {
             rate 2
         }
         children {
-            Spin {
+            Script {
                 id 170
-                speed 0 0.5 0
+                file "spinner.lua"
+                attributes {
+                    speed 0 0.5 0
+                }
             }
             Script {
                 id 171
@@ -863,9 +995,12 @@ nodes {
             rate 2
         }
         children {
-            Spin {
+            Script {
                 id 172
-                speed 0 0.5 0
+                file "spinner.lua"
+                attributes {
+                    speed 0 0.5 0
+                }
             }
             Script {
                 id 173
@@ -882,9 +1017,12 @@ nodes {
             rate 2
         }
         children {
-            Spin {
+            Script {
                 id 174
-                speed 0 0.5 0
+                file "spinner.lua"
+                attributes {
+                    speed 0 0.5 0
+                }
             }
             Script {
                 id 175
@@ -901,9 +1039,12 @@ nodes {
             rate 2
         }
         children {
-            Spin {
+            Script {
                 id 176
-                speed 0 0.5 0
+                file "spinner.lua"
+                attributes {
+                    speed 0 0.5 0
+                }
             }
             Script {
                 id 177
@@ -920,9 +1061,12 @@ nodes {
             rate 2
         }
         children {
-            Spin {
+            Script {
                 id 178
-                speed 0 0.5 0
+                file "spinner.lua"
+                attributes {
+                    speed 0 0.5 0
+                }
             }
             Script {
                 id 179
@@ -939,9 +1083,12 @@ nodes {
             rate 2
         }
         children {
-            Spin {
+            Script {
                 id 180
-                speed 0 0.5 0
+                file "spinner.lua"
+                attributes {
+                    speed 0 0.5 0
+                }
             }
             Script {
                 id 181
@@ -958,9 +1105,12 @@ nodes {
             rate 2
         }
         children {
-            Spin {
+            Script {
                 id 182
-                speed 0 0.5 0
+                file "spinner.lua"
+                attributes {
+                    speed 0 0.5 0
+                }
             }
             Script {
                 id 183
@@ -977,9 +1127,12 @@ nodes {
             rate 2
         }
         children {
-            Spin {
+            Script {
                 id 184
-                speed 0 0.5 0
+                file "spinner.lua"
+                attributes {
+                    speed 0 0.5 0
+                }
             }
             Script {
                 id 185
@@ -996,9 +1149,12 @@ nodes {
             rate 2
         }
         children {
-            Spin {
+            Script {
                 id 186
-                speed 0 0.5 0
+                file "spinner.lua"
+                attributes {
+                    speed 0 0.5 0
+                }
             }
             Script {
                 id 187
@@ -1015,9 +1171,12 @@ nodes {
             rate 2
         }
         children {
-            Spin {
+            Script {
                 id 188
-                speed 0 0.5 0
+                file "spinner.lua"
+                attributes {
+                    speed 0 0.5 0
+                }
             }
             Script {
                 id 189
@@ -1034,9 +1193,12 @@ nodes {
             rate 2
         }
         children {
-            Spin {
+            Script {
                 id 190
-                speed 0 0.5 0
+                file "spinner.lua"
+                attributes {
+                    speed 0 0.5 0
+                }
             }
             Script {
                 id 191
@@ -1053,9 +1215,12 @@ nodes {
             rate 2
         }
         children {
-            Spin {
+            Script {
                 id 192
-                speed 0 0.5 0
+                file "spinner.lua"
+                attributes {
+                    speed 0 0.5 0
+                }
             }
             Script {
                 id 193
@@ -1072,9 +1237,12 @@ nodes {
             rate 2
         }
         children {
-            Spin {
+            Script {
                 id 194
-                speed 0 0.5 0
+                file "spinner.lua"
+                attributes {
+                    speed 0 0.5 0
+                }
             }
             Script {
                 id 195
@@ -1091,9 +1259,12 @@ nodes {
             rate 2
         }
         children {
-            Spin {
+            Script {
                 id 196
-                speed 0 0.5 0
+                file "spinner.lua"
+                attributes {
+                    speed 0 0.5 0
+                }
             }
             Script {
                 id 197
@@ -1110,9 +1281,12 @@ nodes {
             rate 2
         }
         children {
-            Spin {
+            Script {
                 id 198
-                speed 0 0.5 0
+                file "spinner.lua"
+                attributes {
+                    speed 0 0.5 0
+                }
             }
             Script {
                 id 199
@@ -1129,9 +1303,12 @@ nodes {
             rate 2
         }
         children {
-            Spin {
+            Script {
                 id 200
-                speed 0 0.5 0
+                file "spinner.lua"
+                attributes {
+                    speed 0 0.5 0
+                }
             }
             Script {
                 id 201
@@ -1148,9 +1325,12 @@ nodes {
             rate 2
         }
         children {
-            Spin {
+            Script {
                 id 202
-                speed 0 0.5 0
+                file "spinner.lua"
+                attributes {
+                    speed 0 0.5 0
+                }
             }
             Script {
                 id 203
@@ -1167,9 +1347,12 @@ nodes {
             rate 2
         }
         children {
-            Spin {
+            Script {
                 id 204
-                speed 0 0.5 0
+                file "spinner.lua"
+                attributes {
+                    speed 0 0.5 0
+                }
             }
             Script {
                 id 205
@@ -1186,9 +1369,12 @@ nodes {
             rate 2
         }
         children {
-            Spin {
+            Script {
                 id 206
-                speed 0 0.5 0
+                file "spinner.lua"
+                attributes {
+                    speed 0 0.5 0
+                }
             }
             Script {
                 id 207
@@ -1205,9 +1391,12 @@ nodes {
             rate 2
         }
         children {
-            Spin {
+            Script {
                 id 208
-                speed 0 0.5 0
+                file "spinner.lua"
+                attributes {
+                    speed 0 0.5 0
+                }
             }
             Script {
                 id 209
@@ -1224,9 +1413,12 @@ nodes {
             rate 2
         }
         children {
-            Spin {
+            Script {
                 id 210
-                speed 0 0.5 0
+                file "spinner.lua"
+                attributes {
+                    speed 0 0.5 0
+                }
             }
             Script {
                 id 211
@@ -1243,9 +1435,12 @@ nodes {
             rate 2
         }
         children {
-            Spin {
+            Script {
                 id 212
-                speed 0 0.5 0
+                file "spinner.lua"
+                attributes {
+                    speed 0 0.5 0
+                }
             }
             Script {
                 id 213
@@ -1262,9 +1457,12 @@ nodes {
             rate 2
         }
         children {
-            Spin {
+            Script {
                 id 214
-                speed 0 0.5 0
+                file "spinner.lua"
+                attributes {
+                    speed 0 0.5 0
+                }
             }
             Script {
                 id 215
@@ -1281,9 +1479,12 @@ nodes {
             rate 2
         }
         children {
-            Spin {
+            Script {
                 id 216
-                speed 0 0.5 0
+                file "spinner.lua"
+                attributes {
+                    speed 0 0.5 0
+                }
             }
             Script {
                 id 217
@@ -1300,9 +1501,12 @@ nodes {
             rate 2
         }
         children {
-            Spin {
+            Script {
                 id 218
-                speed 0 0.5 0
+                file "spinner.lua"
+                attributes {
+                    speed 0 0.5 0
+                }
             }
             Script {
                 id 219
@@ -1319,9 +1523,12 @@ nodes {
             rate 2
         }
         children {
-            Spin {
+            Script {
                 id 220
-                speed 0 0.5 0
+                file "spinner.lua"
+                attributes {
+                    speed 0 0.5 0
+                }
             }
             Script {
                 id 221
@@ -1338,9 +1545,12 @@ nodes {
             rate 2
         }
         children {
-            Spin {
+            Script {
                 id 222
-                speed 0 0.5 0
+                file "spinner.lua"
+                attributes {
+                    speed 0 0.5 0
+                }
             }
             Script {
                 id 223
@@ -1357,9 +1567,12 @@ nodes {
             rate 2
         }
         children {
-            Spin {
+            Script {
                 id 224
-                speed 0 0.5 0
+                file "spinner.lua"
+                attributes {
+                    speed 0 0.5 0
+                }
             }
             Script {
                 id 225
@@ -1376,9 +1589,12 @@ nodes {
             rate 2
         }
         children {
-            Spin {
+            Script {
                 id 226
-                speed 0 0.5 0
+                file "spinner.lua"
+                attributes {
+                    speed 0 0.5 0
+                }
             }
             Script {
                 id 227
@@ -1395,9 +1611,12 @@ nodes {
             rate 2
         }
         children {
-            Spin {
+            Script {
                 id 228
-                speed 0 0.5 0
+                file "spinner.lua"
+                attributes {
+                    speed 0 0.5 0
+                }
             }
             Script {
                 id 229
@@ -1414,9 +1633,12 @@ nodes {
             rate 2
         }
         children {
-            Spin {
+            Script {
                 id 230
-                speed 0 0.5 0
+                file "spinner.lua"
+                attributes {
+                    speed 0 0.5 0
+                }
             }
             Script {
                 id 231
@@ -1433,9 +1655,12 @@ nodes {
             rate 2
         }
         children {
-            Spin {
+            Script {
                 id 232
-                speed 0 0.5 0
+                file "spinner.lua"
+                attributes {
+                    speed 0 0.5 0
+                }
             }
             Script {
                 id 233
@@ -1452,9 +1677,12 @@ nodes {
             rate 2
         }
         children {
-            Spin {
+            Script {
                 id 234
-                speed 0 0.5 0
+                file "spinner.lua"
+                attributes {
+                    speed 0 0.5 0
+                }
             }
             Script {
                 id 235
@@ -1471,9 +1699,12 @@ nodes {
             rate 2
         }
         children {
-            Spin {
+            Script {
                 id 236
-                speed 0 0.5 0
+                file "spinner.lua"
+                attributes {
+                    speed 0 0.5 0
+                }
             }
             Script {
                 id 237
@@ -1490,9 +1721,12 @@ nodes {
             rate 2
         }
         children {
-            Spin {
+            Script {
                 id 238
-                speed 0 0.5 0
+                file "spinner.lua"
+                attributes {
+                    speed 0 0.5 0
+                }
             }
             Script {
                 id 239
@@ -1509,9 +1743,12 @@ nodes {
             rate 2
         }
         children {
-            Spin {
+            Script {
                 id 240
-                speed 0 0.5 0
+                file "spinner.lua"
+                attributes {
+                    speed 0 0.5 0
+                }
             }
             Script {
                 id 241
@@ -1528,9 +1765,12 @@ nodes {
             rate 2
         }
         children {
-            Spin {
+            Script {
                 id 242
-                speed 0 0.5 0
+                file "spinner.lua"
+                attributes {
+                    speed 0 0.5 0
+                }
             }
             Script {
                 id 243
@@ -1547,9 +1787,12 @@ nodes {
             rate 2
         }
         children {
-            Spin {
+            Script {
                 id 244
-                speed 0 0.5 0
+                file "spinner.lua"
+                attributes {
+                    speed 0 0.5 0
+                }
             }
             Script {
                 id 245

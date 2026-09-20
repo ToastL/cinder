@@ -2,7 +2,7 @@
 
 #include "components/Builtins.hpp"
 #include "components/Group.hpp"
-#include "components/Spin.hpp"
+#include "components/Sprite.hpp"
 #include "scene/Attributes.hpp"
 #include "scene/DrawList.hpp"
 #include "scene/Node.hpp"
@@ -254,7 +254,7 @@ TEST_CASE("clone copies props, transform, attributes and children with fresh ids
     box->setName("Box");
     box->transform()->setPosition(1, 2, 3);
     box->setAttribute("hp", PropValue::integer(3));
-    f.scene.create<cinder::components::Spin>(box)->setSpeed(0, 5, 0);
+    f.scene.create<cinder::components::Sprite>(box)->setSize(5, 7);
 
     Node* copy = f.scene.clone(*box, nullptr);
     REQUIRE(copy != nullptr);
@@ -264,10 +264,10 @@ TEST_CASE("clone copies props, transform, attributes and children with fresh ids
     CHECK(copy->attribute("hp")->as<std::int64_t>() == 3);
     REQUIRE(copy->children().size() == 1);
 
-    auto* spin = dynamic_cast<cinder::components::Spin*>(copy->children()[0]);
-    REQUIRE(spin != nullptr);
-    CHECK(spin != box->children()[0]);
-    CHECK(spin->speed().y == doctest::Approx(5));
+    auto* sprite = dynamic_cast<cinder::components::Sprite*>(copy->children()[0]);
+    REQUIRE(sprite != nullptr);
+    CHECK(sprite != box->children()[0]);
+    CHECK(sprite->size().y == doctest::Approx(7));
 }
 
 TEST_CASE("the observer hears structure, attribute and destroy events in order") {

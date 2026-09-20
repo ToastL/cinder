@@ -199,8 +199,9 @@ the `stepped` and `rendered` signals.
 ## The scene: a tree of nodes
 
 The world is **one tree of nodes**, the way Roblox and Godot build it. A node is exactly one class,
-and things are made by nesting: a Box is a `MeshPart` with a `Spin` and a `Script` inside it. There
-are no components.
+and things are made by nesting: a Box is a `MeshPart` with a couple of `Script`s inside it. There
+are no components. Behaviour is a script, not a node class: a node class exists when the engine has
+to know about it — something to draw, to simulate, to organize — and everything else is Lua.
 
 - **`scene/Node`** holds an id, a name, a parent, children, `enabled`, attributes, and the lifecycle
   hooks `onStart`, `onUpdate`, `onRender` and `onDestroy`. `CINDER_PROPS(Node, void)` declares
@@ -237,7 +238,6 @@ and `2.0` as equal — and `loadAttributes` never notifies.
 | `MeshPart` | Spatial | `mesh`, `texture` | |
 | `Sprite` | Spatial | `texture`, `size`, `color` | a quad in its local XY plane |
 | `Camera` | Spatial | `projection`, `fov`, clip planes, `zoom`, `clearColor`, `virtualSize` | `projection` is all that makes a scene 2D |
-| `Spin` | Node | `speed` | rotates its **parent** |
 | `Body` | Spatial | `motion`, `mass`, `gravityScale`, damping, `velocity`, `planar` | physics moves it; lives in `physics` |
 | `Collider` | Spatial | `shape`, `size`, `friction`, `restitution` | a shape of its nearest `Body`; see *Physics* |
 | `Script` | Node | `file` | lives in `script`; see *Scripting* |
@@ -262,9 +262,12 @@ nodes {
             phase -8
         }
         children {
-            Spin {
+            Script {
                 id 3
-                speed 0 0.5 0
+                file "spinner.lua"
+                attributes {
+                    speed 0 0.5 0
+                }
             }
         }
     }

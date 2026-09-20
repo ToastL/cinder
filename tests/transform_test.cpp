@@ -2,7 +2,6 @@
 
 #include "components/Folder.hpp"
 #include "components/Group.hpp"
-#include "components/Spin.hpp"
 #include "scene/Node.hpp"
 #include "scene/NodeTypes.hpp"
 #include "scene/Scene.hpp"
@@ -156,13 +155,13 @@ TEST_CASE("a folder breaks the transform chain") {
     checkWorld(child, 0, 1, 0);
 }
 
-TEST_CASE("spin rotates its parent") {
+TEST_CASE("rotate turns a node from where it already points") {
     Fixture f;
     Node* box = f.spawn("box");
-    f.scene.create<cinder::components::Spin>(box)->setSpeed(0, 2, 0);
+    box->transform()->setRotation(0, 1, 0);
+    box->transform()->rotate(0, 2, 0);
 
-    f.scene.update(0.5f);
-    CHECK(box->transform()->rotation().y == doctest::Approx(1.0f));
+    CHECK(box->transform()->rotation().y == doctest::Approx(3.0f));
 }
 
 TEST_CASE("rotation is declared as an angle, so the editor shows it in degrees") {
