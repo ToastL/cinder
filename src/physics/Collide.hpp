@@ -11,6 +11,7 @@ namespace cinder::physics {
 struct ContactPoint {
     glm::vec3 position{0.0f};
     float depth = 0.0f;
+    int feature = 0;
 };
 
 struct Manifold {

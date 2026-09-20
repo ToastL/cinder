@@ -18,8 +18,9 @@ scene into a fresh Lua state and Stop restores it. An Explorer shows the whole n
 included, and Properties edits the selected node's fields and attributes with no per-type editor
 code. A click in the Scene view selects, gizmos move, rotate and scale the selection, every edit is
 undoable, and an unsaved scene is marked and guarded on close. A physics engine of our own has
-started: bodies and colliders as nodes, spheres and boxes, and a sequential-impulse solver that never
-runs in Edit mode. 191 headless test cases and a 60-check Lua selftest.
+started: bodies and colliders as nodes, spheres and boxes, friction, and a sequential-impulse solver
+with warm starting that stacks crates and never runs in Edit mode. 198 headless test cases and a
+60-check Lua selftest.
 
 Foundations, the scene model, the scripting ergonomics, serialization and the Edit/Play split are
 done. The editor shell is underway — ImGui, the console, the toolbar, the Scene viewport, the
@@ -179,8 +180,10 @@ multiple windows to build. ImGui stays the working editor until the last panel i
       correction and restitution. `World::step` walks the scene, so Play, Stop, disable and reparent
       need no bookkeeping, and Edit mode never simulates. `dev/Gizmos` draws collider wireframes from
       the same geometry the solver collides. `samples/physics` is the sample.
-- [ ] Physics, phase 2 — box–box contacts (SAT with face clipping), friction, and warm starting from
-      persistent contacts. Done when a stack of 10 crates stands for 600 steps.
+- [x] **Physics, phase 2** — box–box contacts through a separating axis test with face clipping and an
+      edge-edge fallback, Coulomb friction on two tangents, impulses carried across steps by feature id,
+      and split-impulse position correction. A stack of 10 crates stands for 600 steps, a crate holds on
+      a slope it cannot slide down, and a sliding sphere turns into a rolling one.
 - [ ] Physics, phase 3 — the Lua API: `applyImpulse` / `applyForce`, `touched` and `touchEnded` through
       a `ContactObserver` that `script/SceneApi` implements, `physics.raycast`, a `planar` lock so a 2D
       scene is the same engine with three degrees of freedom removed, and `[Physics] gravity` /
@@ -229,11 +232,10 @@ multiple windows to build. ImGui stays the working editor until the last panel i
 
 ## Known issues & tech debt
 
-- [ ] **Two boxes pass through each other.** Box–box narrowphase is physics phase 2; only
-      sphere–sphere and sphere–box are detected today, and there is no friction, so nothing ever stops
-      sliding and nothing stacks.
-- [ ] **The physics broadphase is O(n²)** and contacts are rebuilt from scratch every step — no
-      persistence, no warm starting, no sleeping. Fine for a sample, not for a level.
+- [ ] **The physics broadphase is O(n²)** and nothing ever sleeps, so a resting stack costs as much as
+      a moving one. Fine for a sample, not for a level.
+- [ ] **Contact features are recomputed every step.** Warm starting matches them by id, so a manifold
+      that changes shape — a box tipping onto another face — drops its impulses for one step.
 - [ ] **Fast bodies tunnel.** There is no CCD, so a small body moving more than its own size in one
       fixed step can pass through a thin collider.
 - [ ] **A body's rotation is stored as Euler angles.** The world keeps a quaternion and the conversion

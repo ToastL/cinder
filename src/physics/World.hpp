@@ -5,6 +5,9 @@
 #include <glm/mat3x3.hpp>
 #include <glm/vec3.hpp>
 
+#include <array>
+#include <cstdint>
+#include <unordered_map>
 #include <vector>
 
 namespace cinder::scene {
@@ -41,6 +44,8 @@ private:
         glm::vec3 center{0.0f};
         glm::vec3 velocity{0.0f};
         glm::vec3 angularVelocity{0.0f};
+        glm::vec3 drift{0.0f};
+        glm::vec3 angularDrift{0.0f};
         float inverseMass = 0.0f;
         glm::mat3 inverseInertia{0.0f};
         float volume = 0.0f;
@@ -56,14 +61,26 @@ private:
     };
 
     struct Contact {
+        std::uint64_t key = 0;
         int a = 0;
         int b = 0;
         glm::vec3 normal{0.0f};
+        std::array<glm::vec3, 2> tangents{};
         glm::vec3 fromA{0.0f};
         glm::vec3 fromB{0.0f};
         float normalMass = 0.0f;
-        float bias = 0.0f;
+        std::array<float, 2> tangentMass{};
+        float bounce = 0.0f;
+        float push = 0.0f;
+        float friction = 0.0f;
         float impulse = 0.0f;
+        float pushImpulse = 0.0f;
+        std::array<float, 2> tangentImpulse{};
+    };
+
+    struct Impulses {
+        float normal = 0.0f;
+        std::array<float, 2> tangent{};
     };
 
     void gather(cinder::scene::Node& node, int owner);
@@ -71,19 +88,30 @@ private:
     void weigh();
     void accelerate(State& state, float dt);
     void detect(float dt);
-    void addContact(int a, int b, const glm::vec3& normal, const ContactPoint& point,
-                    float restitution, float dt);
+    void addContact(const Proxy& a, const Proxy& b, const glm::vec3& normal,
+                    const ContactPoint& point, float dt);
+    void warmStart();
     void solve();
+    void solveFriction(Contact& contact);
+    void solveNormal(Contact& contact);
+    void solvePush(Contact& contact);
+    void apply(const Contact& contact, const glm::vec3& impulse);
+    void applyDrift(const Contact& contact, const glm::vec3& impulse);
     void advance(State& state, float dt);
     void write(Body& body);
     bool dynamic(int index) const;
+    float effectiveMass(const State& a, const State& b, const glm::vec3& fromA,
+                        const glm::vec3& fromB, const glm::vec3& direction) const;
     glm::vec3 approach(const Contact& contact) const;
+    glm::vec3 driftApproach(const Contact& contact) const;
 
     cinder::scene::Scene& scene_;
     glm::vec3 gravity_{0.0f, -9.81f, 0.0f};
     std::vector<State> states_;
     std::vector<Proxy> proxies_;
     std::vector<Contact> contacts_;
+    std::unordered_map<std::uint64_t, Impulses> cached_;
+    std::unordered_map<std::uint64_t, Impulses> carried_;
 };
 
 }

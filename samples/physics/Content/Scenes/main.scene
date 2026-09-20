@@ -118,14 +118,92 @@ nodes {
             }
         }
     }
+    Body {
+        id 23
+        name "Crate"
+        position 2.88 0.5 1.94
+        children {
+            MeshPart {
+                id 24
+            }
+            Collider {
+                id 25
+            }
+        }
+    }
+    Body {
+        id 26
+        name "Crate"
+        position 3.12 1.5 2.09
+        children {
+            MeshPart {
+                id 27
+            }
+            Collider {
+                id 28
+            }
+        }
+    }
+    Body {
+        id 29
+        name "Crate"
+        position 2.88 2.5 1.94
+        children {
+            MeshPart {
+                id 30
+            }
+            Collider {
+                id 31
+            }
+        }
+    }
+    Body {
+        id 32
+        name "Crate"
+        position 3.12 3.5 1.94
+        children {
+            MeshPart {
+                id 33
+            }
+            Collider {
+                id 34
+            }
+        }
+    }
+    Body {
+        id 35
+        name "Crate"
+        position 2.88 4.5 2.09
+        children {
+            MeshPart {
+                id 36
+            }
+            Collider {
+                id 37
+            }
+        }
+    }
+    Body {
+        id 38
+        name "Crate"
+        position 3.12 5.5 1.94
+        children {
+            MeshPart {
+                id 39
+            }
+            Collider {
+                id 40
+            }
+        }
+    }
     Group {
         id 21
         name "Dropper"
-        position 0 15 0
+        position 2.5 15 1.5
         attributes {
             interval 0.7
             lifetime 9
-            spread 6
+            spread 4
         }
         children {
             Script {

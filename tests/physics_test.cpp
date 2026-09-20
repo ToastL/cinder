@@ -68,6 +68,13 @@ struct Fixture {
         scene.create<Collider>(body)->setShape(Shape::Sphere);
         return body;
     }
+
+    Body* crate(float x, float y, float z) {
+        Body* body = scene.create<Body>(nullptr);
+        body->transform()->setPosition(x, y, z);
+        scene.create<Collider>(body);
+        return body;
+    }
 };
 
 Geometry sphereAt(const glm::vec3& center, float radius) {
@@ -166,10 +173,50 @@ TEST_CASE("a sphere whose centre is inside a box leaves through the nearest face
     CHECK(manifold.points[0].depth == doctest::Approx(0.35f));
 }
 
-TEST_CASE("box against box is not detected yet") {
+TEST_CASE("two boxes meet on the face with the least penetration") {
+    Manifold manifold;
+    const Geometry below = boxAt(glm::vec3(0.0f), glm::vec3(1.0f));
+    const Geometry above = boxAt(glm::vec3(0.0f, 1.8f, 0.0f), glm::vec3(1.0f));
+
+    REQUIRE(cinder::physics::collide(below, above, manifold));
+    checkVec(manifold.normal, glm::vec3(0.0f, 1.0f, 0.0f));
+    CHECK(manifold.count == 4);
+
+    std::vector<int> features;
+    for (int i = 0; i < manifold.count; ++i) {
+        CHECK(manifold.points[static_cast<std::size_t>(i)].depth == doctest::Approx(0.2f));
+        CHECK(manifold.points[static_cast<std::size_t>(i)].position.y == doctest::Approx(0.8f));
+        features.push_back(manifold.points[static_cast<std::size_t>(i)].feature);
+    }
+    std::sort(features.begin(), features.end());
+    CHECK(std::unique(features.begin(), features.end()) == features.end());
+}
+
+TEST_CASE("boxes that clear each other do not touch") {
     Manifold manifold;
     CHECK_FALSE(cinder::physics::collide(boxAt(glm::vec3(0.0f), glm::vec3(1.0f)),
-                                         boxAt(glm::vec3(0.5f), glm::vec3(1.0f)), manifold));
+                                         boxAt(glm::vec3(0.0f, 2.01f, 0.0f), glm::vec3(1.0f)),
+                                         manifold));
+    CHECK_FALSE(cinder::physics::collide(boxAt(glm::vec3(0.0f), glm::vec3(1.0f)),
+                                         boxAt(glm::vec3(3.0f, 0.5f, 0.0f), glm::vec3(1.0f)),
+                                         manifold));
+}
+
+TEST_CASE("a box tipped onto its corner touches at the corner") {
+    Manifold manifold;
+    const Geometry floor = boxAt(glm::vec3(0.0f), glm::vec3(4.0f, 1.0f, 4.0f));
+    Geometry tipped = boxAt(glm::vec3(0.0f, 1.0f + 0.70711f - 0.1f, 0.0f), glm::vec3(0.5f));
+    tipped.axes = glm::mat3(glm::rotate(glm::mat4(1.0f), glm::quarter_pi<float>(),
+                                        glm::vec3(0.0f, 0.0f, 1.0f)));
+
+    REQUIRE(cinder::physics::collide(floor, tipped, manifold));
+    checkVec(manifold.normal, glm::vec3(0.0f, 1.0f, 0.0f));
+
+    float deepest = 0.0f;
+    for (int i = 0; i < manifold.count; ++i) {
+        deepest = std::max(deepest, manifold.points[static_cast<std::size_t>(i)].depth);
+    }
+    CHECK(deepest == doctest::Approx(0.1f).epsilon(0.01));
 }
 
 TEST_CASE("written rotations compose back into the orientation they came from") {
@@ -427,4 +474,88 @@ TEST_CASE("bodies and colliders round-trip through the scene file") {
     Fixture g;
     cinder::serial::SceneCodec::load(text, g.scene);
     CHECK(cinder::serial::SceneCodec::save(g.scene) == text);
+}
+
+TEST_CASE("a box comes to rest on the floor and stays there") {
+    Fixture f;
+    f.floor();
+    Body* box = f.crate(0.0f, 2.0f, 0.0f);
+
+    f.run(180);
+    const glm::vec3 settled = worldOf(box);
+    CHECK(settled.y == doctest::Approx(0.5f).epsilon(0.02));
+
+    f.run(300);
+    checkVec(worldOf(box), settled, 1e-3);
+    CHECK(glm::length(box->velocity()) < 0.01f);
+    CHECK(glm::length(box->transform()->rotation()) < 0.01f);
+}
+
+TEST_CASE("a stack of ten crates stands up") {
+    Fixture f;
+    f.floor();
+
+    std::vector<Body*> stack;
+    for (int i = 0; i < 10; ++i) stack.push_back(f.crate(0.0f, 0.5f + static_cast<float>(i), 0.0f));
+
+    f.run(600);
+
+    for (std::size_t i = 0; i < stack.size(); ++i) {
+        CAPTURE(i);
+        const glm::vec3 position = worldOf(stack[i]);
+        CHECK(position.y == doctest::Approx(0.5f + static_cast<float>(i)).epsilon(0.05));
+        CHECK(std::abs(position.x) < 0.05f);
+        CHECK(std::abs(position.z) < 0.05f);
+        CHECK(glm::length(stack[i]->transform()->rotation()) < 0.05f);
+    }
+}
+
+TEST_CASE("friction holds a crate on a slope it cannot slide down") {
+    const float tilt = 0.349f;
+
+    auto slide = [tilt](float friction) {
+        Fixture f;
+        Collider* ramp = f.scene.create<Collider>(nullptr);
+        ramp->setSize(20.0f, 1.0f, 20.0f).setFriction(friction);
+        ramp->transform()->setRotation(0.0f, 0.0f, tilt);
+
+        const glm::vec3 up(-std::sin(tilt), std::cos(tilt), 0.0f);
+        const glm::vec3 seat = up * 1.0f;
+        Body* box = f.scene.create<Body>(nullptr);
+        box->transform()->setPosition(seat.x, seat.y, seat.z).setRotation(0.0f, 0.0f, tilt);
+        f.scene.create<Collider>(box)->setFriction(friction);
+
+        f.run(180);
+        return worldOf(box) - seat;
+    };
+
+    const glm::vec3 held = slide(0.8f);
+    CHECK(glm::length(held) < 0.05f);
+
+    const glm::vec3 slid = slide(0.05f);
+    CHECK(slid.x < -1.0f);
+    CHECK(slid.y < -0.3f);
+}
+
+TEST_CASE("friction brings a sliding crate to a stop") {
+    Fixture f;
+    f.floor();
+    Body* box = f.crate(0.0f, 0.5f, 0.0f);
+    box->setVelocity(4.0f, 0.0f, 0.0f);
+
+    f.run(180);
+    CHECK(glm::length(box->velocity()) < 0.05f);
+    CHECK(worldOf(box).x > 1.0f);
+    CHECK(worldOf(box).x < 2.5f);
+}
+
+TEST_CASE("friction turns a sliding sphere into a rolling one") {
+    Fixture f;
+    f.floor();
+    Body* ball = f.ball(0.0f, 0.5f, 0.0f);
+    ball->setVelocity(4.0f, 0.0f, 0.0f);
+
+    f.run(180);
+    CHECK(ball->velocity().x == doctest::Approx(4.0f * 5.0f / 7.0f).epsilon(0.05));
+    CHECK(ball->angularVelocity().z == doctest::Approx(-2.0f * ball->velocity().x).epsilon(0.05));
 }

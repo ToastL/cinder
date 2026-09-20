@@ -410,7 +410,9 @@ Two node classes, registered by `physics::registerNodes`:
   other, so a scene file carries a starting velocity, Properties shows it live during Play, and
   `ball.velocity = vec3(0, 5, 0)` will work from Lua — with no code in the scripting layer or the
   editor.
-- **`Collider`** is a shape: `shape` (`box | sphere`), `size` and `restitution`. Its own transform
+- **`Collider`** is a shape: `shape` (`box | sphere`), `size`, `friction` and `restitution`. The
+  material lives on the shape, not the body, because a static floor is a collider with no body and
+  still has to be rough or bouncy; a pair combines as `sqrt(fA * fB)` and `max(eA, eB)`. Its own transform
   offsets it from the body, and `size` is the box the shape fits in — a sphere takes the largest of the
   three — so the default `1 1 1` is exactly the unit cube a `MeshPart` draws.
 
@@ -437,23 +439,37 @@ The step, in order:
    not its origin, so a collider hung off to one side behaves like the weight it is.
 4. **Integrate velocities** — gravity, then damping.
 5. **Detect** — every pair of shapes whose bounds overlap where at least one side is dynamic, brute
-   force for now. Sphere–sphere and sphere–box are exact; **box–box is phase 2** and reports no contact,
-   so two boxes pass through each other today.
-6. **Solve** — sequential impulses: one accumulated normal impulse per contact, clamped to push only,
-   `ITERATIONS` passes, with Baumgarte correction of anything deeper than `SLOP` and restitution above
-   `BOUNCE_THRESHOLD`. There is no friction and no warm starting yet, which is why stacking waits for
-   phase 2.
-7. **Advance** — integrate the centre of mass and the orientation quaternion, then write the pose back
+   force for now. Sphere–sphere and sphere–box are closed form. Box–box is a separating axis test over
+   the 15 axes, where the winning face becomes a reference face and the other box's incident face is
+   clipped against its sides, giving up to four points; a winning edge axis gives one point from the two
+   edges' closest approach. **Every point carries a feature id**, which is what lets the next step
+   recognise it.
+6. **Solve** — sequential impulses, `ITERATIONS` passes of friction then normal. A contact keeps an
+   accumulated normal impulse clamped to push only, and two tangent impulses clamped to Coulomb's
+   `friction * normal`. **Impulses are carried across steps by feature id** — warm starting — which is
+   what makes a stack stand rather than sag. Restitution above `BOUNCE_THRESHOLD` goes into the velocity
+   pass, while **penetration is corrected in a second pass of pseudo-velocities** (split impulse), so
+   pushing bodies apart never adds real momentum. Baumgarte in the velocity pass shook a ten-crate stack
+   apart; that is why it is split.
+7. **Advance** — integrate the centre of mass and the orientation by velocity plus drift, then write
+   the pose back
    as the node's local position and the Euler angles in the order `Transform::local()` composes them
    (Y, then X, then Z). The world keeps the quaternion, so a tumbling body simulates exactly through
    ±90° pitch even though the angles Properties shows flip there.
 
-`samples/physics` is the sample: a floor, a ramp and a step as static colliders, a few balls, and a
-`Script` that drops more. `MeshPass` has a second primitive, `sphere`, so a ball can be seen; `Picking`
+Three tolerances in `Collide.cpp` are load-bearing, and each was found watching a stack fall over.
+Clipping keeps a corner within `CLIP_SLACK` of a side plane, and a contact within `TOUCH_SLACK` of the
+reference face, because two boxes resting squarely put four corners exactly on those planes, where
+float noise drops one and the lopsided support tips the box. `FACE_BIAS` makes the second box's face
+beat the first's by a margin before it becomes the reference face, because on an exact tie the choice
+flapped from step to step, changing every feature id and throwing the warm start away.
+
+`samples/physics` is the sample: a floor, a ramp and a step as static colliders, balls, a stack of
+crates, and a `Script` that drops more balls onto it. `MeshPass` has a second primitive, `sphere`, so a ball can be seen; `Picking`
 still treats every `MeshPart` as a cube.
 
-What is missing is tracked in `TODO.md`: friction, box–box, warm starting, sleeping, a broadphase tree,
-CCD, joints, the Lua API and 2D locking. So is the one that is not physics' fault — nothing interpolates
+What is missing is tracked in `TODO.md`: capsules, sleeping, a broadphase tree, CCD, joints, the Lua
+API and 2D locking. So is the one that is not physics' fault — nothing interpolates
 transforms, so at `fixedHz` 60 on a 120 Hz display a falling body visibly steps.
 
 ## The dev overlay
