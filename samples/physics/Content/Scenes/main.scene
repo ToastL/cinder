@@ -196,6 +196,39 @@ nodes {
             }
         }
     }
+    Body {
+        id 41
+        name "Post"
+        position -2 3 4
+        children {
+            MeshPart {
+                id 42
+                mesh "capsule"
+            }
+            Collider {
+                id 43
+                shape "capsule"
+                size 1 2 1
+            }
+        }
+    }
+    Body {
+        id 44
+        name "Roller"
+        position 1 1 5
+        rotation 0 0 1.5708
+        children {
+            MeshPart {
+                id 45
+                mesh "capsule"
+            }
+            Collider {
+                id 46
+                shape "capsule"
+                size 1 2 1
+            }
+        }
+    }
     Group {
         id 21
         name "Dropper"

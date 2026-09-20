@@ -19,9 +19,10 @@ included, and Properties edits the selected node's fields and attributes with no
 code. A click in the Scene view selects, gizmos move, rotate and scale the selection, every edit is
 undoable, and an unsaved scene is marked and guarded on close. A physics engine of our own has
 started: bodies and colliders as nodes, spheres and boxes, friction, and a sequential-impulse solver
-with warm starting that stacks crates and never runs in Edit mode; scripts push bodies around, cast
-rays and hear about contacts, and a `planar` body makes a 2D scene physical. 204 headless test cases
-and a 65-check Lua selftest.
+with warm starting that stacks crates and never runs in Edit mode; boxes, spheres and capsules meet
+through a bounding volume tree, settled islands fall asleep, and scripts push bodies around, cast rays
+and hear about contacts, with a `planar` body making a 2D scene physical. 217 headless test cases and
+a 65-check Lua selftest.
 
 Foundations, the scene model, the scripting ergonomics, serialization and the Edit/Play split are
 done. The editor shell is underway — ImGui, the console, the toolbar, the Scene viewport, the
@@ -192,7 +193,12 @@ multiple windows to build. ImGui stays the working editor until the last panel i
 - [ ] Physics: sensors that detect without responding, and collision layers to filter pairs
 - [ ] Physics: `unitsPerMeter` in `Game.ini`, so a project working in pixels can scale the solver's
       slop and bounce threshold with it
-- [ ] Physics, phase 4 — capsules, a dynamic AABB tree shared with raycasts, and sleeping islands
+- [x] **Physics, phase 4** — capsules (segment shapes that rest on two points when they lie down), a
+      bounding volume tree rebuilt each step in place of the O(n²) pair loop, and sleeping islands that
+      hold a settled stack bit-for-bit still until something moves, touches or deletes what holds it up.
+      `MeshPass` gained a `capsule` primitive to draw them with.
+- [ ] Physics: let a raycast use the broadphase tree — it walks every collider today, because the tree
+      belongs to the last step and a script can cast at any time
 - [ ] Physics, phase 5 — joints, CCD, collision layers, a character controller, convex hulls
 - [ ] Render interpolation — `alpha` reaches `onRender` and nothing uses it, so at `fixedHz` 60 on a
       120 Hz display a body visibly steps. Keeping the previous transform and interpolating in render
@@ -236,8 +242,10 @@ multiple windows to build. ImGui stays the working editor until the last panel i
 
 ## Known issues & tech debt
 
-- [ ] **The physics broadphase is O(n²)** and nothing ever sleeps, so a resting stack costs as much as
-      a moving one. Fine for a sample, not for a level.
+- [ ] **The broadphase tree is rebuilt from scratch every step.** That is O(n log n) where a tree kept
+      across steps would be O(moved bodies); fine until a level has thousands of colliders.
+- [ ] **Two capsules meet at one point**, so a pair lying side by side can rock against each other.
+      Face clipping like the box path would give two.
 - [ ] **Contact features are recomputed every step.** Warm starting matches them by id, so a manifold
       that changes shape — a box tipping onto another face — drops its impulses for one step.
 - [ ] **Fast bodies tunnel.** There is no CCD, so a small body moving more than its own size in one

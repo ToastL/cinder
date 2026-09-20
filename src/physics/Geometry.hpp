@@ -8,7 +8,7 @@
 
 namespace cinder::physics {
 
-enum class Shape { Box, Sphere };
+enum class Shape { Box, Sphere, Capsule };
 
 struct Geometry {
     Shape shape = Shape::Box;
@@ -31,9 +31,11 @@ Bounds boundsOf(const Geometry& geometry);
 bool overlaps(const Bounds& a, const Bounds& b);
 float volumeOf(const Geometry& geometry);
 glm::mat3 inertiaOf(const Geometry& geometry, float mass);
+float segmentHalf(const Geometry& geometry);
+glm::vec3 segmentAxis(const Geometry& geometry);
 bool rayHits(const Geometry& geometry, const glm::vec3& origin, const glm::vec3& direction,
              float& distance, glm::vec3& normal);
 
 }
 
-CINDER_ENUM_NAMES(cinder::physics::Shape, "box", "sphere")
+CINDER_ENUM_NAMES(cinder::physics::Shape, "box", "sphere", "capsule")

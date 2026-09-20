@@ -3,6 +3,7 @@
 #include "components/Builtins.hpp"
 #include "components/Group.hpp"
 #include "physics/Body.hpp"
+#include "physics/Broadphase.hpp"
 #include "physics/Collide.hpp"
 #include "physics/Collider.hpp"
 #include "physics/Geometry.hpp"
@@ -21,6 +22,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <set>
 #include <string>
 #include <vector>
 
@@ -467,9 +469,13 @@ TEST_CASE("bodies and colliders round-trip through the scene file") {
     Collider* collider = f.scene.create<Collider>(body);
     collider->setShape(Shape::Sphere).setSize(2.0f, 2.0f, 2.0f).setRestitution(0.25f);
 
+    Collider* capsule = f.scene.create<Collider>(body);
+    capsule->setShape(Shape::Capsule).setSize(1.0f, 2.0f, 1.0f).setFriction(0.25f);
+
     const std::string text = cinder::serial::SceneCodec::save(f.scene);
     CHECK(text.find("motion \"kinematic\"") != std::string::npos);
     CHECK(text.find("shape \"sphere\"") != std::string::npos);
+    CHECK(text.find("shape \"capsule\"") != std::string::npos);
 
     Fixture g;
     cinder::serial::SceneCodec::load(text, g.scene);
@@ -664,4 +670,239 @@ TEST_CASE("touches are announced when they begin and when they end") {
 
     f.run(150);
     CHECK(listener.began.size() == 2);
+}
+
+TEST_CASE("a capsule is a segment of its size with round ends") {
+    const Geometry capsule =
+        cinder::physics::geometryOf(Shape::Capsule, glm::vec3(1.0f, 3.0f, 1.0f), glm::mat4(1.0f));
+    CHECK(capsule.radius == doctest::Approx(0.5f));
+    CHECK(cinder::physics::segmentHalf(capsule) == doctest::Approx(1.0f));
+    checkVec(cinder::physics::segmentAxis(capsule), glm::vec3(0.0f, 1.0f, 0.0f));
+
+    const Geometry ball =
+        cinder::physics::geometryOf(Shape::Capsule, glm::vec3(2.0f, 1.0f, 2.0f), glm::mat4(1.0f));
+    CHECK(ball.radius == doctest::Approx(1.0f));
+    CHECK(cinder::physics::segmentHalf(ball) == 0.0f);
+
+    const glm::mat3 inertia = cinder::physics::inertiaOf(capsule, 1.0f);
+    CHECK(inertia[1][1] < inertia[0][0]);
+    CHECK(inertia[0][0] == doctest::Approx(inertia[2][2]));
+}
+
+TEST_CASE("a capsule meets a sphere along its shaft and over its caps") {
+    Manifold manifold;
+    const Geometry capsule =
+        cinder::physics::geometryOf(Shape::Capsule, glm::vec3(1.0f, 3.0f, 1.0f), glm::mat4(1.0f));
+
+    REQUIRE(cinder::physics::collide(capsule, sphereAt(glm::vec3(0.8f, 0.3f, 0.0f), 0.5f), manifold));
+    checkVec(manifold.normal, glm::vec3(1.0f, 0.0f, 0.0f));
+    CHECK(manifold.points[0].depth == doctest::Approx(0.2f));
+
+    REQUIRE(cinder::physics::collide(capsule, sphereAt(glm::vec3(0.0f, 1.9f, 0.0f), 0.5f), manifold));
+    checkVec(manifold.normal, glm::vec3(0.0f, 1.0f, 0.0f));
+    CHECK(manifold.points[0].depth == doctest::Approx(0.1f));
+
+    REQUIRE(cinder::physics::collide(sphereAt(glm::vec3(0.8f, 0.3f, 0.0f), 0.5f), capsule, manifold));
+    checkVec(manifold.normal, glm::vec3(-1.0f, 0.0f, 0.0f));
+}
+
+TEST_CASE("a capsule lying on a box touches at both ends") {
+    Manifold manifold;
+    const glm::mat4 lying = glm::rotate(glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, 0.9f, 0.0f)),
+                                        glm::half_pi<float>(), glm::vec3(0.0f, 0.0f, 1.0f));
+    const Geometry capsule = cinder::physics::geometryOf(Shape::Capsule, glm::vec3(1.0f, 2.0f, 1.0f), lying);
+    const Geometry floor = boxAt(glm::vec3(0.0f), glm::vec3(2.0f, 0.5f, 2.0f));
+
+    REQUIRE(cinder::physics::collide(capsule, floor, manifold));
+    checkVec(manifold.normal, glm::vec3(0.0f, -1.0f, 0.0f));
+    REQUIRE(manifold.count == 2);
+    for (int i = 0; i < 2; ++i) {
+        const cinder::physics::ContactPoint& point = manifold.points[static_cast<std::size_t>(i)];
+        CHECK(point.depth == doctest::Approx(0.1f));
+        CHECK(point.position.y == doctest::Approx(0.5f));
+        CHECK(std::abs(point.position.x) == doctest::Approx(0.5f));
+    }
+    CHECK(manifold.points[0].feature != manifold.points[1].feature);
+}
+
+TEST_CASE("a capsule standing on a box touches once") {
+    Manifold manifold;
+    const glm::mat4 standing = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, 1.4f, 0.0f));
+    const Geometry capsule =
+        cinder::physics::geometryOf(Shape::Capsule, glm::vec3(1.0f, 2.0f, 1.0f), standing);
+
+    REQUIRE(cinder::physics::collide(capsule, boxAt(glm::vec3(0.0f), glm::vec3(2.0f, 0.5f, 2.0f)),
+                                     manifold));
+    checkVec(manifold.normal, glm::vec3(0.0f, -1.0f, 0.0f));
+    CHECK(manifold.count == 1);
+    CHECK(manifold.points[0].depth == doctest::Approx(0.1f));
+}
+
+TEST_CASE("crossed capsules meet where they are closest") {
+    Manifold manifold;
+    const Geometry upright =
+        cinder::physics::geometryOf(Shape::Capsule, glm::vec3(1.0f, 3.0f, 1.0f), glm::mat4(1.0f));
+    const glm::mat4 across = glm::rotate(glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, 0.5f, 0.9f)),
+                                         glm::half_pi<float>(), glm::vec3(0.0f, 0.0f, 1.0f));
+    const Geometry crossing =
+        cinder::physics::geometryOf(Shape::Capsule, glm::vec3(1.0f, 3.0f, 1.0f), across);
+
+    REQUIRE(cinder::physics::collide(upright, crossing, manifold));
+    checkVec(manifold.normal, glm::vec3(0.0f, 0.0f, 1.0f));
+    CHECK(manifold.points[0].depth == doctest::Approx(0.1f));
+}
+
+TEST_CASE("a ray meets a capsule's shaft and its cap") {
+    const Geometry capsule =
+        cinder::physics::geometryOf(Shape::Capsule, glm::vec3(1.0f, 3.0f, 1.0f), glm::mat4(1.0f));
+
+    float distance = 0.0f;
+    glm::vec3 normal(0.0f);
+    REQUIRE(cinder::physics::rayHits(capsule, glm::vec3(3.0f, 0.5f, 0.0f), glm::vec3(-1.0f, 0.0f, 0.0f),
+                                     distance, normal));
+    CHECK(distance == doctest::Approx(2.5f));
+    checkVec(normal, glm::vec3(1.0f, 0.0f, 0.0f));
+
+    REQUIRE(cinder::physics::rayHits(capsule, glm::vec3(0.0f, 5.0f, 0.0f), glm::vec3(0.0f, -1.0f, 0.0f),
+                                     distance, normal));
+    CHECK(distance == doctest::Approx(3.5f));
+    checkVec(normal, glm::vec3(0.0f, 1.0f, 0.0f));
+
+    CHECK_FALSE(cinder::physics::rayHits(capsule, glm::vec3(3.0f, 0.5f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f),
+                                         distance, normal));
+}
+
+TEST_CASE("a capsule lying on the floor settles level") {
+    Fixture f;
+    f.floor();
+
+    Body* body = f.scene.create<Body>(nullptr);
+    body->transform()->setPosition(0.0f, 3.0f, 0.0f).setRotation(0.0f, 0.0f, glm::half_pi<float>());
+    f.scene.create<Collider>(body)->setShape(Shape::Capsule).setSize(1.0f, 2.0f, 1.0f);
+
+    f.run(240);
+    CHECK(worldOf(body).y == doctest::Approx(0.5f).epsilon(0.02));
+    CHECK(body->transform()->rotation().z == doctest::Approx(glm::half_pi<float>()).epsilon(0.02));
+    CHECK(glm::length(body->velocity()) < 0.05f);
+}
+
+TEST_CASE("the broadphase finds every overlapping pair") {
+    std::uint32_t seed = 12345;
+    const auto next = [&seed] {
+        seed = seed * 1664525u + 1013904223u;
+        return static_cast<float>((seed >> 8) % 2000) / 100.0f;
+    };
+
+    std::vector<cinder::physics::Bounds> boxes;
+    for (int i = 0; i < 300; ++i) {
+        const glm::vec3 centre(next(), next(), next());
+        const glm::vec3 half(0.2f + next() * 0.02f, 0.2f + next() * 0.02f, 0.2f + next() * 0.02f);
+        boxes.push_back({centre - half, centre + half});
+    }
+
+    std::set<std::pair<int, int>> expected;
+    for (std::size_t i = 0; i < boxes.size(); ++i) {
+        for (std::size_t j = i + 1; j < boxes.size(); ++j) {
+            if (cinder::physics::overlaps(boxes[i], boxes[j])) {
+                expected.insert({static_cast<int>(i), static_cast<int>(j)});
+            }
+        }
+    }
+    REQUIRE(expected.size() > 10);
+
+    cinder::physics::Broadphase tree;
+    tree.build(boxes);
+
+    std::set<std::pair<int, int>> found;
+    std::vector<int> nearby;
+    for (std::size_t i = 0; i < boxes.size(); ++i) {
+        tree.query(boxes[i], nearby);
+        for (const int index : nearby) {
+            const std::size_t j = static_cast<std::size_t>(index);
+            if (j <= i || !cinder::physics::overlaps(boxes[i], boxes[j])) continue;
+            found.insert({static_cast<int>(i), static_cast<int>(j)});
+        }
+    }
+
+    CHECK(found == expected);
+    CHECK(tree.depth() <= 12);
+}
+
+TEST_CASE("a settled stack falls asleep and stops moving at all") {
+    Fixture f;
+    f.floor();
+
+    std::vector<Body*> stack;
+    for (int i = 0; i < 3; ++i) stack.push_back(f.crate(0.0f, 0.5f + static_cast<float>(i), 0.0f));
+
+    f.run(240);
+    for (Body* body : stack) {
+        CHECK(body->asleep());
+        CHECK(body->velocity() == glm::vec3(0.0f));
+    }
+
+    std::vector<glm::vec3> settled;
+    for (Body* body : stack) settled.push_back(body->transform()->position());
+
+    f.run(600);
+    for (std::size_t i = 0; i < stack.size(); ++i) {
+        CHECK(stack[i]->transform()->position() == settled[i]);
+    }
+}
+
+TEST_CASE("a falling ball wakes the stack it lands on") {
+    Fixture f;
+    f.floor();
+    Body* crate = f.crate(0.0f, 0.5f, 0.0f);
+
+    f.run(240);
+    REQUIRE(crate->asleep());
+
+    Body* ball = f.ball(0.2f, 4.0f, 0.0f);
+    f.run(50);
+    CHECK_FALSE(crate->asleep());
+    CHECK_FALSE(ball->asleep());
+
+    f.run(300);
+    CHECK(crate->asleep());
+    CHECK(ball->asleep());
+    CHECK(worldOf(ball).y == doctest::Approx(1.5f).epsilon(0.03));
+}
+
+TEST_CASE("moving or pushing a sleeping body wakes it") {
+    Fixture f;
+    f.floor();
+    Body* moved = f.crate(0.0f, 0.5f, 0.0f);
+    Body* pushed = f.crate(4.0f, 0.5f, 0.0f);
+    Body* written = f.crate(8.0f, 0.5f, 0.0f);
+
+    f.run(240);
+    REQUIRE(moved->asleep());
+    REQUIRE(pushed->asleep());
+    REQUIRE(written->asleep());
+
+    moved->transform()->setPosition(0.0f, 4.0f, 0.0f);
+    pushed->applyImpulse(glm::vec3(0.0f, 5.0f, 0.0f));
+    written->setVelocity(2.0f, 0.0f, 0.0f);
+
+    f.run(2);
+    CHECK_FALSE(moved->asleep());
+    CHECK_FALSE(pushed->asleep());
+    CHECK_FALSE(written->asleep());
+    CHECK(pushed->velocity().y > 1.0f);
+    CHECK(written->velocity().x > 0.5f);
+}
+
+TEST_CASE("a sleeping body wakes when the floor under it goes away") {
+    Fixture f;
+    Collider* floor = f.floor();
+    Body* crate = f.crate(0.0f, 0.5f, 0.0f);
+
+    f.run(240);
+    REQUIRE(crate->asleep());
+
+    floor->setEnabled(false);
+    f.run(30);
+    CHECK_FALSE(crate->asleep());
+    CHECK(worldOf(crate).y < 0.4f);
 }

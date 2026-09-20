@@ -23,6 +23,8 @@ public:
     const glm::vec3& velocity() const { return velocity_; }
     const glm::vec3& angularVelocity() const { return angularVelocity_; }
     bool planar() const { return planar_; }
+    bool asleep() const { return asleep_; }
+    float sleepTimer() const { return sleepTimer_; }
 
     Body& setMotion(Motion motion) { motion_ = motion; return *this; }
     Body& setMass(float mass) { mass_ = mass; return *this; }
@@ -38,6 +40,8 @@ public:
         return *this;
     }
     Body& setPlanar(bool planar) { planar_ = planar; return *this; }
+
+    Body& wake();
 
     Body& applyImpulse(const glm::vec3& impulse);
     Body& applyImpulse(const glm::vec3& impulse, const glm::vec3& point);
@@ -74,6 +78,11 @@ private:
     glm::vec3 torque_{0.0f};
     glm::vec3 impulse_{0.0f};
     glm::vec3 angularImpulse_{0.0f};
+
+    bool asleep_ = false;
+    float sleepTimer_ = 0.0f;
+    glm::vec3 wroteVelocity_{0.0f};
+    glm::vec3 wroteSpin_{0.0f};
 
     glm::vec3 origin_{0.0f};
     glm::quat orientation_{1.0f, 0.0f, 0.0f, 0.0f};

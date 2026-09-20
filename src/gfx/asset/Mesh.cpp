@@ -123,6 +123,51 @@ Mesh Mesh::sphere(const VkCtx& ctx, float r, float g, float b) {
     return Mesh(ctx, vertices, indices);
 }
 
+Mesh Mesh::capsule(const VkCtx& ctx, float r, float g, float b) {
+    constexpr int SEGMENTS = 32;
+    constexpr int RINGS = 8;
+    constexpr float RADIUS = 0.5f;
+    constexpr float HALF = 0.5f;
+    constexpr int ROWS = 2 * (RINGS + 1);
+
+    std::vector<float> vertices;
+    std::vector<uint32_t> indices;
+    vertices.reserve(static_cast<std::size_t>(ROWS * (SEGMENTS + 1) * 12));
+    indices.reserve(static_cast<std::size_t>((ROWS - 1) * SEGMENTS * 6));
+
+    int row = 0;
+    for (int half = 0; half < 2; ++half) {
+        for (int ring = 0; ring <= RINGS; ++ring) {
+            const float polar = glm::half_pi<float>() *
+                                (static_cast<float>(half) + static_cast<float>(ring) / RINGS);
+            const float ny = std::cos(polar);
+            const float radial = std::sin(polar);
+            const float centre = half == 0 ? HALF : -HALF;
+            const float v = 1.0f - static_cast<float>(row) / (ROWS - 1);
+
+            for (int segment = 0; segment <= SEGMENTS; ++segment) {
+                const float u = static_cast<float>(segment) / SEGMENTS;
+                const float azimuth = glm::two_pi<float>() * u;
+                const float nx = radial * std::cos(azimuth);
+                const float nz = radial * std::sin(azimuth);
+                vertices.insert(vertices.end(), {nx * RADIUS, ny * RADIUS + centre, nz * RADIUS, nx, ny,
+                                                 nz, u, v, r, g, b, 1.0f});
+            }
+            ++row;
+        }
+    }
+
+    for (int i = 0; i + 1 < ROWS; ++i) {
+        for (int segment = 0; segment < SEGMENTS; ++segment) {
+            const uint32_t top = static_cast<uint32_t>(i * (SEGMENTS + 1) + segment);
+            const uint32_t bottom = top + SEGMENTS + 1;
+            indices.insert(indices.end(), {top, top + 1, bottom, bottom, top + 1, bottom + 1});
+        }
+    }
+
+    return Mesh(ctx, vertices, indices);
+}
+
 void Mesh::bind(VkCommandBuffer cmd) const {
     const VkBuffer buffer = vertexBuffer_->handle();
     const VkDeviceSize offset = 0;

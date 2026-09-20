@@ -1,5 +1,6 @@
 #pragma once
 
+#include "physics/Broadphase.hpp"
 #include "physics/Geometry.hpp"
 
 #include <glm/mat3x3.hpp>
@@ -45,6 +46,9 @@ public:
     static constexpr float SLOP = 0.005f;
     static constexpr float BAUMGARTE = 0.2f;
     static constexpr float BOUNCE_THRESHOLD = 1.0f;
+    static constexpr float SLEEP_TIME = 0.5f;
+    static constexpr float SLEEP_LINEAR = 0.05f;
+    static constexpr float SLEEP_ANGULAR = 0.1f;
 
     explicit World(cinder::scene::Scene& scene) : scene_(scene) {}
 
@@ -126,6 +130,9 @@ private:
     void addContact(const Proxy& a, const Proxy& b, const glm::vec3& normal,
                     const ContactPoint& point, float dt);
     void warmStart();
+    void rest(float dt);
+    int island(int index);
+    bool stirring(int index) const;
     void solve();
     void solveFriction(Contact& contact);
     void solveNormal(Contact& contact);
@@ -145,8 +152,14 @@ private:
     std::vector<State> states_;
     std::vector<Proxy> proxies_;
     std::vector<Contact> contacts_;
+    Broadphase broadphase_;
+    std::vector<Bounds> bounds_;
+    std::vector<int> nearby_;
     std::unordered_map<std::uint64_t, Impulses> cached_;
     std::unordered_map<std::uint64_t, Impulses> carried_;
+    std::vector<int> islands_;
+    std::vector<char> settled_;
+    std::vector<char> nudged_;
     std::vector<Touch> touching_;
     std::vector<Touch> touched_;
     std::unordered_set<std::uint64_t> current_;

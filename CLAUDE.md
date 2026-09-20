@@ -238,8 +238,8 @@ and `2.0` as equal — and `loadAttributes` never notifies.
 | `Sprite` | Spatial | `texture`, `size`, `color` | a quad in its local XY plane |
 | `Camera` | Spatial | `projection`, `fov`, clip planes, `zoom`, `clearColor`, `virtualSize` | `projection` is all that makes a scene 2D |
 | `Spin` | Node | `speed` | rotates its **parent** |
-| `Body` | Spatial | `motion`, `mass`, `gravityScale`, damping, `velocity` | physics moves it; lives in `physics` |
-| `Collider` | Spatial | `shape`, `size`, `restitution` | a shape of its nearest `Body`; see *Physics* |
+| `Body` | Spatial | `motion`, `mass`, `gravityScale`, damping, `velocity`, `planar` | physics moves it; lives in `physics` |
+| `Collider` | Spatial | `shape`, `size`, `friction`, `restitution` | a shape of its nearest `Body`; see *Physics* |
 | `Script` | Node | `file` | lives in `script`; see *Scripting* |
 
 A new class derives from `Node` or `Spatial`, declares its props with `CINDER_NODE`, and is
@@ -414,11 +414,13 @@ Two node classes, registered by `physics::registerNodes`:
   other, so a scene file carries a starting velocity, Properties shows it live during Play, and
   `ball.velocity = vec3(0, 5, 0)` will work from Lua — with no code in the scripting layer or the
   editor.
-- **`Collider`** is a shape: `shape` (`box | sphere`), `size`, `friction` and `restitution`. The
+- **`Collider`** is a shape: `shape` (`box | sphere | capsule`), `size`, `friction` and `restitution`. The
   material lives on the shape, not the body, because a static floor is a collider with no body and
   still has to be rough or bouncy; a pair combines as `sqrt(fA * fB)` and `max(eA, eB)`. Its own transform
   offsets it from the body, and `size` is the box the shape fits in — a sphere takes the largest of the
-  three — so the default `1 1 1` is exactly the unit cube a `MeshPart` draws.
+  three; a capsule stands along its own Y, as wide as the larger of x and z and as tall as y, so
+  `1 2 1` is a capsule of length 2 and `1 1 1` collapses to a sphere. The default `1 1 1` box is
+  exactly the unit cube a `MeshPart` draws.
 
 **A collider belongs to its nearest `Body` ancestor**, which is Unreal's welding rule: every shape under
 one body is one rigid compound. A collider with no `Body` above it is static, so a floor is a `MeshPart`
@@ -442,8 +444,13 @@ The step, in order:
    full inertia tensor through the parallel axis theorem. **A body turns about its centre of mass**,
    not its origin, so a collider hung off to one side behaves like the weight it is.
 4. **Integrate velocities** — gravity, then damping.
-5. **Detect** — every pair of shapes whose bounds overlap where at least one side is dynamic, brute
-   force for now. Sphere–sphere and sphere–box are closed form. Box–box is a separating axis test over
+5. **Detect** — `physics::Broadphase` is a bounding volume tree, rebuilt from the frame's bounds every
+   step by splitting the widest axis at the median, and every shape queries it for the shapes near it;
+   a pair is tested once, when at least one side is dynamic. Sphere–sphere and sphere–box are closed
+   form, and a capsule is a segment with a radius: against a sphere or another capsule it is the
+   closest point on that segment, and against a box it is the closest point found by walking segment
+   and box in turn — with the segment clipped to the face when it lies flat on one, so a capsule on
+   the ground rests on two points rather than rocking on one. Box–box is a separating axis test over
    the 15 axes, where the winning face becomes a reference face and the other box's incident face is
    clipped against its sides, giving up to four points; a winning edge axis gives one point from the two
    edges' closest approach. **Every point carries a feature id**, which is what lets the next step
@@ -455,7 +462,14 @@ The step, in order:
    pass, while **penetration is corrected in a second pass of pseudo-velocities** (split impulse), so
    pushing bodies apart never adds real momentum. Baumgarte in the velocity pass shook a ten-crate stack
    apart; that is why it is split.
-7. **Advance** — integrate the centre of mass and the orientation by velocity plus drift, then write
+7. **Rest** — a body that has been slower than `SLEEP_LINEAR` and `SLEEP_ANGULAR` for `SLEEP_TIME`
+   is ready to sleep, but it only sleeps with the **island** it belongs to: contacts between dynamic
+   bodies are unioned, and an island sleeps when every member is ready — otherwise one crate in a
+   stack would freeze while the rest settled. A sleeping body is solved as if it were static and is
+   never integrated, so a settled stack is bit-for-bit still. It wakes when its node is moved, its
+   velocity written, an impulse or force applied, a contact with anything that is moving, or a contact
+   it had disappears — which is what catches the floor being deleted under it.
+8. **Advance** — integrate the centre of mass and the orientation by velocity plus drift, then write
    the pose back
    as the node's local position and the Euler angles in the order `Transform::local()` composes them
    (Y, then X, then Z). The world keeps the quaternion, so a tumbling body simulates exactly through
@@ -484,13 +498,16 @@ step's, and fires `touched` and `touchEnded` on both nodes, Roblox's names. The 
 `Config/Game.ini` carries `[Physics] gravity` as three numbers, read by `ProjectConfig` and pushed into
 the world by `Engine`; a project that says nothing falls at 9.81 units a second squared.
 
-`samples/physics` is the sample: a floor, a ramp and a step as static colliders, balls, a stack of
-crates, and a `Script` that drops more balls onto it. `--scene Scenes/planar.scene` opens the 2D half —
-an orthographic camera over sprites with `planar` bodies, where a click drops another box. `MeshPass` has a second primitive, `sphere`, so a ball can be seen; `Picking`
-still treats every `MeshPart` as a cube.
+A raycast does **not** use the tree: it walks the scene and tests every collider, because the tree
+belongs to the last step and a script can cast a ray at any time, after anything has moved. One ray
+costs the walk either way; many rays per frame are what would justify keeping the tree valid.
 
-What is missing is tracked in `TODO.md`: capsules, sleeping, a broadphase tree, CCD, joints, sensors
-and collision layers. So is the one that is not physics' fault — nothing interpolates
+`samples/physics` is the sample: a floor, a ramp and a step as static colliders, balls, capsules, a
+stack of crates, and a `Script` that drops more balls onto it. `--scene Scenes/planar.scene` opens the 2D half —
+an orthographic camera over sprites with `planar` bodies, where a click drops another box. `MeshPass` carries three primitives — `cube`, `sphere` and `capsule`, the last two matching what a
+sphere and a `1 2 1` capsule collider cover; `Picking` still treats every `MeshPart` as a cube.
+
+What is missing is tracked in `TODO.md`: joints, CCD, sensors, collision layers and convex hulls. So is the one that is not physics' fault — nothing interpolates
 transforms, so at `fixedHz` 60 on a 120 Hz display a falling body visibly steps.
 
 ## The dev overlay

@@ -21,6 +21,8 @@ constexpr int EDGE_FEATURE = 200;
 constexpr int MAX_CLIPPED = 8;
 constexpr float CLIP_SLACK = 1e-3f;
 constexpr float TOUCH_SLACK = 1e-3f;
+constexpr float LYING = 0.08f;
+constexpr int SEGMENT_FEATURE = 100;
 
 const glm::vec3 UP(0.0f, 1.0f, 0.0f);
 
@@ -86,6 +88,53 @@ bool sphereBox(const Geometry& sphere, const Geometry& box, Manifold& out) {
     out.points[0] = {box.center + box.axes * face, sphere.radius + gap, 0};
     out.count = 1;
     return true;
+}
+
+glm::vec3 alongSegment(const Geometry& capsule, const glm::vec3& point) {
+    const glm::vec3 axis = segmentAxis(capsule);
+    const float half = segmentHalf(capsule);
+    return capsule.center + axis * std::clamp(glm::dot(point - capsule.center, axis), -half, half);
+}
+
+Geometry ballAt(const glm::vec3& center, float radius) {
+    Geometry out;
+    out.shape = Shape::Sphere;
+    out.center = center;
+    out.radius = radius;
+    out.halfExtents = glm::vec3(radius);
+    return out;
+}
+
+void closestBetween(const Geometry& a, const Geometry& b, glm::vec3& onA, glm::vec3& onB) {
+    const glm::vec3 axisA = segmentAxis(a);
+    const glm::vec3 axisB = segmentAxis(b);
+    const float halfA = segmentHalf(a);
+    const float halfB = segmentHalf(b);
+
+    const glm::vec3 between = b.center - a.center;
+    const float cosine = glm::dot(axisA, axisB);
+    const float denominator = 1.0f - cosine * cosine;
+    const float alongA = glm::dot(between, axisA);
+    const float alongB = glm::dot(between, axisB);
+
+    float travelA = denominator > PARALLEL ? (alongA - cosine * alongB) / denominator : 0.0f;
+    travelA = std::clamp(travelA, -halfA, halfA);
+    const float travelB = std::clamp(cosine * travelA - alongB, -halfB, halfB);
+    travelA = std::clamp(alongA + cosine * travelB, -halfA, halfA);
+
+    onA = a.center + axisA * travelA;
+    onB = b.center + axisB * travelB;
+}
+
+bool capsuleSphere(const Geometry& capsule, const Geometry& sphere, Manifold& out) {
+    return sphereSphere(ballAt(alongSegment(capsule, sphere.center), capsule.radius), sphere, out);
+}
+
+bool capsuleCapsule(const Geometry& a, const Geometry& b, Manifold& out) {
+    glm::vec3 onA(0.0f);
+    glm::vec3 onB(0.0f);
+    closestBetween(a, b, onA, onB);
+    return sphereSphere(ballAt(onA, a.radius), ballAt(onB, b.radius), out);
 }
 
 float reachAlong(const Geometry& box, const glm::vec3& axis) {
@@ -245,6 +294,51 @@ bool edgeContact(const Geometry& a, const Geometry& b, const glm::vec3& normal, 
     return true;
 }
 
+glm::vec3 insideBox(const Geometry& box, const glm::vec3& point) {
+    const glm::vec3 local = glm::transpose(box.axes) * (point - box.center);
+    return box.center + box.axes * glm::clamp(local, -box.halfExtents, box.halfExtents);
+}
+
+bool capsuleBox(const Geometry& capsule, const Geometry& box, Manifold& out) {
+    glm::vec3 onSegment = alongSegment(capsule, box.center);
+    for (int i = 0; i < 4; ++i) onSegment = alongSegment(capsule, insideBox(box, onSegment));
+    if (!sphereBox(ballAt(onSegment, capsule.radius), box, out)) return false;
+
+    const glm::vec3 axis = segmentAxis(capsule);
+    const float half = segmentHalf(capsule);
+    if (half <= 0.0f || std::abs(glm::dot(axis, out.normal)) > LYING) return true;
+
+    const glm::vec3 outward = -out.normal;
+    int face = 0;
+    for (int i = 1; i < 3; ++i) {
+        if (std::abs(glm::dot(box.axes[i], outward)) > std::abs(glm::dot(box.axes[face], outward))) {
+            face = i;
+        }
+    }
+
+    const float side = glm::dot(box.axes[face], outward) < 0.0f ? -1.0f : 1.0f;
+    const glm::vec3 plane = box.center + box.axes[face] * (side * box.halfExtents[face]);
+
+    Manifold lying;
+    lying.normal = out.normal;
+    for (int end = 0; end < 2; ++end) {
+        const glm::vec3 tip = capsule.center + axis * (end == 0 ? -half : half);
+        const float gap = glm::dot(tip - plane, outward);
+        if (gap > capsule.radius + TOUCH_SLACK) continue;
+
+        const glm::vec3 local = glm::transpose(box.axes) * (tip - box.center);
+        glm::vec3 clamped = glm::clamp(local, -box.halfExtents, box.halfExtents);
+        clamped[face] = side * box.halfExtents[face];
+        lying.points[static_cast<std::size_t>(lying.count)] = {box.center + box.axes * clamped,
+                                                               std::max(capsule.radius - gap, 0.0f),
+                                                               SEGMENT_FEATURE + end};
+        ++lying.count;
+    }
+
+    if (lying.count == 2) out = lying;
+    return true;
+}
+
 bool boxBox(const Geometry& a, const Geometry& b, Manifold& out) {
     const glm::vec3 between = b.center - a.center;
 
@@ -299,14 +393,18 @@ bool boxBox(const Geometry& a, const Geometry& b, Manifold& out) {
 
 bool collide(const Geometry& a, const Geometry& b, Manifold& out) {
     out.count = 0;
+
     if (a.shape == Shape::Sphere && b.shape == Shape::Sphere) return sphereSphere(a, b, out);
     if (a.shape == Shape::Sphere && b.shape == Shape::Box) return sphereBox(a, b, out);
-    if (a.shape == Shape::Box && b.shape == Shape::Sphere) {
-        if (!sphereBox(b, a, out)) return false;
-        out.normal = -out.normal;
-        return true;
-    }
-    return boxBox(a, b, out);
+    if (a.shape == Shape::Capsule && b.shape == Shape::Sphere) return capsuleSphere(a, b, out);
+    if (a.shape == Shape::Capsule && b.shape == Shape::Capsule) return capsuleCapsule(a, b, out);
+    if (a.shape == Shape::Capsule && b.shape == Shape::Box) return capsuleBox(a, b, out);
+    if (a.shape == Shape::Box && b.shape == Shape::Box) return boxBox(a, b, out);
+
+    if (!collide(b, a, out)) return false;
+
+    out.normal = -out.normal;
+    return true;
 }
 
 }

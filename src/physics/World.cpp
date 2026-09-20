@@ -126,6 +126,7 @@ void World::step(float dt) {
     detect(dt);
     warmStart();
     solve();
+    rest(dt);
     for (std::size_t i = 1; i < states_.size(); ++i) advance(states_[i], dt);
     notify();
 }
@@ -147,6 +148,13 @@ void World::notify() {
             Node* a = scene_.byId(touch.a);
             Node* b = scene_.byId(touch.b);
             if (a != nullptr && b != nullptr) observer_->touchEnded(*a, *b);
+        }
+    }
+
+    for (const Touch& touch : touched_) {
+        if (current_.find(touch.key) != current_.end()) continue;
+        for (const int id : {touch.a, touch.b}) {
+            if (auto* body = dynamic_cast<Body*>(scene_.byId(id))) body->wake();
         }
     }
 
@@ -218,8 +226,12 @@ void World::gather(Node& node, int owner) {
 
 void World::place(State& state, float dt) {
     Body& body = *state.body;
+    if (body.velocity_ != body.wroteVelocity_ || body.angularVelocity_ != body.wroteSpin_) body.wake();
+
     const glm::mat4& world = body.transform()->world();
     if (body.motion_ == Body::Motion::Dynamic && body.simulated_ && world == body.placed_) return;
+
+    body.wake();
 
     const glm::quat previous = body.orientation_;
     body.origin_ = glm::vec3(world[3]);
@@ -258,6 +270,7 @@ void World::weigh() {
     for (std::size_t i = 1; i < states_.size(); ++i) {
         State& state = states_[i];
         if (state.body->motion_ != Body::Motion::Dynamic) continue;
+        if (state.body->asleep_) continue;
         state.inverseMass = 1.0f / state.body->mass_;
         if (glm::determinant(state.inertia) > 0.0f) state.inverseInertia = glm::inverse(state.inertia);
         if (!state.body->planar_) continue;
@@ -279,6 +292,7 @@ void World::accelerate(State& state, float dt) {
             state.angularVelocity = body.angularVelocity_;
             return;
         case Body::Motion::Dynamic:
+            if (body.asleep_) return;
             state.velocity = (body.velocity_ + gravity_ * (body.gravityScale_ * dt) +
                               (body.force_ * dt + body.impulse_) * state.inverseMass) /
                              (1.0f + dt * body.linearDamping_);
@@ -301,14 +315,23 @@ bool World::dynamic(int index) const {
 }
 
 void World::detect(float dt) {
+    bounds_.clear();
+    for (const Proxy& proxy : proxies_) bounds_.push_back(proxy.bounds);
+    broadphase_.build(bounds_);
+
     Manifold manifold;
     for (std::size_t i = 0; i < proxies_.size(); ++i) {
         const Proxy& a = proxies_[i];
-        for (std::size_t j = i + 1; j < proxies_.size(); ++j) {
+        broadphase_.query(a.bounds, nearby_);
+        std::sort(nearby_.begin(), nearby_.end());
+
+        for (const int index : nearby_) {
+            const std::size_t j = static_cast<std::size_t>(index);
+            if (j <= i) continue;
+
             const Proxy& b = proxies_[j];
             if (a.owner == b.owner) continue;
             if (!dynamic(a.owner) && !dynamic(b.owner)) continue;
-            if (!overlaps(a.bounds, b.bounds)) continue;
             if (!collide(a.geometry, b.geometry, manifold)) continue;
 
             const Body* first = states_[static_cast<std::size_t>(a.owner)].body;
@@ -397,6 +420,66 @@ float World::effectiveMass(const State& a, const State& b, const glm::vec3& from
     return stiffness > 0.0f ? 1.0f / stiffness : 0.0f;
 }
 
+int World::island(int index) {
+    int root = index;
+    while (islands_[static_cast<std::size_t>(root)] != root) {
+        root = islands_[static_cast<std::size_t>(root)];
+    }
+    while (islands_[static_cast<std::size_t>(index)] != root) {
+        const int next = islands_[static_cast<std::size_t>(index)];
+        islands_[static_cast<std::size_t>(index)] = root;
+        index = next;
+    }
+    return root;
+}
+
+bool World::stirring(int index) const {
+    if (index == 0) return false;
+
+    const State& state = states_[static_cast<std::size_t>(index)];
+    return glm::length(state.velocity) >= SLEEP_LINEAR ||
+           glm::length(state.angularVelocity) >= SLEEP_ANGULAR;
+}
+
+void World::rest(float dt) {
+    islands_.resize(states_.size());
+    settled_.assign(states_.size(), 1);
+    nudged_.assign(states_.size(), 0);
+    for (std::size_t i = 0; i < states_.size(); ++i) islands_[i] = static_cast<int>(i);
+
+    for (const Contact& contact : contacts_) {
+        const bool left = dynamic(contact.a);
+        const bool right = dynamic(contact.b);
+
+        if (left && right) {
+            const int one = island(contact.a);
+            const int other = island(contact.b);
+            if (one != other) islands_[static_cast<std::size_t>(one)] = other;
+            continue;
+        }
+        if (left && stirring(contact.b)) nudged_[static_cast<std::size_t>(contact.a)] = 1;
+        if (right && stirring(contact.a)) nudged_[static_cast<std::size_t>(contact.b)] = 1;
+    }
+
+    for (std::size_t i = 1; i < states_.size(); ++i) {
+        if (!dynamic(static_cast<int>(i))) continue;
+
+        State& state = states_[i];
+        Body& body = *state.body;
+        const bool slow = nudged_[i] == 0 && glm::length(state.velocity) < SLEEP_LINEAR &&
+                          glm::length(state.angularVelocity) < SLEEP_ANGULAR;
+        body.sleepTimer_ = slow ? body.sleepTimer_ + dt : 0.0f;
+        if (body.sleepTimer_ < SLEEP_TIME) {
+            settled_[static_cast<std::size_t>(island(static_cast<int>(i)))] = 0;
+        }
+    }
+
+    for (std::size_t i = 1; i < states_.size(); ++i) {
+        if (!dynamic(static_cast<int>(i))) continue;
+        states_[i].body->asleep_ = settled_[static_cast<std::size_t>(island(static_cast<int>(i)))] != 0;
+    }
+}
+
 glm::vec3 World::approach(const Contact& contact) const {
     const State& a = states_[static_cast<std::size_t>(contact.a)];
     const State& b = states_[static_cast<std::size_t>(contact.b)];
@@ -469,8 +552,11 @@ void World::advance(State& state, float dt) {
         return;
     }
 
-    body.velocity_ = state.velocity;
-    body.angularVelocity_ = state.angularVelocity;
+    body.velocity_ = body.asleep_ ? glm::vec3(0.0f) : state.velocity;
+    body.angularVelocity_ = body.asleep_ ? glm::vec3(0.0f) : state.angularVelocity;
+    body.wroteVelocity_ = body.velocity_;
+    body.wroteSpin_ = body.angularVelocity_;
+    if (body.asleep_) return;
 
     const glm::vec3 turn = state.angularVelocity + state.angularDrift;
     const float speed = glm::length(turn);

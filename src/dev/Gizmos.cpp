@@ -141,6 +141,21 @@ void outline(ImDrawList& list, const Screen& screen, const glm::mat4& world, glm
     }
 }
 
+void ball(ImDrawList& list, const Screen& screen, const glm::mat3& axes, const glm::vec3& centre,
+          float radius, ImU32 color) {
+    for (int axis = 0; axis < 3; ++axis) {
+        const glm::vec3 u = axes[axis] * radius;
+        const glm::vec3 v = axes[(axis + 1) % 3] * radius;
+        glm::vec3 previous = centre + u;
+        for (int i = 1; i <= CIRCLE_SEGMENTS; ++i) {
+            const float angle = glm::two_pi<float>() * static_cast<float>(i) / CIRCLE_SEGMENTS;
+            const glm::vec3 next = centre + u * std::cos(angle) + v * std::sin(angle);
+            segment(list, screen, previous, next, color);
+            previous = next;
+        }
+    }
+}
+
 void shape(ImDrawList& list, const Screen& screen, const cinder::physics::Geometry& geometry, ImU32 color) {
     if (geometry.shape == cinder::physics::Shape::Box) {
         glm::mat4 world(1.0f);
@@ -150,15 +165,17 @@ void shape(ImDrawList& list, const Screen& screen, const cinder::physics::Geomet
         return;
     }
 
-    for (int axis = 0; axis < 3; ++axis) {
-        const glm::vec3 u = geometry.axes[axis] * geometry.radius;
-        const glm::vec3 v = geometry.axes[(axis + 1) % 3] * geometry.radius;
-        glm::vec3 previous = geometry.center + u;
-        for (int i = 1; i <= CIRCLE_SEGMENTS; ++i) {
-            const float angle = glm::two_pi<float>() * static_cast<float>(i) / CIRCLE_SEGMENTS;
-            const glm::vec3 next = geometry.center + u * std::cos(angle) + v * std::sin(angle);
-            segment(list, screen, previous, next, color);
-            previous = next;
+    const float half = cinder::physics::segmentHalf(geometry);
+    const glm::vec3 along = cinder::physics::segmentAxis(geometry) * half;
+    ball(list, screen, geometry.axes, geometry.center - along, geometry.radius, color);
+    if (half <= 0.0f) return;
+
+    ball(list, screen, geometry.axes, geometry.center + along, geometry.radius, color);
+    for (const int axis : {0, 2}) {
+        for (const float side : {-1.0f, 1.0f}) {
+            const glm::vec3 offset = geometry.axes[axis] * (side * geometry.radius);
+            segment(list, screen, geometry.center - along + offset, geometry.center + along + offset,
+                    color);
         }
     }
 }

@@ -57,6 +57,8 @@ MeshPass::MeshPass(const cinder::gfx::vk::VkCtx& ctx, cinder::gfx::asset::Assets
     named_.emplace("cube", 0);
     meshes_.push_back(Mesh::sphere(ctx, 1.0f, 1.0f, 1.0f));
     named_.emplace("sphere", 1);
+    meshes_.push_back(Mesh::capsule(ctx, 1.0f, 1.0f, 1.0f));
+    named_.emplace("capsule", 2);
 }
 
 int MeshPass::meshNamed(std::string_view name) const {

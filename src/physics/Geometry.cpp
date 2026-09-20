@@ -37,15 +37,24 @@ Geometry geometryOf(Shape shape, const glm::vec3& size, const glm::mat4& world) 
     if (shape == Shape::Sphere) {
         out.radius = std::max({extents.x, extents.y, extents.z});
         out.halfExtents = glm::vec3(out.radius);
+    } else if (shape == Shape::Capsule) {
+        out.radius = std::max(extents.x, extents.z);
+        out.halfExtents = glm::vec3(out.radius, std::max(extents.y, out.radius), out.radius);
     } else {
         out.halfExtents = extents;
     }
     return out;
 }
 
+float segmentHalf(const Geometry& geometry) {
+    return geometry.shape == Shape::Capsule ? geometry.halfExtents.y - geometry.radius : 0.0f;
+}
+
+glm::vec3 segmentAxis(const Geometry& geometry) { return geometry.axes[1]; }
+
 Bounds boundsOf(const Geometry& geometry) {
     glm::vec3 reach(geometry.radius);
-    if (geometry.shape == Shape::Box) {
+    if (geometry.shape != Shape::Sphere) {
         const glm::mat3 absolute(glm::abs(geometry.axes[0]), glm::abs(geometry.axes[1]),
                                  glm::abs(geometry.axes[2]));
         reach = absolute * geometry.halfExtents;
@@ -59,8 +68,13 @@ bool overlaps(const Bounds& a, const Bounds& b) {
 }
 
 float volumeOf(const Geometry& geometry) {
-    if (geometry.shape == Shape::Sphere) {
-        return 4.0f / 3.0f * glm::pi<float>() * geometry.radius * geometry.radius * geometry.radius;
+    const float ball = 4.0f / 3.0f * glm::pi<float>() * geometry.radius * geometry.radius *
+                       geometry.radius;
+    if (geometry.shape == Shape::Sphere) return ball;
+    if (geometry.shape == Shape::Capsule) {
+        const float shaft = glm::pi<float>() * geometry.radius * geometry.radius * 2.0f *
+                            segmentHalf(geometry);
+        return ball + shaft;
     }
     const glm::vec3& h = geometry.halfExtents;
     return 8.0f * h.x * h.y * h.z;
@@ -82,6 +96,46 @@ bool raySphere(const Geometry& sphere, const glm::vec3& origin, const glm::vec3&
     distance = entry;
     normal = (origin + direction * entry - sphere.center) / sphere.radius;
     return true;
+}
+
+bool rayCapsule(const Geometry& capsule, const glm::vec3& origin, const glm::vec3& direction,
+                float& distance, glm::vec3& normal) {
+    const glm::vec3 axis = segmentAxis(capsule);
+    const float half = segmentHalf(capsule);
+    const glm::vec3 offset = origin - capsule.center;
+
+    const float alongAxis = glm::dot(offset, axis);
+    const float headingAxis = glm::dot(direction, axis);
+    const float a = 1.0f - headingAxis * headingAxis;
+    const float b = glm::dot(offset, direction) - alongAxis * headingAxis;
+    const float c = glm::dot(offset, offset) - alongAxis * alongAxis -
+                    capsule.radius * capsule.radius;
+
+    Geometry cap;
+    cap.shape = Shape::Sphere;
+    cap.radius = capsule.radius;
+
+    if (a > 1e-8f) {
+        const float discriminant = b * b - a * c;
+        if (discriminant < 0.0f) return false;
+
+        const float entry = (-b - std::sqrt(discriminant)) / a;
+        if (entry < 0.0f) return false;
+
+        const float reach = alongAxis + entry * headingAxis;
+        if (std::abs(reach) <= half) {
+            distance = entry;
+            const glm::vec3 point = origin + direction * entry;
+            normal = (point - (capsule.center + axis * reach)) / capsule.radius;
+            return true;
+        }
+        cap.center = capsule.center + axis * (reach > 0.0f ? half : -half);
+        return raySphere(cap, origin, direction, distance, normal);
+    }
+
+    if (c > 0.0f) return false;
+    cap.center = capsule.center + axis * (alongAxis > 0.0f ? half : -half);
+    return raySphere(cap, origin, direction, distance, normal);
 }
 
 bool rayBox(const Geometry& box, const glm::vec3& origin, const glm::vec3& direction,
@@ -129,13 +183,34 @@ bool rayBox(const Geometry& box, const glm::vec3& origin, const glm::vec3& direc
 
 bool rayHits(const Geometry& geometry, const glm::vec3& origin, const glm::vec3& direction,
              float& distance, glm::vec3& normal) {
-    return geometry.shape == Shape::Sphere ? raySphere(geometry, origin, direction, distance, normal)
-                                           : rayBox(geometry, origin, direction, distance, normal);
+    switch (geometry.shape) {
+        case Shape::Sphere: return raySphere(geometry, origin, direction, distance, normal);
+        case Shape::Capsule: return rayCapsule(geometry, origin, direction, distance, normal);
+        default: return rayBox(geometry, origin, direction, distance, normal);
+    }
 }
 
 glm::mat3 inertiaOf(const Geometry& geometry, float mass) {
     if (geometry.shape == Shape::Sphere) {
         return glm::mat3(0.4f * mass * geometry.radius * geometry.radius);
+    }
+
+    if (geometry.shape == Shape::Capsule) {
+        const float radius = geometry.radius;
+        const float half = segmentHalf(geometry);
+        const float volume = volumeOf(geometry);
+        const float density = volume > 0.0f ? mass / volume : 0.0f;
+        const float shaft = density * glm::pi<float>() * radius * radius * 2.0f * half;
+        const float caps = mass - shaft;
+        const float offset = 3.0f * radius / 8.0f;
+
+        glm::mat3 local(0.0f);
+        local[1][1] = 0.5f * shaft * radius * radius + 0.4f * caps * radius * radius;
+        local[0][0] = shaft * (0.25f * radius * radius + half * half / 3.0f) +
+                      caps * (0.4f * radius * radius - offset * offset +
+                              (half + offset) * (half + offset));
+        local[2][2] = local[0][0];
+        return geometry.axes * local * glm::transpose(geometry.axes);
     }
     const glm::vec3 h2 = geometry.halfExtents * geometry.halfExtents;
     glm::mat3 local(0.0f);
