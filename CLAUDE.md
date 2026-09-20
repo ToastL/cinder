@@ -128,12 +128,12 @@ lua                        -> platform
 scene                      -> reflect
 serial                     -> scene, reflect, platform
 components                 -> scene, reflect
-physics                    -> scene, reflect
+physics                    -> scene, reflect, lua
 gfx/vk                     -> platform
 gfx/asset                  -> gfx/vk, scene
 gfx/pass                   -> gfx/asset, gfx/vk, scene, lua, platform
 gfx                        -> gfx/pass, gfx/asset, gfx/vk, scene, platform, lua
-script                     -> scene, reflect, gfx, platform, lua
+script                     -> scene, reflect, gfx, physics, platform, lua
 core                       -> all of the above
 dev                        -> core and all of the above (a separate target, see below)
 ```
@@ -396,8 +396,9 @@ per-frame feature.
 ## Physics
 
 **The physics engine is our own**, like the renderer and the coming UI framework — not Jolt, not Box2D.
-It is `src/physics/`: a layer over `scene` and `reflect` with no Vulkan, no window and no Lua in it, so
-all of it runs headlessly in `ctest`.
+It is `src/physics/`: a layer over `scene` and `reflect` with no Vulkan and no window in it, so all of
+it runs headlessly in `ctest`. Its only other edge is to `lua`, because a pass binds its own script
+functions, exactly as `gfx/pass` does.
 
 `Engine` owns a `physics::World` and steps it in `Engine::update`, after `Scene::update` and before
 `input.consume()`. Edit mode never calls `Engine::update`, so **physics never runs while you edit** —
@@ -406,7 +407,10 @@ the same split that keeps scripts from running, at no cost in code.
 Two node classes, registered by `physics::registerNodes`:
 
 - **`Body`** is what physics moves: `motion` (`static | kinematic | dynamic`), `mass`, `gravityScale`,
-  `linearDamping`, `angularDamping`, `velocity` and `angularVelocity`. Velocity is a prop like any
+  `linearDamping`, `angularDamping`, `velocity`, `angularVelocity` and `planar`. **`planar` is all that
+  makes physics 2D**: it locks z travel and x/y turning, so a 2D scene is the same engine with three
+  degrees of freedom removed — the rule the renderer already follows, where `projection` is all that
+  makes a scene 2D. Velocity is a prop like any
   other, so a scene file carries a starting velocity, Properties shows it live during Play, and
   `ball.velocity = vec3(0, 5, 0)` will work from Lua — with no code in the scripting layer or the
   editor.
@@ -464,12 +468,29 @@ float noise drops one and the lopsided support tips the box. `FACE_BIAS` makes t
 beat the first's by a margin before it becomes the reference face, because on an exact tie the choice
 flapped from step to step, changing every feature id and throwing the warm start away.
 
+**Scripts reach physics through `engine` and through node signals.** `World::registerApi` binds
+`applyImpulse`, `applyForce`, `applyTorque`, `raycast`, `gravity` and `setGravity`; the prelude wraps
+the last three so a raycast takes vectors and hands back `{ node, position, normal, distance }` or
+`nil`, and puts `applyImpulse(impulse, point?)` on every node proxy. Impulses and forces are
+**accumulators**, applied at the next step and cleared there, so the order a script calls them in never
+matters. A node that is not a `Body` raises a Lua error rather than doing nothing quietly.
+
+Contacts reach scripts the way scene changes do. `physics::ContactObserver` is an interface in
+`physics`, `script/SceneApi` implements it, and `LuaHost::boot` installs it — so physics never names
+Lua, just as `scene` never does. `World` tracks which collider pairs touch, compares that with the last
+step's, and fires `touched` and `touchEnded` on both nodes, Roblox's names. The node handed over is the
+`Body` when there is one and the `Collider` when there is not, so a floor with no body still answers.
+
+`Config/Game.ini` carries `[Physics] gravity` as three numbers, read by `ProjectConfig` and pushed into
+the world by `Engine`; a project that says nothing falls at 9.81 units a second squared.
+
 `samples/physics` is the sample: a floor, a ramp and a step as static colliders, balls, a stack of
-crates, and a `Script` that drops more balls onto it. `MeshPass` has a second primitive, `sphere`, so a ball can be seen; `Picking`
+crates, and a `Script` that drops more balls onto it. `--scene Scenes/planar.scene` opens the 2D half —
+an orthographic camera over sprites with `planar` bodies, where a click drops another box. `MeshPass` has a second primitive, `sphere`, so a ball can be seen; `Picking`
 still treats every `MeshPart` as a cube.
 
-What is missing is tracked in `TODO.md`: capsules, sleeping, a broadphase tree, CCD, joints, the Lua
-API and 2D locking. So is the one that is not physics' fault — nothing interpolates
+What is missing is tracked in `TODO.md`: capsules, sleeping, a broadphase tree, CCD, joints, sensors
+and collision layers. So is the one that is not physics' fault — nothing interpolates
 transforms, so at `fixedHz` 60 on a 120 Hz display a falling body visibly steps.
 
 ## The dev overlay

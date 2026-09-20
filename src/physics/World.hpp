@@ -8,7 +8,10 @@
 #include <array>
 #include <cstdint>
 #include <unordered_map>
+#include <unordered_set>
 #include <vector>
+
+namespace cinder::lua { class LuaApi; }
 
 namespace cinder::scene {
 class Node;
@@ -20,6 +23,21 @@ namespace cinder::physics {
 class Body;
 class Collider;
 struct ContactPoint;
+
+class ContactObserver {
+public:
+    virtual ~ContactObserver() = default;
+    virtual void touched(cinder::scene::Node& a, cinder::scene::Node& b) = 0;
+    virtual void touchEnded(cinder::scene::Node& a, cinder::scene::Node& b) = 0;
+};
+
+struct RayHit {
+    cinder::scene::Node* node = nullptr;
+    Collider* collider = nullptr;
+    glm::vec3 position{0.0f};
+    glm::vec3 normal{0.0f};
+    float distance = 0.0f;
+};
 
 class World {
 public:
@@ -33,10 +51,17 @@ public:
     World(const World&) = delete;
     World& operator=(const World&) = delete;
 
+    cinder::scene::Scene& scene() const { return scene_; }
+
     const glm::vec3& gravity() const { return gravity_; }
     void setGravity(const glm::vec3& gravity) { gravity_ = gravity; }
 
+    void setObserver(ContactObserver* observer) { observer_ = observer; }
+
     void step(float dt);
+    bool raycast(const glm::vec3& origin, const glm::vec3& direction, float maxDistance,
+                 RayHit& hit) const;
+    void registerApi(cinder::lua::LuaApi& api);
 
 private:
     struct State {
@@ -46,6 +71,7 @@ private:
         glm::vec3 angularVelocity{0.0f};
         glm::vec3 drift{0.0f};
         glm::vec3 angularDrift{0.0f};
+        glm::vec3 linearMask{1.0f};
         float inverseMass = 0.0f;
         glm::mat3 inverseInertia{0.0f};
         float volume = 0.0f;
@@ -83,7 +109,16 @@ private:
         std::array<float, 2> tangent{};
     };
 
+    struct Touch {
+        std::uint64_t key = 0;
+        int a = 0;
+        int b = 0;
+    };
+
     void gather(cinder::scene::Node& node, int owner);
+    void cast(cinder::scene::Node& node, Body* owner, const glm::vec3& origin,
+              const glm::vec3& direction, float maxDistance, RayHit& hit, bool& found) const;
+    void notify();
     void place(State& state, float dt);
     void weigh();
     void accelerate(State& state, float dt);
@@ -112,6 +147,11 @@ private:
     std::vector<Contact> contacts_;
     std::unordered_map<std::uint64_t, Impulses> cached_;
     std::unordered_map<std::uint64_t, Impulses> carried_;
+    std::vector<Touch> touching_;
+    std::vector<Touch> touched_;
+    std::unordered_set<std::uint64_t> current_;
+    std::unordered_set<std::uint64_t> previous_;
+    ContactObserver* observer_ = nullptr;
 };
 
 }

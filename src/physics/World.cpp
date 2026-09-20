@@ -4,6 +4,7 @@
 #include "physics/Collide.hpp"
 #include "physics/Collider.hpp"
 #include "physics/Pose.hpp"
+#include "lua/LuaApi.hpp"
 #include "scene/Node.hpp"
 #include "scene/Scene.hpp"
 #include "scene/Transform.hpp"
@@ -28,6 +29,74 @@ std::uint64_t contactKey(int a, int b, int feature) {
            static_cast<std::uint64_t>(feature & 0xFFFFF);
 }
 
+World& hostOf(lua_State* state) { return *cinder::lua::LuaApi::context<World>(state); }
+
+glm::vec3 vectorAt(lua_State* state, int index) {
+    return glm::vec3(static_cast<float>(lua_tonumber(state, index)),
+                     static_cast<float>(lua_tonumber(state, index + 1)),
+                     static_cast<float>(lua_tonumber(state, index + 2)));
+}
+
+Body* bodyAt(lua_State* state, int index) {
+    const int id = static_cast<int>(lua_tointeger(state, index));
+    return dynamic_cast<Body*>(hostOf(state).scene().byId(id));
+}
+
+int applyImpulse(lua_State* state) {
+    Body* body = bodyAt(state, 1);
+    if (body == nullptr) return luaL_error(state, "applyImpulse: the node is not a Body");
+
+    if (lua_gettop(state) >= 7) body->applyImpulse(vectorAt(state, 2), vectorAt(state, 5));
+    else body->applyImpulse(vectorAt(state, 2));
+    return 0;
+}
+
+int applyForce(lua_State* state) {
+    Body* body = bodyAt(state, 1);
+    if (body == nullptr) return luaL_error(state, "applyForce: the node is not a Body");
+
+    if (lua_gettop(state) >= 7) body->applyForce(vectorAt(state, 2), vectorAt(state, 5));
+    else body->applyForce(vectorAt(state, 2));
+    return 0;
+}
+
+int applyTorque(lua_State* state) {
+    Body* body = bodyAt(state, 1);
+    if (body == nullptr) return luaL_error(state, "applyTorque: the node is not a Body");
+
+    body->applyTorque(vectorAt(state, 2));
+    return 0;
+}
+
+int castRay(lua_State* state) {
+    RayHit hit;
+    const float reach = cinder::lua::LuaApi::optFloat(state, 7, 1000.0f);
+    if (!hostOf(state).raycast(vectorAt(state, 1), vectorAt(state, 4), reach, hit)) return 0;
+
+    lua_pushinteger(state, hit.node->id());
+    lua_pushnumber(state, hit.position.x);
+    lua_pushnumber(state, hit.position.y);
+    lua_pushnumber(state, hit.position.z);
+    lua_pushnumber(state, hit.normal.x);
+    lua_pushnumber(state, hit.normal.y);
+    lua_pushnumber(state, hit.normal.z);
+    lua_pushnumber(state, hit.distance);
+    return 8;
+}
+
+int readGravity(lua_State* state) {
+    const glm::vec3& gravity = hostOf(state).gravity();
+    lua_pushnumber(state, gravity.x);
+    lua_pushnumber(state, gravity.y);
+    lua_pushnumber(state, gravity.z);
+    return 3;
+}
+
+int writeGravity(lua_State* state) {
+    hostOf(state).setGravity(vectorAt(state, 1));
+    return 0;
+}
+
 std::array<glm::vec3, 2> basisAround(const glm::vec3& normal) {
     const glm::vec3 guide = std::abs(normal.x) >= 0.57735f ? glm::vec3(normal.y, -normal.x, 0.0f)
                                                            : glm::vec3(0.0f, normal.z, -normal.y);
@@ -43,6 +112,7 @@ void World::step(float dt) {
     states_.clear();
     proxies_.clear();
     contacts_.clear();
+    touching_.clear();
     states_.emplace_back();
 
     for (Node* root : scene_.roots()) gather(*root, 0);
@@ -57,6 +127,75 @@ void World::step(float dt) {
     warmStart();
     solve();
     for (std::size_t i = 1; i < states_.size(); ++i) advance(states_[i], dt);
+    notify();
+}
+
+void World::notify() {
+    current_.clear();
+    for (const Touch& touch : touching_) current_.insert(touch.key);
+
+    if (observer_ != nullptr) {
+        for (const Touch& touch : touching_) {
+            if (previous_.find(touch.key) != previous_.end()) continue;
+            Node* a = scene_.byId(touch.a);
+            Node* b = scene_.byId(touch.b);
+            if (a != nullptr && b != nullptr) observer_->touched(*a, *b);
+        }
+
+        for (const Touch& touch : touched_) {
+            if (current_.find(touch.key) != current_.end()) continue;
+            Node* a = scene_.byId(touch.a);
+            Node* b = scene_.byId(touch.b);
+            if (a != nullptr && b != nullptr) observer_->touchEnded(*a, *b);
+        }
+    }
+
+    previous_.swap(current_);
+    touched_.swap(touching_);
+}
+
+void World::registerApi(cinder::lua::LuaApi& api) {
+    api.bind("applyImpulse", applyImpulse, this);
+    api.bind("applyForce", applyForce, this);
+    api.bind("applyTorque", applyTorque, this);
+    api.bind("raycast", castRay, this);
+    api.bind("gravity", readGravity, this);
+    api.bind("setGravity", writeGravity, this);
+}
+
+bool World::raycast(const glm::vec3& origin, const glm::vec3& direction, float maxDistance,
+                    RayHit& hit) const {
+    const float reach = glm::length(direction);
+    if (reach <= 0.0f || maxDistance <= 0.0f) return false;
+
+    const glm::vec3 heading = direction / reach;
+    bool found = false;
+    for (Node* root : scene_.roots()) cast(*root, nullptr, origin, heading, maxDistance, hit, found);
+    return found;
+}
+
+void World::cast(Node& node, Body* owner, const glm::vec3& origin, const glm::vec3& direction,
+                 float maxDistance, RayHit& hit, bool& found) const {
+    if (node.destroyed() || !node.isEnabled()) return;
+
+    if (auto* body = dynamic_cast<Body*>(&node)) {
+        owner = body;
+    } else if (auto* collider = dynamic_cast<Collider*>(&node)) {
+        float distance = 0.0f;
+        glm::vec3 normal(0.0f);
+        const Geometry geometry = collider->geometry();
+        if (rayHits(geometry, origin, direction, distance, normal) && distance <= maxDistance &&
+            (!found || distance < hit.distance)) {
+            hit.node = owner != nullptr ? static_cast<Node*>(owner) : static_cast<Node*>(collider);
+            hit.collider = collider;
+            hit.position = origin + direction * distance;
+            hit.normal = normal;
+            hit.distance = distance;
+            found = true;
+        }
+    }
+
+    for (Node* child : node.children()) cast(*child, owner, origin, direction, maxDistance, hit, found);
 }
 
 void World::gather(Node& node, int owner) {
@@ -121,6 +260,11 @@ void World::weigh() {
         if (state.body->motion_ != Body::Motion::Dynamic) continue;
         state.inverseMass = 1.0f / state.body->mass_;
         if (glm::determinant(state.inertia) > 0.0f) state.inverseInertia = glm::inverse(state.inertia);
+        if (!state.body->planar_) continue;
+
+        state.linearMask = glm::vec3(1.0f, 1.0f, 0.0f);
+        const glm::mat3 spin(glm::vec3(0.0f), glm::vec3(0.0f), glm::vec3(0.0f, 0.0f, 1.0f));
+        state.inverseInertia = spin * state.inverseInertia * spin;
     }
 }
 
@@ -135,9 +279,19 @@ void World::accelerate(State& state, float dt) {
             state.angularVelocity = body.angularVelocity_;
             return;
         case Body::Motion::Dynamic:
-            state.velocity = (body.velocity_ + gravity_ * (body.gravityScale_ * dt)) /
+            state.velocity = (body.velocity_ + gravity_ * (body.gravityScale_ * dt) +
+                              (body.force_ * dt + body.impulse_) * state.inverseMass) /
                              (1.0f + dt * body.linearDamping_);
-            state.angularVelocity = body.angularVelocity_ / (1.0f + dt * body.angularDamping_);
+            state.angularVelocity =
+                (body.angularVelocity_ +
+                 state.inverseInertia * (body.torque_ * dt + body.angularImpulse_)) /
+                (1.0f + dt * body.angularDamping_);
+            state.velocity *= state.linearMask;
+            if (body.planar_) state.angularVelocity = glm::vec3(0.0f, 0.0f, state.angularVelocity.z);
+            body.force_ = glm::vec3(0.0f);
+            body.torque_ = glm::vec3(0.0f);
+            body.impulse_ = glm::vec3(0.0f);
+            body.angularImpulse_ = glm::vec3(0.0f);
             return;
     }
 }
@@ -156,6 +310,12 @@ void World::detect(float dt) {
             if (!dynamic(a.owner) && !dynamic(b.owner)) continue;
             if (!overlaps(a.bounds, b.bounds)) continue;
             if (!collide(a.geometry, b.geometry, manifold)) continue;
+
+            const Body* first = states_[static_cast<std::size_t>(a.owner)].body;
+            const Body* second = states_[static_cast<std::size_t>(b.owner)].body;
+            touching_.push_back({contactKey(a.collider->id(), b.collider->id(), 0),
+                                 first != nullptr ? first->id() : a.collider->id(),
+                                 second != nullptr ? second->id() : b.collider->id()});
 
             for (int k = 0; k < manifold.count; ++k) {
                 addContact(a, b, manifold.normal, manifold.points[static_cast<std::size_t>(k)], dt);
@@ -211,18 +371,18 @@ void World::warmStart() {
 void World::apply(const Contact& contact, const glm::vec3& impulse) {
     State& a = states_[static_cast<std::size_t>(contact.a)];
     State& b = states_[static_cast<std::size_t>(contact.b)];
-    a.velocity -= a.inverseMass * impulse;
+    a.velocity -= a.inverseMass * (impulse * a.linearMask);
     a.angularVelocity -= a.inverseInertia * glm::cross(contact.fromA, impulse);
-    b.velocity += b.inverseMass * impulse;
+    b.velocity += b.inverseMass * (impulse * b.linearMask);
     b.angularVelocity += b.inverseInertia * glm::cross(contact.fromB, impulse);
 }
 
 void World::applyDrift(const Contact& contact, const glm::vec3& impulse) {
     State& a = states_[static_cast<std::size_t>(contact.a)];
     State& b = states_[static_cast<std::size_t>(contact.b)];
-    a.drift -= a.inverseMass * impulse;
+    a.drift -= a.inverseMass * (impulse * a.linearMask);
     a.angularDrift -= a.inverseInertia * glm::cross(contact.fromA, impulse);
-    b.drift += b.inverseMass * impulse;
+    b.drift += b.inverseMass * (impulse * b.linearMask);
     b.angularDrift += b.inverseInertia * glm::cross(contact.fromB, impulse);
 }
 
@@ -230,7 +390,9 @@ float World::effectiveMass(const State& a, const State& b, const glm::vec3& from
                            const glm::vec3& fromB, const glm::vec3& direction) const {
     const glm::vec3 turnA = glm::cross(fromA, direction);
     const glm::vec3 turnB = glm::cross(fromB, direction);
-    const float stiffness = a.inverseMass + b.inverseMass + glm::dot(turnA, a.inverseInertia * turnA) +
+    const float stiffness = a.inverseMass * glm::dot(direction, a.linearMask * direction) +
+                            b.inverseMass * glm::dot(direction, b.linearMask * direction) +
+                            glm::dot(turnA, a.inverseInertia * turnA) +
                             glm::dot(turnB, b.inverseInertia * turnB);
     return stiffness > 0.0f ? 1.0f / stiffness : 0.0f;
 }

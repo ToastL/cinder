@@ -31,6 +31,8 @@ Bounds boundsOf(const Geometry& geometry);
 bool overlaps(const Bounds& a, const Bounds& b);
 float volumeOf(const Geometry& geometry);
 glm::mat3 inertiaOf(const Geometry& geometry, float mass);
+bool rayHits(const Geometry& geometry, const glm::vec3& origin, const glm::vec3& direction,
+             float& distance, glm::vec3& normal);
 
 }
 

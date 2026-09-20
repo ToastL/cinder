@@ -15,8 +15,9 @@ Engine::Engine(const ProjectConfig& config, const cinder::gfx::OverlayFactory& o
       renderer_(ctx_, window_, overlay) {
     cinder::components::registerBuiltins(types_);
     cinder::physics::registerNodes(types_);
+    physics_.setGravity(config.gravity);
 
-    script_ = std::make_unique<cinder::script::LuaHost>(scene_, input_, renderer_,
+    script_ = std::make_unique<cinder::script::LuaHost>(scene_, input_, renderer_, physics_,
                                                         [this] { quit(); });
     script_->boot();
 }

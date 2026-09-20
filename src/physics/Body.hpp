@@ -22,6 +22,7 @@ public:
     float angularDamping() const { return angularDamping_; }
     const glm::vec3& velocity() const { return velocity_; }
     const glm::vec3& angularVelocity() const { return angularVelocity_; }
+    bool planar() const { return planar_; }
 
     Body& setMotion(Motion motion) { motion_ = motion; return *this; }
     Body& setMass(float mass) { mass_ = mass; return *this; }
@@ -36,6 +37,15 @@ public:
         angularVelocity_ = glm::vec3(x, y, z);
         return *this;
     }
+    Body& setPlanar(bool planar) { planar_ = planar; return *this; }
+
+    Body& applyImpulse(const glm::vec3& impulse);
+    Body& applyImpulse(const glm::vec3& impulse, const glm::vec3& point);
+    Body& applyForce(const glm::vec3& force);
+    Body& applyForce(const glm::vec3& force, const glm::vec3& point);
+    Body& applyTorque(const glm::vec3& torque);
+
+    glm::vec3 centre();
 
     CINDER_NODE(Body, cinder::scene::Spatial) {
         CINDER_PROP(motion_);
@@ -45,6 +55,7 @@ public:
         CINDER_PROP_R(angularDamping_, 0.0f, FLT_MAX);
         CINDER_PROP(velocity_);
         CINDER_PROP(angularVelocity_);
+        CINDER_PROP(planar_);
     }
 
 private:
@@ -57,6 +68,12 @@ private:
     float angularDamping_ = 0.0f;
     glm::vec3 velocity_{0.0f};
     glm::vec3 angularVelocity_{0.0f};
+    bool planar_ = false;
+
+    glm::vec3 force_{0.0f};
+    glm::vec3 torque_{0.0f};
+    glm::vec3 impulse_{0.0f};
+    glm::vec3 angularImpulse_{0.0f};
 
     glm::vec3 origin_{0.0f};
     glm::quat orientation_{1.0f, 0.0f, 0.0f, 0.0f};

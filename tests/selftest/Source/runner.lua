@@ -145,6 +145,20 @@ task.delay(0.1, function()
     task.delay(0.05, function() ticksAtDestroy = _G.selftestTicks end)
 end)
 
+local ground = scene:create("Collider")
+ground.name = "Ground"
+ground.size = vec3(20, 1, 20)
+ground.position = vec3(0, -0.5, 0)
+
+local ball = scene:create("Body")
+ball.name = "Ball"
+ball.position = vec3(0, 0.8, 0)
+ball:add("Collider").shape = "sphere"
+
+local touchedBy = nil
+ball.touched:connect(function(other) touchedBy = touchedBy or other end)
+ball:applyImpulse(vec3(0, 0, 0.5))
+
 task.delay(0.4, function()
     local marks = _G.selftestMarks or {}
     check("stepped signal", ticks > 5)
@@ -158,6 +172,13 @@ task.delay(0.4, function()
     check("script globals are private", leaked == nil)
     check("destroyed node stops its script",
           ticksAtDestroy ~= nil and ticksAtDestroy > 0 and _G.selftestTicks == ticksAtDestroy)
+
+    local hit = engine.raycast(ball.position + vec3(0, 3, 0), vec3(0, -1, 0), 10)
+    check("gravity pulls down", engine.gravity().y < 0)
+    check("body rests on a collider", math.abs(ball.position.y - 0.5) < 0.05)
+    check("impulse moved the body", ball.position.z > 0.05)
+    check("touched fires with the other node", touchedBy == ground)
+    check("raycast finds the body", hit ~= nil and hit.node == ball and hit.normal.y > 0.9)
     engine.log(fails == 0 and "ALL PASS" or (fails .. " FAILED"))
     engine.quit()
 end)

@@ -180,6 +180,17 @@ TEST_CASE("settings come from Config/Game.ini and default without it") {
     CHECK(config.fixedHz == 60);
 }
 
+TEST_CASE("gravity comes from Config/Game.ini") {
+    Folder f;
+    f.write("Game.cinder", MINIMAL);
+    CHECK(ProjectConfig::load(f.root).gravity.y == -9.81f);
+
+    f.write("Config/Game.ini", "[Physics]\ngravity=0 -20 0\n");
+    const ProjectConfig config = ProjectConfig::load(f.root);
+    CHECK(config.gravity.y == -20.0f);
+    CHECK(ProjectConfig::save(config) == "[Physics]\ngravity=0 -20 0\n");
+}
+
 TEST_CASE("a non-positive fixedHz in Game.ini is rejected") {
     Folder f;
     f.write("Game.cinder", MINIMAL);

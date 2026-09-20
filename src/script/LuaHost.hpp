@@ -12,6 +12,10 @@
 #include <unordered_map>
 
 namespace cinder::gfx { class Renderer; }
+namespace cinder::physics {
+class ContactObserver;
+class World;
+}
 namespace cinder::platform { class Input; }
 namespace cinder::scene {
 class Node;
@@ -24,7 +28,8 @@ namespace cinder::script {
 class LuaHost : public ScriptHost {
 public:
     LuaHost(cinder::scene::Scene& scene, cinder::platform::Input& input,
-            cinder::gfx::Renderer& renderer, std::function<void()> quit);
+            cinder::gfx::Renderer& renderer, cinder::physics::World& physics,
+            std::function<void()> quit);
     ~LuaHost() override;
 
     LuaHost(const LuaHost&) = delete;
@@ -56,10 +61,12 @@ private:
     cinder::scene::Scene& scene_;
     cinder::platform::Input& input_;
     cinder::gfx::Renderer& renderer_;
+    cinder::physics::World& physics_;
     std::function<void()> quit_;
 
     lua_State* state_ = nullptr;
     std::unique_ptr<cinder::scene::SceneObserver> observer_;
+    std::unique_ptr<cinder::physics::ContactObserver> contacts_;
     std::unordered_map<std::string, Watch> watched_;
 };
 

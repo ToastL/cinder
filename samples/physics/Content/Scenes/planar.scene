@@ -1,0 +1,150 @@
+version 4
+nodes {
+    Camera {
+        id 1
+        position 0 0 10
+        projection "orthographic"
+        clearColor 0.05 0.06 0.09 1
+        virtualSize 20 11.25
+    }
+    Folder {
+        id 2
+        name "Room"
+        children {
+            Sprite {
+                id 3
+                name "Floor"
+                position 0 -5 0
+                size 18 1
+                color 0.3 0.32 0.38 1
+                children {
+                    Collider {
+                        id 4
+                        size 18 1 1
+                    }
+                }
+            }
+            Sprite {
+                id 5
+                name "Wall"
+                position -9 -0.5 0
+                size 1 10
+                color 0.3 0.32 0.38 1
+                children {
+                    Collider {
+                        id 6
+                        size 1 10 1
+                    }
+                }
+            }
+            Sprite {
+                id 7
+                name "Wall"
+                position 9 -0.5 0
+                size 1 10
+                color 0.3 0.32 0.38 1
+                children {
+                    Collider {
+                        id 8
+                        size 1 10 1
+                    }
+                }
+            }
+        }
+    }
+    Body {
+        id 9
+        name "Box"
+        position -2 -4 0
+        planar true
+        children {
+            Sprite {
+                id 10
+                size 1 1
+                color 0.9 0.6 0.3 1
+            }
+            Collider {
+                id 11
+            }
+        }
+    }
+    Body {
+        id 12
+        name "Box"
+        position -2 -3 0
+        planar true
+        children {
+            Sprite {
+                id 13
+                size 1 1
+                color 0.9 0.7 0.4 1
+            }
+            Collider {
+                id 14
+            }
+        }
+    }
+    Body {
+        id 15
+        name "Box"
+        position -1.9 -2 0
+        planar true
+        children {
+            Sprite {
+                id 16
+                size 1 1
+                color 0.9 0.8 0.5 1
+            }
+            Collider {
+                id 17
+            }
+        }
+    }
+    Body {
+        id 18
+        name "Bouncer"
+        position 3 3 0
+        planar true
+        children {
+            Sprite {
+                id 19
+                size 1 1
+                color 0.5 0.8 0.9 1
+            }
+            Collider {
+                id 20
+                restitution 0.5
+            }
+        }
+    }
+    Body {
+        id 21
+        name "Wedge"
+        position 0.5 0 0
+        rotation 0 0 0.6
+        planar true
+        children {
+            Sprite {
+                id 22
+                size 1 1
+                color 0.8 0.5 0.7 1
+            }
+            Collider {
+                id 23
+            }
+        }
+    }
+    Group {
+        id 24
+        name "Spawner"
+        attributes {
+            lifetime 12
+        }
+        children {
+            Script {
+                id 25
+                file "spawner2d.lua"
+            }
+        }
+    }
+}

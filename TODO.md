@@ -19,8 +19,9 @@ included, and Properties edits the selected node's fields and attributes with no
 code. A click in the Scene view selects, gizmos move, rotate and scale the selection, every edit is
 undoable, and an unsaved scene is marked and guarded on close. A physics engine of our own has
 started: bodies and colliders as nodes, spheres and boxes, friction, and a sequential-impulse solver
-with warm starting that stacks crates and never runs in Edit mode. 198 headless test cases and a
-60-check Lua selftest.
+with warm starting that stacks crates and never runs in Edit mode; scripts push bodies around, cast
+rays and hear about contacts, and a `planar` body makes a 2D scene physical. 204 headless test cases
+and a 65-check Lua selftest.
 
 Foundations, the scene model, the scripting ergonomics, serialization and the Edit/Play split are
 done. The editor shell is underway — ImGui, the console, the toolbar, the Scene viewport, the
@@ -184,10 +185,13 @@ multiple windows to build. ImGui stays the working editor until the last panel i
       edge-edge fallback, Coulomb friction on two tangents, impulses carried across steps by feature id,
       and split-impulse position correction. A stack of 10 crates stands for 600 steps, a crate holds on
       a slope it cannot slide down, and a sliding sphere turns into a rolling one.
-- [ ] Physics, phase 3 — the Lua API: `applyImpulse` / `applyForce`, `touched` and `touchEnded` through
-      a `ContactObserver` that `script/SceneApi` implements, `physics.raycast`, a `planar` lock so a 2D
-      scene is the same engine with three degrees of freedom removed, and `[Physics] gravity` /
-      `unitsPerMeter` in `Game.ini`
+- [x] **Physics, phase 3** — `applyImpulse` / `applyForce` / `applyTorque` as accumulators on the node
+      proxy, `engine.raycast` returning `{ node, position, normal, distance }`, `touched` and
+      `touchEnded` through a `ContactObserver` that `script/SceneApi` implements, a `planar` lock that
+      makes a scene 2D, and `[Physics] gravity` in `Game.ini`. `samples/physics` gained a 2D scene.
+- [ ] Physics: sensors that detect without responding, and collision layers to filter pairs
+- [ ] Physics: `unitsPerMeter` in `Game.ini`, so a project working in pixels can scale the solver's
+      slop and bounce threshold with it
 - [ ] Physics, phase 4 — capsules, a dynamic AABB tree shared with raycasts, and sleeping islands
 - [ ] Physics, phase 5 — joints, CCD, collision layers, a character controller, convex hulls
 - [ ] Render interpolation — `alpha` reaches `onRender` and nothing uses it, so at `fixedHz` 60 on a

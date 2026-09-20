@@ -116,6 +116,11 @@ void ProjectConfig::walk(cinder::serial::Archive& ar) {
         height = ar.integer("height", height, defaults.height);
         ar.leaveRecord();
     }
+
+    if (ar.enterRecord("Physics")) {
+        ar.vector("gravity", &gravity.x, &defaults.gravity.x, 3);
+        ar.leaveRecord();
+    }
 }
 
 }

@@ -2,6 +2,8 @@
 
 #include "core/ProjectDescriptor.hpp"
 
+#include <glm/vec3.hpp>
+
 #include <filesystem>
 #include <string>
 
@@ -15,6 +17,7 @@ struct ProjectConfig {
     int height = 720;
     std::string startScene = "Scenes/main.scene";
     int fixedHz = 60;
+    glm::vec3 gravity{0.0f, -9.81f, 0.0f};
     ProjectDescriptor descriptor;
 
     ProjectConfig() = default;

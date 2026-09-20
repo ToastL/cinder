@@ -11,6 +11,7 @@
 #include "scene/Node.hpp"
 #include "scene/NodeTypes.hpp"
 #include "scene/Scene.hpp"
+#include "physics/World.hpp"
 #include "script/SceneApi.hpp"
 #include "script/Script.hpp"
 
@@ -153,8 +154,9 @@ bool callWithPath(lua_State* state, const char* global, const std::string& path)
 }
 
 LuaHost::LuaHost(cinder::scene::Scene& scene, cinder::platform::Input& input,
-                 cinder::gfx::Renderer& renderer, std::function<void()> quit)
-    : scene_(scene), input_(input), renderer_(renderer), quit_(std::move(quit)) {}
+                 cinder::gfx::Renderer& renderer, cinder::physics::World& physics,
+                 std::function<void()> quit)
+    : scene_(scene), input_(input), renderer_(renderer), physics_(physics), quit_(std::move(quit)) {}
 
 int LuaHost::scriptRead(lua_State* state) {
     const char* path = lua_tostring(state, 1);
@@ -183,6 +185,8 @@ void LuaHost::boot() {
     loadPrelude();
     observer_ = makeSceneObserver(state_);
     scene_.setObserver(observer_.get());
+    contacts_ = makeContactObserver(state_);
+    physics_.setObserver(contacts_.get());
 }
 
 void LuaHost::registerScripts() {
@@ -226,6 +230,7 @@ void LuaHost::registerApi() {
 
     registerSceneApi(api, scene_);
     renderer_.registerApi(api);
+    physics_.registerApi(api);
 
     api.install("engine");
 }
@@ -326,6 +331,8 @@ void LuaHost::close() {
     if (state_ == nullptr) return;
     scene_.setObserver(nullptr);
     observer_.reset();
+    physics_.setObserver(nullptr);
+    contacts_.reset();
     lua_close(state_);
     state_ = nullptr;
 }

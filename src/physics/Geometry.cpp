@@ -3,8 +3,12 @@
 #include <glm/common.hpp>
 #include <glm/geometric.hpp>
 #include <glm/gtc/constants.hpp>
+#include <glm/matrix.hpp>
+
+#include <cfloat>
 
 #include <algorithm>
+#include <cmath>
 
 namespace cinder::physics {
 
@@ -60,6 +64,73 @@ float volumeOf(const Geometry& geometry) {
     }
     const glm::vec3& h = geometry.halfExtents;
     return 8.0f * h.x * h.y * h.z;
+}
+
+namespace {
+
+bool raySphere(const Geometry& sphere, const glm::vec3& origin, const glm::vec3& direction,
+               float& distance, glm::vec3& normal) {
+    const glm::vec3 offset = origin - sphere.center;
+    const float along = glm::dot(offset, direction);
+    const float gap = glm::dot(offset, offset) - sphere.radius * sphere.radius;
+    const float discriminant = along * along - gap;
+    if (discriminant < 0.0f) return false;
+
+    const float entry = -along - std::sqrt(discriminant);
+    if (entry < 0.0f) return false;
+
+    distance = entry;
+    normal = (origin + direction * entry - sphere.center) / sphere.radius;
+    return true;
+}
+
+bool rayBox(const Geometry& box, const glm::vec3& origin, const glm::vec3& direction,
+            float& distance, glm::vec3& normal) {
+    const glm::mat3 into = glm::transpose(box.axes);
+    const glm::vec3 start = into * (origin - box.center);
+    const glm::vec3 heading = into * direction;
+
+    float entry = 0.0f;
+    float exit = FLT_MAX;
+    int axis = 0;
+    float side = 1.0f;
+
+    for (int i = 0; i < 3; ++i) {
+        if (std::abs(heading[i]) < 1e-8f) {
+            if (std::abs(start[i]) > box.halfExtents[i]) return false;
+            continue;
+        }
+
+        const float inverse = 1.0f / heading[i];
+        float enters = (-box.halfExtents[i] - start[i]) * inverse;
+        float leaves = (box.halfExtents[i] - start[i]) * inverse;
+        float facing = -1.0f;
+        if (enters > leaves) {
+            std::swap(enters, leaves);
+            facing = 1.0f;
+        }
+        if (enters > entry) {
+            entry = enters;
+            axis = i;
+            side = facing;
+        }
+        exit = std::min(exit, leaves);
+        if (entry > exit) return false;
+    }
+
+    if (entry <= 0.0f) return false;
+
+    distance = entry;
+    normal = box.axes[axis] * side;
+    return true;
+}
+
+}
+
+bool rayHits(const Geometry& geometry, const glm::vec3& origin, const glm::vec3& direction,
+             float& distance, glm::vec3& normal) {
+    return geometry.shape == Shape::Sphere ? raySphere(geometry, origin, direction, distance, normal)
+                                           : rayBox(geometry, origin, direction, distance, normal);
 }
 
 glm::mat3 inertiaOf(const Geometry& geometry, float mass) {

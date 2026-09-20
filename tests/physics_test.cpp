@@ -559,3 +559,109 @@ TEST_CASE("friction turns a sliding sphere into a rolling one") {
     CHECK(ball->velocity().x == doctest::Approx(4.0f * 5.0f / 7.0f).epsilon(0.05));
     CHECK(ball->angularVelocity().z == doctest::Approx(-2.0f * ball->velocity().x).epsilon(0.05));
 }
+
+TEST_CASE("an impulse changes velocity by impulse over mass") {
+    Fixture f;
+    f.world.setGravity(glm::vec3(0.0f));
+    Body* body = f.scene.create<Body>(nullptr);
+    body->setMass(2.0f);
+
+    body->applyImpulse(glm::vec3(4.0f, 0.0f, 0.0f));
+    f.run(1);
+    CHECK(body->velocity().x == doctest::Approx(2.0f));
+
+    f.run(1);
+    CHECK(body->velocity().x == doctest::Approx(2.0f));
+}
+
+TEST_CASE("an impulse off the centre of mass adds spin") {
+    Fixture f;
+    f.world.setGravity(glm::vec3(0.0f));
+    Body* ball = f.ball(0.0f, 0.0f, 0.0f);
+
+    ball->applyImpulse(glm::vec3(0.0f, 0.0f, -1.0f), glm::vec3(0.5f, 0.0f, 0.0f));
+    f.run(1);
+
+    CHECK(ball->velocity().z == doctest::Approx(-1.0f));
+    CHECK(ball->angularVelocity().y == doctest::Approx(5.0f));
+}
+
+TEST_CASE("a force lasts one step") {
+    Fixture f;
+    f.world.setGravity(glm::vec3(0.0f));
+    Body* body = f.scene.create<Body>(nullptr);
+
+    body->applyForce(glm::vec3(3.0f, 0.0f, 0.0f));
+    f.run(1);
+    const float gained = body->velocity().x;
+    CHECK(gained == doctest::Approx(3.0f * DT));
+
+    f.run(1);
+    CHECK(body->velocity().x == doctest::Approx(gained));
+}
+
+TEST_CASE("a planar body keeps its depth and turns only about z") {
+    Fixture f;
+    f.floor();
+    Body* box = f.crate(0.0f, 3.0f, 2.0f);
+    box->setPlanar(true).setVelocity(1.0f, 0.0f, 5.0f).setAngularVelocity(2.0f, 2.0f, 2.0f);
+
+    f.run(120);
+    CHECK(worldOf(box).z == 2.0f);
+    CHECK(box->velocity().z == 0.0f);
+    CHECK(box->transform()->rotation().x == 0.0f);
+    CHECK(box->transform()->rotation().y == 0.0f);
+    CHECK(std::abs(box->transform()->rotation().z) > 0.1f);
+}
+
+TEST_CASE("a ray reports the nearest shape it meets") {
+    Fixture f;
+    Collider* floor = f.floor();
+    Body* ball = f.ball(0.0f, 3.0f, 0.0f);
+
+    cinder::physics::RayHit hit;
+    REQUIRE(f.world.raycast(glm::vec3(0.0f, 10.0f, 0.0f), glm::vec3(0.0f, -1.0f, 0.0f), 100.0f, hit));
+    CHECK(hit.node == ball);
+    CHECK(hit.distance == doctest::Approx(6.5f));
+    checkVec(hit.position, glm::vec3(0.0f, 3.5f, 0.0f));
+    checkVec(hit.normal, glm::vec3(0.0f, 1.0f, 0.0f));
+
+    CHECK_FALSE(f.world.raycast(glm::vec3(0.0f, 10.0f, 0.0f), glm::vec3(1.0f, 0.0f, 0.0f), 100.0f, hit));
+    CHECK_FALSE(f.world.raycast(glm::vec3(0.0f, 10.0f, 0.0f), glm::vec3(0.0f, -1.0f, 0.0f), 5.0f, hit));
+
+    ball->setEnabled(false);
+    REQUIRE(f.world.raycast(glm::vec3(0.0f, 10.0f, 0.0f), glm::vec3(0.0f, -1.0f, 0.0f), 100.0f, hit));
+    CHECK(hit.node == floor);
+    CHECK(hit.distance == doctest::Approx(10.0f));
+}
+
+TEST_CASE("touches are announced when they begin and when they end") {
+    struct Listener final : cinder::physics::ContactObserver {
+        std::vector<std::pair<int, int>> began;
+        std::vector<std::pair<int, int>> ended;
+
+        void touched(Node& a, Node& b) override { began.push_back({a.id(), b.id()}); }
+        void touchEnded(Node& a, Node& b) override { ended.push_back({a.id(), b.id()}); }
+    };
+
+    Fixture f;
+    Listener listener;
+    f.world.setObserver(&listener);
+
+    Collider* floor = f.floor();
+    Body* ball = f.ball(0.0f, 3.0f, 0.0f);
+
+    f.run(120);
+    REQUIRE(listener.began.size() == 1);
+    CHECK(listener.began[0].first == floor->id());
+    CHECK(listener.began[0].second == ball->id());
+    CHECK(listener.ended.empty());
+
+    ball->transform()->setPosition(0.0f, 8.0f, 0.0f);
+    f.run(1);
+    REQUIRE(listener.ended.size() == 1);
+    CHECK(listener.ended[0].second == ball->id());
+
+    f.run(150);
+    CHECK(listener.began.size() == 2);
+}

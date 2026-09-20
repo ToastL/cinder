@@ -45,6 +45,16 @@ function __childRemoved(parent, child)
     fire(parent, "childRemoved", __node(child))
 end
 
+function __touched(a, b)
+    fire(a, "touched", __node(b))
+    fire(b, "touched", __node(a))
+end
+
+function __touchEnded(a, b)
+    fire(a, "touchEnded", __node(b))
+    fire(b, "touchEnded", __node(a))
+end
+
 function __destroying(id)
     fire(id, "destroying")
     signals[id] = nil
@@ -88,6 +98,8 @@ local get = {
     childRemoved     = function(self) return signalOf(self.id, "childRemoved") end,
     destroying       = function(self) return signalOf(self.id, "destroying") end,
     attributeChanged = function(self) return signalOf(self.id, "attributeChanged") end,
+    touched          = function(self) return signalOf(self.id, "touched") end,
+    touchEnded       = function(self) return signalOf(self.id, "touchEnded") end,
 }
 
 local function spatial(self, key, ok)
@@ -132,6 +144,26 @@ function fns:translate(v)
     if not engine.translate(self.id, v:unpack()) then
         error(tostring(self) .. " has no position", 2)
     end
+end
+
+function fns:applyImpulse(impulse, point)
+    if point then
+        engine.applyImpulse(self.id, impulse.x, impulse.y, impulse.z, point.x, point.y, point.z)
+    else
+        engine.applyImpulse(self.id, impulse.x, impulse.y, impulse.z)
+    end
+end
+
+function fns:applyForce(force, point)
+    if point then
+        engine.applyForce(self.id, force.x, force.y, force.z, point.x, point.y, point.z)
+    else
+        engine.applyForce(self.id, force.x, force.y, force.z)
+    end
+end
+
+function fns:applyTorque(torque)
+    engine.applyTorque(self.id, torque.x, torque.y, torque.z)
 end
 
 function fns:getAttribute(name)
@@ -183,6 +215,30 @@ end
 nodeMt.__tostring = function(self)
     return (engine.className(self.id) or "Node") .. " " .. (engine.name(self.id) or "?")
         .. "(" .. self.id .. ")"
+end
+
+local castRay = engine.raycast
+local readGravity = engine.gravity
+local writeGravity = engine.setGravity
+
+function engine.raycast(origin, direction, distance)
+    local id, px, py, pz, nx, ny, nz, reach =
+        castRay(origin.x, origin.y, origin.z, direction.x, direction.y, direction.z, distance)
+    if id == nil then return nil end
+    return {
+        node = __node(id),
+        position = vec3(px, py, pz),
+        normal = vec3(nx, ny, nz),
+        distance = reach,
+    }
+end
+
+function engine.gravity()
+    return vec3(readGravity())
+end
+
+function engine.setGravity(gravity)
+    writeGravity(gravity.x, gravity.y, gravity.z)
 end
 
 scene = {}
