@@ -1,18 +1,12 @@
 #include "lua/LuaSource.hpp"
 
-#include <fstream>
-#include <sstream>
-#include <stdexcept>
+#include "platform/Files.hpp"
+
 
 namespace cinder::lua {
 
 std::string readSource(const std::filesystem::path& path) {
-    std::ifstream in(path, std::ios::binary);
-    if (!in) throw std::runtime_error("Cannot read " + path.string());
-
-    std::ostringstream buffer;
-    buffer << in.rdbuf();
-    return buffer.str();
+    return cinder::platform::readTextFile(path);
 }
 
 std::int64_t modifiedMillis(const std::filesystem::path& path, std::int64_t fallback) {

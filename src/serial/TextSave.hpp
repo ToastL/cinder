@@ -30,7 +30,6 @@ public:
 
     cinder::scene::PropRec bag(std::string_view name, const cinder::scene::PropRec& values) override;
 
-    static std::string number(float value);
     static std::string quoted(std::string_view value);
 
 private:

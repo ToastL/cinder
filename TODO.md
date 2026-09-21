@@ -21,7 +21,7 @@ undoable, and an unsaved scene is marked and guarded on close. A physics engine 
 started: bodies and colliders as nodes, spheres and boxes, friction, and a sequential-impulse solver
 with warm starting that stacks crates and never runs in Edit mode; boxes, spheres and capsules meet
 through a bounding volume tree, settled islands fall asleep, and scripts push bodies around, cast rays
-and hear about contacts, with a `planar` body making a 2D scene physical. 217 headless test cases and
+and hear about contacts, with a `planar` body making a 2D scene physical. 222 headless test cases and
 a 65-check Lua selftest.
 
 Foundations, the scene model, the scripting ergonomics, serialization and the Edit/Play split are
@@ -188,7 +188,7 @@ multiple windows to build. ImGui stays the working editor until the last panel i
       a slope it cannot slide down, and a sliding sphere turns into a rolling one.
 - [x] **Physics, phase 3** — `applyImpulse` / `applyForce` / `applyTorque` as accumulators on the node
       proxy, `engine.raycast` returning `{ node, position, normal, distance }`, `touched` and
-      `touchEnded` through a `ContactObserver` that `script/SceneApi` implements, a `planar` lock that
+      `touchEnded` through a `ContactObserver` that `script/SceneObservers` implements, a `planar` lock that
       makes a scene 2D, and `[Physics] gravity` in `Game.ini`. `samples/physics` gained a 2D scene.
 - [ ] Physics: sensors that detect without responding, and collision layers to filter pairs
 - [ ] Physics: `unitsPerMeter` in `Game.ini`, so a project working in pixels can scale the solver's
@@ -284,9 +284,14 @@ multiple windows to build. ImGui stays the working editor until the last panel i
 - [ ] **ImGui blends the Scene image by its alpha.** The mesh pipeline writes `albedo.a` unblended,
       so a translucent mesh lets the panel background through in the editor, while the player's
       opaque swapchain ignores it. Sprites are fine — their alpha factors keep the target at 1.
-- [ ] **The layer graph is convention, not enforced.** See the Layering section of `CLAUDE.md`.
-      `#include` cycles are invisible in a way package cycles are not, so this is worth re-checking
-      by eye when adding a subdirectory.
+- [x] **Enforce the layer graph.** CTest runs `architecture_layers` against first-party includes and
+      `architecture_checker` against allowed/forbidden fixtures, including the editor-only ImGui rule.
+- [ ] **Scene text numeric parsing still follows the process locale.** `TextLoad` uses `std::stod` /
+      `std::stoll`, which also accept numeric prefixes. The refactor shares writer formatting only;
+      changing this grammar and its error behavior belongs in a separate correctness change.
+- [ ] **Swapchain format changes leave existing graphics pipelines in place.** The renderer rebuilds
+      its render passes when the format changes, but the dependent scene, composite and overlay
+      pipelines need a separate compatibility fix.
 - [ ] **The points-vs-pixels split is implicit.** `ViewCamera` and `screenToWorld` are in
       window points; the swapchain and render target are in framebuffer pixels. 2x apart on Retina.
       `cursor.lua` and `spawner.lua` in `samples/sandbox2d` depend on the current behaviour.

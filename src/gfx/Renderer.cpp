@@ -1,6 +1,7 @@
 #include "gfx/Renderer.hpp"
 
 #include "gfx/RendererDrawList.hpp"
+#include "gfx/Capture.hpp"
 #include "gfx/pass/MeshPass.hpp"
 #include "gfx/pass/SpritePass.hpp"
 #include "gfx/vk/DepthBuffer.hpp"
@@ -11,12 +12,8 @@
 #include "platform/Window.hpp"
 #include "scene/DrawList.hpp"
 
-#define STB_IMAGE_WRITE_IMPLEMENTATION
-#include <stb_image_write.h>
-
 #include <algorithm>
 #include <cmath>
-#include <cstring>
 #include <limits>
 
 namespace cinder::gfx {
@@ -120,24 +117,8 @@ VkExtent2D Renderer::targetExtent() const {
 }
 
 void Renderer::createTargets() {
-    destroyTargets();
-    const VkExtent2D extent = targetExtent();
-    for (uint32_t i = 0; i < FRAMES_IN_FLIGHT; ++i) {
-        targets_.push_back(std::make_unique<RenderTarget>(
-                ctx_, sceneRenderPass_, textureLayout_, swapchain_->format(), depthFormat_,
-                extent.width, extent.height));
-        if (embedded() && overlay_ != nullptr) {
-            viewportTextures_.push_back(overlay_->addTexture(targets_.back()->view()));
-        }
-    }
-}
-
-void Renderer::destroyTargets() {
-    if (overlay_ != nullptr) {
-        for (VkDescriptorSet texture : viewportTextures_) overlay_->removeTexture(texture);
-    }
-    viewportTextures_.clear();
-    targets_.clear();
+    targets_.recreate(ctx_, sceneRenderPass_, textureLayout_, swapchain_->format(), depthFormat_,
+                      targetExtent(), FRAMES_IN_FLIGHT, embedded() ? overlay_.get() : nullptr);
 }
 
 void Renderer::createCommandBuffers() {
@@ -196,8 +177,7 @@ void Renderer::beginFrame() {
 }
 
 VkDescriptorSet Renderer::viewport() const {
-    if (viewportTextures_.empty()) return VK_NULL_HANDLE;
-    return viewportTextures_[sync_->frame()];
+    return targets_.viewport(sync_->frame());
 }
 
 void Renderer::registerApi(cinder::lua::LuaApi& api) {
@@ -223,7 +203,7 @@ void Renderer::setViewport(VkCommandBuffer cmd, uint32_t width, uint32_t height)
 }
 
 void Renderer::recordCommandBuffer(VkCommandBuffer cmd, uint32_t imageIndex) {
-    RenderTarget& target = *targets_[sync_->frame()];
+    RenderTarget& target = targets_.at(sync_->frame());
 
     VkCommandBufferBeginInfo begin{};
     begin.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
@@ -338,7 +318,7 @@ void Renderer::recreateSwapchain() {
     const VkFormat previousFormat = swapchain_->format();
 
     swapchain_.reset();
-    destroyTargets();
+    targets_.clear();
     swapchain_ = std::make_unique<Swapchain>(ctx_, window_);
 
     if (swapchain_->format() != previousFormat) {
@@ -358,64 +338,14 @@ void Renderer::recreateSwapchain() {
 }
 
 void Renderer::capture(const std::string& path) {
-    ctx_.waitIdle();
-
-    RenderTarget& target = *targets_[lastFrame_];
-    const uint32_t width = target.width();
-    const uint32_t height = target.height();
-    const VkDeviceSize size = static_cast<VkDeviceSize>(width) * height * 4;
-
-    cinder::gfx::vk::GpuBuffer staging(ctx_, size, VK_BUFFER_USAGE_TRANSFER_DST_BIT, true);
-
-    VkCommandBuffer cmd = ctx_.beginSingleTime();
-
-    VkImageMemoryBarrier barrier{};
-    barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
-    barrier.oldLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-    barrier.newLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
-    barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-    barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-    barrier.image = target.image();
-    barrier.subresourceRange = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1};
-    barrier.srcAccessMask = VK_ACCESS_SHADER_READ_BIT;
-    barrier.dstAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
-
-    vkCmdPipelineBarrier(cmd, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
-                         VK_PIPELINE_STAGE_TRANSFER_BIT, 0, 0, nullptr, 0, nullptr, 1, &barrier);
-
-    VkBufferImageCopy copy{};
-    copy.imageSubresource = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, 1};
-    copy.imageExtent = {width, height, 1};
-    vkCmdCopyImageToBuffer(cmd, target.image(), VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
-                           staging.handle(), 1, &copy);
-
-    barrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
-    barrier.newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-    barrier.srcAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
-    barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
-
-    vkCmdPipelineBarrier(cmd, VK_PIPELINE_STAGE_TRANSFER_BIT,
-                         VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, 0, 0, nullptr, 0, nullptr,
-                         1, &barrier);
-
-    ctx_.endSingleTime(cmd);
-
-    std::vector<unsigned char> pixels(static_cast<std::size_t>(size));
-    std::memcpy(pixels.data(), staging.mapped(), static_cast<std::size_t>(size));
-
-    const bool bgra = swapchain_->format() == VK_FORMAT_B8G8R8A8_SRGB
-            || swapchain_->format() == VK_FORMAT_B8G8R8A8_UNORM;
-    if (bgra) {
-        for (std::size_t i = 0; i < pixels.size(); i += 4) std::swap(pixels[i], pixels[i + 2]);
-    }
-
-    stbi_write_png(path.c_str(), static_cast<int>(width), static_cast<int>(height), 4,
-                   pixels.data(), static_cast<int>(width) * 4);
+    captureTarget(ctx_, targets_.at(lastFrame_), swapchain_->format(), path);
 }
 
 cinder::scene::DrawList& Renderer::draws() { return *draws_; }
 
 Renderer::~Renderer() {
+    ctx_.waitIdle();
+    targets_.clear();
     overlay_.reset();
     draws_.reset();
     passes_.clear();
@@ -431,7 +361,6 @@ Renderer::~Renderer() {
     }
 
     swapchain_.reset();
-    destroyTargets();
 
     vkDestroyDescriptorSetLayout(ctx_.device(), textureLayout_, nullptr);
     vkDestroyRenderPass(ctx_.device(), presentRenderPass_, nullptr);

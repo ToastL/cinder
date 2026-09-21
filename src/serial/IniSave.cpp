@@ -1,9 +1,8 @@
 #include "serial/IniSave.hpp"
 
 #include "platform/Log.hpp"
-#include "serial/TextSave.hpp"
+#include "serial/NumberText.hpp"
 
-#include <charconv>
 #include <stdexcept>
 
 namespace cinder::serial {
@@ -40,9 +39,7 @@ void IniSave::leaveArray() { unsupported("arrays"); }
 
 int IniSave::integer(std::string_view name, int value, int fallback) {
     if (value != fallback) {
-        char buffer[16];
-        auto [end, error] = std::to_chars(buffer, buffer + sizeof(buffer), value);
-        field(name, std::string_view(buffer, static_cast<std::size_t>(end - buffer)));
+        field(name, integerText(value));
     }
     return value;
 }
@@ -63,12 +60,7 @@ void IniSave::vector(std::string_view name, float* values, const float* fallback
     for (int i = 0; i < arity; ++i) same = same && values[i] == fallback[i];
     if (same) return;
 
-    std::string joined;
-    for (int i = 0; i < arity; ++i) {
-        if (i > 0) joined.push_back(' ');
-        joined += TextSave::number(values[i]);
-    }
-    field(name, joined);
+    field(name, vectorText({values, static_cast<std::size_t>(arity)}));
 }
 
 cinder::scene::PropRec IniSave::bag(std::string_view name, const cinder::scene::PropRec& values) {

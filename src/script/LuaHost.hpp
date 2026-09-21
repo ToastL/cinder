@@ -1,6 +1,7 @@
 #pragma once
 
 #include "script/ScriptHost.hpp"
+#include "script/RuntimeApi.hpp"
 
 #include <lua.hpp>
 
@@ -63,6 +64,7 @@ private:
     cinder::gfx::Renderer& renderer_;
     cinder::physics::World& physics_;
     std::function<void()> quit_;
+    RuntimeContext runtime_;
 
     lua_State* state_ = nullptr;
     std::unique_ptr<cinder::scene::SceneObserver> observer_;

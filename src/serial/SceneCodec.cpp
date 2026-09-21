@@ -1,5 +1,7 @@
 #include "serial/SceneCodec.hpp"
 
+#include "platform/Files.hpp"
+
 #include "platform/Log.hpp"
 #include "reflect/Reflect.hpp"
 #include "scene/Attributes.hpp"
@@ -11,9 +13,7 @@
 #include "serial/TextSave.hpp"
 
 #include <climits>
-#include <fstream>
 #include <optional>
-#include <sstream>
 #include <stdexcept>
 
 namespace cinder::serial {
@@ -65,17 +65,11 @@ void SceneCodec::load(const std::string& source, Scene& scene) {
 }
 
 void SceneCodec::saveToFile(const std::filesystem::path& path, Scene& scene) {
-    std::ofstream out(path, std::ios::binary);
-    if (!out) throw std::runtime_error("Cannot write " + path.string());
-    out << save(scene);
+    cinder::platform::writeTextFile(path, save(scene));
 }
 
 void SceneCodec::loadFromFile(const std::filesystem::path& path, Scene& scene) {
-    std::ifstream in(path, std::ios::binary);
-    if (!in) throw std::runtime_error("Cannot read " + path.string());
-    std::ostringstream buffer;
-    buffer << in.rdbuf();
-    load(buffer.str(), scene);
+    load(cinder::platform::readTextFile(path), scene);
 }
 
 void SceneCodec::walk(Archive& ar) {

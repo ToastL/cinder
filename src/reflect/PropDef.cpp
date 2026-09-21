@@ -6,6 +6,25 @@
 
 namespace cinder::reflect {
 
+void copyProps(const PropList& defs, const void* from, void* to) {
+    float values[4]{};
+    for (const PropDef& def : defs) {
+        switch (def.type()) {
+            case PropType::Bool:
+                def.writeBool(to, def.readBool(from));
+                break;
+            case PropType::String:
+            case PropType::Enum:
+                def.writeText(to, def.readText(from));
+                break;
+            default:
+                def.read(from, values);
+                def.write(to, values);
+                break;
+        }
+    }
+}
+
 void PropDef::read(const void* target, float* out) const {
     if (readNum_ == nullptr) throw std::runtime_error(std::string(name_) + " is not numeric");
     readNum_(target, out);

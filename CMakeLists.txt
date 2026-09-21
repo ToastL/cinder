@@ -86,11 +86,25 @@ add_dependencies(package_game player shaders)
 
 enable_testing()
 
+add_test(NAME architecture_layers COMMAND ${CMAKE_COMMAND}
+    -DSOURCE_DIR=${CMAKE_CURRENT_SOURCE_DIR}/src
+    -P ${CMAKE_CURRENT_SOURCE_DIR}/cmake/AssertLayers.cmake)
+add_test(NAME architecture_checker COMMAND ${CMAKE_COMMAND}
+    -DBINARY_DIR=${CMAKE_BINARY_DIR}
+    -DCHECKER=${CMAKE_CURRENT_SOURCE_DIR}/cmake/AssertLayers.cmake
+    -P ${CMAKE_CURRENT_SOURCE_DIR}/cmake/TestLayers.cmake)
+
 file(GLOB TEST_SOURCES CONFIGURE_DEPENDS tests/*.cpp)
 add_executable(tests ${TEST_SOURCES})
 target_link_libraries(tests PRIVATE engine_dev doctest::doctest)
 target_compile_definitions(tests PRIVATE CINDER_SOURCE_DIR="${CMAKE_CURRENT_SOURCE_DIR}")
 add_test(NAME unit COMMAND tests)
+
+add_executable(graphics_smoke EXCLUDE_FROM_ALL tests/graphics/smoke.cpp)
+target_link_libraries(graphics_smoke PRIVATE engine_dev)
+target_compile_definitions(graphics_smoke PRIVATE
+    CINDER_SOURCE_DIR="${CMAKE_CURRENT_SOURCE_DIR}"
+    CINDER_BINARY_DIR="${CMAKE_CURRENT_BINARY_DIR}")
 
 add_test(NAME build_player COMMAND ${CMAKE_COMMAND}
     --build ${CMAKE_BINARY_DIR} --target player --config $<CONFIG>)

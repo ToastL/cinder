@@ -5,14 +5,13 @@
 #include "lua/LuaCalls.hpp"
 #include "lua/LuaSource.hpp"
 #include "platform/Assets.hpp"
-#include "platform/Glfw.hpp"
-#include "platform/Input.hpp"
 #include "platform/Log.hpp"
 #include "scene/Node.hpp"
 #include "scene/NodeTypes.hpp"
 #include "scene/Scene.hpp"
 #include "physics/World.hpp"
 #include "script/SceneApi.hpp"
+#include "script/SceneObservers.hpp"
 #include "script/Script.hpp"
 
 #include <memory>
@@ -31,124 +30,11 @@ const char* PRELUDE[] = {
     "lua/task.lua",
 };
 
-struct Host {
-    cinder::gfx::Renderer* renderer;
-    cinder::platform::Input* input;
-    std::function<void()>* quit;
-};
-
-Host& host(lua_State* state) { return *LuaApi::context<Host>(state); }
-
-int time(lua_State* state) {
-    lua_pushnumber(state, cinder::platform::Glfw::time());
-    return 1;
-}
-
-int quit(lua_State* state) {
-    (*host(state).quit)();
-    return 0;
-}
-
-int logMessage(lua_State* state) {
-    const char* message = luaL_tolstring(state, 1, nullptr);
-    cinder::platform::logInfo("[game] %s\n", message != nullptr ? message : "nil");
-    lua_pop(state, 1);
-    return 0;
-}
-
-int loadTexture(lua_State* state) {
-    const char* name = luaL_checkstring(state, 1);
-
-    int handle = -1;
-    try {
-        handle = host(state).renderer->assets().load(cinder::platform::contentPath(name).string());
-    } catch (const std::exception& e) {
-        luaL_where(state, 1);
-        lua_pushstring(state, e.what());
-        lua_concat(state, 2);
-    }
-    if (handle < 0) return lua_error(state);
-
-    lua_pushinteger(state, handle);
-    return 1;
-}
-
-int textureSize(lua_State* state) {
-    const auto& texture = host(state).renderer->assets().get(
-            static_cast<int>(lua_tointeger(state, 1)));
-    lua_pushinteger(state, texture.width());
-    lua_pushinteger(state, texture.height());
-    return 2;
-}
-
-int keyDown(lua_State* state) {
-    lua_pushboolean(state, host(state).input->keyDown(lua_tostring(state, 1)));
-    return 1;
-}
-
-int keyPressed(lua_State* state) {
-    lua_pushboolean(state, host(state).input->keyPressed(lua_tostring(state, 1)));
-    return 1;
-}
-
-int keyReleased(lua_State* state) {
-    lua_pushboolean(state, host(state).input->keyReleased(lua_tostring(state, 1)));
-    return 1;
-}
-
-int mouseDown(lua_State* state) {
-    lua_pushboolean(state, host(state).input->mouseDown(lua_tostring(state, 1)));
-    return 1;
-}
-
-int mousePressed(lua_State* state) {
-    lua_pushboolean(state, host(state).input->mousePressed(lua_tostring(state, 1)));
-    return 1;
-}
-
-int mouseReleased(lua_State* state) {
-    lua_pushboolean(state, host(state).input->mouseReleased(lua_tostring(state, 1)));
-    return 1;
-}
-
-int mousePosition(lua_State* state) {
-    lua_pushnumber(state, host(state).input->mouseX());
-    lua_pushnumber(state, host(state).input->mouseY());
-    return 2;
-}
-
-int mouseDelta(lua_State* state) {
-    lua_pushnumber(state, host(state).input->mouseDeltaX());
-    lua_pushnumber(state, host(state).input->mouseDeltaY());
-    return 2;
-}
-
-int scroll(lua_State* state) {
-    lua_pushnumber(state, host(state).input->scrollX());
-    lua_pushnumber(state, host(state).input->scrollY());
-    return 2;
-}
-
-int setCursorLocked(lua_State* state) {
-    host(state).input->setCursorLocked(lua_toboolean(state, 1) != 0);
-    return 0;
-}
-
-int cursorLocked(lua_State* state) {
-    lua_pushboolean(state, host(state).input->cursorLocked());
-    return 1;
-}
-
-Host hostContext;
-
 bool callWithPath(lua_State* state, const char* global, const std::string& path) {
-    const int top = lua_gettop(state);
+    cinder::lua::StackRestore stack(state);
     lua_getglobal(state, global);
     lua_pushstring(state, path.c_str());
-    const bool ok = lua_pcall(state, 1, 0, 0) == LUA_OK;
-    if (!ok) cinder::platform::logError("[lua] %s\n", lua_tostring(state, -1));
-    lua_settop(state, top);
-    return ok;
+    return cinder::lua::protectedCall(state, 1, 0);
 }
 
 }
@@ -156,7 +42,8 @@ bool callWithPath(lua_State* state, const char* global, const std::string& path)
 LuaHost::LuaHost(cinder::scene::Scene& scene, cinder::platform::Input& input,
                  cinder::gfx::Renderer& renderer, cinder::physics::World& physics,
                  std::function<void()> quit)
-    : scene_(scene), input_(input), renderer_(renderer), physics_(physics), quit_(std::move(quit)) {}
+    : scene_(scene), input_(input), renderer_(renderer), physics_(physics), quit_(std::move(quit)),
+      runtime_{&renderer_, &input_, &quit_} {}
 
 int LuaHost::scriptRead(lua_State* state) {
     const char* path = lua_tostring(state, 1);
@@ -169,8 +56,11 @@ int LuaHost::scriptRead(lua_State* state) {
         lua_pushlstring(state, source.data(), source.size());
         return 1;
     } catch (const std::exception& e) {
-        return luaL_error(state, "%s", e.what());
+        luaL_where(state, 1);
+        lua_pushstring(state, e.what());
+        lua_concat(state, 2);
     }
+    return lua_error(state);
 }
 
 void LuaHost::boot() {
@@ -204,29 +94,8 @@ void LuaHost::registerScripts() {
 }
 
 void LuaHost::registerApi() {
-    hostContext = Host{&renderer_, &input_, &quit_};
-
-    LuaApi api(state_, &hostContext);
-
-    api.bind("time", time);
-    api.bind("quit", quit);
-    api.bind("log", logMessage);
-    api.bind("loadTexture", loadTexture);
-    api.bind("textureSize", textureSize);
-
-    api.bind("keyDown", keyDown);
-    api.bind("keyPressed", keyPressed);
-    api.bind("keyReleased", keyReleased);
-
-    api.bind("mouseDown", mouseDown);
-    api.bind("mousePressed", mousePressed);
-    api.bind("mouseReleased", mouseReleased);
-
-    api.bind("mousePosition", mousePosition);
-    api.bind("mouseDelta", mouseDelta);
-    api.bind("scroll", scroll);
-    api.bind("setCursorLocked", setCursorLocked);
-    api.bind("cursorLocked", cursorLocked);
+    LuaApi api(state_, nullptr);
+    registerRuntimeApi(api, runtime_);
 
     registerSceneApi(api, scene_);
     renderer_.registerApi(api);
@@ -295,6 +164,7 @@ int LuaHost::reloadIn(cinder::scene::Node& node, const std::string& path) {
 void LuaHost::eval(const std::string& source) {
     if (state_ == nullptr) return;
 
+    cinder::lua::StackRestore stack(state_);
     const std::string expression = "return " + source;
     if (luaL_loadbuffer(state_, expression.data(), expression.size(), "=[console]") != LUA_OK) {
         lua_pop(state_, 1);
@@ -306,17 +176,12 @@ void LuaHost::eval(const std::string& source) {
     }
 
     const int top = lua_gettop(state_) - 1;
-    if (lua_pcall(state_, 0, LUA_MULTRET, 0) != LUA_OK) {
-        cinder::platform::logError("[lua] %s\n", lua_tostring(state_, -1));
-        lua_settop(state_, top);
-        return;
-    }
+    if (!cinder::lua::protectedCall(state_, 0, LUA_MULTRET)) return;
 
     for (int i = top + 1; i <= lua_gettop(state_); ++i) {
         cinder::platform::logInfo("[lua] %s\n", luaL_tolstring(state_, i, nullptr));
         lua_pop(state_, 1);
     }
-    lua_settop(state_, top);
 }
 
 void LuaHost::update(float dt) {

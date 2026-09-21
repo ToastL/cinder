@@ -1,7 +1,7 @@
 #pragma once
 
 #include "gfx/CompositePipeline.hpp"
-#include "gfx/RenderTarget.hpp"
+#include "gfx/FrameTargets.hpp"
 #include "gfx/asset/Assets.hpp"
 #include "gfx/pass/DrawPass.hpp"
 #include "gfx/pass/MeshPipeline.hpp"
@@ -57,7 +57,6 @@ private:
     glm::vec2 viewSize() const;
     VkExtent2D targetExtent() const;
     void createTargets();
-    void destroyTargets();
     void createCommandBuffers();
     void resizeCameras();
     void recreateSwapchain();
@@ -74,8 +73,8 @@ private:
     VkDescriptorSetLayout textureLayout_ = VK_NULL_HANDLE;
 
     std::unique_ptr<cinder::gfx::vk::Swapchain> swapchain_;
-    std::vector<std::unique_ptr<RenderTarget>> targets_;
-    std::vector<VkDescriptorSet> viewportTextures_;
+    std::unique_ptr<Overlay> overlay_;
+    FrameTargets targets_;
     std::vector<VkCommandBuffer> commandBuffers_;
     std::unique_ptr<cinder::gfx::vk::FrameSync> sync_;
     std::unique_ptr<cinder::gfx::asset::Assets> assets_;
@@ -84,7 +83,6 @@ private:
     std::unique_ptr<CompositePipeline> compositePipeline_;
     std::vector<std::unique_ptr<cinder::gfx::pass::DrawPass>> passes_;
     std::unique_ptr<cinder::scene::DrawList> draws_;
-    std::unique_ptr<Overlay> overlay_;
     std::function<void()> overlayDraw_;
 
     cinder::gfx::pass::ViewCamera camera_;

@@ -1,9 +1,8 @@
 #include "serial/TextSave.hpp"
 
-#include "platform/Log.hpp"
+#include "serial/NumberText.hpp"
 
 #include <charconv>
-#include <cmath>
 
 namespace cinder::serial {
 namespace {
@@ -23,14 +22,10 @@ std::string leaf(const cinder::scene::PropValue& value) {
     using namespace cinder::scene;
 
     if (value.is<std::int64_t>()) {
-        char buffer[32];
-        auto [end, error] = std::to_chars(buffer, buffer + sizeof(buffer), value.as<std::int64_t>());
-        return std::string(buffer, end);
+        return integerText(value.as<std::int64_t>());
     }
     if (value.is<double>()) {
-        char buffer[40];
-        auto [end, error] = std::to_chars(buffer, buffer + sizeof(buffer), value.as<double>());
-        return std::string(buffer, end);
+        return realText(value.as<double>());
     }
     if (value.is<std::string>()) return TextSave::quoted(value.as<std::string>());
     if (value.is<bool>()) return value.as<bool>() ? "true" : "false";
@@ -69,9 +64,7 @@ void TextSave::leaveArray() {
 
 int TextSave::integer(std::string_view name, int value, int fallback) {
     if (value != fallback) {
-        char buffer[16];
-        auto [end, error] = std::to_chars(buffer, buffer + sizeof(buffer), value);
-        field(name, std::string_view(buffer, static_cast<std::size_t>(end - buffer)));
+        field(name, integerText(value));
     }
     return value;
 }
@@ -92,12 +85,7 @@ void TextSave::vector(std::string_view name, float* values, const float* fallbac
     for (int i = 0; i < arity; ++i) same = same && values[i] == fallback[i];
     if (same) return;
 
-    std::string joined;
-    for (int i = 0; i < arity; ++i) {
-        if (i > 0) joined.push_back(' ');
-        joined += number(values[i]);
-    }
-    field(name, joined);
+    field(name, vectorText({values, static_cast<std::size_t>(arity)}));
 }
 
 cinder::scene::PropRec TextSave::bag(std::string_view name, const cinder::scene::PropRec& values) {
@@ -131,24 +119,6 @@ void TextSave::field(std::string_view name, std::string_view value) {
 }
 
 void TextSave::indent() { out_.append(static_cast<std::size_t>(depth_) * 4, ' '); }
-
-std::string TextSave::number(float value) {
-    if (!std::isfinite(value)) {
-        cinder::platform::logError("[serial] non-finite value written as 0\n");
-        return "0";
-    }
-
-    if (value == std::floor(value) && std::fabs(value) < static_cast<float>(1 << 24)) {
-        char buffer[16];
-        auto [end, error] = std::to_chars(buffer, buffer + sizeof(buffer),
-                                          static_cast<int>(value));
-        return std::string(buffer, end);
-    }
-
-    char buffer[32];
-    auto [end, error] = std::to_chars(buffer, buffer + sizeof(buffer), value);
-    return std::string(buffer, end);
-}
 
 std::string TextSave::quoted(std::string_view value) {
     std::string out;

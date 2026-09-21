@@ -1,6 +1,6 @@
 #pragma once
 
-#include "dev/Manipulator.hpp"
+#include "dev/GizmoGeometry.hpp"
 
 #include <glm/mat4x4.hpp>
 #include <glm/vec2.hpp>

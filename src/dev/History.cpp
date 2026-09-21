@@ -1,10 +1,10 @@
 #include "dev/History.hpp"
 
+#include "platform/Files.hpp"
+
 #include "dev/Selection.hpp"
 #include "serial/SceneCodec.hpp"
 
-#include <fstream>
-#include <stdexcept>
 #include <utility>
 
 namespace cinder::dev {
@@ -48,11 +48,7 @@ void History::save(const std::filesystem::path& path) {
     if (enabled_ && pending_) commit();
     if (path.has_parent_path()) std::filesystem::create_directories(path.parent_path());
 
-    std::ofstream out(path, std::ios::binary);
-    if (!out) throw std::runtime_error("Cannot write " + path.string());
-    out << current_;
-    out.close();
-    if (!out) throw std::runtime_error("Cannot write " + path.string());
+    cinder::platform::writeTextFile(path, current_, true);
 
     saved_ = current_;
     dirty_ = false;

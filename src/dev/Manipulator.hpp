@@ -1,16 +1,13 @@
 #pragma once
 
 #include "dev/Picking.hpp"
+#include "dev/GizmoGeometry.hpp"
 
 #include <glm/mat4x4.hpp>
 #include <glm/vec2.hpp>
 #include <glm/vec3.hpp>
 
-#include <array>
 #include <optional>
-#include <vector>
-
-namespace cinder::gfx::pass { class ViewCamera; }
 
 namespace cinder::scene {
 class Node;
@@ -20,45 +17,11 @@ class Transform;
 
 namespace cinder::dev {
 
-enum class Tool { Move, Rotate, Scale };
-enum class Space { World, Local };
-enum class Handle { None, X, Y, Z, XY, YZ, ZX, View, Uniform };
-enum class Tip { None, Arrow, Box };
-
-constexpr float GIZMO_POINTS = 100.0f;
-constexpr float HIT_POINTS = 8.0f;
 constexpr float MOVE_SNAP = 1.0f;
+
 constexpr float ROTATE_SNAP_DEGREES = 15.0f;
+
 constexpr float SCALE_SNAP = 0.1f;
-
-struct GizmoView {
-    glm::mat4 viewProjection{1.0f};
-    glm::mat4 camera{1.0f};
-    float fovDegrees = 60.0f;
-    glm::vec2 size{1.0f};
-};
-
-struct Gizmo {
-    Tool tool = Tool::Move;
-    glm::vec3 pivot{0.0f};
-    std::array<glm::vec3, 3> axes{};
-    float length = 1.0f;
-};
-
-struct HandleShape {
-    Handle handle = Handle::None;
-    std::vector<glm::vec3> points;
-    bool filled = false;
-    bool back = false;
-    Tip tip = Tip::None;
-};
-
-GizmoView gizmoView(cinder::gfx::pass::ViewCamera& camera, glm::vec2 size);
-std::optional<glm::vec2> toScreen(const GizmoView& view, const glm::vec3& position);
-
-std::optional<Gizmo> gizmoFor(cinder::scene::Transform& transform, Tool tool, Space space, const GizmoView& view);
-std::vector<HandleShape> shapes(const Gizmo& gizmo, const GizmoView& view);
-Handle hitHandle(const std::vector<HandleShape>& shapes, const GizmoView& view, glm::vec2 point);
 
 class Manipulation {
 public:

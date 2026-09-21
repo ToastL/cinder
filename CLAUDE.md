@@ -27,6 +27,21 @@ ctest --test-dir build --output-on-failure
 ```
 
 `ctest` builds `player` itself through a fixture, because `shipping_binary_is_clean` inspects it.
+It also runs `architecture_layers`, which checks first-party includes against the layer graph, and
+`architecture_checker`, which exercises allowed and forbidden include fixtures.
+
+The optional graphical integration check builds only when requested and needs a working window and
+Vulkan device:
+
+```bash
+cmake --build build --target graphics_smoke
+DYLD_LIBRARY_PATH=/opt/homebrew/lib ./build/graphics_smoke
+```
+
+It renders the editor panels, drives gizmo editing and undo/redo, saves a scene, cycles
+Play/Pause/Step/Resume/Stop through fresh Lua states, resizes the window and scene targets, and
+captures both the embedded and composited views. Its output stays in `build/graphics-smoke/`;
+it never saves over a sample project. On other platforms omit the Apple-specific library path.
 
 ```bash
 ./build/editor samples/sandbox2d
@@ -153,8 +168,10 @@ from the engine, so the edges cost nothing and create no cycle.
 about this engine, which is what let `dev/ImGuiLayer` build the ImGui Vulkan backend on it without
 dragging in passes or assets. `gfx/asset` is what you draw with (`Assets`, `Texture`, `Mesh`),
 `gfx/pass` is how you draw it (`DrawPass` and its implementations, their pipelines, and `ViewCamera`), and
-`gfx` itself is only the orchestrator — `Renderer`, `RenderTarget`, `CompositePipeline`,
-`RendererDrawList`. Nothing in a subdirectory includes its parent.
+`gfx` itself contains orchestration and frame resources: `Renderer`, `FrameTargets`, `RenderTarget`,
+`Capture`, `Overlay`, `CompositePipeline` and `RendererDrawList`. Nothing in a subdirectory includes
+its parent. `cmake/AssertLayers.cmake` enforces these include directions through CTest and rejects
+ImGui includes or symbols outside `dev`; `editor` may include the `dev/ImGuiLayer` adapter.
 
 Six placements are load-bearing and were each chosen to kill a cycle: `Glfw`/`Window`/`Input` live
 in `platform`, not next to `Engine`; `DrawList` lives in `scene`, so the scene graph never includes
@@ -165,7 +182,13 @@ serializer, the Lua bindings and Properties each read without an edge to one ano
 can announce changes to Lua it cannot name; and `Overlay` is an abstract interface in
 `gfx` with its only implementation in `dev`, so the renderer can host an ImGui layer it cannot name.
 
-`LuaHost` takes `(Scene&, Input&, Renderer&, quit)` — never `Engine&` — for the same reason.
+`LuaHost` takes `(Scene&, Input&, Renderer&, physics::World&, quit)` — never `Engine&` — for the same reason.
+
+`platform/Files` holds the shared binary-mode text I/O used by project loading, scene files, Lua
+source loading and editor history. Callers still decide whether to create parent directories and
+whether to verify completion after closing a write. `serial/NumberText` holds locale-independent
+numeric formatting shared by the text and INI writers; their parsing and wire formats are unchanged.
+`reflect::copyProps` copies through each property's existing writer, including clamping and notifications.
 
 ## Frame flow
 
@@ -323,17 +346,20 @@ triangle (`CompositePipeline`) sampling that target into the swapchain framebuff
 descriptor pool and descriptor set — deliberately *not* routed through `Assets`, whose pool has no
 `FREE_DESCRIPTOR_SET` flag and would leak a set per resize. There is one target **per frame in
 flight**; a single one would be cleared by frame N+1 while frame N's composite still sampled it.
+`FrameTargets` owns the collection. Each frame owns its `RenderTarget` followed by a move-only
+`OverlayTexture`, so its overlay registration is released before the image. `Renderer` owns the
+overlay before the collection, which also preserves that order during constructor unwinding.
 The target uses `swapchain.format()` (sRGB) so the encode/decode round trip is identity; a UNORM
 target would visibly brighten everything.
 
 **The target follows the window unless the host embeds it.** `setViewportSize(w, h)`, in window
 points, detaches it: both targets are rebuilt at `w × h` times the framebuffer scale, the cameras are
 resized to `w × h`, and the present pass stops drawing the composite triangle — the overlay shows
-the target instead. While embedded, `createTargets` registers each target's image view with the
-overlay through `Overlay::addTexture`, and `Renderer::viewport()` returns the current frame's
+the target instead. While embedded, `FrameTargets::recreate` registers each target's image view with the
+overlay through `OverlayTexture` and `Overlay::addTexture`, and `Renderer::viewport()` returns the current frame's
 registration. The target's own descriptor set cannot stand in for it: ImGui's Vulkan backend binds
 user textures as `SAMPLED_IMAGE` sets with its own sampler, and validation rejects a
-combined-image-sampler set there. `destroyTargets` removes the registrations, and every rebuild sits
+combined-image-sampler set there. `FrameTargets::clear` removes the registrations and targets, and every rebuild sits
 behind a `vkDeviceWaitIdle`, so no set is freed while a frame still reads it. A size change rebuilds
 on the spot, so the set the panel draws with in that same frame is already the new one. `player`
 never calls it and composites exactly as before.
@@ -393,7 +419,7 @@ an unknown mesh logs once and draws a cube. The clear colour and the 2D virtual 
 props, pushed to the renderer every frame through `DrawList::background` and `camera`, so a scene
 file carries them.
 
-`Renderer::capture(path)` reads the target back to a PNG. It stalls the device — a debug tool, not a
+`Renderer::capture(path)` delegates target readback and PNG encoding to `gfx/Capture`. It stalls the device — a debug tool, not a
 per-frame feature.
 
 ## Physics
@@ -435,6 +461,13 @@ inserting, destroying, disabling and reparenting a body need no bookkeeping: a d
 skipped exactly as `Scene::update` skips it, and `Scene::clear` on Stop empties the world by
 construction. The walk is in tree order and nothing iterates an `unordered_map`, so a scene steps
 identically every run; `tests/physics_test` pins that bit for bit.
+
+`World` gathers `BodyState` values, owns scene traversal, integration, sleeping and contact events,
+and delegates contact preparation, warm starting and impulse solving to `ContactSolver`. The solver
+owns its contacts and carried impulses, operates on a span of the current step's body states, and
+exposes read-only contacts for island sleeping. Begin it only after body gathering is complete;
+never grow the state vector while the solver is using it. Constants, ordering and equations are
+unchanged.
 
 The step, in order:
 
@@ -485,7 +518,8 @@ float noise drops one and the lopsided support tips the box. `FACE_BIAS` makes t
 beat the first's by a margin before it becomes the reference face, because on an exact tie the choice
 flapped from step to step, changing every feature id and throwing the warm start away.
 
-**Scripts reach physics through `engine` and through node signals.** `World::registerApi` binds
+**Scripts reach physics through `engine` and through node signals.** `World::registerApi` delegates to
+`physics/PhysicsApi`, which binds
 `applyImpulse`, `applyForce`, `applyTorque`, `raycast`, `gravity` and `setGravity`; the prelude wraps
 the last three so a raycast takes vectors and hands back `{ node, position, normal, distance }` or
 `nil`, and puts `applyImpulse(impulse, point?)` on every node proxy. Impulses and forces are
@@ -493,8 +527,8 @@ the last three so a raycast takes vectors and hands back `{ node, position, norm
 matters. A node that is not a `Body` raises a Lua error rather than doing nothing quietly.
 
 Contacts reach scripts the way scene changes do. `physics::ContactObserver` is an interface in
-`physics`, `script/SceneApi` implements it, and `LuaHost::boot` installs it — so physics never names
-Lua, just as `scene` never does. `World` tracks which collider pairs touch, compares that with the last
+`physics`, `script/SceneObservers` implements it, and `LuaHost::boot` installs it — so the simulation
+never calls Lua directly, just as `scene` never does. `World` tracks which collider pairs touch, compares that with the last
 step's, and fires `touched` and `touchEnded` on both nodes, Roblox's names. The node handed over is the
 `Body` when there is one and the `Collider` when there is not, so a floor with no body still answers.
 
@@ -650,7 +684,8 @@ Scene window is focused — and, for Move, **World** or **Local** axes, toggled 
 Unity's W/E/R because WASD and Q/E fly the editor camera with no button held. `Viewport` polls the keys
 with `glfwGetKey`, as it does the fly keys, and edge-detects them itself.
 
-`dev/Manipulator` is everything that is not drawing, with no ImGui in it:
+`dev/GizmoGeometry` owns handle geometry and hit testing; `dev/Manipulator` owns drag state.
+Neither includes ImGui:
 
 - `gizmoFor` places the gizmo at the node's world position, `GIZMO_POINTS` long on screen at that depth,
   so it keeps its size at any distance. There is none behind the editor camera, or under a parent whose
@@ -717,7 +752,8 @@ list it is changing. Delete uses `destroyNow`, because Edit mode never runs the 
 flushes a deferred destroy. An inserted or duplicated node becomes the selection. During Play the same
 edits act on the running game and are discarded by Stop.
 
-`dev/Properties` has no per-type code. It shows the node's name, class and id, a Transform section for
+`dev/Properties` manages panel state and history; `dev/PropertyWidgets` edits reflected properties
+and attribute values. Neither needs per-node-class widget code. It shows the node's name, class and id, a Transform section for
 spatial nodes, the class's props and the attributes. A prop gets one widget per `PropType`: drags for
 numbers and vectors, a checkbox, a text field, and a combo filled from `PropDef::options()` for enums.
 Every write goes through `PropDef`, so clamping, in-place vector writes and `propChanged` behave
@@ -860,15 +896,24 @@ Functions and anything else with a metatable are skipped.
 script's top level. `./build/editor tests/selftest --play --frames 120` or `./build/player
 tests/selftest` prints `ALL PASS`. It needs a window, so it is not part of `ctest`.
 
-**Where to add a Lua function:** `LuaHost::registerApi()` builds the global `engine` table and binds
-the engine-wide calls (time, quit, log, input, textures), then hands the `LuaApi` to
-`registerSceneApi` and to `renderer.registerApi()`, which forwards it to every pass. Bind a function
+**Where to add a Lua function:** `LuaHost::registerApi()` builds the global `engine` table and delegates
+the engine-wide calls (time, quit, log, input, textures) to `script/RuntimeApi`, then hands the `LuaApi`
+to `registerSceneApi`, `renderer.registerApi()` and `physics.registerApi()`. The renderer forwards it
+to every pass. `RuntimeContext` is a member of each host; closures retain that host's context address
+until its Lua state closes, with no process-global binding context. Bind a function
 in the class that owns the state it touches — draw calls belong in `SpritePass`/`MeshPass` and camera
 calls in `Renderer`, not in `LuaHost`.
 
 `lua_CFunction` cannot capture, so each binding carries its receiver as a light-userdata upvalue:
 `api.bind("name", fn, &receiver)`, read back with `LuaApi::context<T>(state)`. Use
 `LuaApi::optFloat`/`optInt` for optional numeric arguments.
+
+`lua/LuaCalls` supplies `StackRestore`, `pushFunction` and `protectedCall` for host-to-Lua calls.
+`protectedCall` leaves successful results on the stack and logs and removes an error on failure;
+`StackRestore` restores the caller's original top on scope exit. `runChunk` deliberately retains its
+older contract: failures leave the error on the stack for the caller to report. Use stack restoration
+only on protected host-call paths, never to rely on C++ destructors across a `lua_error` long jump.
+The scene/contact observer adapters use these same helpers.
 
 ### Scripts
 
@@ -894,7 +939,7 @@ text format needs anyway. The Lua API is Roblox's in camelCase: `node:getAttribu
 Because attributes are data on the node, nothing has to run for Properties to list them, and they
 survive a hot reload.
 
-`LuaHost::boot` installs the `SceneObserver` from `script/SceneApi`, which calls `__attributeChanged`,
+`LuaHost::boot` installs the `SceneObserver` from `script/SceneObservers`, which calls `__attributeChanged`,
 `__childAdded`, `__childRemoved` and `__destroying`; that is how an edit in Properties during Play
 reaches the game's signals. `__destroying` also drops the node's cached signals, and `LuaHost::close`
 removes the observer before the state closes.

@@ -1,12 +1,10 @@
 #include "script/SceneApi.hpp"
 
 #include "lua/LuaApi.hpp"
-#include "platform/Log.hpp"
 #include "scene/Attributes.hpp"
 #include "scene/Node.hpp"
 #include "scene/NodeTypes.hpp"
 #include "scene/Scene.hpp"
-#include "physics/World.hpp"
 #include "scene/Transform.hpp"
 #include "script/LuaProps.hpp"
 
@@ -352,70 +350,6 @@ int getAttributes(lua_State* state) {
     return 1;
 }
 
-bool luaFunction(lua_State* state, int top, const char* global) {
-    lua_getglobal(state, global);
-    if (lua_isfunction(state, -1)) return true;
-    lua_settop(state, top);
-    return false;
-}
-
-void luaCall(lua_State* state, int top, int args) {
-    if (lua_pcall(state, args, 0, 0) != LUA_OK) {
-        cinder::platform::logError("[lua] %s\n", lua_tostring(state, -1));
-    }
-    lua_settop(state, top);
-}
-
-void luaPair(lua_State* state, const char* global, const Node& first, const Node& second) {
-    const int top = lua_gettop(state);
-    if (!luaFunction(state, top, global)) return;
-    lua_pushinteger(state, first.id());
-    lua_pushinteger(state, second.id());
-    luaCall(state, top, 2);
-}
-
-class LuaObserver final : public cinder::scene::SceneObserver {
-public:
-    explicit LuaObserver(lua_State* state) : state_(state) {}
-
-    void attributeChanged(Node& node, const std::string& key) override {
-        const int top = lua_gettop(state_);
-        if (!luaFunction(state_, top, "__attributeChanged")) return;
-        lua_pushinteger(state_, node.id());
-        lua_pushlstring(state_, key.data(), key.size());
-        luaCall(state_, top, 2);
-    }
-
-    void childAdded(Node& parent, Node& child) override {
-        luaPair(state_, "__childAdded", parent, child);
-    }
-
-    void childRemoved(Node& parent, Node& child) override {
-        luaPair(state_, "__childRemoved", parent, child);
-    }
-
-    void destroying(Node& node) override {
-        const int top = lua_gettop(state_);
-        if (!luaFunction(state_, top, "__destroying")) return;
-        lua_pushinteger(state_, node.id());
-        luaCall(state_, top, 1);
-    }
-
-private:
-    lua_State* state_;
-};
-
-class LuaContacts final : public cinder::physics::ContactObserver {
-public:
-    explicit LuaContacts(lua_State* state) : state_(state) {}
-
-    void touched(Node& a, Node& b) override { luaPair(state_, "__touched", a, b); }
-
-    void touchEnded(Node& a, Node& b) override { luaPair(state_, "__touchEnded", a, b); }
-
-private:
-    lua_State* state_;
-};
 
 }
 
@@ -452,14 +386,6 @@ void registerSceneApi(cinder::lua::LuaApi& api, Scene& scene) {
     api.bind("getAttribute", getAttribute, &scene);
     api.bind("setAttribute", setAttribute, &scene);
     api.bind("getAttributes", getAttributes, &scene);
-}
-
-std::unique_ptr<cinder::scene::SceneObserver> makeSceneObserver(lua_State* state) {
-    return std::make_unique<LuaObserver>(state);
-}
-
-std::unique_ptr<cinder::physics::ContactObserver> makeContactObserver(lua_State* state) {
-    return std::make_unique<LuaContacts>(state);
 }
 
 }

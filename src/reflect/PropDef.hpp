@@ -66,4 +66,6 @@ private:
 
 using PropList = std::vector<PropDef>;
 
+void copyProps(const PropList& defs, const void* from, void* to);
+
 }

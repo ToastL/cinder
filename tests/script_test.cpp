@@ -10,6 +10,7 @@
 #include "scene/PropValue.hpp"
 #include "scene/Scene.hpp"
 #include "script/SceneApi.hpp"
+#include "script/SceneObservers.hpp"
 #include "script/Script.hpp"
 
 #include <lua.hpp>

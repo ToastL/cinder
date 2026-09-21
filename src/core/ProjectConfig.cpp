@@ -1,13 +1,13 @@
 #include "core/ProjectConfig.hpp"
 
+#include "platform/Files.hpp"
+
 #include "core/GameLoop.hpp"
 #include "platform/Log.hpp"
 #include "serial/IniLoad.hpp"
 #include "serial/IniSave.hpp"
 
 #include <algorithm>
-#include <fstream>
-#include <sstream>
 #include <stdexcept>
 #include <system_error>
 #include <utility>
@@ -15,14 +15,6 @@
 
 namespace cinder::core {
 namespace {
-
-std::string readFile(const std::filesystem::path& path) {
-    std::ifstream in(path, std::ios::binary);
-    if (!in) throw std::runtime_error("Cannot read " + path.string());
-    std::ostringstream buffer;
-    buffer << in.rdbuf();
-    return buffer.str();
-}
 
 std::filesystem::path marker(const std::filesystem::path& folder) {
     std::vector<std::filesystem::path> found;
@@ -67,7 +59,7 @@ std::filesystem::path ProjectConfig::root(const std::filesystem::path& argument)
 
 ProjectConfig ProjectConfig::load(const std::filesystem::path& folder) {
     const std::filesystem::path file = marker(folder);
-    const std::string json = readFile(file);
+    const std::string json = cinder::platform::readTextFile(file);
 
     ProjectConfig config;
     try {
@@ -87,7 +79,7 @@ ProjectConfig ProjectConfig::load(const std::filesystem::path& folder) {
     const std::filesystem::path settings = folder / "Config" / "Game.ini";
     std::error_code error;
     if (std::filesystem::exists(settings, error)) {
-        cinder::serial::IniLoad archive = cinder::serial::IniLoad::parse(readFile(settings));
+        cinder::serial::IniLoad archive = cinder::serial::IniLoad::parse(cinder::platform::readTextFile(settings));
         config.walk(archive);
     }
     GameLoop::requirePositiveHz(config.fixedHz, "[Game] fixedHz");

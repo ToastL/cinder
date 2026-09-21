@@ -1,6 +1,6 @@
 #include "script/Script.hpp"
 
-#include "platform/Log.hpp"
+#include "lua/LuaCalls.hpp"
 
 #include <utility>
 
@@ -54,7 +54,7 @@ Script::Script(lua_State* state, std::string file) : state_(state), file_(std::m
 void Script::start() {
     if (file_.empty() || scene() == nullptr) return;
 
-    const int top = lua_gettop(state_);
+    cinder::lua::StackRestore stack(state_);
 
     lua_getglobal(state_, "__scriptStart");
     lua_pushstring(state_, file_.c_str());
@@ -62,31 +62,20 @@ void Script::start() {
     if (owner_ == LUA_NOREF) lua_pushnil(state_);
     else lua_rawgeti(state_, LUA_REGISTRYINDEX, owner_);
 
-    if (lua_pcall(state_, 3, 1, 0) != LUA_OK) {
-        const char* message = lua_tostring(state_, -1);
-        cinder::platform::logError("[lua] %s\n", message != nullptr ? message : "unknown error");
-        lua_settop(state_, top);
-        return;
-    }
+    if (!cinder::lua::protectedCall(state_, 3, 1)) return;
 
     if (owner_ != LUA_NOREF) luaL_unref(state_, LUA_REGISTRYINDEX, owner_);
     owner_ = luaL_ref(state_, LUA_REGISTRYINDEX);
-    lua_settop(state_, top);
 }
 
 void Script::stop() {
     if (owner_ == LUA_NOREF) return;
 
-    const int top = lua_gettop(state_);
+    cinder::lua::StackRestore stack(state_);
 
     lua_getglobal(state_, "__scriptStop");
     lua_rawgeti(state_, LUA_REGISTRYINDEX, owner_);
-    if (lua_pcall(state_, 1, 0, 0) != LUA_OK) {
-        const char* message = lua_tostring(state_, -1);
-        cinder::platform::logError("[lua] %s: %s\n", file_.c_str(),
-                                   message != nullptr ? message : "unknown error");
-    }
-    lua_settop(state_, top);
+    cinder::lua::protectedCall(state_, 1, 0, file_.c_str());
 
     luaL_unref(state_, LUA_REGISTRYINDEX, owner_);
     owner_ = LUA_NOREF;

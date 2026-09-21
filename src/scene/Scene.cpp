@@ -11,25 +11,6 @@
 namespace cinder::scene {
 namespace {
 
-void copyProps(const cinder::reflect::PropList& defs, const void* from, void* to) {
-    float values[4]{};
-    for (const cinder::reflect::PropDef& def : defs) {
-        switch (def.type()) {
-            case cinder::reflect::PropType::Bool:
-                def.writeBool(to, def.readBool(from));
-                break;
-            case cinder::reflect::PropType::String:
-            case cinder::reflect::PropType::Enum:
-                def.writeText(to, def.readText(from));
-                break;
-            default:
-                def.read(from, values);
-                def.write(to, values);
-                break;
-        }
-    }
-}
-
 Node* findIn(Node& node, std::string_view name) {
     if (!node.destroyed() && node.name() == name) return &node;
     for (Node* child : node.children()) {
@@ -80,9 +61,9 @@ Node* Scene::clone(const Node& source, Node* parent) {
     std::unique_ptr<Node> copy = types_.create(types_.nameOf(source));
     if (copy == nullptr) return nullptr;
 
-    copyProps(source.propList(), source.propTarget(), copy->propTarget());
+    cinder::reflect::copyProps(source.propList(), source.propTarget(), copy->propTarget());
     if (source.transform() != nullptr && copy->transform() != nullptr) {
-        copyProps(cinder::reflect::props<Transform>(), source.transform(), copy->transform());
+        cinder::reflect::copyProps(cinder::reflect::props<Transform>(), source.transform(), copy->transform());
     }
     copy->name_ = source.name_;
     copy->attributes_ = source.attributes_;

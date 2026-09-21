@@ -4,7 +4,7 @@
 #include "physics/Collide.hpp"
 #include "physics/Collider.hpp"
 #include "physics/Pose.hpp"
-#include "lua/LuaApi.hpp"
+#include "physics/PhysicsApi.hpp"
 #include "scene/Node.hpp"
 #include "scene/Scene.hpp"
 #include "scene/Transform.hpp"
@@ -29,81 +29,6 @@ std::uint64_t contactKey(int a, int b, int feature) {
            static_cast<std::uint64_t>(feature & 0xFFFFF);
 }
 
-World& hostOf(lua_State* state) { return *cinder::lua::LuaApi::context<World>(state); }
-
-glm::vec3 vectorAt(lua_State* state, int index) {
-    return glm::vec3(static_cast<float>(lua_tonumber(state, index)),
-                     static_cast<float>(lua_tonumber(state, index + 1)),
-                     static_cast<float>(lua_tonumber(state, index + 2)));
-}
-
-Body* bodyAt(lua_State* state, int index) {
-    const int id = static_cast<int>(lua_tointeger(state, index));
-    return dynamic_cast<Body*>(hostOf(state).scene().byId(id));
-}
-
-int applyImpulse(lua_State* state) {
-    Body* body = bodyAt(state, 1);
-    if (body == nullptr) return luaL_error(state, "applyImpulse: the node is not a Body");
-
-    if (lua_gettop(state) >= 7) body->applyImpulse(vectorAt(state, 2), vectorAt(state, 5));
-    else body->applyImpulse(vectorAt(state, 2));
-    return 0;
-}
-
-int applyForce(lua_State* state) {
-    Body* body = bodyAt(state, 1);
-    if (body == nullptr) return luaL_error(state, "applyForce: the node is not a Body");
-
-    if (lua_gettop(state) >= 7) body->applyForce(vectorAt(state, 2), vectorAt(state, 5));
-    else body->applyForce(vectorAt(state, 2));
-    return 0;
-}
-
-int applyTorque(lua_State* state) {
-    Body* body = bodyAt(state, 1);
-    if (body == nullptr) return luaL_error(state, "applyTorque: the node is not a Body");
-
-    body->applyTorque(vectorAt(state, 2));
-    return 0;
-}
-
-int castRay(lua_State* state) {
-    RayHit hit;
-    const float reach = cinder::lua::LuaApi::optFloat(state, 7, 1000.0f);
-    if (!hostOf(state).raycast(vectorAt(state, 1), vectorAt(state, 4), reach, hit)) return 0;
-
-    lua_pushinteger(state, hit.node->id());
-    lua_pushnumber(state, hit.position.x);
-    lua_pushnumber(state, hit.position.y);
-    lua_pushnumber(state, hit.position.z);
-    lua_pushnumber(state, hit.normal.x);
-    lua_pushnumber(state, hit.normal.y);
-    lua_pushnumber(state, hit.normal.z);
-    lua_pushnumber(state, hit.distance);
-    return 8;
-}
-
-int readGravity(lua_State* state) {
-    const glm::vec3& gravity = hostOf(state).gravity();
-    lua_pushnumber(state, gravity.x);
-    lua_pushnumber(state, gravity.y);
-    lua_pushnumber(state, gravity.z);
-    return 3;
-}
-
-int writeGravity(lua_State* state) {
-    hostOf(state).setGravity(vectorAt(state, 1));
-    return 0;
-}
-
-std::array<glm::vec3, 2> basisAround(const glm::vec3& normal) {
-    const glm::vec3 guide = std::abs(normal.x) >= 0.57735f ? glm::vec3(normal.y, -normal.x, 0.0f)
-                                                           : glm::vec3(0.0f, normal.z, -normal.y);
-    const glm::vec3 first = glm::normalize(guide);
-    return {first, glm::cross(normal, first)};
-}
-
 }
 
 void World::step(float dt) {
@@ -111,7 +36,6 @@ void World::step(float dt) {
 
     states_.clear();
     proxies_.clear();
-    contacts_.clear();
     touching_.clear();
     states_.emplace_back();
 
@@ -123,9 +47,10 @@ void World::step(float dt) {
     }
     weigh();
     for (std::size_t i = 1; i < states_.size(); ++i) accelerate(states_[i], dt);
+    solver_.begin(states_);
     detect(dt);
-    warmStart();
-    solve();
+    solver_.warmStart();
+    solver_.solve();
     rest(dt);
     for (std::size_t i = 1; i < states_.size(); ++i) advance(states_[i], dt);
     notify();
@@ -162,14 +87,7 @@ void World::notify() {
     touched_.swap(touching_);
 }
 
-void World::registerApi(cinder::lua::LuaApi& api) {
-    api.bind("applyImpulse", applyImpulse, this);
-    api.bind("applyForce", applyForce, this);
-    api.bind("applyTorque", applyTorque, this);
-    api.bind("raycast", castRay, this);
-    api.bind("gravity", readGravity, this);
-    api.bind("setGravity", writeGravity, this);
-}
+void World::registerApi(cinder::lua::LuaApi& api) { registerPhysicsApi(api, *this); }
 
 bool World::raycast(const glm::vec3& origin, const glm::vec3& direction, float maxDistance,
                     RayHit& hit) const {
@@ -210,7 +128,7 @@ void World::gather(Node& node, int owner) {
     if (node.destroyed() || !node.isEnabled()) return;
 
     if (auto* body = dynamic_cast<Body*>(&node)) {
-        State state;
+        BodyState state;
         state.body = body;
         states_.push_back(state);
         owner = static_cast<int>(states_.size()) - 1;
@@ -224,7 +142,7 @@ void World::gather(Node& node, int owner) {
     for (Node* child : node.children()) gather(*child, owner);
 }
 
-void World::place(State& state, float dt) {
+void World::place(BodyState& state, float dt) {
     Body& body = *state.body;
     if (body.velocity_ != body.wroteVelocity_ || body.angularVelocity_ != body.wroteSpin_) body.wake();
 
@@ -245,20 +163,20 @@ void World::place(State& state, float dt) {
 void World::weigh() {
     for (const Proxy& proxy : proxies_) {
         if (proxy.owner == 0) continue;
-        State& state = states_[static_cast<std::size_t>(proxy.owner)];
+        BodyState& state = states_[static_cast<std::size_t>(proxy.owner)];
         const float volume = volumeOf(proxy.geometry);
         state.volume += volume;
         state.moment += proxy.geometry.center * volume;
     }
 
     for (std::size_t i = 1; i < states_.size(); ++i) {
-        State& state = states_[i];
+        BodyState& state = states_[i];
         state.center = state.volume > 0.0f ? state.moment / state.volume : state.body->origin_;
     }
 
     for (const Proxy& proxy : proxies_) {
         if (proxy.owner == 0) continue;
-        State& state = states_[static_cast<std::size_t>(proxy.owner)];
+        BodyState& state = states_[static_cast<std::size_t>(proxy.owner)];
         if (state.volume <= 0.0f) continue;
 
         const float mass = state.body->mass_ * volumeOf(proxy.geometry) / state.volume;
@@ -268,7 +186,7 @@ void World::weigh() {
     }
 
     for (std::size_t i = 1; i < states_.size(); ++i) {
-        State& state = states_[i];
+        BodyState& state = states_[i];
         if (state.body->motion_ != Body::Motion::Dynamic) continue;
         if (state.body->asleep_) continue;
         state.inverseMass = 1.0f / state.body->mass_;
@@ -281,7 +199,7 @@ void World::weigh() {
     }
 }
 
-void World::accelerate(State& state, float dt) {
+void World::accelerate(BodyState& state, float dt) {
     Body& body = *state.body;
     switch (body.motion_) {
         case Body::Motion::Static:
@@ -341,83 +259,14 @@ void World::detect(float dt) {
                                  second != nullptr ? second->id() : b.collider->id()});
 
             for (int k = 0; k < manifold.count; ++k) {
-                addContact(a, b, manifold.normal, manifold.points[static_cast<std::size_t>(k)], dt);
+                const ContactPoint& point = manifold.points[static_cast<std::size_t>(k)];
+                solver_.add(a.owner, b.owner, contactKey(a.collider->id(), b.collider->id(), point.feature),
+                            manifold.normal, point,
+                            std::sqrt(a.collider->friction() * b.collider->friction()),
+                            std::max(a.collider->restitution(), b.collider->restitution()), dt);
             }
         }
     }
-}
-
-void World::addContact(const Proxy& a, const Proxy& b, const glm::vec3& normal,
-                       const ContactPoint& point, float dt) {
-    const State& first = states_[static_cast<std::size_t>(a.owner)];
-    const State& second = states_[static_cast<std::size_t>(b.owner)];
-
-    Contact contact;
-    contact.key = contactKey(a.collider->id(), b.collider->id(), point.feature);
-    contact.a = a.owner;
-    contact.b = b.owner;
-    contact.normal = normal;
-    contact.tangents = basisAround(normal);
-    contact.fromA = point.position - first.center;
-    contact.fromB = point.position - second.center;
-    contact.friction = std::sqrt(a.collider->friction() * b.collider->friction());
-
-    contact.normalMass = effectiveMass(first, second, contact.fromA, contact.fromB, normal);
-    for (int i = 0; i < 2; ++i) {
-        const std::size_t index = static_cast<std::size_t>(i);
-        contact.tangentMass[index] =
-            effectiveMass(first, second, contact.fromA, contact.fromB, contact.tangents[index]);
-    }
-
-    const float restitution = std::max(a.collider->restitution(), b.collider->restitution());
-    const float closing = glm::dot(approach(contact), normal);
-    contact.push = BAUMGARTE / dt * std::max(point.depth - SLOP, 0.0f);
-    contact.bounce = closing < -BOUNCE_THRESHOLD ? -restitution * closing : 0.0f;
-
-    contacts_.push_back(contact);
-}
-
-void World::warmStart() {
-    for (Contact& contact : contacts_) {
-        const auto found = carried_.find(contact.key);
-        if (found != carried_.end()) {
-            contact.impulse = found->second.normal;
-            contact.tangentImpulse = found->second.tangent;
-        }
-
-        apply(contact, contact.normal * contact.impulse +
-                           contact.tangents[0] * contact.tangentImpulse[0] +
-                           contact.tangents[1] * contact.tangentImpulse[1]);
-    }
-}
-
-void World::apply(const Contact& contact, const glm::vec3& impulse) {
-    State& a = states_[static_cast<std::size_t>(contact.a)];
-    State& b = states_[static_cast<std::size_t>(contact.b)];
-    a.velocity -= a.inverseMass * (impulse * a.linearMask);
-    a.angularVelocity -= a.inverseInertia * glm::cross(contact.fromA, impulse);
-    b.velocity += b.inverseMass * (impulse * b.linearMask);
-    b.angularVelocity += b.inverseInertia * glm::cross(contact.fromB, impulse);
-}
-
-void World::applyDrift(const Contact& contact, const glm::vec3& impulse) {
-    State& a = states_[static_cast<std::size_t>(contact.a)];
-    State& b = states_[static_cast<std::size_t>(contact.b)];
-    a.drift -= a.inverseMass * (impulse * a.linearMask);
-    a.angularDrift -= a.inverseInertia * glm::cross(contact.fromA, impulse);
-    b.drift += b.inverseMass * (impulse * b.linearMask);
-    b.angularDrift += b.inverseInertia * glm::cross(contact.fromB, impulse);
-}
-
-float World::effectiveMass(const State& a, const State& b, const glm::vec3& fromA,
-                           const glm::vec3& fromB, const glm::vec3& direction) const {
-    const glm::vec3 turnA = glm::cross(fromA, direction);
-    const glm::vec3 turnB = glm::cross(fromB, direction);
-    const float stiffness = a.inverseMass * glm::dot(direction, a.linearMask * direction) +
-                            b.inverseMass * glm::dot(direction, b.linearMask * direction) +
-                            glm::dot(turnA, a.inverseInertia * turnA) +
-                            glm::dot(turnB, b.inverseInertia * turnB);
-    return stiffness > 0.0f ? 1.0f / stiffness : 0.0f;
 }
 
 int World::island(int index) {
@@ -436,7 +285,7 @@ int World::island(int index) {
 bool World::stirring(int index) const {
     if (index == 0) return false;
 
-    const State& state = states_[static_cast<std::size_t>(index)];
+    const BodyState& state = states_[static_cast<std::size_t>(index)];
     return glm::length(state.velocity) >= SLEEP_LINEAR ||
            glm::length(state.angularVelocity) >= SLEEP_ANGULAR;
 }
@@ -447,7 +296,7 @@ void World::rest(float dt) {
     nudged_.assign(states_.size(), 0);
     for (std::size_t i = 0; i < states_.size(); ++i) islands_[i] = static_cast<int>(i);
 
-    for (const Contact& contact : contacts_) {
+    for (const auto& contact : solver_.contacts()) {
         const bool left = dynamic(contact.a);
         const bool right = dynamic(contact.b);
 
@@ -464,7 +313,7 @@ void World::rest(float dt) {
     for (std::size_t i = 1; i < states_.size(); ++i) {
         if (!dynamic(static_cast<int>(i))) continue;
 
-        State& state = states_[i];
+        BodyState& state = states_[i];
         Body& body = *state.body;
         const bool slow = nudged_[i] == 0 && glm::length(state.velocity) < SLEEP_LINEAR &&
                           glm::length(state.angularVelocity) < SLEEP_ANGULAR;
@@ -480,69 +329,7 @@ void World::rest(float dt) {
     }
 }
 
-glm::vec3 World::approach(const Contact& contact) const {
-    const State& a = states_[static_cast<std::size_t>(contact.a)];
-    const State& b = states_[static_cast<std::size_t>(contact.b)];
-    return b.velocity + glm::cross(b.angularVelocity, contact.fromB) - a.velocity -
-           glm::cross(a.angularVelocity, contact.fromA);
-}
-
-glm::vec3 World::driftApproach(const Contact& contact) const {
-    const State& a = states_[static_cast<std::size_t>(contact.a)];
-    const State& b = states_[static_cast<std::size_t>(contact.b)];
-    return b.drift + glm::cross(b.angularDrift, contact.fromB) - a.drift -
-           glm::cross(a.angularDrift, contact.fromA);
-}
-
-void World::solveFriction(Contact& contact) {
-    const float limit = contact.friction * contact.impulse;
-    for (int i = 0; i < 2; ++i) {
-        const std::size_t index = static_cast<std::size_t>(i);
-        const glm::vec3& tangent = contact.tangents[index];
-        const float sliding = glm::dot(approach(contact), tangent);
-        const float previous = contact.tangentImpulse[index];
-        contact.tangentImpulse[index] =
-            std::clamp(previous - contact.tangentMass[index] * sliding, -limit, limit);
-        apply(contact, tangent * (contact.tangentImpulse[index] - previous));
-    }
-}
-
-void World::solveNormal(Contact& contact) {
-    const float closing = glm::dot(approach(contact), contact.normal);
-    const float previous = contact.impulse;
-    contact.impulse = std::max(previous + contact.normalMass * (contact.bounce - closing), 0.0f);
-    apply(contact, contact.normal * (contact.impulse - previous));
-}
-
-void World::solvePush(Contact& contact) {
-    if (contact.push <= 0.0f) return;
-
-    const float closing = glm::dot(driftApproach(contact), contact.normal);
-    const float previous = contact.pushImpulse;
-    contact.pushImpulse = std::max(previous + contact.normalMass * (contact.push - closing), 0.0f);
-    applyDrift(contact, contact.normal * (contact.pushImpulse - previous));
-}
-
-void World::solve() {
-    for (int iteration = 0; iteration < ITERATIONS; ++iteration) {
-        for (Contact& contact : contacts_) {
-            solveFriction(contact);
-            solveNormal(contact);
-        }
-    }
-
-    for (int iteration = 0; iteration < ITERATIONS; ++iteration) {
-        for (Contact& contact : contacts_) solvePush(contact);
-    }
-
-    cached_.clear();
-    for (const Contact& contact : contacts_) {
-        cached_[contact.key] = {contact.impulse, contact.tangentImpulse};
-    }
-    carried_.swap(cached_);
-}
-
-void World::advance(State& state, float dt) {
+void World::advance(BodyState& state, float dt) {
     Body& body = *state.body;
     body.simulated_ = true;
     body.center_ = state.center;

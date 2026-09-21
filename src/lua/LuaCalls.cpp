@@ -2,24 +2,13 @@
 
 #include "platform/Log.hpp"
 
-
 namespace cinder::lua {
 namespace {
 
-void report(const char* name, lua_State* state) {
-    const char* message = lua_tostring(state, -1);
-    cinder::platform::logError("[lua] %s: %s\n", name, message != nullptr ? message : "unknown error");
-    lua_pop(state, 1);
-}
-
 void global(lua_State* state, const char* name, const double* argument) {
-    const int top = lua_gettop(state);
+    StackRestore stack(state);
 
-    lua_getglobal(state, name);
-    if (lua_isfunction(state, -1) == 0) {
-        lua_settop(state, top);
-        return;
-    }
+    if (!pushFunction(state, name)) return;
 
     int count = 0;
     if (argument != nullptr) {
@@ -27,19 +16,15 @@ void global(lua_State* state, const char* name, const double* argument) {
         count = 1;
     }
 
-    if (lua_pcall(state, count, 0, 0) != LUA_OK) report(name, state);
-    lua_settop(state, top);
+    protectedCall(state, count, 0, name);
 }
 
 void method(lua_State* state, int ref, const char* name, const double* argument) {
-    const int top = lua_gettop(state);
+    StackRestore stack(state);
 
     lua_rawgeti(state, LUA_REGISTRYINDEX, ref);
     lua_getfield(state, -1, name);
-    if (lua_isfunction(state, -1) == 0) {
-        lua_settop(state, top);
-        return;
-    }
+    if (lua_isfunction(state, -1) == 0) return;
 
     lua_pushvalue(state, -2);
     int count = 1;
@@ -48,10 +33,29 @@ void method(lua_State* state, int ref, const char* name, const double* argument)
         count = 2;
     }
 
-    if (lua_pcall(state, count, 0, 0) != LUA_OK) report(name, state);
-    lua_settop(state, top);
+    protectedCall(state, count, 0, name);
 }
 
+}
+
+bool pushFunction(lua_State* state, const char* name) {
+    lua_getglobal(state, name);
+    if (lua_isfunction(state, -1)) return true;
+    lua_pop(state, 1);
+    return false;
+}
+
+bool protectedCall(lua_State* state, int arguments, int results, const char* context) {
+    if (lua_pcall(state, arguments, results, 0) == LUA_OK) return true;
+    const char* message = lua_tostring(state, -1);
+    if (context != nullptr) {
+        cinder::platform::logError("[lua] %s: %s\n", context,
+                                   message != nullptr ? message : "unknown error");
+    } else {
+        cinder::platform::logError("[lua] %s\n", message != nullptr ? message : "unknown error");
+    }
+    lua_pop(state, 1);
+    return false;
 }
 
 bool runChunk(lua_State* state, std::string_view source, const char* chunkname) {
