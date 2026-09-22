@@ -56,8 +56,13 @@ void captureTarget(const cinder::gfx::vk::VkCtx& ctx, const RenderTarget& target
 
     ctx.endSingleTime(cmd);
 
-    std::vector<unsigned char> pixels(static_cast<std::size_t>(size));
-    std::memcpy(pixels.data(), staging.mapped(), static_cast<std::size_t>(size));
+    writeCapture(path, width, height, staging.mapped(), format);
+}
+
+void writeCapture(const std::string& path, uint32_t width, uint32_t height, const void* data, VkFormat format) {
+    const std::size_t size = static_cast<std::size_t>(width) * height * 4;
+    std::vector<unsigned char> pixels(size);
+    std::memcpy(pixels.data(), data, size);
 
     const bool bgra = format == VK_FORMAT_B8G8R8A8_SRGB
             || format == VK_FORMAT_B8G8R8A8_UNORM;

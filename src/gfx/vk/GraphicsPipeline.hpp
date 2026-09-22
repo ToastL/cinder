@@ -20,6 +20,7 @@ public:
 
     void bind(VkCommandBuffer cmd) const;
     void push(VkCommandBuffer cmd, uint32_t offset, const glm::mat4& value) const;
+    void push(VkCommandBuffer cmd, VkShaderStageFlags stages, uint32_t size, const void* data) const;
     void bindDescriptorSet(VkCommandBuffer cmd, VkDescriptorSet set) const;
 
     VkPipelineLayout layout() const { return layout_; }

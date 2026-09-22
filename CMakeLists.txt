@@ -57,6 +57,9 @@ target_link_libraries(editor PRIVATE engine_dev)
 add_executable(player EXCLUDE_FROM_ALL src/player/main.cpp)
 target_link_libraries(player PRIVATE engine)
 
+add_executable(ui_gallery tests/gallery/main.cpp)
+target_link_libraries(ui_gallery PRIVATE engine)
+
 set(CINDER_PACKAGE_PROJECT "${CMAKE_CURRENT_SOURCE_DIR}/samples/sandbox2d" CACHE PATH
     "Project folder the package_game target stages next to the player")
 file(GLOB CINDER_PACKAGE_MARKER "${CINDER_PACKAGE_PROJECT}/*.cinder")

@@ -19,8 +19,17 @@ The repo holds the engine only. A game is a **project folder** — a `.cinder` f
 cmake -S . -B build -G Ninja && cmake --build build
 ```
 
-A plain build produces `engine`, `engine_dev`, `editor` and `tests` — **no game**. The runtime that
-plays a project, `player`, is `EXCLUDE_FROM_ALL` and only built on demand.
+A plain build produces `engine`, `engine_dev`, `editor`, `ui_gallery` and `tests` — **no game**. The
+runtime that plays a project, `player`, is `EXCLUDE_FROM_ALL` and only built on demand.
+
+```bash
+DYLD_LIBRARY_PATH=/opt/homebrew/lib ./build/ui_gallery --frames 10 --capture-window gallery.png
+```
+
+`ui_gallery` is Unreal's STestSuite for the new UI: one window drawing everything the UI renderer can
+draw, linked against `engine` alone. `--capture-window` writes the swapchain image, UI included, which
+`--capture` never does; `--lowdpi` turns off framebuffer scaling so text can be judged at 1x on a
+Retina display, and `--text-gamma` tunes glyph coverage.
 
 ```bash
 ctest --test-dir build --output-on-failure
@@ -435,8 +444,26 @@ an unknown mesh logs once and draws a cube. The clear colour and the 2D virtual 
 props, pushed to the renderer every frame through `DrawList::background` and `camera`, so a scene
 file carries them.
 
-`Renderer::capture(path)` delegates target readback and PNG encoding to `gfx/Capture`. It stalls the device — a debug tool, not a
-per-frame feature.
+**The UI draws in the present pass**, after the composite and before the overlay, through
+`gfx/UiRenderer` — never as a `DrawPass`, because every `DrawPass` records in the scene pass, which has
+depth. `Renderer::setUiPaint` installs a hook that `beginFrame` calls with a fresh `ui::ElementList`,
+in window points, every frame, overlay or not. Paint runs before the frame fence, so it fills CPU
+arrays only: `UiRenderer::prepare`, recorded before the scene pass, batches the list with the GPU-free
+`ui::batch`, fills that frame's growable host-visible buffers and uploads the dirty rectangles of the
+list's glyph atlas into R8 pages — barriers from `SHADER_READ_ONLY` so the glyphs already there survive,
+and dirty rectangles cleared at record time, because the `OUT_OF_DATE` path paints without recording.
+One pipeline draws everything with a mode per vertex: solid, textured, glyph coverage with a gamma
+term, a rounded-box SDF for fills and borders, and an opaque image for the scene target, which fixes
+ImGui blending the Scene view by its alpha. Output is premultiplied; a non-sRGB swapchain gets a
+manual encode, and a format change rebuilds the pipeline. Only elements that sample a texture break a
+batch, so boxes, lines and text on one glyph page draw in one call. `pixelsPerPoint` is the swapchain
+width over the window's width in points, measured whenever the swapchain is rebuilt and never
+in between, so a live resize cannot rasterize glyphs at a stream of fractional sizes.
+
+`Renderer::capture(path)` delegates target readback and PNG encoding to `gfx/Capture`.
+`requestWindowCapture(path)` copies the swapchain image of the next frame instead, adding `TRANSFER_SRC`
+to the swapchain the first time it is asked. Both stall the device — debug tools, not
+per-frame features.
 
 ## Physics
 
