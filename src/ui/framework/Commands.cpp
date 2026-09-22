@@ -42,18 +42,17 @@ std::string Shortcut::label() const {
     namespace mods = cinder::platform::modifiers;
     std::string text;
 #if defined(__APPLE__)
-    if ((modifiers & mods::CONTROL) != 0) text += "\xE2\x8C\x83";
-    if ((modifiers & mods::ALT) != 0) text += "\xE2\x8C\xA5";
-    if ((modifiers & mods::SHIFT) != 0) text += "\xE2\x87\xA7";
-    if ((modifiers & mods::SUPER) != 0) text += "\xE2\x8C\x98";
-    return text + keyName(key);
+    if ((modifiers & mods::CONTROL) != 0) text += "Ctrl+";
+    if ((modifiers & mods::ALT) != 0) text += "Opt+";
+    if ((modifiers & mods::SHIFT) != 0) text += "Shift+";
+    if ((modifiers & mods::SUPER) != 0) text += "Cmd+";
 #else
     if ((modifiers & mods::CONTROL) != 0) text += "Ctrl+";
     if ((modifiers & mods::ALT) != 0) text += "Alt+";
     if ((modifiers & mods::SHIFT) != 0) text += "Shift+";
     if ((modifiers & mods::SUPER) != 0) text += "Super+";
-    return text + keyName(key);
 #endif
+    return text + keyName(key);
 }
 
 void CommandList::map(std::shared_ptr<const Command> command, CommandAction action) {

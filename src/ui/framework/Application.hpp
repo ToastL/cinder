@@ -4,7 +4,9 @@
 #include "text/FontSet.hpp"
 #include "text/GlyphAtlas.hpp"
 #include "ui/core/HitTester.hpp"
+#include "ui/core/Rect.hpp"
 #include "ui/core/Style.hpp"
+#include "ui/core/TextRun.hpp"
 #include "ui/core/Widget.hpp"
 #include "ui/framework/Commands.hpp"
 #include "ui/framework/PlatformHooks.hpp"
@@ -13,19 +15,35 @@
 
 #include <array>
 #include <cstdint>
+#include <functional>
 #include <memory>
+#include <optional>
 #include <span>
+#include <string>
 #include <vector>
 
 namespace cinder::ui {
 
 class ElementList;
 
+enum class Placement : std::uint8_t { Below, Right, AtPoint, Center };
+
+struct PopupOptions {
+    Placement placement = Placement::Below;
+    float minWidth = 0.0f;
+    std::weak_ptr<Widget> owner;
+    std::function<void()> onDismissed;
+    bool focus = true;
+};
+
 class Application {
 public:
     static constexpr float DRAG_THRESHOLD = 6.0f;
     static constexpr double DOUBLE_CLICK_TIME = 0.5;
     static constexpr float DOUBLE_CLICK_DISTANCE = 4.0f;
+    static constexpr double TOOLTIP_DELAY = 0.5;
+    static constexpr float TOOLTIP_OFFSET_X = 12.0f;
+    static constexpr float TOOLTIP_OFFSET_Y = 20.0f;
 
     Application(PlatformHooks& platform, const cinder::text::FontSet& fonts, Theme theme);
     ~Application();
@@ -61,6 +79,17 @@ public:
 
     void addCommands(std::shared_ptr<const CommandList> commands);
 
+    void pushPopup(std::shared_ptr<Widget> content, const Rect& anchor, PopupOptions options = {});
+    void dismissPopup(const Widget* content);
+    void dismissPopupsAbove(const Widget* content);
+    void dismissAllPopups();
+    bool hasPopups() const { return !popups_.empty(); }
+    std::size_t popupCount() const { return popups_.size(); }
+    bool isPopupOpen(const Widget* content) const { return popupIndex(content) >= 0; }
+    std::optional<Rect> popupRect(const Widget* content) const;
+
+    std::string visibleToolTip() const;
+
     const cinder::text::FontSet& fonts() const { return fonts_; }
     cinder::text::GlyphAtlas& atlas() { return atlas_; }
     const Theme& theme() const { return theme_; }
@@ -87,6 +116,23 @@ private:
         glm::vec2 position{0.0f};
     };
 
+    struct Popup {
+        std::shared_ptr<Widget> content;
+        Rect anchor;
+        PopupOptions options;
+        Rect rect;
+        std::weak_ptr<Widget> previousFocus;
+    };
+
+    struct ToolTip {
+        std::weak_ptr<Widget> widget;
+        std::weak_ptr<Widget> suppressed;
+        std::string text;
+        double since = 0.0;
+        glm::vec2 at{0.0f};
+        bool shown = false;
+    };
+
     PointerEvent pointer(const cinder::platform::InputEvent& event, int button) const;
     WidgetPath focusPath();
     WidgetPath captorPath() const;
@@ -95,6 +141,12 @@ private:
     void refreshHover();
     void updateCursor();
     void focusFromClick(const WidgetPath& path);
+    int popupIndex(const Widget* content) const;
+    void dismissFrom(std::size_t index);
+    bool routePopupPress(const WidgetPath& path);
+    Rect place(const Popup& popup) const;
+    void updateToolTip();
+    void paintToolTip(ElementList& list, int layer);
 
     void mouseDown(const cinder::platform::InputEvent& event);
     void mouseUp(const cinder::platform::InputEvent& event);
@@ -118,6 +170,9 @@ private:
     std::vector<std::shared_ptr<const CommandList>> commands_;
     std::optional<DragDetect> drag_;
     Click lastClick_;
+    std::vector<Popup> popups_;
+    ToolTip toolTip_;
+    TextRun toolTipRun_;
 
     std::array<bool, cinder::platform::keys::COUNT> keys_{};
     glm::vec2 cursor_{-1.0e6f};
@@ -130,6 +185,7 @@ private:
     float scale_ = 1.0f;
     float atlasScale_ = 0.0f;
     bool painted_ = false;
+    bool focusFresh_ = false;
     bool mouseEnabled_ = true;
 };
 

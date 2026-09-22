@@ -13,12 +13,18 @@
 #include "ui/widgets/Border.hpp"
 #include "ui/widgets/BoxPanel.hpp"
 #include "ui/widgets/Button.hpp"
+#include "ui/widgets/ColorPicker.hpp"
+#include "ui/widgets/ComboBox.hpp"
 #include "ui/widgets/DefaultTheme.hpp"
+#include "ui/widgets/ExpandableArea.hpp"
 #include "ui/widgets/Label.hpp"
+#include "ui/widgets/Menu.hpp"
 #include "ui/widgets/ScrollBox.hpp"
 #include "ui/widgets/SizeBox.hpp"
+#include "ui/widgets/SpinBox.hpp"
 #include "ui/widgets/Splitter.hpp"
 #include "ui/widgets/TextField.hpp"
+#include "ui/widgets/VectorInputBox.hpp"
 #include "ui/widgets/Viewport.hpp"
 
 #include <GLFW/glfw3.h>
@@ -117,13 +123,84 @@ std::shared_ptr<Widget> section(std::string title, std::shared_ptr<Widget> conte
            + VerticalBox::slot().autoHeight()[std::move(content)];
 }
 
+std::shared_ptr<Widget> row(std::string label, std::shared_ptr<Widget> editor) {
+    return make<HorizontalBox>()
+           + HorizontalBox::slot().autoWidth().vAlign(VAlign::Center).padding(Margin(0.0f, 0.0f, 8.0f, 0.0f))
+                 [make<SizeBox>().widthOverride(90.0f)[make<Label>().text(std::move(label))]]
+           + HorizontalBox::slot().fill(1.0f)[std::move(editor)];
+}
+
 struct Gallery {
     int clicks = 0;
     bool grid = true;
     bool snap = false;
     std::string name = "Box";
     std::string committed;
+    std::string status = "ready";
+    double fov = 60.0;
+    double count = 3.0;
+    double yaw = 45.0;
+    glm::dvec3 position{1.5, 0.0, -6.0};
+    std::string projection = "perspective";
+    Color tint{0.9f, 0.35f, 0.1f, 0.8f};
     std::shared_ptr<ScrollBox> log;
+
+    std::shared_ptr<Widget> menus() {
+        return make<MenuBar>()
+                .menu("File", [this](MenuBuilder& menu) {
+                    menu.entry("New Scene", [this] { status = "File > New Scene"; }, "Cmd+N")
+                            .entry("Save", [this] { status = "File > Save"; }, "Cmd+S")
+                            .entry("Save As...", [] {})
+                            .enabledIf([] { return false; })
+                            .separator()
+                            .subMenu("Recent", [this](MenuBuilder& recent) {
+                                recent.entry("sandbox2d", [this] { status = "Recent > sandbox2d"; })
+                                        .entry("sandbox3d", [this] { status = "Recent > sandbox3d"; })
+                                        .entry("physics", [this] { status = "Recent > physics"; });
+                            });
+                })
+                .menu("View", [this](MenuBuilder& menu) {
+                    menu.heading("Scene")
+                            .check("Show Grid", [this] { grid = !grid; }, [this] { return grid; })
+                            .check("Snap", [this] { snap = !snap; }, [this] { return snap; }, "Cmd+G");
+                });
+    }
+
+    std::shared_ptr<Widget> editors() {
+        return make<VerticalBox>()
+               + VerticalBox::slot().autoHeight().padding(Margin(0.0f, 0.0f, 0.0f, 4.0f))
+                     [row("Field of view", make<SpinBox>()
+                                                   .value([this] { return fov; })
+                                                   .minValue(1.0)
+                                                   .maxValue(179.0)
+                                                   .step(0.5)
+                                                   .units("\xC2\xB0")
+                                                   .onValueChanged([this](double value) { fov = value; })
+                                                   .toolTipText("Drag, or click to type. Bounds 1 to 179."))]
+               + VerticalBox::slot().autoHeight().padding(Margin(0.0f, 0.0f, 0.0f, 4.0f))
+                     [row("Count", make<SpinBox>()
+                                           .value([this] { return count; })
+                                           .integral(true)
+                                           .onValueChanged([this](double value) { count = value; }))]
+               + VerticalBox::slot().autoHeight().padding(Margin(0.0f, 0.0f, 0.0f, 4.0f))
+                     [row("Position", make<VectorInputBox>()
+                                              .value([this](int index) { return position[index]; })
+                                              .onComponentChanged([this](int index, double value) { position[index] = value; }))]
+               + VerticalBox::slot().autoHeight().padding(Margin(0.0f, 0.0f, 0.0f, 4.0f))
+                     [row("Projection", make<ComboBox>()
+                                                .options(std::vector<std::string>{"perspective", "orthographic"})
+                                                .selectedOption([this] { return projection; })
+                                                .onSelectionChanged([this](const std::string& option) { projection = option; }))]
+               + VerticalBox::slot().autoHeight()
+                     [row("Tint", make<HorizontalBox>()
+                                          + HorizontalBox::slot().autoWidth()
+                                                [make<ColorBlock>()
+                                                     .color([this] { return tint; })
+                                                     .opensPicker(true)
+                                                     .onColorChanged([this](Color value) { tint = value; })]
+                                          + HorizontalBox::slot().fill(1.0f).vAlign(VAlign::Center).padding(Margin(8.0f, 0.0f, 0.0f, 0.0f))
+                                                [make<Label>().text([this] { return "#" + toHex(tint, true) + "   " + status; }).textStyle("Label.Small")])];
+    }
 
     std::shared_ptr<Widget> build() {
         auto rows = make<ScrollBox>().assign(log);
@@ -133,6 +210,7 @@ struct Gallery {
         }
 
         auto widgets = make<VerticalBox>()
+            + VerticalBox::slot().autoHeight().padding(Margin(0.0f, 0.0f, 0.0f, 4.0f))[menus()]
             + VerticalBox::slot().autoHeight()[section("Buttons",
                 make<HorizontalBox>()
                 + HorizontalBox::slot().autoWidth().padding(Margin(0.0f, 0.0f, 6.0f, 0.0f))
@@ -168,14 +246,26 @@ struct Gallery {
                       [make<TextBox>().hintText("Filter").selectAllOnFocus(true)]
                 + VerticalBox::slot().autoHeight()
                       [make<Label>().text([this] { return committed; }).textStyle("Label.Small")])]
-            + VerticalBox::slot().autoHeight()[section("Labels",
+            + VerticalBox::slot().autoHeight()[section("Value editors", editors())]
+            + VerticalBox::slot().autoHeight().padding(Margin(0.0f, 10.0f, 0.0f, 0.0f))[make<ExpandableArea>().areaTitle("Labels").initiallyCollapsed(true).padding(Margin(8.0f, 6.0f)).bodyContent(
                 make<VerticalBox>()
                 + VerticalBox::slot().autoHeight()[make<Label>().text("Small 11: The quick brown fox jumps over the lazy dog").textStyle("Label.Small")]
                 + VerticalBox::slot().autoHeight()[make<Label>().text("Regular 13: Kerning AV Wa To \xC3\xA9\xC3\xA0\xC3\xBC \xE2\x80\x94 12\xC2\xB0")]
                 + VerticalBox::slot().autoHeight()[make<Label>().text("Bold 13: Properties  Explorer  Transform").textStyle("Label.Bold")]
                 + VerticalBox::slot().autoHeight()[make<Label>().text("Mono 12: > engine.time()  1.2500").textStyle("Label.Mono")])]
             + VerticalBox::slot().fill(1.0f).padding(Margin(0.0f, 10.0f, 0.0f, 0.0f))
-                  [make<Border>().brush(Brush::rounded(Color::hex(0x0F0F0FFF), 4.0f)).padding(Margin(2.0f))[rows]];
+                  [make<Border>().brush(Brush::rounded(Color::hex(0x0F0F0FFF), 4.0f)).padding(Margin(2.0f))
+                       .toolTipText("Right-click for a context menu")
+                       .onMouseDown([this](const Geometry&, const PointerEvent& event) {
+                           if (event.button != cinder::platform::buttons::RIGHT) return Reply::unhandled();
+                           MenuBuilder menu;
+                           menu.entry("Clear", [this] { log->clearChildren(); })
+                               .entry("Scroll to End", [this] { log->scrollToEnd(); })
+                               .separator()
+                               .entry("Copy", [] {}).enabledIf([] { return false; });
+                           showContextMenu(menu.build(), event.position);
+                           return Reply::handled();
+                       })[rows]];
 
         return make<Border>().brush(Brush::color(Color::hex(0x151515FF))).padding(Margin(0.0f))
             [make<Splitter>()

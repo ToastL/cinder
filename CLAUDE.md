@@ -668,6 +668,34 @@ locked. A panel's `update` is also where log lines queued by the sink join the c
 edits the widget tree while it is being painted. `SceneView` is not the viewport's client itself: the
 widget would own it and it would own the widget, so a small forwarding client breaks the cycle.
 
+**Popups belong to the `Application`, not to a widget.** `pushPopup(content, anchor, options)` places
+the content below, beside or at a point next to an anchor rectangle, flipped and clamped into the
+window, and paints it above the whole tree, so a popup is never clipped by the panel that opened it. A
+press outside every popup closes them all and goes nowhere else — it cannot pick in the Scene view on
+its way — while a press in a lower popup closes the ones above it, and a press on a popup's `owner`,
+such as the combo that opened it, is routed normally so the owner can toggle. An Escape that nothing
+handled closes the top popup, and focus returns to whatever held it before. A popup opened during a
+press keeps the focus it took. Every menu, combo list, submenu, context menu and colour picker is one of
+these. **Tooltips** are the `Application`'s too: after `TOOLTIP_DELAY` over the deepest widget with
+`toolTipText`, disabled ones included, it draws the text beside the cursor, unhittable; a press hides it
+until the pointer leaves that widget. Widgets that open popups remember the `Application` they opened
+on, so tests can ask `isOpen()` outside a frame. Anything that reads the hit grid during paint — a
+`tick` — finds it empty, because paint rebuilds it; a menu row therefore anchors its submenu to the
+rectangle it last painted.
+
+`Menu` is built by `MenuBuilder` — entries, checks, headings, separators, submenus opened by hover
+after `SUBMENU_DELAY` or by the arrow keys, and `command(list, command)`, which takes its label,
+shortcut, enabled state and check from the `CommandList`, so a menu entry and a shortcut can never
+disagree. `MenuAnchor` opens any widget as a popup, `ComboButton` and `ComboBox` sit on it, and
+`MenuBar` opens on press and follows the pointer across titles, so press, drag and release picks.
+`SpinBox` keeps its value exact: a drag adds `step` per point from the threshold on (Shift ten times,
+Alt a tenth), a click types into it, and what is typed is evaluated as arithmetic; an edit that
+changes nothing writes nothing, it clamps only to bounds it was given, and it shows three decimals but
+edits the shortest text that reads back as the same float. `ColorPicker` works in sRGB-encoded HSV
+over a linear value, keeping the hue through greys, and its square is a mesh of per-vertex colours
+fine enough that interpolating in linear space does not show. `Shortcut::label()` spells modifiers out
+(`Shift+Cmd+P`) until shaping falls back to a symbol font, because Roboto has no ⌘.
+
 Styles come from a `Theme` of named entries — `"Button"`, `"Button.Primary"`, `"Label.Mono"`,
 `"Color.Primary"` — built by `ui::defaultTheme()` in the colours of Unreal's dark editor. Colours are
 linear `ui::Color`s authored as sRGB hex; the swapchain encodes them.

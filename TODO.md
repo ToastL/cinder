@@ -128,8 +128,15 @@ includes `scene`, `reflect` or `gfx` — the reflection-driven Properties panel 
 - [x] **Vertical slice** — `editor_next` with the toolbar, the Scene view and the console on the new UI
       in a fixed layout: picking, gizmo drags, the editor camera, undo, Play/Stop, the console's Lua
       line and the close prompt all run on it, and `--input-script` drives every one of them.
-- [ ] **Editor widgets** — a spin box, vector input, combo and colour picker; list and tree views that
-      build only visible rows; menus, context menus, modals, tooltips, drag and drop
+- [x] **Value editors and menus** — popups and tooltips in the `Application`; `SpinBox` (drag, click
+      to type an expression, bounds only when declared, never rounded to its display),
+      `VectorInputBox`, `ComboBox`, `ExpandableArea`, `ColorBlock` and `ColorPicker`; `Menu`,
+      `MenuBuilder`, `MenuAnchor`, `MenuBar` and context menus, with commands, checks and submenus.
+      `editor_next`'s toolbar has File, Edit and Play menus.
+- [ ] **Lists and trees** — list and tree views that build only visible rows, selection, scrolling a
+      row into view, drag and drop with a decorator, and Tab between fields
+- [ ] **Font fallback** — shaping falls back per glyph to a symbol font, so shortcuts can read ⌘⇧P
+      instead of `Shift+Cmd+P`. Roboto has no ⌘, and a label that asks for one draws a missing glyph.
 - [ ] **Docking** — tabs and splitters in one window, with drag-to-redock and a Window menu to reopen
       a closed tab. Panels floating in their own OS windows come after parity: `VkCtx` has to stop
       owning the one GLFW surface — one device, a swapchain per window.

@@ -91,6 +91,23 @@ void ElementList::polygon(int layer, std::span<const glm::vec2> points, Color co
     add(layer).shape = PolygonElement{std::vector<glm::vec2>(points.begin(), points.end()), color};
 }
 
+void ElementList::mesh(int layer, std::span<const glm::vec2> positions, std::span<const Color> colors,
+                       std::span<const std::uint32_t> indices) {
+    if (positions.empty() || colors.size() != positions.size() || indices.size() < 3) return;
+    add(layer).shape = MeshElement{std::vector<glm::vec2>(positions.begin(), positions.end()),
+                                   std::vector<Color>(colors.begin(), colors.end()),
+                                   std::vector<std::uint32_t>(indices.begin(), indices.end())};
+}
+
+void ElementList::gradient(int layer, const Rect& rect, Color topLeft, Color topRight, Color bottomRight,
+                           Color bottomLeft) {
+    if (rect.empty()) return;
+    const glm::vec2 positions[] = {rect.min, {rect.max.x, rect.min.y}, rect.max, {rect.min.x, rect.max.y}};
+    const Color colors[] = {topLeft, topRight, bottomRight, bottomLeft};
+    const std::uint32_t indices[] = {0, 1, 2, 0, 2, 3};
+    mesh(layer, positions, colors, indices);
+}
+
 TextureRef ElementList::named(std::string_view path) {
     const auto found = std::find(names_.begin(), names_.end(), path);
     const auto index = static_cast<std::uint32_t>(found - names_.begin());

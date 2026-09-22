@@ -115,6 +115,63 @@ struct SplitterStyle {
     float handleSize = 4.0f;
 };
 
+struct SpinBoxStyle {
+    Brush normal;
+    Brush hovered;
+    Brush active;
+    Brush editing;
+    Brush fill;
+    Brush fillHovered;
+    Margin padding{6.0f, 3.0f};
+    float accentWidth = 4.0f;
+};
+
+struct ExpandableAreaStyle {
+    Brush header;
+    Brush headerHovered;
+    Brush body;
+};
+
+struct MenuStyle {
+    Brush background;
+    Brush highlight;
+    Margin padding{4.0f};
+    Margin entryPadding{8.0f, 4.0f};
+    FontInfo font;
+    Color color = Color::white();
+    Color dim = Color::white();
+    Color separator = Color::white();
+    float checkWidth = 20.0f;
+    float shortcutGap = 24.0f;
+    float minWidth = 140.0f;
+};
+
+struct MenuBarStyle {
+    Brush background;
+    Brush item;
+    Brush itemHovered;
+    Brush itemOpen;
+    Margin itemPadding{8.0f, 3.0f};
+    FontInfo font;
+    Color color = Color::white();
+};
+
+struct ColorPickerStyle {
+    Brush background;
+    Brush swatchBorder;
+    Color checkerLight = Color::white();
+    Color checkerDark = Color::black();
+    Color marker = Color::white();
+    float checkerSize = 6.0f;
+};
+
+struct ToolTipStyle {
+    Brush background;
+    FontInfo font;
+    Color color = Color::white();
+    Margin padding{8.0f, 4.0f};
+};
+
 class Theme {
 public:
     template <typename T>

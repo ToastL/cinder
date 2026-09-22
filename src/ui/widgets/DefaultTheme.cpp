@@ -46,6 +46,7 @@ Theme defaultTheme() {
     theme.set("Color.AxisX", Color::hex(0xE84848FF));
     theme.set("Color.AxisY", Color::hex(0x78CC50FF));
     theme.set("Color.AxisZ", Color::hex(0x4880F0FF));
+    theme.set("Color.AxisW", Color::hex(0xB0B0B0FF));
 
     theme.set("Brush.Background", Brush::color(background));
     theme.set("Brush.Recessed", Brush::color(recessed));
@@ -125,6 +126,69 @@ Theme defaultTheme() {
     splitter.handleHovered = Brush::color(primary);
     splitter.handleSize = 4.0f;
     theme.set("Splitter", splitter);
+
+    SpinBoxStyle spin;
+    spin.normal = Brush::rounded(input, 4.0f, dropdown, 1.0f);
+    spin.hovered = Brush::rounded(input, 4.0f, hover, 1.0f);
+    spin.active = Brush::rounded(input, 4.0f, primary, 1.0f);
+    spin.editing = Brush::rounded(input, 4.0f, primary, 1.0f);
+    spin.fill = Brush::rounded(dropdown, 4.0f);
+    spin.fillHovered = Brush::rounded(hover, 4.0f);
+    spin.padding = Margin(6.0f, 3.0f);
+    spin.accentWidth = 4.0f;
+    theme.set("SpinBox", spin);
+
+    ButtonStyle combo = button;
+    combo.normal = Brush::rounded(input, 4.0f, dropdown, 1.0f);
+    combo.hovered = Brush::rounded(input, 4.0f, hover, 1.0f);
+    combo.pressed = Brush::rounded(recessed, 4.0f, hover, 1.0f);
+    combo.disabled = Brush::rounded(background, 4.0f, recessed, 1.0f);
+    combo.padding = Margin(6.0f, 3.0f);
+    theme.set("ComboButton", combo);
+
+    ExpandableAreaStyle area;
+    area.header = Brush::color(header);
+    area.headerHovered = Brush::color(Color::hex(0x363636FF));
+    area.body = Brush::none();
+    theme.set("ExpandableArea", area);
+
+    MenuStyle menu;
+    menu.background = Brush::rounded(Color::hex(0x1F1F1FFF), 4.0f, outline, 1.0f);
+    menu.highlight = Brush::rounded(primary, 3.0f);
+    menu.padding = Margin(4.0f);
+    menu.entryPadding = Margin(8.0f, 4.0f);
+    menu.font = {FontStyle::Regular, 13.0f};
+    menu.color = Color::hex(0xDADADAFF);
+    menu.dim = dim;
+    menu.separator = outline;
+    theme.set("Menu", menu);
+    theme.set("Menu.Heading", LabelStyle{{FontStyle::Bold, 11.0f}, dim});
+
+    MenuBarStyle bar;
+    bar.background = Brush::none();
+    bar.item = Brush::none();
+    bar.itemHovered = Brush::rounded(dropdown, 3.0f);
+    bar.itemOpen = Brush::rounded(primary, 3.0f);
+    bar.itemPadding = Margin(8.0f, 3.0f);
+    bar.font = {FontStyle::Regular, 13.0f};
+    bar.color = foreground;
+    theme.set("MenuBar", bar);
+
+    ColorPickerStyle picker;
+    picker.background = Brush::rounded(panel, 6.0f, outline, 1.0f);
+    picker.swatchBorder = Brush::rounded(Color::transparent(), 2.0f, black, 1.0f);
+    picker.checkerLight = Color::hex(0xB4B4B4FF);
+    picker.checkerDark = Color::hex(0x6E6E6EFF);
+    picker.marker = bright;
+    picker.checkerSize = 6.0f;
+    theme.set("ColorPicker", picker);
+
+    ToolTipStyle tip;
+    tip.background = Brush::rounded(Color::hex(0x0A0A0AF2), 3.0f, outline, 1.0f);
+    tip.font = {FontStyle::Regular, 12.0f};
+    tip.color = Color::hex(0xDADADAFF);
+    tip.padding = Margin(8.0f, 5.0f);
+    theme.set("ToolTip", tip);
 
     return theme;
 }

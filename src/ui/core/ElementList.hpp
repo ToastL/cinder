@@ -8,6 +8,7 @@
 #include <glm/vec2.hpp>
 #include <glm/vec4.hpp>
 
+#include <cstdint>
 #include <span>
 #include <string>
 #include <string_view>
@@ -66,11 +67,17 @@ struct PolygonElement {
     Color color = Color::white();
 };
 
+struct MeshElement {
+    std::vector<glm::vec2> positions;
+    std::vector<Color> colors;
+    std::vector<std::uint32_t> indices;
+};
+
 struct Element {
     int layer = 0;
     Rect clip;
     Transform2D transform;
-    std::variant<BoxElement, ImageElement, TextElement, LinesElement, PolygonElement> shape;
+    std::variant<BoxElement, ImageElement, TextElement, LinesElement, PolygonElement, MeshElement> shape;
 };
 
 class ElementList {
@@ -97,6 +104,9 @@ public:
     void lines(int layer, std::span<const glm::vec2> points, Color color, float thickness,
                bool closed = false);
     void polygon(int layer, std::span<const glm::vec2> points, Color color);
+    void mesh(int layer, std::span<const glm::vec2> positions, std::span<const Color> colors,
+              std::span<const std::uint32_t> indices);
+    void gradient(int layer, const Rect& rect, Color topLeft, Color topRight, Color bottomRight, Color bottomLeft);
 
     TextureRef named(std::string_view path);
     const std::vector<std::string>& names() const { return names_; }

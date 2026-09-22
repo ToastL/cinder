@@ -194,3 +194,30 @@ TEST_CASE("glyph quads land on device pixels and point at their atlas texels") {
     CHECK(texels.x == doctest::Approx(pixels.x));
     CHECK(texels.y == doctest::Approx(pixels.y));
 }
+
+TEST_CASE("a gradient is a mesh with a colour per corner, drawn in one batch with the boxes") {
+    ElementList elements = list();
+    elements.box(0, Rect::fromSize({0.0f, 0.0f}, {10.0f, 10.0f}), GREY);
+    const Color red{1.0f, 0.0f, 0.0f, 1.0f};
+    const Color blue{0.0f, 0.0f, 1.0f, 1.0f};
+    elements.gradient(1, Rect::fromSize({20.0f, 20.0f}, {40.0f, 10.0f}), red, blue, blue, red);
+    const UiGeometry geometry = batched(elements);
+    REQUIRE(geometry.batches.size() == 1);
+    REQUIRE(geometry.vertices.size() == 8);
+    CHECK(geometry.vertices[4].position == glm::vec2(20.0f, 20.0f));
+    CHECK(geometry.vertices[4].color == red.vec());
+    CHECK(geometry.vertices[5].color == blue.vec());
+    CHECK(geometry.vertices[6].position == glm::vec2(60.0f, 30.0f));
+    CHECK(geometry.vertices[6].shape.w == static_cast<float>(UiMode::Solid));
+    CHECK(geometry.indices.size() == 12);
+}
+
+TEST_CASE("a mesh with an index past its vertices drops that triangle") {
+    ElementList elements = list();
+    const std::array<glm::vec2, 3> positions = {glm::vec2(0.0f), glm::vec2(10.0f, 0.0f), glm::vec2(0.0f, 10.0f)};
+    const std::array<Color, 3> colors = {Color::white(), Color::white(), Color::white()};
+    const std::array<std::uint32_t, 6> indices = {0, 1, 2, 0, 1, 7};
+    elements.mesh(0, positions, colors, indices);
+    const UiGeometry geometry = batched(elements);
+    CHECK(geometry.indices.size() == 3);
+}

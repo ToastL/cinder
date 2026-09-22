@@ -9,6 +9,7 @@
 #include "ui/widgets/BoxPanel.hpp"
 #include "ui/widgets/Button.hpp"
 #include "ui/widgets/Label.hpp"
+#include "ui/widgets/Menu.hpp"
 #include "ui/widgets/SizeBox.hpp"
 
 #include <exception>
@@ -70,8 +71,8 @@ bool Toolbar::editing() const { return session_.state() == PlaySession::State::E
 
 void Toolbar::bind() {
     commands_->map(PLAY, CommandAction{[this] { session_.togglePlay(); }, {}, {}});
-    commands_->map(PAUSE, CommandAction{[this] { session_.togglePause(); }, {}, {}});
-    commands_->map(STEP, CommandAction{[this] { session_.step(); }, {}, {}});
+    commands_->map(PAUSE, CommandAction{[this] { session_.togglePause(); }, [this] { return !editing(); }, {}});
+    commands_->map(STEP, CommandAction{[this] { session_.step(); }, [this] { return !editing(); }, {}});
     commands_->map(SAVE, CommandAction{[this] { write(); }, [this] { return editing(); }, {}});
     commands_->map(UNDO, CommandAction{[this] { history_.undo(selection_); },
                                        [this] { return editing() && !app_.isInteracting(); }, {}});
@@ -97,10 +98,25 @@ void Toolbar::build() {
         return command->description + "  " + command->shortcut.label();
     };
 
+    const std::shared_ptr<const CommandList> list = commands_;
+    std::shared_ptr<Widget> menus = make<MenuBar>()
+            .menu("File", [list](MenuBuilder& menu) { menu.command(list, *SAVE); })
+            .menu("Edit", [list](MenuBuilder& menu) { menu.command(list, *UNDO).command(list, *REDO); })
+            .menu("Play", [this, list](MenuBuilder& menu) {
+                menu.entry([this] { return std::string(editing() ? "Play" : "Stop"); }, [list] { list->execute(*PLAY); },
+                           PLAY->shortcut.label())
+                        .entry([this] { return std::string(session_.state() == PlaySession::State::Paused ? "Resume" : "Pause"); },
+                               [list] { list->execute(*PAUSE); }, PAUSE->shortcut.label())
+                        .enabledIf([this] { return !editing(); })
+                        .command(list, *STEP);
+            });
+
     widget_ = make<Border>()
             .brush([] { return Application::get().theme().get<Brush>("Brush.Toolbar"); })
             .padding(Margin(8.0f, 4.0f))
         [make<HorizontalBox>()
+         + HorizontalBox::slot().autoWidth().vAlign(VAlign::Center)[menus]
+         + gap(12.0f)
          + HorizontalBox::slot().autoWidth()
                [make<Button>()
                         .text([this] { return std::string(editing() ? "Play" : "Stop"); })

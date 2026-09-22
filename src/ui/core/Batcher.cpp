@@ -173,6 +173,19 @@ public:
         }
     }
 
+    void mesh(const Element& element, const MeshElement& mesh) {
+        use(TextureRef::none(), element.clip);
+        const auto base = static_cast<std::uint32_t>(out_.vertices.size());
+        const auto count = static_cast<std::uint32_t>(mesh.positions.size());
+        for (std::size_t i = 0; i < mesh.positions.size(); ++i) {
+            push(element.transform.apply(mesh.positions[i]), mesh.colors[i].vec());
+        }
+        for (std::size_t i = 0; i + 2 < mesh.indices.size(); i += 3) {
+            if (mesh.indices[i] >= count || mesh.indices[i + 1] >= count || mesh.indices[i + 2] >= count) continue;
+            indices(base + mesh.indices[i], base + mesh.indices[i + 1], base + mesh.indices[i + 2]);
+        }
+    }
+
 private:
     static glm::vec2 jointNormal(const std::vector<glm::vec2>& normals, std::size_t point, std::size_t count,
                                  bool closed) {
@@ -263,7 +276,8 @@ void batch(const ElementList& list, UiGeometry& out) {
                     else if constexpr (std::is_same_v<Shape, ImageElement>) builder.image(element, shape);
                     else if constexpr (std::is_same_v<Shape, TextElement>) builder.text(element, shape);
                     else if constexpr (std::is_same_v<Shape, LinesElement>) builder.lines(element, shape);
-                    else builder.polygon(element, shape);
+                    else if constexpr (std::is_same_v<Shape, PolygonElement>) builder.polygon(element, shape);
+                    else builder.mesh(element, shape);
                 },
                 element.shape);
     }

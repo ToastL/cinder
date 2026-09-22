@@ -232,7 +232,7 @@ TEST_CASE("disabled commands swallow their chord, and a shortcut prints its labe
     CHECK(runs == 0);
     CHECK_FALSE(commands.execute(*play));
 #if defined(__APPLE__)
-    CHECK(Shortcut::primary(keys::letter('p'), modifiers::SHIFT).label() == "\xE2\x87\xA7\xE2\x8C\x98P");
+    CHECK(Shortcut::primary(keys::letter('p'), modifiers::SHIFT).label() == "Shift+Cmd+P");
 #else
     CHECK(Shortcut::primary(keys::letter('p'), modifiers::SHIFT).label() == "Ctrl+Shift+P");
 #endif
