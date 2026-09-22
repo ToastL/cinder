@@ -23,7 +23,7 @@ void Button::construct(const Args& args) {
 }
 
 Margin Button::padding() const {
-    return padding_.value_or(Application::get().theme().get<ButtonStyle>(style_).padding);
+    return padding_.value_or(Application::get().theme().get<ButtonStyle>(style_.get()).padding);
 }
 
 glm::vec2 Button::computeDesiredSize(float) const {
@@ -72,7 +72,7 @@ Reply Button::onKeyDown(const Geometry&, const KeyEvent& event) {
 
 int Button::onPaint(const PaintArgs& args, const Geometry& geometry, ElementList& list, int layer,
                      const PaintStyle& style, bool enabled) const {
-    const ButtonStyle& look = Application::get().theme().get<ButtonStyle>(style_);
+    const ButtonStyle& look = Application::get().theme().get<ButtonStyle>(style_.get());
     const bool down = pressed_ && isHovered();
     const Brush& brush = !enabled ? look.disabled : (down ? look.pressed : (isHovered() ? look.hovered : look.normal));
     brush.paint(list, layer, geometry.rect(), style, geometry.scale);

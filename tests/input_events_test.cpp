@@ -130,6 +130,7 @@ TEST_CASE("an input script plays its steps on their frames") {
             "6 type h\xC3\xA9\n"
             "7 scroll 0 -2\n"
             "8 capture out.png\n"
+            "8 close\n"
             "9 quit\n");
 
     Input input;
@@ -148,6 +149,8 @@ TEST_CASE("an input script plays its steps on their frames") {
     CHECK(events[8].wheel == glm::vec2(0.0f, -2.0f));
     CHECK(script.capture(8) == "out.png");
     CHECK_FALSE(script.capture(7));
+    CHECK(script.closes(8));
+    CHECK_FALSE(script.closes(9));
     CHECK(script.quits(9));
     CHECK_FALSE(script.quits(8));
     CHECK(script.lastFrame() == 9);

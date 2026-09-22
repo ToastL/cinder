@@ -100,6 +100,10 @@ ScrollSlot& ScrollBox::addSlot(ScrollSlot slot) {
     return slots_.back();
 }
 
+void ScrollBox::removeFront(std::size_t count) {
+    slots_.erase(slots_.begin(), slots_.begin() + static_cast<std::ptrdiff_t>(std::min(count, slots_.size())));
+}
+
 Widget* ScrollBox::childAt(int index) const {
     if (index < static_cast<int>(slots_.size())) return slots_[static_cast<std::size_t>(index)].widget.get();
     return bar_.get();

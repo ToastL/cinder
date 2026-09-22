@@ -20,8 +20,9 @@ public:
     void apply(Input& input, int frame) const;
     std::optional<std::string> capture(int frame) const;
     bool quits(int frame) const { return quit_ >= 0 && frame >= quit_; }
+    bool closes(int frame) const;
     int lastFrame() const { return last_; }
-    bool empty() const { return steps_.empty() && captures_.empty() && quit_ < 0; }
+    bool empty() const { return steps_.empty() && captures_.empty() && closes_.empty() && quit_ < 0; }
 
 private:
     struct Step {
@@ -36,6 +37,7 @@ private:
 
     std::vector<Step> steps_;
     std::vector<Capture> captures_;
+    std::vector<int> closes_;
     int quit_ = -1;
     int last_ = 0;
 };

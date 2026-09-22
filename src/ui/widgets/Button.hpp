@@ -14,7 +14,7 @@ public:
     struct Args : ::cinder::ui::Args<Args, Button> {
         UI_ATTR(std::string, text)
         UI_EVENT(OnClicked, onClicked)
-        UI_ARG(std::string, buttonStyle, "Button")
+        UI_ATTR(std::string, buttonStyle, "Button")
         UI_ARG(std::optional<Margin>, contentPadding)
         UI_ARG(HAlign, hAlign, HAlign::Center)
         UI_ARG(VAlign, vAlign, VAlign::Center)
@@ -44,7 +44,7 @@ private:
     Reply click();
 
     OnClicked onClicked_;
-    std::string style_;
+    Attribute<std::string> style_;
     std::optional<Margin> padding_;
     bool focusable_ = false;
     bool pressed_ = false;

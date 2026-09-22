@@ -68,7 +68,7 @@ void CommandList::map(std::shared_ptr<const Command> command, CommandAction acti
 
 bool CommandList::process(const KeyEvent& event) const {
     for (const auto& [command, action] : bindings_) {
-        if (!command->chord.matches(event)) continue;
+        if (!command->shortcut.matches(event)) continue;
         if (!action.can()) return true;
         if (action.execute) action.execute();
         return true;

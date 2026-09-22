@@ -30,7 +30,7 @@ struct Command {
     std::string name;
     std::string label;
     std::string description;
-    Shortcut chord;
+    Shortcut shortcut;
 };
 
 struct CommandAction {

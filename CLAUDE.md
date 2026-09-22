@@ -67,6 +67,16 @@ The last two make it scriptable: `--frames 90 --capture out.png` runs headless-i
 screenshot. See *The dev overlay* below for why this is a second executable rather than a flag.
 
 ```bash
+DYLD_LIBRARY_PATH=/opt/homebrew/lib ./build/editor_next samples/sandbox3d
+```
+
+`editor_next` is the editor being rebuilt on the new UI, beside `editor` until it reaches parity: today
+the toolbar, the Scene view with its gizmos and editor camera, and the console, in a fixed layout. It
+takes `editor`'s arguments plus `--capture-window <png>` and `--input-script <file>`; a script can also
+`close` the window to exercise the unsaved-changes prompt. `ctest` holds it to `editor_next_is_imgui_free`,
+which runs `nm` over it, so no ImGui object can be linked into it by accident.
+
+```bash
 cmake --build build --target player && ./build/player samples/sandbox3d
 ```
 
@@ -646,6 +656,17 @@ never touches the queue: it runs on every idle frame, which is all of Edit mode.
 `14 type Crate`, `15 tap enter`, `20 capture out.png`, `21 quit` — through `Input::inject` with the
 OS's events ignored. It replaces the ImGui-only `Probe` for everything on the new UI, and it is how a
 change to a panel is verified without a human at the keyboard.
+
+**The editor panels on the new UI live in `dev/panels/`**, namespace `cinder::dev::panels`, and
+reuse the ImGui-free units unchanged: `Toolbar` (play controls, save, undo and redo, the dirty marker, the
+⌘ shortcuts as a `CommandList`, and the Save / Don't Save / Cancel `Dialog`), `SceneView` (a `Viewport`
+whose client drives `EditorCamera`, `Picking`, `Manipulation` and `GizmoLines`) and `Console`. The host's
+paint hook runs, in order: `processEvents` on the drained queue, each panel's `update`, `paint`, then
+`SceneView::afterPaint`, which sets the camera override and the game's input suppression — keyboard
+while the Scene has focus, mouse while it is hovered or holds the capture, both while the cursor is
+locked. A panel's `update` is also where log lines queued by the sink join the console, so nothing
+edits the widget tree while it is being painted. `SceneView` is not the viewport's client itself: the
+widget would own it and it would own the widget, so a small forwarding client breaks the cycle.
 
 Styles come from a `Theme` of named entries — `"Button"`, `"Button.Primary"`, `"Label.Mono"`,
 `"Color.Primary"` — built by `ui::defaultTheme()` in the colours of Unreal's dark editor. Colours are

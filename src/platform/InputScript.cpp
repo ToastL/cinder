@@ -123,6 +123,8 @@ InputScript InputScript::parse(std::string_view text) {
             push(InputEventType::Wheel, 0)->wheel = {x, y};
         } else if (verb == "capture") {
             script.captures_.push_back(Capture{frame, std::string(trim(line))});
+        } else if (verb == "close") {
+            script.closes_.push_back(frame);
         } else if (verb == "quit") {
             script.quit_ = frame;
         } else {
@@ -139,6 +141,10 @@ void InputScript::apply(Input& input, int frame) const {
     for (const Step& step : steps_) {
         if (step.frame == frame) input.inject(step.event);
     }
+}
+
+bool InputScript::closes(int frame) const {
+    return std::find(closes_.begin(), closes_.end(), frame) != closes_.end();
 }
 
 std::optional<std::string> InputScript::capture(int frame) const {

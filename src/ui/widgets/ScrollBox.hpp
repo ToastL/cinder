@@ -73,6 +73,8 @@ public:
     ScrollSlot& addSlot();
     ScrollSlot& addSlot(ScrollSlot slot);
     void clearChildren() { slots_.clear(); }
+    void removeFront(std::size_t count);
+    std::size_t slotCount() const { return slots_.size(); }
 
     float scrollOffset() const { return offset_; }
     void setScrollOffset(float offset);

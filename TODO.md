@@ -125,9 +125,9 @@ includes `scene`, `reflect` or `gfx` — the reflection-driven Properties panel 
       and the first widgets: boxes, border, overlay, canvas, scaler, label, image, button, check box,
       scroll box, splitter, text field and box, viewport. `Input` records an ordered event queue with
       characters, repeats and modifiers, and `platform/InputScript` replays one for tests and captures.
-- [ ] **Vertical slice** — `editor_next` with the toolbar, the Scene view and the console on the new UI
-      in a fixed layout, before the widget bulk: it retires the renderer, timing, focus and History
-      risks first.
+- [x] **Vertical slice** — `editor_next` with the toolbar, the Scene view and the console on the new UI
+      in a fixed layout: picking, gizmo drags, the editor camera, undo, Play/Stop, the console's Lua
+      line and the close prompt all run on it, and `--input-script` drives every one of them.
 - [ ] **Editor widgets** — a spin box, vector input, combo and colour picker; list and tree views that
       build only visible rows; menus, context menus, modals, tooltips, drag and drop
 - [ ] **Docking** — tabs and splitters in one window, with drag-to-redock and a Window menu to reopen
