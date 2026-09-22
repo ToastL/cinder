@@ -84,4 +84,28 @@ target_compile_definitions(vma_impl PUBLIC
 target_compile_options(vma_impl PRIVATE -Wno-nullability-completeness)
 target_include_directories(vma_impl SYSTEM PUBLIC ${vma_SOURCE_DIR}/include)
 
+set(FT_DISABLE_ZLIB ON CACHE BOOL "" FORCE)
+set(FT_DISABLE_BZIP2 ON CACHE BOOL "" FORCE)
+set(FT_DISABLE_PNG ON CACHE BOOL "" FORCE)
+set(FT_DISABLE_HARFBUZZ ON CACHE BOOL "" FORCE)
+set(FT_DISABLE_BROTLI ON CACHE BOOL "" FORCE)
+set(SKIP_INSTALL_ALL ON CACHE BOOL "" FORCE)
+
+FetchContent_Declare(freetype
+    GIT_REPOSITORY https://github.com/freetype/freetype.git
+    GIT_TAG VER-2-14-3
+    GIT_SHALLOW TRUE)
+
+FetchContent_Declare(harfbuzz
+    GIT_REPOSITORY https://github.com/harfbuzz/harfbuzz.git
+    GIT_TAG 14.5.0
+    GIT_SHALLOW TRUE
+    SOURCE_SUBDIR amalgamated)
+
+FetchContent_MakeAvailable(freetype harfbuzz)
+
+add_library(harfbuzz STATIC ${harfbuzz_SOURCE_DIR}/src/harfbuzz.cc)
+target_include_directories(harfbuzz SYSTEM PUBLIC ${harfbuzz_SOURCE_DIR}/src)
+target_compile_options(harfbuzz PRIVATE -w)
+
 include(${CMAKE_CURRENT_LIST_DIR}/Lua.cmake)

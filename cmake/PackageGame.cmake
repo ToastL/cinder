@@ -62,7 +62,8 @@ endfunction()
 run_build_steps(preBuildSteps)
 
 file(REMOVE_RECURSE "${OUT_DIR}")
-file(MAKE_DIRECTORY "${OUT_DIR}/engine/shaders" "${OUT_DIR}/engine/lua" "${OUT_DIR}/project")
+file(MAKE_DIRECTORY "${OUT_DIR}/engine/shaders" "${OUT_DIR}/engine/lua" "${OUT_DIR}/engine/fonts"
+    "${OUT_DIR}/project")
 
 file(COPY "${PLAYER}" DESTINATION "${OUT_DIR}")
 
@@ -71,6 +72,9 @@ file(COPY ${SPIRV} DESTINATION "${OUT_DIR}/engine/shaders")
 
 file(GLOB PRELUDE "${ENGINE_DIR}/lua/*.lua")
 file(COPY ${PRELUDE} DESTINATION "${OUT_DIR}/engine/lua")
+
+file(GLOB FONTS "${ENGINE_DIR}/fonts/*.ttf" "${ENGINE_DIR}/fonts/*.txt")
+file(COPY ${FONTS} DESTINATION "${OUT_DIR}/engine/fonts")
 
 file(COPY ${MARKERS} DESTINATION "${OUT_DIR}/project")
 foreach(folder Config Content Source)

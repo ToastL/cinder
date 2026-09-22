@@ -35,7 +35,7 @@ add_library(engine STATIC ${ENGINE_SOURCES})
 add_dependencies(engine shaders)
 
 target_include_directories(engine PUBLIC src)
-target_link_libraries(engine PUBLIC volk glfw glm::glm lua vma_impl stb)
+target_link_libraries(engine PUBLIC volk glfw glm::glm lua vma_impl stb freetype harfbuzz)
 target_compile_definitions(engine PUBLIC
     GLFW_INCLUDE_NONE
     GLM_FORCE_DEPTH_ZERO_TO_ONE

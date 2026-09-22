@@ -78,8 +78,10 @@ the editor camera's — which starts as a copy of a perspective scene camera, so
 the same rectangle instead. See *The editor camera*.
 
 The first configure fetches every dependency and needs network — glfw, glm, lua, VMA, stb, volk,
-Vulkan-Headers, Dear ImGui and doctest, all pinned in `cmake/Dependencies.cmake`. Nothing needs
-installing.
+Vulkan-Headers, Dear ImGui, doctest, FreeType and HarfBuzz, all pinned in `cmake/Dependencies.cmake`.
+Nothing needs installing: FreeType is built with zlib, bzip2, PNG, Brotli and HarfBuzz switched off, so
+it never finds Homebrew's copies, and HarfBuzz is compiled from its single-file `src/harfbuzz.cc`
+rather than through its community-maintained CMake build.
 `glslangValidator` is the one exception: it is a *build tool*, found with `find_program`, and it
 compiles `engine/shaders/*.{vert,frag}` to `.spv`. Editing a shader needs a rebuild, not just a
 restart. `brew install glslang` if it is missing.
@@ -115,7 +117,8 @@ caught a missing `TRANSFER_SRC_BIT` that no test would have.
 cinder/
   CMakeLists.txt
   cmake/          dependency, Lua, shader-compilation and packaging modules
-  engine/         engine data: shaders/ (GLSL and the compiled .spv) and lua/ (the prelude)
+  engine/         engine data: shaders/ (GLSL and the compiled .spv), lua/ (the prelude) and fonts/
+                  (Roboto and Roboto Mono, OFL-1.1, licences beside them)
   samples/        sandbox2d/, sandbox3d/ and physics/ — example projects
   src/
     reflect/ lua/ platform/ text/    leaves
@@ -1143,7 +1146,7 @@ case`: macOS is case-insensitive by default, and the same project would not find
 case-sensitive system.
 
 `cmake --build build --target package_game` builds `player` and runs `cmake/PackageGame.cmake`, which
-stages `build/dist/<name>/` as `player`, `engine/shaders/*.spv`, `engine/lua/*.lua` and `project/`
+stages `build/dist/<name>/` as `player`, `engine/shaders/*.spv`, `engine/lua/*.lua`, `engine/fonts/` and `project/`
 holding the `.cinder` file, `Config/`, `Content/` and `Source/` — never `Saved/` or anything else in
 the folder. `<name>` is the `.cinder` file's stem. The cache variable `CINDER_PACKAGE_PROJECT` picks
 the project, defaulting to `samples/sandbox2d`.
