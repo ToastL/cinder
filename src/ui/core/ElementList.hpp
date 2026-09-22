@@ -1,6 +1,6 @@
 #pragma once
 
-#include "ui/core/LinearColor.hpp"
+#include "ui/core/Color.hpp"
 #include "ui/core/Rect.hpp"
 #include "ui/core/TextureRef.hpp"
 #include "ui/core/Transform2D.hpp"
@@ -22,8 +22,8 @@ struct ShapedText;
 namespace cinder::ui {
 
 struct BoxStyle {
-    LinearColor fill = LinearColor::transparent();
-    LinearColor border = LinearColor::transparent();
+    Color fill = Color::transparent();
+    Color border = Color::transparent();
     float borderWidth = 0.0f;
     glm::vec4 radii{0.0f};
 };
@@ -36,7 +36,7 @@ struct BoxElement {
 struct ImageElement {
     Rect rect;
     TextureRef texture;
-    LinearColor tint = LinearColor::white();
+    Color tint = Color::white();
     glm::vec2 uvMin{0.0f};
     glm::vec2 uvMax{1.0f};
     bool opaque = false;
@@ -51,19 +51,19 @@ struct GlyphQuad {
 
 struct TextElement {
     std::vector<GlyphQuad> glyphs;
-    LinearColor color = LinearColor::white();
+    Color color = Color::white();
 };
 
 struct LinesElement {
     std::vector<glm::vec2> points;
-    LinearColor color = LinearColor::white();
+    Color color = Color::white();
     float thickness = 1.0f;
     bool closed = false;
 };
 
 struct PolygonElement {
     std::vector<glm::vec2> points;
-    LinearColor color = LinearColor::white();
+    Color color = Color::white();
 };
 
 struct Element {
@@ -90,13 +90,13 @@ public:
     const Transform2D& transform() const { return transforms_.back(); }
 
     void box(int layer, const Rect& rect, const BoxStyle& style);
-    void image(int layer, const Rect& rect, TextureRef texture, LinearColor tint = LinearColor::white(),
+    void image(int layer, const Rect& rect, TextureRef texture, Color tint = Color::white(),
                glm::vec2 uvMin = glm::vec2(0.0f), glm::vec2 uvMax = glm::vec2(1.0f), bool opaque = false);
-    void text(int layer, glm::vec2 baseline, const cinder::text::ShapedText& shaped, LinearColor color,
+    void text(int layer, glm::vec2 baseline, const cinder::text::ShapedText& shaped, Color color,
               cinder::text::GlyphAtlas& atlas);
-    void lines(int layer, std::span<const glm::vec2> points, LinearColor color, float thickness,
+    void lines(int layer, std::span<const glm::vec2> points, Color color, float thickness,
                bool closed = false);
-    void polygon(int layer, std::span<const glm::vec2> points, LinearColor color);
+    void polygon(int layer, std::span<const glm::vec2> points, Color color);
 
     TextureRef named(std::string_view path);
     const std::vector<std::string>& names() const { return names_; }

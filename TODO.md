@@ -96,48 +96,52 @@ sugar, never the primary surface.
 
 ## UI framework
 
-**The editor's UI is our own, by decision, and it is shaped like Unreal's** — not Qt, not RmlUi, and
-ImGui only until the replacement reaches parity. Unreal builds its editor on Slate and its game UI on
-UMG, which wraps Slate; this engine does the same, so one framework is both the game UI system and the
-editor's toolkit. Qt would be a second UI system, an installed dependency with LGPL terms, and it and
-GLFW both want to own the macOS app; RmlUi would still leave every editor widget, docking and multiple
-windows to build. ImGui stays the working `editor` until the last panel is ported.
+**The editor's UI is our own, by decision, and it is shaped like Unreal's without borrowing its
+names** — not Qt, not RmlUi, and ImGui only until the replacement reaches parity. Unreal builds its
+editor on Slate and its game UI on UMG, which wraps Slate; this engine does the same, so one framework
+is both the game UI system and the editor's toolkit. Qt would be a second UI system, an installed
+dependency with LGPL terms, and it and GLFW both want to own the macOS app; RmlUi would still leave
+every editor widget, docking and multiple windows to build. ImGui stays the working `editor` until the
+last panel is ported.
 
-The shape is Slate's: a retained tree of `S`-prefixed widgets built with `SNew`, slots and chained
-arguments; layout in two passes, desired size bottom-up and arrangement top-down; paint into draw
-elements that a GPU-free batcher turns into vertices; input routed along the widget path with a
-`Reply`, focus and mouse capture; styles; docking through a `TabManager`; menus and shortcuts from
-command lists. `ui` never includes `scene`, `reflect` or `gfx` — the reflection-driven Details panel
-lives in `dev`, as Unreal's PropertyEditor lives outside Slate.
+The shape is Slate's: a retained tree of widgets with plain names — `Button`, `Label`, `TextBox`,
+`HorizontalBox`, `Splitter`, `Canvas` — built with `ui::make<T>()`, slots and chained arguments; layout
+in two passes, desired size bottom-up and arrangement top-down; paint into draw elements that a
+GPU-free batcher turns into vertices; input routed along the widget path with a `Reply`, focus and
+mouse capture; a `Theme` of named styles; docking; menus and shortcuts from a `CommandList`. `ui` never
+includes `scene`, `reflect` or `gfx` — the reflection-driven Properties panel lives in `dev`.
 
-- [ ] **Text** — a `text/` leaf (-> `platform`) on FreeType and HarfBuzz, fetched like every other
-      dependency: load a font, shape and measure a string, rasterize glyphs into CPU atlas pages. No
-      GPU, so layout measures text without an edge to `gfx`, and it tests headlessly. `stb_truetype`
-      is already fetched but has no hinting, which small editor text needs on a 1x display, and
-      HarfBuzz is what reads GPOS kerning.
-- [ ] **UI renderer** — `gfx/UiRenderer` records in the present pass after the composite, not as a
+- [x] **Text** — `text/` (-> `platform`) on FreeType and HarfBuzz: load a font, shape and measure a
+      string, rasterize glyphs into CPU atlas pages, map carets to clusters. No GPU, so layout measures
+      text without an edge to `gfx`, and all of it tests headlessly. Roboto and Roboto Mono ship in
+      `engine/fonts/`.
+- [x] **UI renderer** — `gfx/UiRenderer` records in the present pass after the composite, not as a
       `DrawPass`: every `DrawPass` records in the scene pass, which has depth. Rounded rectangles and
       borders as an SDF, anti-aliased lines and convex fills for gizmos, images including the scene
       target drawn opaque, and glyphs from R8 atlas pages rasterized at the framebuffer scale.
-- [ ] **Slate core** — `ui/core` (widgets, geometry, attributes, replies, draw elements, hit testing,
-      styles), `ui/framework` (the `Application` that routes events, commands), `ui/widgets` and
-      `ui/docking`, each a layer of its own. `Input` needs an ordered event queue and a character
-      callback; today it holds per-key edge state only.
-- [ ] **Editor widgets** — a text field with selection, clipboard and undo; a spin box, vector input,
-      checkbox, combo and colour picker; list and tree views that build only visible rows; menus,
-      context menus, modals, tooltips, drag and drop; a theme
+      `ui_gallery` shows all of it and `--capture-window` captures it.
+- [x] **Widget core** — `ui/core` (widgets, geometry, attributes, replies, draw elements, hit
+      testing, styles), `ui/framework` (the `Application` that routes events, commands and shortcuts)
+      and the first widgets: boxes, border, overlay, canvas, scaler, label, image, button, check box,
+      scroll box, splitter, text field and box, viewport. `Input` records an ordered event queue with
+      characters, repeats and modifiers, and `platform/InputScript` replays one for tests and captures.
+- [ ] **Vertical slice** — `editor_next` with the toolbar, the Scene view and the console on the new UI
+      in a fixed layout, before the widget bulk: it retires the renderer, timing, focus and History
+      risks first.
+- [ ] **Editor widgets** — a spin box, vector input, combo and colour picker; list and tree views that
+      build only visible rows; menus, context menus, modals, tooltips, drag and drop
 - [ ] **Docking** — tabs and splitters in one window, with drag-to-redock and a Window menu to reopen
       a closed tab. Panels floating in their own OS windows come after parity: `VkCtx` has to stop
       owning the one GLFW surface — one device, a swapchain per window.
 - [ ] **Port the panels** into `editor_next` beside `editor`, then flip the names and delete ImGui and
       `gfx::Overlay`. `PlaySession`, `History`, `Selection`, `Picking`, `EditorCamera`, `Manipulator`,
       `GizmoGeometry` and `GizmoLines` have no ImGui in them and carry over as they are; the new
-      panels take Unreal's names — `MainFrame`, `SceneViewport`, `SceneOutliner`, `DetailsView`,
-      `OutputLog`. `cmake/AssertLayers.cmake` lists the files still allowed to mention ImGui, and the
-      list only shrinks.
-- [ ] **UMG** — game widgets as reflected classes saved as `.widget` assets under `Content/`, created
-      from Lua and added to the viewport, never nodes in the `Scene`. Its own layer over `ui`,
-      `reflect` and `serial`, and its own plan once the editor is on Slate.
+      panels live in `dev/panels/` — `Toolbar`, `SceneView`, `Explorer`, `Properties`, `Console`.
+      `cmake/AssertLayers.cmake` lists the files still allowed to mention ImGui, and the list only
+      shrinks.
+- [ ] **Game UI** — reflected widget classes saved as `.widget` assets under `Content/`, created from
+      Lua and added to the viewport, never nodes in the `Scene`: Unreal's UMG, in its own layer over
+      `ui`, `reflect` and `serial`, and its own plan once the editor is on the new UI.
 - [ ] **Project browser** — the first screen of `editor` with no argument: recent projects and
       templates, as Unreal's Project Browser and Godot's Project Manager do. Built on the new UI once
       it lands, and designed separately.
@@ -213,8 +217,8 @@ lives in `dev`, as Unreal's PropertyEditor lives outside Slate.
 - [ ] **Animation** — skeletal (skinning shader, joint palette), sprite sheet animation, and a
       clip/state machine
 - [ ] **UI system** — there is no screen-space layer: sprites live in the world, so a HUD has to be
-      placed in front of the camera. It is *UMG* under *UI framework*, on the same Slate core the
-      editor moves onto. World-space text may still want MSDF later.
+      placed in front of the camera. It is *Game UI* under *UI framework*, on the same widget core
+      the editor moves onto. World-space text may still want MSDF later.
 - [ ] **Particles** — emitters as nodes, GPU-driven if it matters
 - [ ] Scene queries — raycast, overlap, spatial partition (BVH or grid)
 - [ ] Timers, event bus

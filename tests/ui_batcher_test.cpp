@@ -10,7 +10,7 @@
 
 using cinder::ui::BoxStyle;
 using cinder::ui::ElementList;
-using cinder::ui::LinearColor;
+using cinder::ui::Color;
 using cinder::ui::Rect;
 using cinder::ui::TextureRef;
 using cinder::ui::Transform2D;
@@ -20,7 +20,7 @@ using cinder::ui::UiMode;
 namespace {
 
 const glm::vec2 SIZE(400.0f, 300.0f);
-const BoxStyle GREY{LinearColor::hex(0x808080FF)};
+const BoxStyle GREY{Color::hex(0x808080FF)};
 
 ElementList list(float scale = 1.0f) {
     ElementList elements;
@@ -61,9 +61,9 @@ TEST_CASE("boxes, lines and text share one batch because only the text samples a
     ElementList elements = list();
     elements.box(0, Rect::fromSize({10.0f, 10.0f}, {50.0f, 20.0f}), GREY);
     elements.text(0, {12.0f, 25.0f}, cinder::text::shape(fonts().get(cinder::text::FontStyle::Regular), "Hi", 13.0f),
-                  LinearColor::white(), atlas);
+                  Color::white(), atlas);
     const std::array<glm::vec2, 2> line = {glm::vec2(0.0f), glm::vec2(100.0f, 0.0f)};
-    elements.lines(0, line, LinearColor::white(), 2.0f);
+    elements.lines(0, line, Color::white(), 2.0f);
     elements.box(0, Rect::fromSize({70.0f, 10.0f}, {50.0f, 20.0f}), GREY);
 
     const UiGeometry geometry = batched(elements);
@@ -108,7 +108,7 @@ TEST_CASE("layers order the output and keep submission order within a layer") {
 TEST_CASE("a box is a feathered quad carrying its local position, snapped to device pixels") {
     ElementList elements = list(2.0f);
     elements.box(0, Rect::fromSize({10.3f, 20.0f}, {40.0f, 10.0f}),
-                 BoxStyle{LinearColor::white(), LinearColor::black(), 1.0f, glm::vec4(3.0f, 30.0f, 0.0f, -2.0f)});
+                 BoxStyle{Color::white(), Color::black(), 1.0f, glm::vec4(3.0f, 30.0f, 0.0f, -2.0f)});
 
     const UiGeometry geometry = batched(elements);
     REQUIRE(geometry.vertices.size() == 4);
@@ -127,7 +127,7 @@ TEST_CASE("thick lines get a solid core and a fringe, thin ones a faded spine") 
     const std::array<glm::vec2, 2> segment = {glm::vec2(10.0f, 10.0f), glm::vec2(110.0f, 10.0f)};
 
     ElementList thick = list();
-    thick.lines(0, segment, LinearColor::white(), 3.0f);
+    thick.lines(0, segment, Color::white(), 3.0f);
     const UiGeometry wide = batched(thick);
     CHECK(wide.vertices.size() == 8);
     CHECK(wide.indices.size() == 18);
@@ -136,7 +136,7 @@ TEST_CASE("thick lines get a solid core and a fringe, thin ones a faded spine") 
     CHECK(wide.vertices[0].position.y - wide.vertices[3].position.y == doctest::Approx(4.0f));
 
     ElementList thin = list();
-    thin.lines(0, segment, LinearColor::white(), 0.5f);
+    thin.lines(0, segment, Color::white(), 0.5f);
     const UiGeometry narrow = batched(thin);
     CHECK(narrow.vertices.size() == 6);
     CHECK(narrow.indices.size() == 12);
@@ -149,7 +149,7 @@ TEST_CASE("a convex polygon is a fan plus a fringe, whichever way it winds") {
 
     for (const auto& points : {clockwise, anticlockwise}) {
         ElementList elements = list();
-        elements.polygon(0, points, LinearColor::white());
+        elements.polygon(0, points, Color::white());
         const UiGeometry geometry = batched(elements);
         REQUIRE(geometry.vertices.size() == 6);
         CHECK(geometry.indices.size() == 21);
@@ -180,7 +180,7 @@ TEST_CASE("glyph quads land on device pixels and point at their atlas texels") {
     cinder::text::GlyphAtlas atlas;
     ElementList elements = list(2.0f);
     elements.text(0, {10.3f, 20.1f}, cinder::text::shape(fonts().get(cinder::text::FontStyle::Regular), "A", 13.0f),
-                  LinearColor::white(), atlas);
+                  Color::white(), atlas);
 
     const UiGeometry geometry = batched(elements);
     REQUIRE(geometry.vertices.size() == 4);

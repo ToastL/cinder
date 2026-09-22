@@ -26,10 +26,11 @@ runtime that plays a project, `player`, is `EXCLUDE_FROM_ALL` and only built on 
 DYLD_LIBRARY_PATH=/opt/homebrew/lib ./build/ui_gallery --frames 10 --capture-window gallery.png
 ```
 
-`ui_gallery` is Unreal's STestSuite for the new UI: one window drawing everything the UI renderer can
-draw, linked against `engine` alone. `--capture-window` writes the swapchain image, UI included, which
-`--capture` never does; `--lowdpi` turns off framebuffer scaling so text can be judged at 1x on a
-Retina display, and `--text-gamma` tunes glyph coverage.
+`ui_gallery` is the test bench for the new UI, linked against `engine` alone: every widget, live, on
+one side of a splitter, and everything the UI renderer can draw on the other. `--capture-window` writes
+the swapchain image, UI included, which `--capture` never does; `--input-script <file>` replays input
+instead of the OS's (see *The UI framework*); `--lowdpi` turns off framebuffer scaling so text can be
+judged at 1x on a Retina display, and `--text-gamma` tunes glyph coverage.
 
 ```bash
 ctest --test-dir build --output-on-failure
@@ -133,7 +134,7 @@ cinder/
     reflect/ lua/ platform/ text/    leaves
     scene/ serial/ components/       the world model
     physics/                         rigid bodies, collision and the solver
-    ui/core/ ui/framework/ ui/widgets/ ui/docking/  the Slate-shaped UI framework, being built
+    ui/core/ ui/framework/ ui/widgets/ ui/docking/  the UI framework replacing ImGui
     gfx/ gfx/vk/ gfx/asset/ gfx/pass/  the renderer
     script/ core/                    the Lua host and the engine
     dev/                             ImGui, panels, dockspace, play session; NOT part of `engine`
@@ -177,7 +178,7 @@ editor camera and gizmos, the Explorer and Properties, the dockspace, the play s
 toolbar. It is the only place ImGui may be mentioned. `player` links `engine`; `editor` links
 `engine_dev`. If a `#include <imgui.h>` ever appears outside `src/dev/`, the split is broken.
 
-ImGui is being replaced by a UI framework of our own, shaped like Unreal's Slate — see *UI framework*
+ImGui is being replaced by a UI framework of our own — see *The UI framework* below and *UI framework*
 in `TODO.md`. `text` and the four `ui` layers are part of `engine`, because the game will use them too;
 `ui` never includes `scene`, `reflect` or `gfx`. While the port runs, `IMGUI_SOURCES` in
 `cmake/AssertLayers.cmake` lists the files still allowed to mention ImGui, and the list only shrinks: a
@@ -589,6 +590,66 @@ sphere and a `1 2 1` capsule collider cover; `Picking` still treats every `MeshP
 
 What is missing is tracked in `TODO.md`: joints, CCD, sensors, collision layers and convex hulls. So is the one that is not physics' fault — nothing interpolates
 transforms, so at `fixedHz` 60 on a 120 Hz display a falling body visibly steps.
+
+## The UI framework
+
+**The editor is moving off ImGui onto a retained UI of our own, shaped like Unreal's Slate and named
+our own way.** Widgets are objects that persist between frames; each frame the `Application` asks the
+root for its desired size bottom-up (`Widget::prepass`), arranges children top-down
+(`arrangeChildren` hands out a `Geometry`), and paints into the renderer's `ui::ElementList`. The same
+paint builds the `HitTester`, so input always routes against what was last drawn. Everything in
+`text` and `ui` runs headlessly: `tests/ui_harness.hpp` drives a real `Application` with a
+`HeadlessPlatform` clock and clipboard.
+
+Widgets are built with `ui::make<T>()`, which returns the widget's `Args`; chained setters fill them,
+`[child]` sets the content, `+ T::slot()` adds a slot, and the `Args` convert to `std::shared_ptr<T>`
+— or to any base — by building the widget. `.assign(ptr)` keeps a handle, the way `SAssignNew` does:
+
+```cpp
+auto toolbar = ui::make<HorizontalBox>()
+    + HorizontalBox::slot().autoWidth().padding(4)
+    [
+        ui::make<Button>().text("Play").onClicked([&] { session.requestPlay(); return Reply::handled(); })
+    ]
+    + HorizontalBox::slot().fill(1)
+    [
+        ui::make<Label>().assign(title_).text([&] { return history.title(); })
+    ];
+```
+
+A widget declares `struct Args : ui::Args<Args, Widget>` with `UI_ATTR`, `UI_ARG`, `UI_EVENT`,
+`UI_CONTENT` and `UI_SLOTS`, each taking an optional default, and implements `construct(const Args&)`.
+`ui::Args` adds visibility, enabled, tooltip and cursor to every widget. An `Attribute<T>` holds a value
+or a getter called when read, which is how a label follows `history.title()` without being told.
+`auto x = ui::make<T>()...` is the `Args`, not the widget; name the type or call `.build()`. Slot types
+live at namespace scope, because clang cannot use a nested class's member initializers inside the
+class that encloses it.
+
+**Input goes through `platform::Input`'s event queue, not its edge flags.** `setRecording(true)`
+switches the queue on; the host drains it with `takeEvents()` in the UI paint hook and hands the batch
+to `Application::processEvents`. Keys arrive with repeats and modifiers — ⌘ is
+`modifiers::PRIMARY` on macOS and Control elsewhere — characters arrive separately, cursor moves
+coalesce, and losing window focus synthesizes releases for the UI and the game alike. `consume()`
+never touches the queue: it runs on every idle frame, which is all of Edit mode. Routing is Slate's:
+
+- the mouse bubbles from the widget under the pointer up its path until a `Reply` says handled, or
+  goes straight to the widget that captured it; a press focuses the deepest focusable widget and
+  clears focus when there is none, which is how a text field commits when you click elsewhere;
+- keys bubble from the focused widget, and only a key nobody handled reaches the global
+  `CommandList`s, so a text field keeps ⌘Z for itself;
+- hover is recomputed after every paint, a second press within `DOUBLE_CLICK_TIME` and
+  `DOUBLE_CLICK_DISTANCE` is a double click, and `Reply::detectDrag` fires `onDragDetected` once the
+  pointer passes `DRAG_THRESHOLD`;
+- disabled widgets are still hit, so they can show tooltips, but no handler of theirs runs.
+
+`platform/InputScript` replays a text file of timed input — `12 move 40 60`, `13 click left`,
+`14 type Crate`, `15 tap enter`, `20 capture out.png`, `21 quit` — through `Input::inject` with the
+OS's events ignored. It replaces the ImGui-only `Probe` for everything on the new UI, and it is how a
+change to a panel is verified without a human at the keyboard.
+
+Styles come from a `Theme` of named entries — `"Button"`, `"Button.Primary"`, `"Label.Mono"`,
+`"Color.Primary"` — built by `ui::defaultTheme()` in the colours of Unreal's dark editor. Colours are
+linear `ui::Color`s authored as sRGB hex; the swapchain encodes them.
 
 ## The dev overlay
 

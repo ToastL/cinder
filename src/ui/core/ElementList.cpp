@@ -46,13 +46,13 @@ void ElementList::box(int layer, const Rect& rect, const BoxStyle& style) {
     add(layer).shape = BoxElement{rect, style};
 }
 
-void ElementList::image(int layer, const Rect& rect, TextureRef texture, LinearColor tint, glm::vec2 uvMin,
+void ElementList::image(int layer, const Rect& rect, TextureRef texture, Color tint, glm::vec2 uvMin,
                         glm::vec2 uvMax, bool opaque) {
     if (rect.empty()) return;
     add(layer).shape = ImageElement{rect, texture, tint, uvMin, uvMax, opaque};
 }
 
-void ElementList::text(int layer, glm::vec2 baseline, const cinder::text::ShapedText& shaped, LinearColor color,
+void ElementList::text(int layer, glm::vec2 baseline, const cinder::text::ShapedText& shaped, Color color,
                        cinder::text::GlyphAtlas& atlas) {
     if (shaped.font == nullptr || shaped.glyphs.empty()) return;
     atlas_ = &atlas;
@@ -80,13 +80,13 @@ void ElementList::text(int layer, glm::vec2 baseline, const cinder::text::Shaped
     add(layer).shape = std::move(element);
 }
 
-void ElementList::lines(int layer, std::span<const glm::vec2> points, LinearColor color, float thickness,
+void ElementList::lines(int layer, std::span<const glm::vec2> points, Color color, float thickness,
                         bool closed) {
     if (points.size() < 2 || thickness <= 0.0f) return;
     add(layer).shape = LinesElement{std::vector<glm::vec2>(points.begin(), points.end()), color, thickness, closed};
 }
 
-void ElementList::polygon(int layer, std::span<const glm::vec2> points, LinearColor color) {
+void ElementList::polygon(int layer, std::span<const glm::vec2> points, Color color) {
     if (points.size() < 3) return;
     add(layer).shape = PolygonElement{std::vector<glm::vec2>(points.begin(), points.end()), color};
 }
