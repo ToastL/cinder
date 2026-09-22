@@ -80,8 +80,8 @@ editor camera, the Explorer, Properties, picking, undo and transform gizmos have
       the file belongs in the project's `Saved/`
 - [ ] Project picker and new-project template — the editor takes the project folder or its
       `.cinder` file on the command line; the template writes `Content/Scenes/` and `Content/Textures/`,
-      and the picker lists each descriptor's `category` and `description`. Built as the *Project
-      browser* under *UI framework*, not in ImGui.
+      and the picker lists each descriptor's `category` and `description`. The *Project browser*
+      under *UI framework*, not in ImGui.
 - [ ] Project Settings panel — `ProjectConfig::walk` already writes `Config/Game.ini` through `IniSave`
 - [ ] Scene switching — open, new and save-as. The editor edits the one scene named by
       `startScene` in `Config/Game.ini` or `--scene`.
@@ -96,45 +96,51 @@ sugar, never the primary surface.
 
 ## UI framework
 
-**The editor's UI is our own, by decision** — not Qt, not RmlUi, and ImGui only until the replacement
-reaches parity. Unreal (Slate), Unity (UI Toolkit) and Godot (`Control` nodes) each build their editor
-on the UI system their games use, and so does this engine: one framework is both the game UI system and
-the editor's toolkit. Qt would be a second UI system, an installed dependency with LGPL terms, and it
-and GLFW both want to own the macOS app; RmlUi would still leave every editor widget, docking and
-multiple windows to build. ImGui stays the working editor until the last panel is ported.
+**The editor's UI is our own, by decision, and it is shaped like Unreal's** — not Qt, not RmlUi, and
+ImGui only until the replacement reaches parity. Unreal builds its editor on Slate and its game UI on
+UMG, which wraps Slate; this engine does the same, so one framework is both the game UI system and the
+editor's toolkit. Qt would be a second UI system, an installed dependency with LGPL terms, and it and
+GLFW both want to own the macOS app; RmlUi would still leave every editor widget, docking and multiple
+windows to build. ImGui stays the working `editor` until the last panel is ported.
+
+The shape is Slate's: a retained tree of `S`-prefixed widgets built with `SNew`, slots and chained
+arguments; layout in two passes, desired size bottom-up and arrangement top-down; paint into draw
+elements that a GPU-free batcher turns into vertices; input routed along the widget path with a
+`Reply`, focus and mouse capture; styles; docking through a `TabManager`; menus and shortcuts from
+command lists. `ui` never includes `scene`, `reflect` or `gfx` — the reflection-driven Details panel
+lives in `dev`, as Unreal's PropertyEditor lives outside Slate.
 
 - [ ] **Text** — a `text/` leaf (-> `platform`) on FreeType and HarfBuzz, fetched like every other
-      dependency: load a font, shape and measure a string, rasterize glyphs to CPU bitmaps. No GPU, so
-      layout measures text without an edge to `gfx`, and it tests headlessly. `stb_truetype` is already
-      fetched but has no hinting, which small editor text needs on a 1x display, and HarfBuzz is what
-      reads GPOS kerning.
-- [ ] **UI pass** — `gfx/pass/UiPass` after `SpritePass`, in window points: scissor clipping, rounded
-      rectangles and borders as an SDF in the shader, images, and glyphs from an atlas rasterized at
-      the framebuffer scale. `DrawList` gets matching calls, so `scene` still never includes `gfx`.
-- [ ] **Controls as nodes** — a `ui/` layer (-> `scene`, `reflect`, `text`, `platform`). `Control` holds
-      a rect with anchors and offsets, as Godot's does, under `Panel`, `Label`, `Image`, `Button` and
-      HBox, VBox, Margin and Scroll containers, with layout, hit-testing and focus. Their fields are
-      `CINDER_PROP`s, so they save, script and show in Properties with no extra code. `Input` needs an
-      ordered event queue and a character callback; today it holds per-key edge state only. This is the
-      *UI system* under *Gameplay systems*.
-- [ ] **Project browser** — the first editor screen on the new UI, with the first few widgets: `editor`
-      with no argument lists recent projects and templates, as Unreal's Project Browser and Godot's
-      Project Manager do. A list, a text field, buttons and a native folder picker
-      (`nativefiledialog-extended`), and no docking or viewport. A separate Hub-style launcher only pays
-      off once several engine versions install side by side; `engineAssociation` is the field it would
-      read.
-- [ ] **Editor widgets** — a text field with selection, clipboard and undo; a number drag field,
-      checkbox, dropdown and colour picker; a tree view that builds only visible rows; tabs, splitters,
-      menus, context menus, modals, tooltips, drag and drop; a theme
-- [ ] **Shell** — docking with tabs and splitters in one window, then panels floating in their own OS
-      windows, which needs `VkCtx` to stop owning the one GLFW surface: one device, a swapchain per
-      window. A Scene view and a Game view side by side need a second render target set. A native macOS
-      menu bar needs an Objective-C++ file. The editor's UI is its own tree, never the game's `Scene`,
-      so Play and Stop never touch it.
-- [ ] **Port the panels** into a new executable beside `editor`, one at a time, then delete ImGui and
-      `gfx::Overlay`. `PlaySession`, `History`, `Selection`, `Picking`, `EditorCamera` and `Manipulator`
-      have no ImGui in them and move over as they are; `Viewport`, `Explorer`, `Properties`, `Console`,
-      `Toolbar`, `Dockspace`, `Probe`, the drawing half of `Gizmos` and `ImGuiLayer` are rewritten.
+      dependency: load a font, shape and measure a string, rasterize glyphs into CPU atlas pages. No
+      GPU, so layout measures text without an edge to `gfx`, and it tests headlessly. `stb_truetype`
+      is already fetched but has no hinting, which small editor text needs on a 1x display, and
+      HarfBuzz is what reads GPOS kerning.
+- [ ] **UI renderer** — `gfx/UiRenderer` records in the present pass after the composite, not as a
+      `DrawPass`: every `DrawPass` records in the scene pass, which has depth. Rounded rectangles and
+      borders as an SDF, anti-aliased lines and convex fills for gizmos, images including the scene
+      target drawn opaque, and glyphs from R8 atlas pages rasterized at the framebuffer scale.
+- [ ] **Slate core** — `ui/core` (widgets, geometry, attributes, replies, draw elements, hit testing,
+      styles), `ui/framework` (the `Application` that routes events, commands), `ui/widgets` and
+      `ui/docking`, each a layer of its own. `Input` needs an ordered event queue and a character
+      callback; today it holds per-key edge state only.
+- [ ] **Editor widgets** — a text field with selection, clipboard and undo; a spin box, vector input,
+      checkbox, combo and colour picker; list and tree views that build only visible rows; menus,
+      context menus, modals, tooltips, drag and drop; a theme
+- [ ] **Docking** — tabs and splitters in one window, with drag-to-redock and a Window menu to reopen
+      a closed tab. Panels floating in their own OS windows come after parity: `VkCtx` has to stop
+      owning the one GLFW surface — one device, a swapchain per window.
+- [ ] **Port the panels** into `editor_next` beside `editor`, then flip the names and delete ImGui and
+      `gfx::Overlay`. `PlaySession`, `History`, `Selection`, `Picking`, `EditorCamera`, `Manipulator`,
+      `GizmoGeometry` and `GizmoLines` have no ImGui in them and carry over as they are; the new
+      panels take Unreal's names — `MainFrame`, `SceneViewport`, `SceneOutliner`, `DetailsView`,
+      `OutputLog`. `cmake/AssertLayers.cmake` lists the files still allowed to mention ImGui, and the
+      list only shrinks.
+- [ ] **UMG** — game widgets as reflected classes saved as `.widget` assets under `Content/`, created
+      from Lua and added to the viewport, never nodes in the `Scene`. Its own layer over `ui`,
+      `reflect` and `serial`, and its own plan once the editor is on Slate.
+- [ ] **Project browser** — the first screen of `editor` with no argument: recent projects and
+      templates, as Unreal's Project Browser and Godot's Project Manager do. Built on the new UI once
+      it lands, and designed separately.
 
 ## Play mode
 
@@ -207,9 +213,8 @@ multiple windows to build. ImGui stays the working editor until the last panel i
 - [ ] **Animation** — skeletal (skinning shader, joint palette), sprite sheet animation, and a
       clip/state machine
 - [ ] **UI system** — there is no screen-space layer: sprites live in the world, so a HUD has to be
-      placed in front of the camera. Needs a screen-space pass with its own projection, anchoring,
-      layout, text rendering, input hit-testing. Built as the first three items of *UI framework*,
-      the same system the editor moves onto. World-space text may still want MSDF later.
+      placed in front of the camera. It is *UMG* under *UI framework*, on the same Slate core the
+      editor moves onto. World-space text may still want MSDF later.
 - [ ] **Particles** — emitters as nodes, GPU-driven if it matters
 - [ ] Scene queries — raycast, overlap, spatial partition (BVH or grid)
 - [ ] Timers, event bus

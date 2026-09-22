@@ -118,9 +118,10 @@ cinder/
   engine/         engine data: shaders/ (GLSL and the compiled .spv) and lua/ (the prelude)
   samples/        sandbox2d/, sandbox3d/ and physics/ — example projects
   src/
-    reflect/ lua/ platform/          leaves
+    reflect/ lua/ platform/ text/    leaves
     scene/ serial/ components/       the world model
     physics/                         rigid bodies, collision and the solver
+    ui/core/ ui/framework/ ui/widgets/ ui/docking/  the Slate-shaped UI framework, being built
     gfx/ gfx/vk/ gfx/asset/ gfx/pass/  the renderer
     script/ core/                    the Lua host and the engine
     dev/                             ImGui, panels, dockspace, play session; NOT part of `engine`
@@ -140,14 +141,19 @@ depend on `scene` + `reflect` without dragging in Vulkan or Lua.
 ```
 reflect, platform          -> leaves (no engine includes)
 lua                        -> platform
+text                       -> platform
 scene                      -> reflect
 serial                     -> scene, reflect, platform
 components                 -> scene, reflect
 physics                    -> scene, reflect, lua
+ui/core                    -> text, platform
+ui/framework               -> ui/core, text, platform
+ui/widgets                 -> ui/framework, ui/core, text, platform
+ui/docking                 -> ui/widgets, ui/framework, ui/core, text, platform
 gfx/vk                     -> platform
 gfx/asset                  -> gfx/vk, scene
 gfx/pass                   -> gfx/asset, gfx/vk, scene, lua, platform
-gfx                        -> gfx/pass, gfx/asset, gfx/vk, scene, platform, lua
+gfx                        -> gfx/pass, gfx/asset, gfx/vk, ui/core, text, scene, platform, lua
 script                     -> scene, reflect, gfx, physics, platform, lua
 core                       -> all of the above
 dev                        -> core and all of the above (a separate target, see below)
@@ -158,6 +164,12 @@ Everything down to `core` is the `engine` library. **`dev` is not** — it is it
 editor camera and gizmos, the Explorer and Properties, the dockspace, the play session and the
 toolbar. It is the only place ImGui may be mentioned. `player` links `engine`; `editor` links
 `engine_dev`. If a `#include <imgui.h>` ever appears outside `src/dev/`, the split is broken.
+
+ImGui is being replaced by a UI framework of our own, shaped like Unreal's Slate — see *UI framework*
+in `TODO.md`. `text` and the four `ui` layers are part of `engine`, because the game will use them too;
+`ui` never includes `scene`, `reflect` or `gfx`. While the port runs, `IMGUI_SOURCES` in
+`cmake/AssertLayers.cmake` lists the files still allowed to mention ImGui, and the list only shrinks: a
+new file in `dev` that mentions it fails `architecture_layers`.
 
 **`platform` is the one leaf everything may reach for**, because `platform/Log.hpp` lives there and
 every layer logs, and `platform/Assets.hpp` is the only thing that turns a name into a path. That is
@@ -171,7 +183,8 @@ dragging in passes or assets. `gfx/asset` is what you draw with (`Assets`, `Text
 `gfx` itself contains orchestration and frame resources: `Renderer`, `FrameTargets`, `RenderTarget`,
 `Capture`, `Overlay`, `CompositePipeline` and `RendererDrawList`. Nothing in a subdirectory includes
 its parent. `cmake/AssertLayers.cmake` enforces these include directions through CTest and rejects
-ImGui includes or symbols outside `dev`; `editor` may include the `dev/ImGuiLayer` adapter.
+ImGui includes or symbols in any file not on its `IMGUI_SOURCES` list. `ui` is split the same way, and
+the same rule holds: `ui/core` never includes `ui/widgets`.
 
 Six placements are load-bearing and were each chosen to kill a cycle: `Glfw`/`Window`/`Input` live
 in `platform`, not next to `Engine`; `DrawList` lives in `scene`, so the scene graph never includes
@@ -665,10 +678,10 @@ the near and far rectangles, the four edges joining them, and dimmer lines from 
 corners. An orthographic camera is its near rectangle alone — every cross-section of its box is that
 rectangle, so it is exactly what the camera sees. The corners come from `ViewCamera::corners()` at the
 panel's size — the size Play renders at — and a test pins them to the clip volume of both
-projections. They are drawn on the Scene
-window's `ImDrawList`, projected through the editor camera and clipped in clip space against the near
-plane and the four sides before the divide, so a corner behind the editor camera cannot fold across
-the image. The sides are inset by `INSET`, so a camera the editor is looking straight through — as
+projections. `dev/GizmoLines` turns them into strokes in panel points, with no ImGui in it, and
+`dev/Gizmos` draws those on the Scene window's `ImDrawList`. They are projected through the editor
+camera and clipped in clip space against the near plane and the four sides before the divide, so a
+corner behind the editor camera cannot fold across the image. The sides are inset by `INSET`, so a camera the editor is looking straight through — as
 it is right after seeding — draws nothing, rather than a frame along the border that float noise
 leaves half-drawn. Being overlay, the gizmos draw over geometry, cost the player nothing, and never
 appear in a `--capture`.

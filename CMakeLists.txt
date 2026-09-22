@@ -27,7 +27,9 @@ file(GLOB_RECURSE ENGINE_SOURCES CONFIGURE_DEPENDS
     src/reflect/*.cpp
     src/scene/*.cpp
     src/script/*.cpp
-    src/serial/*.cpp)
+    src/serial/*.cpp
+    src/text/*.cpp
+    src/ui/*.cpp)
 
 add_library(engine STATIC ${ENGINE_SOURCES})
 add_dependencies(engine shaders)
