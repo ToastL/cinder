@@ -11,6 +11,9 @@ const std::filesystem::path& executableDir();
 const std::filesystem::path& engineRoot();
 std::filesystem::path enginePath(std::string_view relative);
 
+const std::filesystem::path& shaderRoot();
+std::filesystem::path shaderPath(std::string_view relative);
+
 void setProjectRoot(const std::filesystem::path& root);
 const std::filesystem::path& projectRoot();
 std::filesystem::path contentPath(std::string_view relative);

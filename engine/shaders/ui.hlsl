@@ -5,10 +5,10 @@ struct Push {
     float pixelsPerPoint;
 };
 
-[[vk::push_constant]] Push push;
+[[vk::push_constant]] ConstantBuffer<Push> push : register(b0);
 
-[[vk::combinedImageSampler]] [[vk::binding(0, 0)]] Texture2D image;
-[[vk::combinedImageSampler]] [[vk::binding(0, 0)]] SamplerState imageSampler;
+[[vk::combinedImageSampler]] [[vk::binding(0, 0)]] Texture2D image : register(t0);
+[[vk::combinedImageSampler]] [[vk::binding(0, 0)]] SamplerState imageSampler : register(s0);
 
 struct Vertex {
     [[vk::location(0)]] float2 position : POSITION;

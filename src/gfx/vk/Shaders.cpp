@@ -13,8 +13,7 @@
 namespace cinder::gfx::vk::shaders {
 
 VkShaderModule fromFile(const VkCtx& ctx, std::string_view name) {
-    const std::filesystem::path path =
-            cinder::platform::enginePath("shaders") / (std::string(name) + ".spv");
+    const std::filesystem::path path = cinder::platform::shaderPath(std::string(name) + ".spv");
 
     std::ifstream in(path, std::ios::binary | std::ios::ate);
     if (!in) throw std::runtime_error("Cannot read shader " + path.string());

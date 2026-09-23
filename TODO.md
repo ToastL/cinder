@@ -194,8 +194,9 @@ includes `scene`, `reflect` or `gfx` — the reflection-driven Properties panel 
 - [ ] Reference counting + **unload** — `Assets` never frees a texture until shutdown, and
       `MAX_TEXTURES = 256` is a hard cap with a fixed descriptor pool
 - [ ] Hot reload for textures and meshes (Lua already reloads)
-- [ ] Shader hot reload. Shaders are compiled to SPIR-V at build time, so editing one needs a
-      rebuild. A runtime HLSL path behind a debug flag would restore the edit-and-restart loop.
+- [ ] Shader hot reload. Shaders are compiled at build time, so editing one needs a rebuild. A
+      runtime HLSL path behind a debug flag would restore the edit-and-restart loop — and it would
+      have to compile to whichever format the live backend loads, not just SPIR-V.
 - [ ] Mesh import
 - [ ] Asset browser panel with thumbnails
 
@@ -319,6 +320,33 @@ includes `scene`, `reflect` or `gfx` — the reflection-driven Properties panel 
 - [ ] **The packaged player finds itself through `argv[0]`**, so launching it through a `PATH`
       lookup rather than by path misses `engine/` and `project/` next to it
 - [ ] No CI
+
+## Backends and platforms
+
+DXC is the single HLSL frontend and already emits SPIR-V, DXIL and MSL/`.metallib` — see CLAUDE.md's
+*Commands* section. Only the Vulkan backend consumes its output; these are the phases that would
+change that. Each leaves the engine running on Vulkan after every step.
+
+- [ ] **The backend seam.** Vulkan is not confined to `src/gfx/vk/`: 273 `Vk*` references and 55 raw
+      `vk*()` calls live outside it. A neutral leaf `src/gfx/rhi/` (formats, `Commands`/`Uploads`
+      handles, `TextureBinding`, a neutral pipeline builder) that `gfx/vk` and a future `gfx/mtl`
+      each *define*, selected by a `CINDER_BACKEND` cache variable — compile-time, no vtables, so
+      `Engine` keeps holding its context by value. The deliverable is deleting `gfx/vk` from
+      `ALLOWED_gfx`, `ALLOWED_gfx/asset`, `ALLOWED_gfx/pass` and `ALLOWED_core`.
+      - [ ] Delete `VkDescriptorSetLayout` from eight constructors — there is exactly one layout in
+            the engine and `setLayoutCount` is hardcoded to 1, so it is a constant pretending to be
+            a parameter. This removes more Vulkan from headers than the new types add.
+      - [ ] `VkRenderPass` becomes a two-valued `PassKind` enum; Metal has no render pass objects.
+      - [ ] Extract a per-backend `Presenter` (swapchain, `FrameSync`, acquire/submit/present,
+            window capture). Riskiest step: the `OUT_OF_DATE` path paints without recording, and
+            `pixelsPerPoint` is measured only on swapchain rebuild.
+- [ ] **`src/gfx/mtl`** — a native Metal backend on that seam. Objective-C++, so `OBJCXX` joins the
+      project languages. `platform::Window` needs no change (`GLFW_NO_API` already); only
+      `Glfw::acquire`'s volk bootstrap gets guarded.
+- [ ] **Android.** The shader work is nearly free (same SPIR-V; the GLES fallback would be
+      SPIRV-Cross to GLSL ES 3.0, *not* FXC, which is a Windows-only D3D compiler). The platform
+      work is the gap: GLFW has no Android backend, and `platform/Assets`' path model breaks
+      outright because APK assets are read through `AAssetManager` and have no path.
 
 ## Explicitly out of scope
 

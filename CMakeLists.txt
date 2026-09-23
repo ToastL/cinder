@@ -42,6 +42,7 @@ target_compile_definitions(engine PUBLIC
     GLM_ENABLE_EXPERIMENTAL)
 target_compile_definitions(engine PRIVATE
     CINDER_ENGINE_DEFAULT="${CINDER_ENGINE_DIR}"
+    CINDER_SHADERS_DEFAULT="${CMAKE_BINARY_DIR}/shaders"
     CINDER_VERSION="${PROJECT_VERSION}")
 target_compile_options(engine PRIVATE -Wall -Wextra -Wno-unused-parameter)
 
@@ -83,6 +84,7 @@ add_custom_target(package_game
         -DPLAYER=$<TARGET_FILE:player>
         -DHOST_PLATFORM=${CINDER_HOST_PLATFORM}
         -DENGINE_DIR=${CINDER_ENGINE_DIR}
+        -DSHADER_DIR=${CMAKE_BINARY_DIR}/shaders
         -DPROJECT_DIR=${CINDER_PACKAGE_PROJECT}
         -DOUT_DIR=${CMAKE_BINARY_DIR}/dist/${CINDER_PACKAGE_NAME}
         -P ${CMAKE_CURRENT_SOURCE_DIR}/cmake/PackageGame.cmake
@@ -98,6 +100,12 @@ add_test(NAME architecture_checker COMMAND ${CMAKE_COMMAND}
     -DBINARY_DIR=${CMAKE_BINARY_DIR}
     -DCHECKER=${CMAKE_CURRENT_SOURCE_DIR}/cmake/AssertLayers.cmake
     -P ${CMAKE_CURRENT_SOURCE_DIR}/cmake/TestLayers.cmake)
+
+add_test(NAME shaders_are_valid COMMAND ${CMAKE_COMMAND}
+    -DENGINE_DIR=${CINDER_ENGINE_DIR}
+    -DSHADER_DIR=${CMAKE_BINARY_DIR}/shaders
+    "-DFORMATS=${SHADER_FORMATS}"
+    -P ${CMAKE_CURRENT_SOURCE_DIR}/cmake/AssertShaders.cmake)
 
 file(GLOB TEST_SOURCES CONFIGURE_DEPENDS tests/*.cpp)
 add_executable(tests ${TEST_SOURCES})

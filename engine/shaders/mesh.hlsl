@@ -3,10 +3,10 @@ struct Push {
     float4x4 model;
 };
 
-[[vk::push_constant]] Push push;
+[[vk::push_constant]] ConstantBuffer<Push> push : register(b0);
 
-[[vk::combinedImageSampler]] [[vk::binding(0, 0)]] Texture2D tex;
-[[vk::combinedImageSampler]] [[vk::binding(0, 0)]] SamplerState texSampler;
+[[vk::combinedImageSampler]] [[vk::binding(0, 0)]] Texture2D tex : register(t0);
+[[vk::combinedImageSampler]] [[vk::binding(0, 0)]] SamplerState texSampler : register(s0);
 
 struct Vertex {
     [[vk::location(0)]] float3 position : POSITION;
