@@ -97,9 +97,14 @@ Vulkan-Headers, doctest, FreeType and HarfBuzz, all pinned in `cmake/Dependencie
 Nothing needs installing: FreeType is built with zlib, bzip2, PNG, Brotli and HarfBuzz switched off, so
 it never finds Homebrew's copies, and HarfBuzz is compiled from its single-file `src/harfbuzz.cc`
 rather than through its community-maintained CMake build.
-`glslangValidator` is the one exception: it is a *build tool*, found with `find_program`, and it
-compiles `engine/shaders/*.{vert,frag}` to `.spv`. Editing a shader needs a rebuild, not just a
-restart. `brew install glslang` if it is missing.
+`dxc` is the one exception: it is a *build tool*, found with `find_program` on `PATH` or in
+`$VULKAN_SDK/bin`. Shaders are HLSL, one `engine/shaders/<name>.hlsl` per program holding `VSMain` and
+`PSMain`, and it compiles each to `<name>.vs.spv` and `<name>.ps.spv`; `GraphicsPipelineBuilder::shader`
+takes the program name. Bindings, varyings and vertex inputs carry explicit `[[vk::binding]]` and
+`[[vk::location]]`, and textures are `[[vk::combinedImageSampler]]` pairs, so the descriptor layouts
+are combined image samplers. Matrices stay HLSL's default `column_major`, which is glm's memory
+layout, applied as `mul(matrix, vector)`. Editing a shader needs a rebuild, not just a restart. DXC is
+not on Homebrew; install the LunarG Vulkan SDK if it is missing.
 
 `player/main.cpp` and `editor/main.cpp` duplicate their arg parsing on purpose, and their loops have
 diverged: the player only ever calls `GameLoop::tick`, while the editor calls `PlaySession::tick`,
@@ -132,7 +137,7 @@ caught a missing `TRANSFER_SRC_BIT` that no test would have.
 cinder/
   CMakeLists.txt
   cmake/          dependency, Lua, shader-compilation and packaging modules
-  engine/         engine data: shaders/ (GLSL and the compiled .spv), lua/ (the prelude) and fonts/
+  engine/         engine data: shaders/ (HLSL and the compiled .spv), lua/ (the prelude) and fonts/
                   (Roboto and Roboto Mono, OFL-1.1, licences beside them)
   samples/        sandbox2d/, sandbox3d/ and physics/ — example projects
   src/

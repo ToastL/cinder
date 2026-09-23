@@ -83,7 +83,7 @@ UiRenderer::~UiRenderer() {
 void UiRenderer::rebuild(VkRenderPass renderPass, VkFormat format) {
     encode_ = !srgb(format);
     pipeline_ = GraphicsPipelineBuilder(ctx_, renderPass, textureLayout_)
-                        .shaders("ui.vert", "ui.frag")
+                        .shader("ui")
                         .pushConstants(sizeof(Push), PUSH_STAGES)
                         .vertexStride(sizeof(UiVertex))
                         .attribute(0, VK_FORMAT_R32G32_SFLOAT, offsetOf(offsetof(UiVertex, position)))

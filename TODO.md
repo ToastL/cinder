@@ -195,7 +195,7 @@ includes `scene`, `reflect` or `gfx` — the reflection-driven Properties panel 
       `MAX_TEXTURES = 256` is a hard cap with a fixed descriptor pool
 - [ ] Hot reload for textures and meshes (Lua already reloads)
 - [ ] Shader hot reload. Shaders are compiled to SPIR-V at build time, so editing one needs a
-      rebuild. A runtime GLSL path behind a debug flag would restore the edit-and-restart loop.
+      rebuild. A runtime HLSL path behind a debug flag would restore the edit-and-restart loop.
 - [ ] Mesh import
 - [ ] Asset browser panel with thumbnails
 
@@ -252,7 +252,7 @@ includes `scene`, `reflect` or `gfx` — the reflection-driven Properties panel 
 ## Rendering (ongoing, not blocking)
 
 - [ ] Multiple lights + a real material model (currently one hardcoded directional light in
-      `mesh.frag`, and no material struct at all)
+      `mesh.hlsl`, and no material struct at all)
 - [ ] Shadow maps
 - [ ] Sort transparent draws back-to-front; sort opaque by pipeline/material
 - [ ] Frustum culling

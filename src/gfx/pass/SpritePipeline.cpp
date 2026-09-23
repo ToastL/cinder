@@ -10,7 +10,7 @@ using cinder::gfx::vk::GraphicsPipelineBuilder;
 SpritePipeline::SpritePipeline(const cinder::gfx::vk::VkCtx& ctx, VkRenderPass renderPass,
                                VkDescriptorSetLayout descriptorSetLayout) {
     pipeline_ = GraphicsPipelineBuilder(ctx, renderPass, descriptorSetLayout)
-                        .shaders("sprite.vert", "sprite.frag")
+                        .shader("sprite")
                         .pushConstants(GraphicsPipeline::MATRIX_BYTES)
                         .vertexStride(VERTEX_STRIDE)
                         .attribute(0, VK_FORMAT_R32G32B32_SFLOAT, 0)

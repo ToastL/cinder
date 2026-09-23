@@ -12,9 +12,8 @@ GraphicsPipelineBuilder::GraphicsPipelineBuilder(const VkCtx& ctx, VkRenderPass 
                                                  VkDescriptorSetLayout descriptorSetLayout)
     : ctx_(ctx), renderPass_(renderPass), descriptorSetLayout_(descriptorSetLayout) {}
 
-GraphicsPipelineBuilder& GraphicsPipelineBuilder::shaders(std::string vert, std::string frag) {
-    vert_ = std::move(vert);
-    frag_ = std::move(frag);
+GraphicsPipelineBuilder& GraphicsPipelineBuilder::shader(std::string program) {
+    program_ = std::move(program);
     return *this;
 }
 
@@ -87,18 +86,18 @@ std::unique_ptr<GraphicsPipeline> GraphicsPipelineBuilder::build() {
     check(vkCreatePipelineLayout(ctx_.device(), &layoutInfo, nullptr, &layout),
           "vkCreatePipelineLayout");
 
-    const VkShaderModule vertModule = shaders::fromFile(ctx_, vert_);
-    const VkShaderModule fragModule = shaders::fromFile(ctx_, frag_);
+    const VkShaderModule vertModule = shaders::fromFile(ctx_, program_ + ".vs");
+    const VkShaderModule fragModule = shaders::fromFile(ctx_, program_ + ".ps");
 
     VkPipelineShaderStageCreateInfo stages[2]{};
     stages[0].sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
     stages[0].stage = VK_SHADER_STAGE_VERTEX_BIT;
     stages[0].module = vertModule;
-    stages[0].pName = "main";
+    stages[0].pName = "VSMain";
     stages[1].sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
     stages[1].stage = VK_SHADER_STAGE_FRAGMENT_BIT;
     stages[1].module = fragModule;
-    stages[1].pName = "main";
+    stages[1].pName = "PSMain";
 
     VkVertexInputBindingDescription binding{};
     binding.binding = 0;
