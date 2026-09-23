@@ -340,7 +340,7 @@ change that. Each leaves the engine running on Vulkan after every step.
       - [x] Extract a per-backend `Presenter` (swapchain, `FrameSync`, acquire/submit/present,
             window capture). Riskiest step: the `OUT_OF_DATE` path paints without recording, and
             `pixelsPerPoint` is measured only on swapchain rebuild.
-- [ ] **`src/gfx/mtl`** — a native Metal backend on that seam. Objective-C++, so `OBJCXX` joins the
+- [x] **`src/gfx/mtl`** — a native Metal backend on that seam. *(done; pixel-identical to Vulkan on the gallery and both sandboxes)* Objective-C++, so `OBJCXX` joins the
       project languages. `platform::Window` needs no change (`GLFW_NO_API` already); only
       `Glfw::acquire`'s volk bootstrap gets guarded.
 - [ ] **Android.** The shader work is nearly free (same SPIR-V; the GLES fallback would be

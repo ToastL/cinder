@@ -4,8 +4,8 @@ Guidance for Claude Code (claude.ai/code) when working in this repository.
 
 ## What this is
 
-A from-scratch C++20 game engine: Vulkan renderer, GLFW windowing, Lua 5.4 scripting. The long-term
-target is a Unity/Unreal-shaped editor workflow — select a node, edit its fields, hit Play, hit
+A from-scratch C++20 game engine: Vulkan and Metal renderers, GLFW windowing, Lua 5.4 scripting.
+The long-term target is a Unity/Unreal-shaped editor workflow — select a node, edit its fields, hit Play, hit
 Stop, land back where you started. `TODO.md` is the authoritative roadmap; read it before proposing
 architectural work, since it records what is deliberately deferred and what is out of scope.
 
@@ -18,6 +18,16 @@ The repo holds the engine only. A game is a **project folder** — a `.cinder` f
 ```bash
 cmake -S . -B build -G Ninja && cmake --build build
 ```
+
+`CINDER_BACKEND` picks the graphics backend: `vk` (the default) or `mtl`, the native Metal renderer,
+which is macOS-only.
+
+```bash
+cmake -S . -B build-mtl -G Ninja -DCINDER_BACKEND=mtl && cmake --build build-mtl
+```
+
+A Metal build needs no `DYLD_LIBRARY_PATH` and no Vulkan SDK at runtime, and it still compiles the
+SPIR-V, because `CINDER_SHADER_FORMATS` is independent of the backend.
 
 A plain build produces `engine`, `engine_dev`, `editor`, `ui_gallery` and `tests` — **no game**. The
 runtime that plays a project, `player`, is `EXCLUDE_FROM_ALL` and only built on demand.
@@ -174,7 +184,7 @@ cinder/
     scene/ serial/ components/       the world model
     physics/                         rigid bodies, collision and the solver
     ui/core/ ui/framework/ ui/widgets/ ui/docking/  the UI framework the editor is built on
-    gfx/ gfx/rhi/ gfx/vk/ gfx/asset/ gfx/pass/  the renderer and its backend seam
+    gfx/ gfx/rhi/ gfx/vk/ gfx/mtl/ gfx/asset/ gfx/pass/  the renderer, its seam and two backends
     script/ core/                    the Lua host and the engine
     dev/                             editor panels, gizmos, history, play session; NOT part of `engine`
     player/ editor/                  the two executables
@@ -230,16 +240,33 @@ from the engine, so the edges cost nothing and create no cycle.
 `Commands`/`Uploads` handles, `TextureBinding`, the fluent `PipelineBuilder` — that *declares* the
 types a backend must provide: `Ctx`, `GpuBuffer`, `GraphicsPipeline`, `Texture`, `TexturePool`,
 `RenderTarget`, `GlyphPages`, `Presenter`. `gfx/vk` **defines** them in namespace
-`cinder::gfx::rhi`; a future `gfx/mtl` would define the same names, and CMake compiles exactly one
-of the two. The choice is a `CINDER_BACKEND` cache variable, not a runtime flag — the same reasoning
+`cinder::gfx::rhi`, and `gfx/mtl` defines the same names in Objective-C++; CMake compiles exactly
+one of the two. The choice is a `CINDER_BACKEND` cache variable, not a runtime flag — the same reasoning
 that makes the dev tools a separate link target. No vtables: `Engine` still holds `rhi::Ctx ctx_` by
 value in the same declaration slot.
+
+**Both backends work.** `-DCINDER_BACKEND=vk` (the default) builds the Vulkan renderer;
+`-DCINDER_BACKEND=mtl` builds the native Metal one, which is macOS-only and turns on `OBJCXX` with
+`-fobjc-arc` and the Metal, QuartzCore, Foundation, CoreGraphics and AppKit frameworks. The Metal
+backend is about half the Vulkan one's size, because Metal has no allocator, no descriptor pools,
+no layout barriers and no explicit frame synchronization — those concepts are deleted rather than
+ported. Its headers are plain C++ holding `void*`, bridged inside the `.mm` files, because neutral
+`.cpp` translation units include them through the selector.
+
+Three places are where Metal genuinely differs from Vulkan, and each shaped the seam:
+`beginScenePass`/`beginPresentPass` take `Frame&` rather than `const Frame&`, because Metal makes a
+fresh encoder per pass while Vulkan reuses one command buffer; `Commands::handle` points at a
+`CommandState` carrying the encoder, the current index buffer and a push-constant staging block,
+because Metal has no index-buffer binding point and `drawIndexed` must find it; and
+`TextureBinding::id` points at a texture/sampler pair, because Metal binds those separately where
+Vulkan has one combined image sampler. `PipelineFactory` loads the `.metallib` phase 1 produced and
+falls back to compiling the `.metal` source at runtime when it is absent.
 
 `gfx/rhi/Backend.hpp` is **generated** by `configure_file` into the build tree and is one line —
 `#include "gfx/<backend>/Backend.hpp"`. Everything above the backend includes only that, so no
 first-party source names a backend. `AssertLayers.cmake` globs `src/` only, so the generated header
-is invisible to it and the checked graph stays a strict DAG. **Nothing outside `src/gfx/vk` names a
-Vulkan type**, and the one `<volk.h>` left outside it is `platform/Glfw.cpp`'s loader bootstrap,
+is invisible to it and the checked graph stays a strict DAG. **Nothing outside a backend directory names a
+Vulkan or Metal type**, and the one `<volk.h>` left outside it is `platform/Glfw.cpp`'s loader bootstrap,
 guarded by `CINDER_BACKEND_VK` — loader setup is the one place outside `gfx/` that names a backend,
 because it runs before `gfx` exists. `gfx/asset` is what you draw with (`Assets` and `Mesh`; `Texture` lives in the backend, since almost all of it is staging, barriers and copies),
 `gfx/pass` is how you draw it (`DrawPass` and its implementations, their pipelines, and `ViewCamera`), and
