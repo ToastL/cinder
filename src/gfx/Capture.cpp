@@ -1,6 +1,6 @@
 #include "gfx/Capture.hpp"
 
-#include "gfx/RenderTarget.hpp"
+#include "gfx/vk/RenderTarget.hpp"
 #include "gfx/vk/GpuBuffer.hpp"
 #include "gfx/vk/VkCtx.hpp"
 
@@ -13,7 +13,8 @@
 
 namespace cinder::gfx {
 
-void captureTarget(const cinder::gfx::vk::VkCtx& ctx, const RenderTarget& target,
+void captureTarget(const cinder::gfx::vk::VkCtx& ctx,
+                   const cinder::gfx::rhi::RenderTarget& target,
                    cinder::gfx::rhi::Format format, const std::string& path) {
     ctx.waitIdle();
 
@@ -21,7 +22,7 @@ void captureTarget(const cinder::gfx::vk::VkCtx& ctx, const RenderTarget& target
     const uint32_t height = target.height();
     const VkDeviceSize size = static_cast<VkDeviceSize>(width) * height * 4;
 
-    cinder::gfx::vk::GpuBuffer staging(ctx, size, VK_BUFFER_USAGE_TRANSFER_DST_BIT, true);
+    cinder::gfx::rhi::GpuBuffer staging(ctx, size, VK_BUFFER_USAGE_TRANSFER_DST_BIT, true);
 
     VkCommandBuffer cmd = ctx.beginSingleTime();
 

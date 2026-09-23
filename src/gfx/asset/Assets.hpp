@@ -1,7 +1,6 @@
 #pragma once
 
-#include "gfx/asset/Texture.hpp"
-#include "gfx/vk/TexturePool.hpp"
+#include "gfx/rhi/Backend.hpp"
 
 #include <string>
 #include <unordered_map>
@@ -20,14 +19,14 @@ public:
     Assets& operator=(const Assets&) = delete;
 
     int load(const std::string& path);
-    const Texture& get(int id) const;
+    const cinder::gfx::rhi::Texture& get(int id) const;
 
 private:
-    int registerTexture(Texture texture);
+    int registerTexture(cinder::gfx::rhi::Texture texture);
 
     const cinder::gfx::vk::VkCtx& ctx_;
-    cinder::gfx::vk::TexturePool pool_;
-    std::vector<Texture> textures_;
+    cinder::gfx::rhi::TexturePool pool_;
+    std::vector<cinder::gfx::rhi::Texture> textures_;
     std::unordered_map<std::string, int> byPath_;
 };
 

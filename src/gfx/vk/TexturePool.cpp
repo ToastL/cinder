@@ -5,9 +5,12 @@
 #include "gfx/vk/VkDescriptors.hpp"
 #include "gfx/vk/VkImages.hpp"
 
-namespace cinder::gfx::vk {
+namespace cinder::gfx::rhi {
 
-TexturePool::TexturePool(const VkCtx& ctx, uint32_t maxSets, VkFilter filter) : ctx_(ctx) {
+namespace descriptors = cinder::gfx::vk::descriptors;
+namespace images = cinder::gfx::vk::images;
+
+TexturePool::TexturePool(const cinder::gfx::vk::VkCtx& ctx, uint32_t maxSets, VkFilter filter) : ctx_(ctx) {
     pool_ = descriptors::pool(ctx, maxSets);
     sampler_ = images::sampler(ctx, filter);
 }

@@ -44,22 +44,22 @@ private:
     struct GlyphPage {
         cinder::gfx::vk::Allocated image;
         VkImageView view = VK_NULL_HANDLE;
-        std::unique_ptr<cinder::gfx::vk::TexturePool> pool;
+        std::unique_ptr<cinder::gfx::rhi::TexturePool> pool;
         cinder::gfx::rhi::TextureBinding set;
         bool uploaded = false;
     };
 
     struct Frame {
-        std::unique_ptr<cinder::gfx::vk::GpuBuffer> vertices;
-        std::unique_ptr<cinder::gfx::vk::GpuBuffer> indices;
-        std::unique_ptr<cinder::gfx::vk::GpuBuffer> staging;
+        std::unique_ptr<cinder::gfx::rhi::GpuBuffer> vertices;
+        std::unique_ptr<cinder::gfx::rhi::GpuBuffer> indices;
+        std::unique_ptr<cinder::gfx::rhi::GpuBuffer> staging;
     };
 
     void upload(cinder::gfx::rhi::Uploads cmd, Frame& frame, cinder::text::GlyphAtlas& atlas);
     void resolveNames(const cinder::ui::ElementList& list);
     GlyphPage& page(std::size_t index);
     void destroyPage(GlyphPage& page);
-    static void reserve(const cinder::gfx::vk::VkCtx& ctx, std::unique_ptr<cinder::gfx::vk::GpuBuffer>& buffer,
+    static void reserve(const cinder::gfx::vk::VkCtx& ctx, std::unique_ptr<cinder::gfx::rhi::GpuBuffer>& buffer,
                         VkDeviceSize size, VkBufferUsageFlags usage);
     cinder::gfx::rhi::TextureBinding resolve(const cinder::ui::TextureRef& texture,
                                              cinder::gfx::rhi::TextureBinding viewport) const;

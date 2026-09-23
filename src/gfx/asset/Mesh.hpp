@@ -23,8 +23,8 @@ public:
     uint32_t indexCount() const { return indexCount_; }
 
 private:
-    std::unique_ptr<cinder::gfx::vk::GpuBuffer> vertexBuffer_;
-    std::unique_ptr<cinder::gfx::vk::GpuBuffer> indexBuffer_;
+    std::unique_ptr<cinder::gfx::rhi::GpuBuffer> vertexBuffer_;
+    std::unique_ptr<cinder::gfx::rhi::GpuBuffer> indexBuffer_;
     uint32_t indexCount_ = 0;
 };
 

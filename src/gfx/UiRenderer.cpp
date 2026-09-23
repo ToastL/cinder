@@ -22,7 +22,7 @@
 
 namespace cinder::gfx {
 
-using cinder::gfx::vk::GpuBuffer;
+using cinder::gfx::rhi::GpuBuffer;
 using cinder::gfx::vk::VkCtx;
 using cinder::text::GlyphAtlas;
 using cinder::ui::TextureRef;
@@ -100,7 +100,7 @@ UiRenderer::GlyphPage& UiRenderer::page(std::size_t index) {
         created.image = images::create(ctx_, PAGE_FORMAT, size, size,
                                        VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT);
         created.view = images::view(ctx_, created.image.image, PAGE_FORMAT, VK_IMAGE_ASPECT_COLOR_BIT);
-        created.pool = std::make_unique<cinder::gfx::vk::TexturePool>(ctx_, 1, VK_FILTER_LINEAR);
+        created.pool = std::make_unique<cinder::gfx::rhi::TexturePool>(ctx_, 1, VK_FILTER_LINEAR);
         created.set = created.pool->bind(created.view);
     }
     return pages_[index];

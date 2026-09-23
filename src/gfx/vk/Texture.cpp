@@ -1,4 +1,4 @@
-#include "gfx/asset/Texture.hpp"
+#include "gfx/vk/Texture.hpp"
 
 #include "gfx/vk/GpuBuffer.hpp"
 #include "gfx/vk/VkCtx.hpp"
@@ -10,14 +10,14 @@
 #include <stdexcept>
 #include <utility>
 
-namespace cinder::gfx::asset {
+namespace cinder::gfx::rhi {
 namespace {
 
 constexpr VkFormat FORMAT = VK_FORMAT_R8G8B8A8_SRGB;
 
 }
 
-using cinder::gfx::vk::GpuBuffer;
+using cinder::gfx::rhi::GpuBuffer;
 using cinder::gfx::vk::VkCtx;
 namespace images = cinder::gfx::vk::images;
 

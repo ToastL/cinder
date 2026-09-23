@@ -5,9 +5,11 @@
 
 #include <utility>
 
-namespace cinder::gfx::vk {
+namespace cinder::gfx::rhi {
 
-GpuBuffer::GpuBuffer(const VkCtx& ctx, VkDeviceSize size, VkBufferUsageFlags usage,
+using cinder::gfx::vk::check;
+
+GpuBuffer::GpuBuffer(const cinder::gfx::vk::VkCtx& ctx, VkDeviceSize size, VkBufferUsageFlags usage,
                      bool hostVisible)
     : ctx_(&ctx), size_(size) {
     VkBufferCreateInfo info{};

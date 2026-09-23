@@ -6,7 +6,7 @@
 
 #include <string>
 
-namespace cinder::gfx::asset {
+namespace cinder::gfx::rhi {
 
 class Texture {
 public:
@@ -26,14 +26,14 @@ public:
     uint32_t width() const { return width_; }
     uint32_t height() const { return height_; }
 
-    cinder::gfx::rhi::TextureBinding binding() const { return binding_; }
-    void setBinding(cinder::gfx::rhi::TextureBinding binding) { binding_ = binding; }
+    TextureBinding binding() const { return binding_; }
+    void setBinding(TextureBinding binding) { binding_ = binding; }
 
 private:
     const cinder::gfx::vk::VkCtx* ctx_ = nullptr;
     cinder::gfx::vk::Allocated image_;
     VkImageView view_ = VK_NULL_HANDLE;
-    cinder::gfx::rhi::TextureBinding binding_;
+    TextureBinding binding_;
     uint32_t width_ = 0;
     uint32_t height_ = 0;
 };

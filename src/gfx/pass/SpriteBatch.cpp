@@ -10,7 +10,7 @@
 
 namespace cinder::gfx::pass {
 
-using cinder::gfx::vk::GpuBuffer;
+using cinder::gfx::rhi::GpuBuffer;
 using cinder::gfx::vk::VkCtx;
 
 SpriteBatch::SpriteBatch(const VkCtx& ctx, cinder::gfx::asset::Assets& assets,
@@ -84,7 +84,7 @@ void SpriteBatch::draw(int texture, const glm::mat4& model, glm::vec2 size, cons
 
 void SpriteBatch::drawRegion(int texture, const glm::mat4& model, glm::vec2 size,
                              const glm::vec4& region, const glm::vec4& color) {
-    const cinder::gfx::asset::Texture& tex = assets_.get(texture);
+    const cinder::gfx::rhi::Texture& tex = assets_.get(texture);
     const glm::vec2 texels(static_cast<float>(tex.width()), static_cast<float>(tex.height()));
     const glm::vec2 from = glm::vec2(region.x, region.y) / texels;
     const glm::vec2 to = glm::vec2(region.x + region.z, region.y + region.w) / texels;

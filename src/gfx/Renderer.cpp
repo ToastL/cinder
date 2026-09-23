@@ -161,7 +161,7 @@ void Renderer::registerApi(cinder::lua::LuaApi& api) {
 }
 
 void Renderer::recordCommandBuffer(VkCommandBuffer cmd, uint32_t imageIndex) {
-    RenderTarget& target = targets_.at(sync_->frame());
+    cinder::gfx::rhi::RenderTarget& target = targets_.at(sync_->frame());
 
     VkCommandBufferBeginInfo begin{};
     begin.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
@@ -330,7 +330,7 @@ void Renderer::recordWindowCapture(VkCommandBuffer cmd, uint32_t imageIndex) {
     const uint32_t height = swapchain_->height();
     const VkDeviceSize size = static_cast<VkDeviceSize>(width) * height * 4;
     if (!captureBuffer_ || captureBuffer_->size() < size) {
-        captureBuffer_ = std::make_unique<cinder::gfx::vk::GpuBuffer>(ctx_, size, VK_BUFFER_USAGE_TRANSFER_DST_BIT,
+        captureBuffer_ = std::make_unique<cinder::gfx::rhi::GpuBuffer>(ctx_, size, VK_BUFFER_USAGE_TRANSFER_DST_BIT,
                                                                       true);
     }
 

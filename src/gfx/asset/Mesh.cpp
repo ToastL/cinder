@@ -11,7 +11,7 @@
 
 namespace cinder::gfx::asset {
 
-using cinder::gfx::vk::GpuBuffer;
+using cinder::gfx::rhi::GpuBuffer;
 using cinder::gfx::vk::VkCtx;
 
 namespace {

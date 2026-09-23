@@ -6,13 +6,15 @@
 
 #include <cstddef>
 
-namespace cinder::gfx::vk {
+namespace cinder::gfx::vk { class VkCtx; }
 
-class VkCtx;
+namespace cinder::gfx::rhi {
+
+
 
 class GpuBuffer {
 public:
-    GpuBuffer(const VkCtx& ctx, VkDeviceSize size, VkBufferUsageFlags usage, bool hostVisible);
+    GpuBuffer(const cinder::gfx::vk::VkCtx& ctx, VkDeviceSize size, VkBufferUsageFlags usage, bool hostVisible);
     ~GpuBuffer();
 
     GpuBuffer(const GpuBuffer&) = delete;
@@ -28,7 +30,7 @@ public:
 private:
     void release();
 
-    const VkCtx* ctx_ = nullptr;
+    const cinder::gfx::vk::VkCtx* ctx_ = nullptr;
     VkBuffer handle_ = VK_NULL_HANDLE;
     VmaAllocation allocation_ = nullptr;
     void* mapped_ = nullptr;

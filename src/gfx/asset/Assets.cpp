@@ -10,10 +10,10 @@ namespace cinder::gfx::asset {
 
 Assets::Assets(const cinder::gfx::vk::VkCtx& ctx)
     : ctx_(ctx), pool_(ctx, MAX_TEXTURES, VK_FILTER_NEAREST) {
-    registerTexture(Texture::white(ctx));
+    registerTexture(cinder::gfx::rhi::Texture::white(ctx));
 }
 
-int Assets::registerTexture(Texture texture) {
+int Assets::registerTexture(cinder::gfx::rhi::Texture texture) {
     if (textures_.size() >= MAX_TEXTURES) {
         throw std::runtime_error("Texture limit reached (" + std::to_string(MAX_TEXTURES) + ")");
     }
@@ -28,12 +28,12 @@ int Assets::load(const std::string& path) {
     auto found = byPath_.find(path);
     if (found != byPath_.end()) return found->second;
 
-    const int id = registerTexture(Texture::load(ctx_, path));
+    const int id = registerTexture(cinder::gfx::rhi::Texture::load(ctx_, path));
     byPath_.emplace(path, id);
     return id;
 }
 
-const Texture& Assets::get(int id) const {
+const cinder::gfx::rhi::Texture& Assets::get(int id) const {
     if (id < 0 || static_cast<std::size_t>(id) >= textures_.size()) {
         return textures_[cinder::scene::DrawList::WHITE];
     }

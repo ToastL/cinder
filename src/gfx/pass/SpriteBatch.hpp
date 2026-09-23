@@ -41,8 +41,8 @@ private:
     cinder::gfx::asset::Assets& assets_;
     const SpritePipeline& pipeline_;
 
-    std::vector<cinder::gfx::vk::GpuBuffer> vertexBuffers_;
-    std::unique_ptr<cinder::gfx::vk::GpuBuffer> indexBuffer_;
+    std::vector<cinder::gfx::rhi::GpuBuffer> vertexBuffers_;
+    std::unique_ptr<cinder::gfx::rhi::GpuBuffer> indexBuffer_;
 
     std::vector<float> vertices_;
     std::vector<int> quadTexture_;

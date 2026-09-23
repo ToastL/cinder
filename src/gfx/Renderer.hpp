@@ -94,7 +94,7 @@ private:
 
     uint32_t lastFrame_ = 0;
     std::string windowCapture_;
-    std::unique_ptr<cinder::gfx::vk::GpuBuffer> captureBuffer_;
+    std::unique_ptr<cinder::gfx::rhi::GpuBuffer> captureBuffer_;
     VkImageUsageFlags swapchainUsage_ = 0;
     bool captureRecorded_ = false;
     float pixelsPerPoint_ = 1.0f;
