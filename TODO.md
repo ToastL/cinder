@@ -139,9 +139,13 @@ includes `scene`, `reflect` or `gfx` — the reflection-driven Properties panel 
       `DragDropOperation` with a decorator. Tab walks the fields in paint order and stays inside a popup.
 - [ ] **Font fallback** — shaping falls back per glyph to a symbol font, so shortcuts can read ⌘⇧P
       instead of `Shift+Cmd+P`. Roboto has no ⌘, and a label that asks for one draws a missing glyph.
-- [ ] **Docking** — tabs and splitters in one window, with drag-to-redock and a Window menu to reopen
-      a closed tab. Panels floating in their own OS windows come after parity: `VkCtx` has to stop
-      owning the one GLFW surface — one device, a swapchain per window.
+- [x] **Docking** — `ui/docking`: a `TabManager` holds the layout as a tree of splits and stacks,
+      spawns a tab's panel once and keeps it across re-docks, and rebuilds the widgets on every
+      change, carrying the splitter sizes over. A tab drags to another stack's middle or against an
+      edge, which splits it; closing the last tab of a stack collapses it; the Window menu reopens a
+      closed tab where it last lived. `editor_next` runs on it.
+- [ ] **Floating panels** — panels in their own OS windows, after parity: `VkCtx` has to stop owning
+      the one GLFW surface — one device, a swapchain per window.
 - [ ] **Port the panels** into `editor_next` beside `editor`, then flip the names and delete ImGui and
       `gfx::Overlay`. `PlaySession`, `History`, `Selection`, `Picking`, `EditorCamera`, `Manipulator`,
       `GizmoGeometry` and `GizmoLines` have no ImGui in them and carry over as they are; the new

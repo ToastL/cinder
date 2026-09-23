@@ -102,6 +102,9 @@ void Toolbar::build() {
     std::shared_ptr<Widget> menus = make<MenuBar>()
             .menu("File", [list](MenuBuilder& menu) { menu.command(list, *SAVE); })
             .menu("Edit", [list](MenuBuilder& menu) { menu.command(list, *UNDO).command(list, *REDO); })
+            .menu("Window", [this](MenuBuilder& menu) {
+                if (windowMenu_) windowMenu_(menu);
+            })
             .menu("Play", [this, list](MenuBuilder& menu) {
                 menu.entry([this] { return std::string(editing() ? "Play" : "Stop"); }, [list] { list->execute(*PLAY); },
                            PLAY->shortcut.label())

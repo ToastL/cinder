@@ -34,9 +34,7 @@ void Console::build() {
                        .brush([] { return Application::get().theme().get<Brush>("Brush.TitleBar"); })
                        .padding(Margin(6.0f, 2.0f))
                    [make<HorizontalBox>()
-                    + HorizontalBox::slot().autoWidth().vAlign(VAlign::Center)
-                          [make<Label>().text("Console").textStyle("Label.Bold")]
-                    + HorizontalBox::slot().autoWidth().padding(Margin(12.0f, 0.0f, 6.0f, 0.0f))
+                    + HorizontalBox::slot().autoWidth().padding(Margin(0.0f, 0.0f, 6.0f, 0.0f))
                           [make<Button>().text("Clear").buttonStyle("Button.Small").onClicked([this] {
                               clear();
                               return Reply::handled();

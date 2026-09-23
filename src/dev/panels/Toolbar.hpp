@@ -4,9 +4,13 @@
 #include "ui/framework/Commands.hpp"
 
 #include <filesystem>
+#include <functional>
 #include <memory>
 
-namespace cinder::ui { class Application; }
+namespace cinder::ui {
+class Application;
+class MenuBuilder;
+}
 
 namespace cinder::dev {
 class History;
@@ -29,6 +33,7 @@ public:
     const std::shared_ptr<cinder::ui::CommandList>& commands() const { return commands_; }
 
     void update();
+    void setWindowMenu(std::function<void(cinder::ui::MenuBuilder&)> fill) { windowMenu_ = std::move(fill); }
     void requestClose();
     bool closeConfirmed() const { return closeConfirmed_; }
     bool prompting() const { return prompting_; }
@@ -54,6 +59,7 @@ private:
     std::shared_ptr<cinder::ui::CommandList> commands_;
     std::shared_ptr<cinder::ui::Widget> widget_;
     std::shared_ptr<cinder::ui::Widget> prompt_;
+    std::function<void(cinder::ui::MenuBuilder&)> windowMenu_;
     bool prompting_ = false;
     bool focusPrompt_ = false;
     bool closeConfirmed_ = false;

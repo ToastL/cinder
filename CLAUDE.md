@@ -71,7 +71,9 @@ DYLD_LIBRARY_PATH=/opt/homebrew/lib ./build/editor_next samples/sandbox3d
 ```
 
 `editor_next` is the editor being rebuilt on the new UI, beside `editor` until it reaches parity: today
-the toolbar, the Scene view with its gizmos and editor camera, and the console, in a fixed layout. It
+the toolbar with its File, Edit, Window and Play menus, and the Scene view and console as dockable
+tabs — drag a tab to another stack's middle or edge to re-dock it, close it, and reopen it from the
+Window menu. It
 takes `editor`'s arguments plus `--capture-window <png>` and `--input-script <file>`; a script can also
 `close` the window to exercise the unsaved-changes prompt. `ctest` holds it to `editor_next_is_imgui_free`,
 which runs `nm` over it, so no ImGui object can be linked into it by accident.
@@ -717,6 +719,18 @@ that as an outline or a line. `Application::navigate` is Tab: it walks the widge
 focus in paint order, backwards with Shift, and stays inside the popup the focus is in. `setFocus`,
 `pushPopup` and the dismissals set the thread's current `Application` themselves, so a panel may call
 them from its `update`, outside the paint.
+
+**Docking is a layout tree, not widget surgery.** `ui/docking`'s `TabManager` holds a `LayoutNode`
+tree of splits and stacks, and every change — a drop, a close, a reopen — edits that tree and rebuilds
+the widgets from it, carrying the splitter sizes over first, so nothing has to reparent a live
+`Splitter`. A tab's panel is spawned once and cached by id, so re-docking the Scene view keeps its
+camera and its render target. Dragging a tab carries a `TabDragDrop`; the stack under the pointer
+answers with the side it would take — its middle joins the stack, an edge splits it — and paints that
+as a translucent overlay. Closing the last tab of a stack collapses the stack, and a split left with
+one child is replaced by that child. `fillWindowMenu` builds the Window menu: a check per registered
+tab, disabled for a tab that may not close, such as the Scene. A tab bar keeps its `DockTab` widgets
+across an activation, because rebuilding them mid-press would destroy the widget whose drag was just
+armed.
 
 Styles come from a `Theme` of named entries — `"Button"`, `"Button.Primary"`, `"Label.Mono"`,
 `"Color.Primary"` — built by `ui::defaultTheme()` in the colours of Unreal's dark editor. Colours are

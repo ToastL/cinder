@@ -176,6 +176,22 @@ struct TableViewStyle {
     float rowHeight = 22.0f;
 };
 
+struct DockStyle {
+    Brush background;
+    Brush bar;
+    Brush tab;
+    Brush tabHovered;
+    Brush tabActive;
+    Color label = Color::white();
+    Color labelActive = Color::white();
+    Color dropFill = Color::white();
+    Color dropOutline = Color::white();
+    Margin tabPadding{10.0f, 4.0f};
+    Margin contentPadding{0.0f};
+    float barHeight = 26.0f;
+    float closeSize = 9.0f;
+};
+
 struct ToolTipStyle {
     Brush background;
     FontInfo font;

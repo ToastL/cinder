@@ -194,6 +194,22 @@ Theme defaultTheme() {
     table.rowHeight = 22.0f;
     theme.set("TableView", table);
 
+    DockStyle dock;
+    dock.background = Brush::color(panel);
+    dock.bar = Brush::color(title);
+    dock.tab = Brush::none();
+    dock.tabHovered = Brush::color(header);
+    dock.tabActive = Brush::color(panel);
+    dock.label = dim;
+    dock.labelActive = bright;
+    dock.dropFill = primary.withAlpha(0.25f);
+    dock.dropOutline = primary;
+    dock.tabPadding = Margin(12.0f, 5.0f);
+    dock.contentPadding = Margin(0.0f);
+    dock.barHeight = 26.0f;
+    dock.closeSize = 9.0f;
+    theme.set("Dock", dock);
+
     ToolTipStyle tip;
     tip.background = Brush::rounded(Color::hex(0x0A0A0AF2), 3.0f, outline, 1.0f);
     tip.font = {FontStyle::Regular, 12.0f};

@@ -14,6 +14,7 @@
 #include "platform/InputScript.hpp"
 #include "platform/Log.hpp"
 #include "text/FontSet.hpp"
+#include "ui/docking/TabManager.hpp"
 #include "ui/core/ElementList.hpp"
 #include "ui/framework/Application.hpp"
 #include "ui/framework/WindowPlatform.hpp"
@@ -92,7 +93,8 @@ int main(int argc, char** argv) {
             cinder::dev::panels::Toolbar toolbar(session, history, selection, scenePath, app);
             cinder::dev::panels::SceneView view(session, selection, history, engine, app);
             cinder::dev::panels::Console console(engine.script(), history, selection, app);
-            app.setRoot(cinder::dev::panels::editorLayout(toolbar, view, console));
+            cinder::ui::TabManager tabs;
+            app.setRoot(cinder::dev::panels::editorLayout(toolbar, view, console, tabs));
 
             cinder::platform::Input& input = engine.input();
             input.setRecording(true);

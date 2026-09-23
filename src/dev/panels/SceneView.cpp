@@ -114,8 +114,6 @@ void SceneView::build() {
                        .brush([] { return Application::get().theme().get<Brush>("Brush.TitleBar"); })
                        .padding(Margin(6.0f, 2.0f))
                    [make<HorizontalBox>()
-                    + HorizontalBox::slot().autoWidth().vAlign(VAlign::Center)[make<Label>().text("Scene").textStyle("Label.Bold")]
-                    + gap(12.0f)
                     + tool("Move", Tool::Move, "Move (1)")
                     + tool("Rotate", Tool::Rotate, "Rotate (2)")
                     + tool("Scale", Tool::Scale, "Scale (3)")
