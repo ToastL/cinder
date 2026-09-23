@@ -60,6 +60,8 @@ public:
     Widget* childAt(int index) const override;
     void arrangeChildren(const Geometry& geometry, ArrangedChildren& out) const override;
 
+    bool supportsKeyboardFocus() const override { return true; }
+    Reply onFocusReceived(const Geometry& geometry, const FocusEvent& event) override;
     Reply onMouseDown(const Geometry& geometry, const PointerEvent& event) override;
     Reply onMouseMove(const Geometry& geometry, const PointerEvent& event) override;
     Reply onMouseUp(const Geometry& geometry, const PointerEvent& event) override;

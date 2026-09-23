@@ -72,4 +72,15 @@ std::optional<Geometry> HitTester::geometryOf(const Widget* widget) const {
 
 bool HitTester::contains(const Widget* widget) const { return find(widget) >= 0; }
 
+std::vector<std::shared_ptr<Widget>> HitTester::focusOrder() const {
+    std::vector<std::shared_ptr<Widget>> order;
+    for (const Entry& entry : entries_) {
+        if (!entry.hittable || !entry.enabled || entry.clip.intersect(entry.geometry.rect()).empty()) continue;
+        std::shared_ptr<Widget> widget = entry.widget.lock();
+        if (!widget || !widget->supportsKeyboardFocus()) continue;
+        if (std::find(order.begin(), order.end(), widget) == order.end()) order.push_back(std::move(widget));
+    }
+    return order;
+}
+
 }

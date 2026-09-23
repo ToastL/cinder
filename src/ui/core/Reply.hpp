@@ -5,6 +5,7 @@
 namespace cinder::ui {
 
 class Widget;
+class DragDropOperation;
 
 class Reply {
 public:
@@ -35,6 +36,11 @@ public:
         return *this;
     }
 
+    Reply& beginDragDrop(std::shared_ptr<DragDropOperation> operation) {
+        dragDrop_ = std::move(operation);
+        return *this;
+    }
+
     Reply& detectDrag(std::shared_ptr<Widget> widget, int button) {
         dragDetector_ = std::move(widget);
         dragButton_ = button;
@@ -47,6 +53,7 @@ public:
     const std::shared_ptr<Widget>& focus() const { return focus_; }
     const std::shared_ptr<Widget>& dragDetector() const { return dragDetector_; }
     int dragButton() const { return dragButton_; }
+    const std::shared_ptr<DragDropOperation>& dragDrop() const { return dragDrop_; }
 
 private:
     explicit Reply(bool handled) : handled_(handled) {}
@@ -58,6 +65,7 @@ private:
     std::shared_ptr<Widget> captor_;
     std::shared_ptr<Widget> focus_;
     std::shared_ptr<Widget> dragDetector_;
+    std::shared_ptr<DragDropOperation> dragDrop_;
 };
 
 }

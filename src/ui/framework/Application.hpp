@@ -44,6 +44,8 @@ public:
     static constexpr double TOOLTIP_DELAY = 0.5;
     static constexpr float TOOLTIP_OFFSET_X = 12.0f;
     static constexpr float TOOLTIP_OFFSET_Y = 20.0f;
+    static constexpr float DECORATOR_OFFSET_X = 14.0f;
+    static constexpr float DECORATOR_OFFSET_Y = 10.0f;
 
     Application(PlatformHooks& platform, const cinder::text::FontSet& fonts, Theme theme);
     ~Application();
@@ -89,6 +91,10 @@ public:
     std::optional<Rect> popupRect(const Widget* content) const;
 
     std::string visibleToolTip() const;
+
+    const std::shared_ptr<DragDropOperation>& dragDrop() const { return dragDrop_; }
+    void cancelDragDrop();
+    bool navigate(bool backward);
 
     const cinder::text::FontSet& fonts() const { return fonts_; }
     cinder::text::GlyphAtlas& atlas() { return atlas_; }
@@ -147,6 +153,11 @@ private:
     Rect place(const Popup& popup) const;
     void updateToolTip();
     void paintToolTip(ElementList& list, int layer);
+    void beginDragDrop(std::shared_ptr<DragDropOperation> operation);
+    DragDropEvent dragEvent(const cinder::platform::InputEvent& event) const;
+    void dragMove(const cinder::platform::InputEvent& event);
+    void drop(const cinder::platform::InputEvent& event);
+    void leaveDragTargets(const WidgetPath& keep, const DragDropEvent& event);
 
     void mouseDown(const cinder::platform::InputEvent& event);
     void mouseUp(const cinder::platform::InputEvent& event);
@@ -171,6 +182,8 @@ private:
     std::optional<DragDetect> drag_;
     Click lastClick_;
     std::vector<Popup> popups_;
+    std::shared_ptr<DragDropOperation> dragDrop_;
+    std::vector<std::weak_ptr<Widget>> dragTargets_;
     ToolTip toolTip_;
     TextRun toolTipRun_;
 

@@ -133,8 +133,10 @@ includes `scene`, `reflect` or `gfx` — the reflection-driven Properties panel 
       `VectorInputBox`, `ComboBox`, `ExpandableArea`, `ColorBlock` and `ColorPicker`; `Menu`,
       `MenuBuilder`, `MenuAnchor`, `MenuBar` and context menus, with commands, checks and submenus.
       `editor_next`'s toolbar has File, Edit and Play menus.
-- [ ] **Lists and trees** — list and tree views that build only visible rows, selection, scrolling a
-      row into view, drag and drop with a decorator, and Tab between fields
+- [x] **Lists and trees** — `TreeView` (a `ListView` is one with no children) builds only the rows in
+      view, keyed by item id, with selection by mouse and arrow keys, expansion from the arrow or a
+      double click, `reveal` through collapsed ancestors, context menus, and drag and drop carrying a
+      `DragDropOperation` with a decorator. Tab walks the fields in paint order and stays inside a popup.
 - [ ] **Font fallback** — shaping falls back per glyph to a symbol font, so shortcuts can read ⌘⇧P
       instead of `Shift+Cmd+P`. Roboto has no ⌘, and a label that asks for one draws a missing glyph.
 - [ ] **Docking** — tabs and splitters in one window, with drag-to-redock and a Window menu to reopen

@@ -2,6 +2,7 @@
 
 #include "platform/Cursor.hpp"
 #include "ui/core/Attribute.hpp"
+#include "ui/core/DragDrop.hpp"
 #include "ui/core/Events.hpp"
 #include "ui/core/Geometry.hpp"
 #include "ui/core/Reply.hpp"
@@ -71,6 +72,10 @@ public:
     virtual void onMouseEnter(const Geometry& geometry, const PointerEvent& event) {}
     virtual void onMouseLeave(const PointerEvent& event) {}
     virtual Reply onDragDetected(const Geometry& geometry, const PointerEvent& event);
+    virtual void onDragEnter(const Geometry& geometry, const DragDropEvent& event) {}
+    virtual void onDragLeave(const DragDropEvent& event) {}
+    virtual Reply onDragOver(const Geometry& geometry, const DragDropEvent& event);
+    virtual Reply onDrop(const Geometry& geometry, const DragDropEvent& event);
     virtual void onMouseCaptureLost() {}
     virtual Reply onKeyDown(const Geometry& geometry, const KeyEvent& event);
     virtual Reply onKeyUp(const Geometry& geometry, const KeyEvent& event);

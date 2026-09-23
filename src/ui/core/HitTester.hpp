@@ -32,6 +32,7 @@ public:
     WidgetPath pathTo(const Widget* widget) const;
     std::optional<Geometry> geometryOf(const Widget* widget) const;
     bool contains(const Widget* widget) const;
+    std::vector<std::shared_ptr<Widget>> focusOrder() const;
     std::size_t size() const { return entries_.size(); }
 
 private:

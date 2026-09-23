@@ -165,6 +165,17 @@ struct ColorPickerStyle {
     float checkerSize = 6.0f;
 };
 
+struct TableViewStyle {
+    Brush background;
+    Brush rowHovered;
+    Brush rowSelected;
+    Brush rowSelectedInactive;
+    Color dropTarget = Color::white();
+    Margin rowPadding{4.0f, 0.0f};
+    float indent = 14.0f;
+    float rowHeight = 22.0f;
+};
+
 struct ToolTipStyle {
     Brush background;
     FontInfo font;

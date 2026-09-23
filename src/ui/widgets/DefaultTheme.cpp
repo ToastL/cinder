@@ -183,6 +183,17 @@ Theme defaultTheme() {
     picker.checkerSize = 6.0f;
     theme.set("ColorPicker", picker);
 
+    TableViewStyle table;
+    table.background = Brush::none();
+    table.rowHovered = Brush::color(Color::hex(0x2E2E2EFF));
+    table.rowSelected = Brush::color(primary);
+    table.rowSelectedInactive = Brush::color(Color::hex(0x3A4450FF));
+    table.dropTarget = primaryHover;
+    table.rowPadding = Margin(4.0f, 0.0f);
+    table.indent = 14.0f;
+    table.rowHeight = 22.0f;
+    theme.set("TableView", table);
+
     ToolTipStyle tip;
     tip.background = Brush::rounded(Color::hex(0x0A0A0AF2), 3.0f, outline, 1.0f);
     tip.font = {FontStyle::Regular, 12.0f};

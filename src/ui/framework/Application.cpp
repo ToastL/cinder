@@ -118,6 +118,7 @@ bool Application::focusWithin(const Widget& widget) const {
 }
 
 void Application::setFocus(const std::shared_ptr<Widget>& widget, FocusCause cause) {
+    Scope scope(*this);
     std::shared_ptr<Widget> previous = focused();
     if (previous == widget) return;
     focused_ = widget;
@@ -136,6 +137,7 @@ void Application::setFocus(const std::shared_ptr<Widget>& widget, FocusCause cau
 void Application::clearFocus(FocusCause cause) { setFocus(nullptr, cause); }
 
 void Application::releaseCapture() {
+    Scope scope(*this);
     std::shared_ptr<Widget> widget = captor();
     captor_.reset();
     if (!widget) return;
@@ -144,7 +146,7 @@ void Application::releaseCapture() {
 }
 
 bool Application::isInteracting() const {
-    if (captor()) return true;
+    if (captor() || dragDrop_) return true;
     std::shared_ptr<Widget> focus = focused();
     return focus && focus->isEditingText();
 }
@@ -166,6 +168,102 @@ void Application::apply(const Reply& reply) {
         else clearFocus(FocusCause::Cleared);
     }
     if (reply.dragDetector()) drag_ = DragDetect{reply.dragDetector(), reply.dragButton(), cursor_};
+    if (reply.dragDrop()) beginDragDrop(reply.dragDrop());
+}
+
+void Application::beginDragDrop(std::shared_ptr<DragDropOperation> operation) {
+    if (dragDrop_) cancelDragDrop();
+    releaseCapture();
+    drag_.reset();
+    dragDrop_ = std::move(operation);
+    toolTip_.shown = false;
+    InputEvent here;
+    here.position = cursor_;
+    here.modifiers = modifiers_;
+    dragMove(here);
+}
+
+DragDropEvent Application::dragEvent(const InputEvent& event) const {
+    DragDropEvent result;
+    static_cast<PointerEvent&>(result) = pointer(event, event.code);
+    result.operation = dragDrop_;
+    return result;
+}
+
+void Application::leaveDragTargets(const WidgetPath& keep, const DragDropEvent& event) {
+    std::vector<std::weak_ptr<Widget>> previous = std::move(dragTargets_);
+    dragTargets_.clear();
+    for (const std::weak_ptr<Widget>& weak : previous) {
+        std::shared_ptr<Widget> widget = weak.lock();
+        if (!widget) continue;
+        if (holds(keep, widget.get())) dragTargets_.push_back(widget);
+        else widget->onDragLeave(event);
+    }
+}
+
+void Application::dragMove(const InputEvent& event) {
+    if (!dragDrop_) return;
+    const DragDropEvent over = dragEvent(event);
+    const WidgetPath path = grid_.pathAt(cursor_);
+    leaveDragTargets(path, over);
+    for (const PathEntry& entry : path) {
+        const bool known = std::any_of(dragTargets_.begin(), dragTargets_.end(),
+                                       [&](const std::weak_ptr<Widget>& weak) { return weak.lock() == entry.widget; });
+        if (known) continue;
+        dragTargets_.push_back(entry.widget);
+        if (entry.enabled) entry.widget->onDragEnter(entry.geometry, over);
+    }
+    bubble(path, [&](const PathEntry& entry) { return entry.widget->onDragOver(entry.geometry, over); });
+}
+
+void Application::drop(const InputEvent& event) {
+    const std::shared_ptr<DragDropOperation> operation = dragDrop_;
+    const DragDropEvent dropped = dragEvent(event);
+    const WidgetPath path = grid_.pathAt(cursor_);
+    const Reply reply = bubble(path, [&](const PathEntry& entry) { return entry.widget->onDrop(entry.geometry, dropped); });
+    leaveDragTargets({}, dropped);
+    dragDrop_.reset();
+    operation->onDropped(reply.isHandled());
+    apply(reply);
+}
+
+void Application::cancelDragDrop() {
+    if (!dragDrop_) return;
+    const std::shared_ptr<DragDropOperation> operation = dragDrop_;
+    DragDropEvent event;
+    event.position = cursor_;
+    event.operation = operation;
+    leaveDragTargets({}, event);
+    dragDrop_.reset();
+    operation->onDropped(false);
+}
+
+bool Application::navigate(bool backward) {
+    std::vector<std::shared_ptr<Widget>> order = grid_.focusOrder();
+    const std::shared_ptr<Widget> current = focused();
+    const Widget* scope = nullptr;
+    for (auto popup = popups_.rbegin(); popup != popups_.rend(); ++popup) {
+        if (within(popup->content.get(), current.get())) {
+            scope = popup->content.get();
+            break;
+        }
+    }
+    std::erase_if(order, [&](const std::shared_ptr<Widget>& widget) {
+        if (scope != nullptr) return !within(scope, widget.get());
+        return std::any_of(popups_.begin(), popups_.end(),
+                           [&](const Popup& popup) { return within(popup.content.get(), widget.get()); });
+    });
+    if (order.empty()) return false;
+    const auto found = std::find(order.begin(), order.end(), current);
+    std::size_t next = 0;
+    if (found == order.end()) {
+        next = backward ? order.size() - 1 : 0;
+    } else {
+        const auto index = static_cast<std::size_t>(found - order.begin());
+        next = backward ? (index + order.size() - 1) % order.size() : (index + 1) % order.size();
+    }
+    setFocus(order[next], FocusCause::Navigation);
+    return true;
 }
 
 void Application::setHover(const WidgetPath& path, const PointerEvent& event) {
@@ -247,6 +345,7 @@ std::optional<Rect> Application::popupRect(const Widget* content) const {
 
 void Application::pushPopup(std::shared_ptr<Widget> content, const Rect& anchor, PopupOptions options) {
     if (!content) return;
+    Scope scope(*this);
     if (const int existing = popupIndex(content.get()); existing >= 0) dismissFrom(static_cast<std::size_t>(existing));
     Popup popup;
     popup.content = std::move(content);
@@ -261,6 +360,7 @@ void Application::pushPopup(std::shared_ptr<Widget> content, const Rect& anchor,
 
 void Application::dismissFrom(std::size_t index) {
     if (index >= popups_.size()) return;
+    Scope scope(*this);
     std::vector<Popup> closing(std::make_move_iterator(popups_.begin() + static_cast<std::ptrdiff_t>(index)),
                                std::make_move_iterator(popups_.end()));
     popups_.erase(popups_.begin() + static_cast<std::ptrdiff_t>(index), popups_.end());
@@ -426,6 +526,11 @@ void Application::mouseDown(const InputEvent& event) {
 
 void Application::mouseUp(const InputEvent& event) {
     const PointerEvent release = pointer(event, event.code);
+    if (dragDrop_) {
+        drop(event);
+        if (buttons_ == 0) releaseCapture();
+        return;
+    }
     if (std::shared_ptr<Widget> widget = captor()) {
         const WidgetPath path = captorPath();
         const Geometry geometry = path.empty() ? Geometry{} : path.back().geometry;
@@ -442,6 +547,11 @@ void Application::mouseUp(const InputEvent& event) {
 
 void Application::mouseMove(const InputEvent& event) {
     const PointerEvent move = pointer(event, -1);
+    if (dragDrop_) {
+        refreshHover();
+        dragMove(event);
+        return;
+    }
     if (drag_ && move.isDown(drag_->button) && glm::distance(cursor_, drag_->origin) > DRAG_THRESHOLD) {
         std::shared_ptr<Widget> detector = drag_->widget.lock();
         drag_.reset();
@@ -479,9 +589,16 @@ void Application::keyDown(const InputEvent& event) {
         apply(reply);
         return;
     }
+    if (event.code == cinder::platform::keys::ESCAPE && dragDrop_) {
+        cancelDragDrop();
+        return;
+    }
     if (event.code == cinder::platform::keys::ESCAPE && !popups_.empty()) {
         dismissFrom(popups_.size() - 1);
         return;
+    }
+    if (event.code == cinder::platform::keys::TAB && !key.primary() && !key.control() && !key.alt()) {
+        if (navigate(key.shift())) return;
     }
     if (event.repeat) return;
     for (const std::shared_ptr<const CommandList>& commands : commands_) {
@@ -509,6 +626,7 @@ void Application::windowFocusLost() {
     keys_.fill(false);
     buttons_ = 0;
     drag_.reset();
+    cancelDragDrop();
     releaseCapture();
     dismissAllPopups();
     setHover({}, PointerEvent{});
@@ -596,6 +714,16 @@ void Application::paint(ElementList& list) {
         popups_[i].rect = place(popups_[i]);
         const Rect rect = popups_[i].rect;
         top = content->paint(args, Geometry{rect.size(), rect.min, 1.0f}, list, top + 1, style, true);
+    }
+    if (dragDrop_) {
+        if (const std::shared_ptr<Widget> decorator = dragDrop_->decorator()) {
+            decorator->prepass(scale_);
+            const glm::vec2 size = glm::min(decorator->desiredSize(), windowSize_);
+            const glm::vec2 at = glm::round(glm::clamp(cursor_ + glm::vec2(DECORATOR_OFFSET_X, DECORATOR_OFFSET_Y),
+                                                       glm::vec2(0.0f), glm::max(glm::vec2(0.0f), windowSize_ - size)));
+            const PaintArgs loose{nullptr, time_, deltaTime_};
+            top = decorator->paint(loose, Geometry{size, at, 1.0f}, list, top + 1, style, true);
+        }
     }
     refreshHover();
     updateCursor();

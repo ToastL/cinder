@@ -233,6 +233,14 @@ void SpinBox::arrangeChildren(const Geometry& geometry, ArrangedChildren& out) c
     out.push_back({field_, geometry.child(inset, size)});
 }
 
+Reply SpinBox::onFocusReceived(const Geometry&, const FocusEvent& event) {
+    if (event.cause != FocusCause::Navigation || editing_) return Reply::unhandled();
+    editText_ = exactNumber(value(), integral_);
+    field_->setText(editText_);
+    editing_ = true;
+    return Reply::handled().setFocus(field_);
+}
+
 Reply SpinBox::onMouseDown(const Geometry&, const PointerEvent& event) {
     if (event.button != cinder::platform::buttons::LEFT) return Reply::unhandled();
     if (editing_) return Reply::handled();

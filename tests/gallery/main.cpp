@@ -24,6 +24,7 @@
 #include "ui/widgets/SpinBox.hpp"
 #include "ui/widgets/Splitter.hpp"
 #include "ui/widgets/TextField.hpp"
+#include "ui/widgets/TreeView.hpp"
 #include "ui/widgets/VectorInputBox.hpp"
 #include "ui/widgets/Viewport.hpp"
 
@@ -31,8 +32,10 @@
 
 #include <glm/trigonometric.hpp>
 
+#include <algorithm>
 #include <array>
 #include <cmath>
+#include <map>
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
@@ -123,6 +126,71 @@ std::shared_ptr<Widget> section(std::string title, std::shared_ptr<Widget> conte
            + VerticalBox::slot().autoHeight()[std::move(content)];
 }
 
+struct Outline {
+    std::map<ItemId, std::string> names;
+    std::map<ItemId, std::vector<ItemId>> kids;
+    std::map<ItemId, ItemId> parents;
+    std::vector<ItemId> roots;
+    ItemId next = 1;
+
+    ItemId add(std::string name, ItemId parent) {
+        const ItemId item = next++;
+        names[item] = std::move(name);
+        if (parent == 0) roots.push_back(item);
+        else {
+            kids[parent].push_back(item);
+            parents[item] = parent;
+        }
+        return item;
+    }
+
+    std::vector<ItemId> childrenOf(ItemId item) const {
+        const auto found = kids.find(item);
+        return found == kids.end() ? std::vector<ItemId>{} : found->second;
+    }
+
+    std::optional<ItemId> parentOf(ItemId item) const {
+        const auto found = parents.find(item);
+        return found == parents.end() ? std::nullopt : std::optional<ItemId>(found->second);
+    }
+
+    bool under(ItemId item, ItemId ancestor) const {
+        for (std::optional<ItemId> at = parentOf(item); at; at = parentOf(*at)) {
+            if (*at == ancestor) return true;
+        }
+        return false;
+    }
+
+    void detach(ItemId item) {
+        if (const std::optional<ItemId> old = parentOf(item)) {
+            std::vector<ItemId>& list = kids[*old];
+            list.erase(std::remove(list.begin(), list.end(), item), list.end());
+            parents.erase(item);
+        } else {
+            roots.erase(std::remove(roots.begin(), roots.end(), item), roots.end());
+        }
+    }
+
+    bool reparent(ItemId item, std::optional<ItemId> parent) {
+        if (parent && (*parent == item || under(*parent, item))) return false;
+        detach(item);
+        if (parent) {
+            kids[*parent].push_back(item);
+            parents[item] = *parent;
+        } else {
+            roots.push_back(item);
+        }
+        return true;
+    }
+
+    void remove(ItemId item) {
+        for (const ItemId child : childrenOf(item)) remove(child);
+        kids.erase(item);
+        detach(item);
+        names.erase(item);
+    }
+};
+
 std::shared_ptr<Widget> row(std::string label, std::shared_ptr<Widget> editor) {
     return make<HorizontalBox>()
            + HorizontalBox::slot().autoWidth().vAlign(VAlign::Center).padding(Margin(0.0f, 0.0f, 8.0f, 0.0f))
@@ -144,6 +212,63 @@ struct Gallery {
     std::string projection = "perspective";
     Color tint{0.9f, 0.35f, 0.1f, 0.8f};
     std::shared_ptr<ScrollBox> log;
+    std::shared_ptr<TreeView> tree;
+    Outline outline;
+
+    std::shared_ptr<Widget> outliner() {
+        for (int folder = 1; folder <= 8; ++folder) {
+            const ItemId parent = outline.add("Folder " + std::to_string(folder), 0);
+            for (int child = 1; child <= 20; ++child) {
+                outline.add("Crate " + std::to_string(folder) + "." + std::to_string(child), parent);
+            }
+        }
+        return make<TreeView>()
+                .assign(tree)
+                .treeItemsSource([this] { return outline.roots; })
+                .onGetChildren([this](ItemId item) { return outline.childrenOf(item); })
+                .onGetParent([this](ItemId item) { return outline.parentOf(item); })
+                .onGenerateRow([this](ItemId item) {
+                    return make<HorizontalBox>()
+                           + HorizontalBox::slot().autoWidth().vAlign(VAlign::Center)
+                                 [make<Label>().text([this, item] { return outline.names.count(item) ? outline.names.at(item) : std::string(); })]
+                           + HorizontalBox::slot().fill(1.0f).vAlign(VAlign::Center).padding(Margin(6.0f, 0.0f, 0.0f, 0.0f))
+                                 [make<Label>()
+                                      .text([this, item] { return outline.childrenOf(item).empty() ? "MeshPart" : "Folder"; })
+                                      .textStyle("Label.Small")
+                                      .colorAndOpacity(Attribute<Color>([] { return Application::get().theme().color("Color.ForegroundDim"); }))];
+                })
+                .onSelectionChanged([this](std::optional<ItemId> item, SelectInfo) {
+                    status = item ? "selected " + outline.names[*item] : "selection cleared";
+                })
+                .onContextMenuOpening([this](std::optional<ItemId> item) -> std::shared_ptr<Widget> {
+                    MenuBuilder menu;
+                    menu.entry("Add Child", [this, item] { outline.add("New", item.value_or(0)); tree->refresh(); })
+                            .entry("Delete", [this, item] {
+                                if (item) outline.remove(*item);
+                                tree->refresh();
+                            })
+                            .enabledIf([item] { return item.has_value(); });
+                    return menu.build();
+                })
+                .onDragDetected([this](ItemId item) -> std::shared_ptr<DragDropOperation> {
+                    return std::make_shared<ItemDragDrop>(std::vector<ItemId>{item}, outline.names[item]);
+                })
+                .onCanAcceptDrop([this](const DragDropEvent& event, std::optional<ItemId> item, DropZone) -> std::optional<DropZone> {
+                    const auto* carried = dynamic_cast<const ItemDragDrop*>(event.operation.get());
+                    if (carried == nullptr) return std::nullopt;
+                    const ItemId dragged = carried->items().front();
+                    if (item && (*item == dragged || outline.under(*item, dragged))) return std::nullopt;
+                    return DropZone::Onto;
+                })
+                .onAcceptDrop([this](const DragDropEvent& event, std::optional<ItemId> item, DropZone) {
+                    const auto* carried = dynamic_cast<const ItemDragDrop*>(event.operation.get());
+                    if (carried == nullptr) return;
+                    if (outline.reparent(carried->items().front(), item)) {
+                        status = "moved " + outline.names[carried->items().front()];
+                        tree->refresh();
+                    }
+                });
+    }
 
     std::shared_ptr<Widget> menus() {
         return make<MenuBar>()
@@ -254,7 +379,11 @@ struct Gallery {
                 + VerticalBox::slot().autoHeight()[make<Label>().text("Bold 13: Properties  Explorer  Transform").textStyle("Label.Bold")]
                 + VerticalBox::slot().autoHeight()[make<Label>().text("Mono 12: > engine.time()  1.2500").textStyle("Label.Mono")])]
             + VerticalBox::slot().fill(1.0f).padding(Margin(0.0f, 10.0f, 0.0f, 0.0f))
-                  [make<Border>().brush(Brush::rounded(Color::hex(0x0F0F0FFF), 4.0f)).padding(Margin(2.0f))
+                  [make<Splitter>()
+                   + Splitter::slot().value(1.0f)
+                         [make<Border>().brush(Brush::rounded(Color::hex(0x0F0F0FFF), 4.0f)).padding(Margin(2.0f))[outliner()]]
+                   + Splitter::slot().value(1.0f)
+                         [make<Border>().brush(Brush::rounded(Color::hex(0x0F0F0FFF), 4.0f)).padding(Margin(2.0f))
                        .toolTipText("Right-click for a context menu")
                        .onMouseDown([this](const Geometry&, const PointerEvent& event) {
                            if (event.button != cinder::platform::buttons::RIGHT) return Reply::unhandled();
@@ -265,7 +394,7 @@ struct Gallery {
                                .entry("Copy", [] {}).enabledIf([] { return false; });
                            showContextMenu(menu.build(), event.position);
                            return Reply::handled();
-                       })[rows]];
+                       })[rows]]];
 
         return make<Border>().brush(Brush::color(Color::hex(0x151515FF))).padding(Margin(0.0f))
             [make<Splitter>()

@@ -51,6 +51,8 @@ Reply Widget::onMouseMove(const Geometry&, const PointerEvent&) { return Reply::
 Reply Widget::onMouseDoubleClick(const Geometry&, const PointerEvent&) { return Reply::unhandled(); }
 Reply Widget::onMouseWheel(const Geometry&, const PointerEvent&) { return Reply::unhandled(); }
 Reply Widget::onDragDetected(const Geometry&, const PointerEvent&) { return Reply::unhandled(); }
+Reply Widget::onDragOver(const Geometry&, const DragDropEvent&) { return Reply::unhandled(); }
+Reply Widget::onDrop(const Geometry&, const DragDropEvent&) { return Reply::unhandled(); }
 Reply Widget::onKeyDown(const Geometry&, const KeyEvent&) { return Reply::unhandled(); }
 Reply Widget::onKeyUp(const Geometry&, const KeyEvent&) { return Reply::unhandled(); }
 Reply Widget::onKeyChar(const Geometry&, const CharEvent&) { return Reply::unhandled(); }

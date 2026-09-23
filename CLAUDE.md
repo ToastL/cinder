@@ -696,6 +696,28 @@ over a linear value, keeping the hue through greys, and its square is a mesh of 
 fine enough that interpolating in linear space does not show. `Shortcut::label()` spells modifiers out
 (`Shift+Cmd+P`) until shaping falls back to a symbol font, because Roboto has no ⌘.
 
+**A `TreeView` builds only the rows that fit.** Items are ids, never pointers, so Play, Stop and Undo
+rebuilding every node cannot invalidate a row: each frame it flattens the expanded items through
+`treeItemsSource` and `onGetChildren`, realizes the slice in view — reusing the row a visible item
+already has — and drops the rest, so a thousand items cost a dozen widgets. A `ListView` is a
+`TreeView` with no children callback. Selection is the tree's own, or the panel's when
+`isItemSelected` is bound, which is how the Explorer will follow `Selection` with nothing to keep in
+sync. A press on the expander arrow only expands; a press on the row selects and arms a drag; a double
+click expands or calls `onMouseButtonDoubleClick`; a right press selects and opens
+`onContextMenuOpening` at the pointer; arrow keys move the selection, expand and collapse, and
+`reveal` expands an item's ancestors and scrolls it into view.
+
+**Drag and drop is the `Application`'s, like popups.** `Reply::beginDragDrop(operation)` from
+`onDragDetected` starts it; while it runs, moves route `onDragEnter`/`onDragOver`/`onDragLeave` to the
+widgets under the pointer and the release routes `onDrop`, with the operation's `decorator()` painted
+at the cursor, clamped into the window and never hit-tested. Escape or losing the window cancels, and
+either way `onDropped(accepted)` tells the operation what happened. A tree answers `onCanAcceptDrop`
+with the zone it will take — above, onto or below a row, or the empty space below them — and paints
+that as an outline or a line. `Application::navigate` is Tab: it walks the widgets that take keyboard
+focus in paint order, backwards with Shift, and stays inside the popup the focus is in. `setFocus`,
+`pushPopup` and the dismissals set the thread's current `Application` themselves, so a panel may call
+them from its `update`, outside the paint.
+
 Styles come from a `Theme` of named entries — `"Button"`, `"Button.Primary"`, `"Label.Mono"`,
 `"Color.Primary"` — built by `ui::defaultTheme()` in the colours of Unreal's dark editor. Colours are
 linear `ui::Color`s authored as sRGB hex; the swapchain encodes them.
