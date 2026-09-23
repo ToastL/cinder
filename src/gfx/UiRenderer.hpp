@@ -1,5 +1,6 @@
 #pragma once
 
+#include "gfx/rhi/Handles.hpp"
 #include "gfx/vk/GpuBuffer.hpp"
 #include "gfx/vk/GraphicsPipeline.hpp"
 #include "gfx/vk/TexturePool.hpp"
@@ -33,8 +34,9 @@ public:
     void rebuild(VkRenderPass renderPass, VkFormat format);
     void setTextGamma(float gamma) { textGamma_ = gamma; }
 
-    void prepare(VkCommandBuffer cmd, uint32_t frame, const cinder::ui::ElementList& list);
-    void record(VkCommandBuffer cmd, uint32_t frame, VkExtent2D extent, VkDescriptorSet viewport);
+    void prepare(cinder::gfx::rhi::Uploads cmd, uint32_t frame, const cinder::ui::ElementList& list);
+    void record(cinder::gfx::rhi::Commands cmd, uint32_t frame, VkExtent2D extent,
+                VkDescriptorSet viewport);
 
 private:
     struct GlyphPage {
@@ -51,7 +53,7 @@ private:
         std::unique_ptr<cinder::gfx::vk::GpuBuffer> staging;
     };
 
-    void upload(VkCommandBuffer cmd, Frame& frame, cinder::text::GlyphAtlas& atlas);
+    void upload(cinder::gfx::rhi::Uploads cmd, Frame& frame, cinder::text::GlyphAtlas& atlas);
     void resolveNames(const cinder::ui::ElementList& list);
     GlyphPage& page(std::size_t index);
     void destroyPage(GlyphPage& page);

@@ -20,7 +20,7 @@ SpritePipeline::SpritePipeline(const cinder::gfx::vk::VkCtx& ctx, VkRenderPass r
                         .build();
 }
 
-void SpritePipeline::bind(VkCommandBuffer cmd, const glm::mat4& viewProjection) const {
+void SpritePipeline::bind(cinder::gfx::rhi::Commands cmd, const glm::mat4& viewProjection) const {
     pipeline_->bind(cmd);
     pipeline_->push(cmd, 0, viewProjection);
 }

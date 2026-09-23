@@ -1,5 +1,6 @@
 #pragma once
 
+#include "gfx/rhi/Handles.hpp"
 #include "gfx/vk/GpuBuffer.hpp"
 
 #include <memory>
@@ -18,7 +19,7 @@ public:
     static Mesh sphere(const cinder::gfx::vk::VkCtx& ctx, float r, float g, float b);
     static Mesh capsule(const cinder::gfx::vk::VkCtx& ctx, float r, float g, float b);
 
-    void bind(VkCommandBuffer cmd) const;
+    void bind(cinder::gfx::rhi::Commands cmd) const;
     uint32_t indexCount() const { return indexCount_; }
 
 private:

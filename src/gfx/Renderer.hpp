@@ -67,7 +67,6 @@ private:
     void recreateSwapchain();
     void recordCommandBuffer(VkCommandBuffer cmd, uint32_t imageIndex);
     void recordWindowCapture(VkCommandBuffer cmd, uint32_t imageIndex);
-    static void setViewport(VkCommandBuffer cmd, uint32_t width, uint32_t height);
 
     const cinder::gfx::vk::VkCtx& ctx_;
     cinder::platform::Window& window_;

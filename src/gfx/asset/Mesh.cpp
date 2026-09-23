@@ -1,5 +1,7 @@
 #include "gfx/asset/Mesh.hpp"
 
+#include "gfx/vk/Commands.hpp"
+
 #include "gfx/vk/VkCtx.hpp"
 
 #include <glm/gtc/constants.hpp>
@@ -168,11 +170,11 @@ Mesh Mesh::capsule(const VkCtx& ctx, float r, float g, float b) {
     return Mesh(ctx, vertices, indices);
 }
 
-void Mesh::bind(VkCommandBuffer cmd) const {
+void Mesh::bind(cinder::gfx::rhi::Commands cmd) const {
     const VkBuffer buffer = vertexBuffer_->handle();
     const VkDeviceSize offset = 0;
-    vkCmdBindVertexBuffers(cmd, 0, 1, &buffer, &offset);
-    vkCmdBindIndexBuffer(cmd, indexBuffer_->handle(), 0, VK_INDEX_TYPE_UINT32);
+    vkCmdBindVertexBuffers(unwrap(cmd), 0, 1, &buffer, &offset);
+    vkCmdBindIndexBuffer(unwrap(cmd), indexBuffer_->handle(), 0, VK_INDEX_TYPE_UINT32);
 }
 
 }

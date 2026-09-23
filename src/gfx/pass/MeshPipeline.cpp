@@ -23,12 +23,12 @@ MeshPipeline::MeshPipeline(const cinder::gfx::vk::VkCtx& ctx, VkRenderPass rende
                         .build();
 }
 
-void MeshPipeline::bind(VkCommandBuffer cmd, const glm::mat4& viewProjection) const {
+void MeshPipeline::bind(cinder::gfx::rhi::Commands cmd, const glm::mat4& viewProjection) const {
     pipeline_->bind(cmd);
     pipeline_->push(cmd, 0, viewProjection);
 }
 
-void MeshPipeline::pushModel(VkCommandBuffer cmd, const glm::mat4& model) const {
+void MeshPipeline::pushModel(cinder::gfx::rhi::Commands cmd, const glm::mat4& model) const {
     pipeline_->push(cmd, GraphicsPipeline::MATRIX_BYTES, model);
 }
 

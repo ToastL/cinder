@@ -1,5 +1,8 @@
 #include "gfx/pass/SpriteBatch.hpp"
 
+#include "gfx/rhi/Commands.hpp"
+#include "gfx/vk/Commands.hpp"
+
 #include "gfx/pass/Overflow.hpp"
 #include "gfx/vk/VkCtx.hpp"
 
@@ -88,7 +91,8 @@ void SpriteBatch::drawRegion(int texture, const glm::mat4& model, glm::vec2 size
     quad(texture, model, size, glm::vec4(from, to), color);
 }
 
-void SpriteBatch::flush(VkCommandBuffer cmd, uint32_t frameIndex, const glm::mat4& viewProjection) {
+void SpriteBatch::flush(cinder::gfx::rhi::Commands cmd, uint32_t frameIndex,
+                        const glm::mat4& viewProjection) {
     if (quadCount_ == 0) return;
 
     std::memcpy(vertexBuffers_[frameIndex].mapped(), vertices_.data(),
@@ -98,8 +102,8 @@ void SpriteBatch::flush(VkCommandBuffer cmd, uint32_t frameIndex, const glm::mat
 
     const VkBuffer vertexBuffer = vertexBuffers_[frameIndex].handle();
     const VkDeviceSize offset = 0;
-    vkCmdBindVertexBuffers(cmd, 0, 1, &vertexBuffer, &offset);
-    vkCmdBindIndexBuffer(cmd, indexBuffer_->handle(), 0, VK_INDEX_TYPE_UINT32);
+    vkCmdBindVertexBuffers(unwrap(cmd), 0, 1, &vertexBuffer, &offset);
+    vkCmdBindIndexBuffer(unwrap(cmd), indexBuffer_->handle(), 0, VK_INDEX_TYPE_UINT32);
 
     uint32_t start = 0;
     while (start < quadCount_) {
@@ -108,9 +112,9 @@ void SpriteBatch::flush(VkCommandBuffer cmd, uint32_t frameIndex, const glm::mat
         while (end < quadCount_ && quadTexture_[end] == texture) end++;
 
         const VkDescriptorSet set = assets_.get(texture).descriptorSet();
-        vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline_.layout(),
+        vkCmdBindDescriptorSets(unwrap(cmd), VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline_.layout(),
                                 0, 1, &set, 0, nullptr);
-        vkCmdDrawIndexed(cmd, (end - start) * 6, 1, start * 6, 0, 0);
+        cinder::gfx::rhi::drawIndexed(cmd, (end - start) * 6, start * 6);
         start = end;
     }
 }

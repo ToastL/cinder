@@ -1,5 +1,8 @@
 #include "gfx/Renderer.hpp"
 
+#include "gfx/rhi/Commands.hpp"
+#include "gfx/vk/Commands.hpp"
+
 #include "gfx/RendererDrawList.hpp"
 #include "gfx/Capture.hpp"
 #include "gfx/pass/MeshPass.hpp"
@@ -161,29 +164,13 @@ void Renderer::registerApi(cinder::lua::LuaApi& api) {
     for (const std::unique_ptr<DrawPass>& pass : passes_) pass->registerApi(api);
 }
 
-void Renderer::setViewport(VkCommandBuffer cmd, uint32_t width, uint32_t height) {
-    VkViewport viewport{};
-    viewport.x = 0.0f;
-    viewport.y = 0.0f;
-    viewport.width = static_cast<float>(width);
-    viewport.height = static_cast<float>(height);
-    viewport.minDepth = 0.0f;
-    viewport.maxDepth = 1.0f;
-    vkCmdSetViewport(cmd, 0, 1, &viewport);
-
-    VkRect2D scissor{};
-    scissor.offset = {0, 0};
-    scissor.extent = {width, height};
-    vkCmdSetScissor(cmd, 0, 1, &scissor);
-}
-
 void Renderer::recordCommandBuffer(VkCommandBuffer cmd, uint32_t imageIndex) {
     RenderTarget& target = targets_.at(sync_->frame());
 
     VkCommandBufferBeginInfo begin{};
     begin.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
     check(vkBeginCommandBuffer(cmd, &begin), "vkBeginCommandBuffer");
-    ui_->prepare(cmd, sync_->frame(), uiElements_);
+    ui_->prepare(cinder::gfx::rhi::uploads(cmd), sync_->frame(), uiElements_);
 
     VkClearValue sceneClear[2]{};
     sceneClear[0].color = {{clearR_, clearG_, clearB_, 1.0f}};
@@ -199,9 +186,11 @@ void Renderer::recordCommandBuffer(VkCommandBuffer cmd, uint32_t imageIndex) {
     scene.pClearValues = sceneClear;
 
     vkCmdBeginRenderPass(cmd, &scene, VK_SUBPASS_CONTENTS_INLINE);
-    setViewport(cmd, target.width(), target.height());
+    const cinder::gfx::rhi::Commands sceneCmd = cinder::gfx::rhi::commands(cmd);
+    cinder::gfx::rhi::viewport(sceneCmd, target.width(), target.height());
+    cinder::gfx::rhi::scissor(sceneCmd, 0, 0, target.width(), target.height());
     const glm::mat4& viewProjection = override_ ? override_->viewProjection() : camera_.viewProjection();
-    for (const std::unique_ptr<DrawPass>& pass : passes_) pass->record(cmd, sync_->frame(), viewProjection);
+    for (const std::unique_ptr<DrawPass>& pass : passes_) pass->record(sceneCmd, sync_->frame(), viewProjection);
     vkCmdEndRenderPass(cmd);
 
     VkClearValue presentClear{};
@@ -217,9 +206,12 @@ void Renderer::recordCommandBuffer(VkCommandBuffer cmd, uint32_t imageIndex) {
     present.pClearValues = &presentClear;
 
     vkCmdBeginRenderPass(cmd, &present, VK_SUBPASS_CONTENTS_INLINE);
-    setViewport(cmd, swapchain_->width(), swapchain_->height());
-    if (!embedded()) compositePipeline_->draw(cmd, target.descriptorSet());
-    ui_->record(cmd, sync_->frame(), {swapchain_->width(), swapchain_->height()}, target.descriptorSet());
+    const cinder::gfx::rhi::Commands presentCmd = cinder::gfx::rhi::commands(cmd);
+    cinder::gfx::rhi::viewport(presentCmd, swapchain_->width(), swapchain_->height());
+    cinder::gfx::rhi::scissor(presentCmd, 0, 0, swapchain_->width(), swapchain_->height());
+    if (!embedded()) compositePipeline_->draw(presentCmd, target.descriptorSet());
+    ui_->record(presentCmd, sync_->frame(), {swapchain_->width(), swapchain_->height()},
+                target.descriptorSet());
     vkCmdEndRenderPass(cmd);
     recordWindowCapture(cmd, imageIndex);
 

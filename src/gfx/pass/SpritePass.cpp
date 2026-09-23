@@ -10,7 +10,8 @@ SpritePass::SpritePass(const cinder::gfx::vk::VkCtx& ctx, cinder::gfx::asset::As
 
 void SpritePass::beginFrame() { batch_.reset(); }
 
-void SpritePass::record(VkCommandBuffer cmd, uint32_t frameInFlight, const glm::mat4& viewProjection) {
+void SpritePass::record(cinder::gfx::rhi::Commands cmd, uint32_t frameInFlight,
+                        const glm::mat4& viewProjection) {
     batch_.flush(cmd, frameInFlight, viewProjection);
 }
 

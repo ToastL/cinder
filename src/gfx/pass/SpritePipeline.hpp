@@ -1,5 +1,6 @@
 #pragma once
 
+#include "gfx/rhi/Handles.hpp"
 #include "gfx/vk/GraphicsPipeline.hpp"
 
 #include <memory>
@@ -13,7 +14,7 @@ public:
 
     SpritePipeline(const cinder::gfx::vk::VkCtx& ctx, VkRenderPass renderPass);
 
-    void bind(VkCommandBuffer cmd, const glm::mat4& viewProjection) const;
+    void bind(cinder::gfx::rhi::Commands cmd, const glm::mat4& viewProjection) const;
     VkPipelineLayout layout() const { return pipeline_->layout(); }
 
 private:

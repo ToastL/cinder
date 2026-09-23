@@ -1,5 +1,7 @@
 #pragma once
 
+#include "gfx/rhi/Handles.hpp"
+
 #include "gfx/asset/Assets.hpp"
 #include "gfx/pass/SpritePipeline.hpp"
 #include "gfx/vk/GpuBuffer.hpp"
@@ -28,7 +30,8 @@ public:
     void drawRegion(int texture, const glm::mat4& model, glm::vec2 size, const glm::vec4& region,
                     const glm::vec4& color);
 
-    void flush(VkCommandBuffer cmd, uint32_t frameIndex, const glm::mat4& viewProjection);
+    void flush(cinder::gfx::rhi::Commands cmd, uint32_t frameIndex,
+               const glm::mat4& viewProjection);
 
 private:
     void quad(int texture, const glm::mat4& model, glm::vec2 size, const glm::vec4& uv,

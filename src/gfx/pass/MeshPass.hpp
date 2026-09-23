@@ -20,7 +20,8 @@ public:
              const MeshPipeline& pipeline);
 
     void beginFrame() override;
-    void record(VkCommandBuffer cmd, uint32_t frameInFlight, const glm::mat4& viewProjection) override;
+    void record(cinder::gfx::rhi::Commands cmd, uint32_t frameInFlight,
+                const glm::mat4& viewProjection) override;
     void registerApi(cinder::lua::LuaApi& api) override;
 
     void submit(int mesh, int texture, const glm::mat4& model);

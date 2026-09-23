@@ -1,5 +1,8 @@
 #include "gfx/UiRenderer.hpp"
 
+#include "gfx/rhi/Commands.hpp"
+#include "gfx/vk/Commands.hpp"
+
 #include "gfx/asset/Assets.hpp"
 #include "gfx/vk/GraphicsPipelineBuilder.hpp"
 #include "gfx/vk/VkCtx.hpp"
@@ -118,7 +121,7 @@ void UiRenderer::destroyPage(GlyphPage& page) {
     vmaDestroyImage(ctx_.allocator(), page.image.image, page.image.allocation);
 }
 
-void UiRenderer::upload(VkCommandBuffer cmd, Frame& frame, GlyphAtlas& atlas) {
+void UiRenderer::upload(cinder::gfx::rhi::Uploads cmd, Frame& frame, GlyphAtlas& atlas) {
     if (&atlas != atlas_) {
         for (GlyphPage& existing : pages_) existing.uploaded = false;
         atlas_ = &atlas;
@@ -154,7 +157,7 @@ void UiRenderer::upload(VkCommandBuffer cmd, Frame& frame, GlyphAtlas& atlas) {
         }
 
         GlyphPage& target = pages_[item.page];
-        barrier(cmd, target.image.image,
+        barrier(unwrap(cmd), target.image.image,
                 target.uploaded ? VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL : VK_IMAGE_LAYOUT_UNDEFINED,
                 VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 0, VK_ACCESS_TRANSFER_WRITE_BIT,
                 VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT);
@@ -164,10 +167,10 @@ void UiRenderer::upload(VkCommandBuffer cmd, Frame& frame, GlyphAtlas& atlas) {
         copy.imageSubresource = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, 1};
         copy.imageOffset = {item.rect.x, item.rect.y, 0};
         copy.imageExtent = {static_cast<uint32_t>(item.rect.width), static_cast<uint32_t>(item.rect.height), 1};
-        vkCmdCopyBufferToImage(cmd, frame.staging->handle(), target.image.image,
+        vkCmdCopyBufferToImage(unwrap(cmd), frame.staging->handle(), target.image.image,
                                VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &copy);
 
-        barrier(cmd, target.image.image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+        barrier(unwrap(cmd), target.image.image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
                 VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_ACCESS_TRANSFER_WRITE_BIT, VK_ACCESS_SHADER_READ_BIT,
                 VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT);
 
@@ -192,7 +195,8 @@ void UiRenderer::resolveNames(const cinder::ui::ElementList& list) {
     }
 }
 
-void UiRenderer::prepare(VkCommandBuffer cmd, uint32_t frame, const cinder::ui::ElementList& list) {
+void UiRenderer::prepare(cinder::gfx::rhi::Uploads cmd, uint32_t frame,
+                         const cinder::ui::ElementList& list) {
     geometry_.clear();
     if (list.empty()) return;
 
@@ -228,7 +232,8 @@ VkDescriptorSet UiRenderer::resolve(const TextureRef& texture, VkDescriptorSet v
     return assets_.get(0).descriptorSet();
 }
 
-void UiRenderer::record(VkCommandBuffer cmd, uint32_t frame, VkExtent2D extent, VkDescriptorSet viewport) {
+void UiRenderer::record(cinder::gfx::rhi::Commands cmd, uint32_t frame, VkExtent2D extent,
+                        VkDescriptorSet viewport) {
     if (geometry_.empty()) return;
     Frame& data = frames_[frame];
 
@@ -242,8 +247,8 @@ void UiRenderer::record(VkCommandBuffer cmd, uint32_t frame, VkExtent2D extent, 
     pipeline_->push(cmd, PUSH_STAGES, sizeof(Push), &push);
     const VkBuffer vertexBuffer = data.vertices->handle();
     const VkDeviceSize zero = 0;
-    vkCmdBindVertexBuffers(cmd, 0, 1, &vertexBuffer, &zero);
-    vkCmdBindIndexBuffer(cmd, data.indices->handle(), 0, VK_INDEX_TYPE_UINT32);
+    vkCmdBindVertexBuffers(unwrap(cmd), 0, 1, &vertexBuffer, &zero);
+    vkCmdBindIndexBuffer(unwrap(cmd), data.indices->handle(), 0, VK_INDEX_TYPE_UINT32);
 
     VkDescriptorSet bound = VK_NULL_HANDLE;
     const float scale = push.pixelsPerPoint;
@@ -254,22 +259,19 @@ void UiRenderer::record(VkCommandBuffer cmd, uint32_t frame, VkExtent2D extent, 
         const float bottom = std::clamp(std::ceil(batch.clip.max.y * scale), 0.0f, static_cast<float>(extent.height));
         if (right <= left || bottom <= top) continue;
 
-        VkRect2D scissor{};
-        scissor.offset = {static_cast<int32_t>(left), static_cast<int32_t>(top)};
-        scissor.extent = {static_cast<uint32_t>(right - left), static_cast<uint32_t>(bottom - top)};
-        vkCmdSetScissor(cmd, 0, 1, &scissor);
+        cinder::gfx::rhi::scissor(cmd, static_cast<int32_t>(left), static_cast<int32_t>(top),
+                                  static_cast<uint32_t>(right - left),
+                                  static_cast<uint32_t>(bottom - top));
 
         const VkDescriptorSet set = resolve(batch.texture, viewport);
         if (set != bound) {
             pipeline_->bindDescriptorSet(cmd, set);
             bound = set;
         }
-        vkCmdDrawIndexed(cmd, batch.indexCount, 1, batch.firstIndex, 0, 0);
+        cinder::gfx::rhi::drawIndexed(cmd, batch.indexCount, batch.firstIndex);
     }
 
-    VkRect2D full{};
-    full.extent = extent;
-    vkCmdSetScissor(cmd, 0, 1, &full);
+    cinder::gfx::rhi::scissor(cmd, 0, 0, extent.width, extent.height);
 }
 
 }

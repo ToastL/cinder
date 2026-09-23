@@ -1,5 +1,7 @@
 #pragma once
 
+#include "gfx/rhi/Handles.hpp"
+
 #include <volk.h>
 
 #include <glm/mat4x4.hpp>
@@ -18,10 +20,10 @@ public:
     GraphicsPipeline(const GraphicsPipeline&) = delete;
     GraphicsPipeline& operator=(const GraphicsPipeline&) = delete;
 
-    void bind(VkCommandBuffer cmd) const;
-    void push(VkCommandBuffer cmd, uint32_t offset, const glm::mat4& value) const;
-    void push(VkCommandBuffer cmd, VkShaderStageFlags stages, uint32_t size, const void* data) const;
-    void bindDescriptorSet(VkCommandBuffer cmd, VkDescriptorSet set) const;
+    void bind(rhi::Commands cmd) const;
+    void push(rhi::Commands cmd, uint32_t offset, const glm::mat4& value) const;
+    void push(rhi::Commands cmd, VkShaderStageFlags stages, uint32_t size, const void* data) const;
+    void bindDescriptorSet(rhi::Commands cmd, VkDescriptorSet set) const;
 
     VkPipelineLayout layout() const { return layout_; }
 
