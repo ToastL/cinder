@@ -1,5 +1,6 @@
 #include "gfx/vk/GpuBuffer.hpp"
 
+#include "gfx/vk/Commands.hpp"
 #include "gfx/vk/VkCtx.hpp"
 #include "gfx/vk/VkUtil.hpp"
 
@@ -50,6 +51,15 @@ GpuBuffer& GpuBuffer::operator=(GpuBuffer&& other) noexcept {
         size_ = other.size_;
     }
     return *this;
+}
+
+void GpuBuffer::bindVertex(Commands cmd) const {
+    const VkDeviceSize offset = 0;
+    vkCmdBindVertexBuffers(unwrap(cmd), 0, 1, &handle_, &offset);
+}
+
+void GpuBuffer::bindIndex(Commands cmd) const {
+    vkCmdBindIndexBuffer(unwrap(cmd), handle_, 0, VK_INDEX_TYPE_UINT32);
 }
 
 GpuBuffer::~GpuBuffer() { release(); }

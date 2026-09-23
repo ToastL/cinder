@@ -100,10 +100,8 @@ void SpriteBatch::flush(cinder::gfx::rhi::Commands cmd, uint32_t frameIndex,
 
     pipeline_.bind(cmd, viewProjection);
 
-    const VkBuffer vertexBuffer = vertexBuffers_[frameIndex].handle();
-    const VkDeviceSize offset = 0;
-    vkCmdBindVertexBuffers(unwrap(cmd), 0, 1, &vertexBuffer, &offset);
-    vkCmdBindIndexBuffer(unwrap(cmd), indexBuffer_->handle(), 0, VK_INDEX_TYPE_UINT32);
+    vertexBuffers_[frameIndex].bindVertex(cmd);
+    indexBuffer_->bindIndex(cmd);
 
     uint32_t start = 0;
     while (start < quadCount_) {

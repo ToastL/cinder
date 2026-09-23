@@ -1,5 +1,7 @@
 #pragma once
 
+#include "gfx/rhi/Handles.hpp"
+
 #include <volk.h>
 
 #include <vk_mem_alloc.h>
@@ -11,7 +13,6 @@ namespace cinder::gfx::vk { class VkCtx; }
 namespace cinder::gfx::rhi {
 
 
-
 class GpuBuffer {
 public:
     GpuBuffer(const cinder::gfx::vk::VkCtx& ctx, VkDeviceSize size, VkBufferUsageFlags usage, bool hostVisible);
@@ -21,6 +22,9 @@ public:
     GpuBuffer& operator=(const GpuBuffer&) = delete;
     GpuBuffer(GpuBuffer&& other) noexcept;
     GpuBuffer& operator=(GpuBuffer&& other) noexcept;
+
+    void bindVertex(Commands cmd) const;
+    void bindIndex(Commands cmd) const;
 
     VkBuffer handle() const { return handle_; }
     VmaAllocation allocation() const { return allocation_; }

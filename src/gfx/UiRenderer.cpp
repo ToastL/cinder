@@ -5,6 +5,7 @@
 
 #include "gfx/asset/Assets.hpp"
 #include "gfx/rhi/PipelineBuilder.hpp"
+#include "gfx/vk/GlyphPages.hpp"
 #include "gfx/vk/Presenter.hpp"
 #include "gfx/vk/VkCtx.hpp"
 #include "platform/Log.hpp"
@@ -39,36 +40,20 @@ struct Push {
 };
 
 constexpr cinder::gfx::rhi::ShaderStages PUSH_STAGES = cinder::gfx::rhi::ShaderStages::Both;
-constexpr VkFormat PAGE_FORMAT = VK_FORMAT_R8_UNORM;
 
 uint32_t offsetOf(std::size_t offset) { return static_cast<uint32_t>(offset); }
-
-void barrier(VkCommandBuffer cmd, VkImage image, VkImageLayout from, VkImageLayout to, VkAccessFlags srcAccess,
-             VkAccessFlags dstAccess, VkPipelineStageFlags srcStage, VkPipelineStageFlags dstStage) {
-    VkImageMemoryBarrier info{};
-    info.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
-    info.oldLayout = from;
-    info.newLayout = to;
-    info.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-    info.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-    info.image = image;
-    info.subresourceRange = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1};
-    info.srcAccessMask = srcAccess;
-    info.dstAccessMask = dstAccess;
-    vkCmdPipelineBarrier(cmd, srcStage, dstStage, 0, 0, nullptr, 0, nullptr, 1, &info);
-}
 
 }
 
 UiRenderer::UiRenderer(const VkCtx& ctx, cinder::gfx::asset::Assets& assets,
                        const cinder::gfx::rhi::Presenter& presenter, uint32_t framesInFlight)
     : ctx_(ctx), assets_(assets), presenter_(presenter), frames_(framesInFlight) {
+    pages_ = std::make_unique<cinder::gfx::rhi::GlyphPages>(
+            ctx, static_cast<std::uint32_t>(GlyphAtlas::PAGE_SIZE));
     rebuild();
 }
 
-UiRenderer::~UiRenderer() {
-    for (GlyphPage& page : pages_) destroyPage(page);
-}
+UiRenderer::~UiRenderer() = default;
 
 void UiRenderer::rebuild() {
     encode_ = !cinder::gfx::rhi::isSrgb(presenter_.colorFormat());
@@ -93,80 +78,44 @@ void UiRenderer::reserve(const VkCtx& ctx, std::unique_ptr<GpuBuffer>& buffer, V
     buffer = std::make_unique<GpuBuffer>(ctx, grown, usage, true);
 }
 
-UiRenderer::GlyphPage& UiRenderer::page(std::size_t index) {
-    while (pages_.size() <= index) {
-        GlyphPage& created = pages_.emplace_back();
-        const auto size = static_cast<uint32_t>(GlyphAtlas::PAGE_SIZE);
-        created.image = images::create(ctx_, PAGE_FORMAT, size, size,
-                                       VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT);
-        created.view = images::view(ctx_, created.image.image, PAGE_FORMAT, VK_IMAGE_ASPECT_COLOR_BIT);
-        created.pool = std::make_unique<cinder::gfx::rhi::TexturePool>(ctx_, 1, VK_FILTER_LINEAR);
-        created.set = created.pool->bind(created.view);
-    }
-    return pages_[index];
-}
-
-void UiRenderer::destroyPage(GlyphPage& page) {
-    page.pool.reset();
-    vkDestroyImageView(ctx_.device(), page.view, nullptr);
-    vmaDestroyImage(ctx_.allocator(), page.image.image, page.image.allocation);
-}
-
 void UiRenderer::upload(cinder::gfx::rhi::Uploads cmd, Frame& frame, GlyphAtlas& atlas) {
     if (&atlas != atlas_) {
-        for (GlyphPage& existing : pages_) existing.uploaded = false;
+        pages_->forgetUploads();
         atlas_ = &atlas;
     }
 
-    struct Pending {
-        std::size_t page;
-        cinder::text::AtlasRect rect;
-        VkDeviceSize offset;
-    };
-    std::vector<Pending> pending;
-    VkDeviceSize total = 0;
+    std::vector<cinder::gfx::rhi::GlyphRegion> regions;
+    std::uint64_t total = 0;
     for (int index = 0; index < atlas.pageCount(); ++index) {
-        GlyphPage& target = page(static_cast<std::size_t>(index));
+        const auto page = static_cast<std::size_t>(index);
         std::optional<cinder::text::AtlasRect> dirty = atlas.dirty(index);
-        if (!target.uploaded) dirty = cinder::text::AtlasRect{0, 0, GlyphAtlas::PAGE_SIZE, GlyphAtlas::PAGE_SIZE};
+        if (!pages_->uploaded(page)) {
+            dirty = cinder::text::AtlasRect{0, 0, GlyphAtlas::PAGE_SIZE, GlyphAtlas::PAGE_SIZE};
+        }
         if (!dirty || dirty->width <= 0 || dirty->height <= 0) continue;
-        pending.push_back(Pending{static_cast<std::size_t>(index), *dirty, total});
-        total += static_cast<VkDeviceSize>(dirty->width) * static_cast<VkDeviceSize>(dirty->height);
+        regions.push_back(cinder::gfx::rhi::GlyphRegion{page, dirty->x, dirty->y, dirty->width,
+                                                        dirty->height, total});
+        total += static_cast<std::uint64_t>(dirty->width) * static_cast<std::uint64_t>(dirty->height);
     }
-    if (pending.empty()) return;
+    if (regions.empty()) return;
 
     reserve(ctx_, frame.staging, total, VK_BUFFER_USAGE_TRANSFER_SRC_BIT);
     auto* staging = static_cast<std::uint8_t*>(frame.staging->mapped());
 
-    for (const Pending& item : pending) {
-        const std::vector<std::uint8_t>& pixels = atlas.pixels(static_cast<int>(item.page));
-        for (int row = 0; row < item.rect.height; ++row) {
-            const std::size_t source = static_cast<std::size_t>(item.rect.y + row) * GlyphAtlas::PAGE_SIZE
-                    + static_cast<std::size_t>(item.rect.x);
-            std::memcpy(staging + item.offset + static_cast<std::size_t>(row) * static_cast<std::size_t>(item.rect.width),
-                        pixels.data() + source, static_cast<std::size_t>(item.rect.width));
+    for (const cinder::gfx::rhi::GlyphRegion& region : regions) {
+        const std::vector<std::uint8_t>& pixels = atlas.pixels(static_cast<int>(region.page));
+        for (int row = 0; row < region.height; ++row) {
+            const std::size_t source = static_cast<std::size_t>(region.y + row) * GlyphAtlas::PAGE_SIZE
+                    + static_cast<std::size_t>(region.x);
+            std::memcpy(staging + region.offset
+                                + static_cast<std::size_t>(row) * static_cast<std::size_t>(region.width),
+                        pixels.data() + source, static_cast<std::size_t>(region.width));
         }
+    }
 
-        GlyphPage& target = pages_[item.page];
-        barrier(unwrap(cmd), target.image.image,
-                target.uploaded ? VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL : VK_IMAGE_LAYOUT_UNDEFINED,
-                VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 0, VK_ACCESS_TRANSFER_WRITE_BIT,
-                VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT);
-
-        VkBufferImageCopy copy{};
-        copy.bufferOffset = item.offset;
-        copy.imageSubresource = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, 1};
-        copy.imageOffset = {item.rect.x, item.rect.y, 0};
-        copy.imageExtent = {static_cast<uint32_t>(item.rect.width), static_cast<uint32_t>(item.rect.height), 1};
-        vkCmdCopyBufferToImage(unwrap(cmd), frame.staging->handle(), target.image.image,
-                               VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &copy);
-
-        barrier(unwrap(cmd), target.image.image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-                VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_ACCESS_TRANSFER_WRITE_BIT, VK_ACCESS_SHADER_READ_BIT,
-                VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT);
-
-        target.uploaded = true;
-        atlas.clearDirty(static_cast<int>(item.page));
+    pages_->upload(cmd, *frame.staging, regions);
+    for (const cinder::gfx::rhi::GlyphRegion& region : regions) {
+        atlas.clearDirty(static_cast<int>(region.page));
     }
 }
 
@@ -211,7 +160,7 @@ cinder::gfx::rhi::TextureBinding UiRenderer::resolve(const TextureRef& texture,
                                                      cinder::gfx::rhi::TextureBinding viewport) const {
     switch (texture.kind) {
         case TextureRef::Kind::GlyphPage:
-            if (texture.index < pages_.size()) return pages_[texture.index].set;
+            if (texture.index < pages_->count()) return pages_->binding(texture.index);
             break;
         case TextureRef::Kind::Viewport:
             if (viewport) return viewport;
@@ -237,10 +186,8 @@ void UiRenderer::record(cinder::gfx::rhi::Commands cmd, uint32_t frame, glm::uve
 
     pipeline_->bind(cmd);
     pipeline_->push(cmd, PUSH_STAGES, sizeof(Push), &push);
-    const VkBuffer vertexBuffer = data.vertices->handle();
-    const VkDeviceSize zero = 0;
-    vkCmdBindVertexBuffers(unwrap(cmd), 0, 1, &vertexBuffer, &zero);
-    vkCmdBindIndexBuffer(unwrap(cmd), data.indices->handle(), 0, VK_INDEX_TYPE_UINT32);
+    data.vertices->bindVertex(cmd);
+    data.indices->bindIndex(cmd);
 
     cinder::gfx::rhi::TextureBinding bound;
     const float scale = push.pixelsPerPoint;

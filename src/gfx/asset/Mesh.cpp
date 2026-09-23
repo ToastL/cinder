@@ -171,10 +171,8 @@ Mesh Mesh::capsule(const VkCtx& ctx, float r, float g, float b) {
 }
 
 void Mesh::bind(cinder::gfx::rhi::Commands cmd) const {
-    const VkBuffer buffer = vertexBuffer_->handle();
-    const VkDeviceSize offset = 0;
-    vkCmdBindVertexBuffers(unwrap(cmd), 0, 1, &buffer, &offset);
-    vkCmdBindIndexBuffer(unwrap(cmd), indexBuffer_->handle(), 0, VK_INDEX_TYPE_UINT32);
+    vertexBuffer_->bindVertex(cmd);
+    indexBuffer_->bindIndex(cmd);
 }
 
 }

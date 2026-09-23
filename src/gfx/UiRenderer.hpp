@@ -5,13 +5,10 @@
 #include "gfx/rhi/Handles.hpp"
 #include "gfx/vk/GpuBuffer.hpp"
 #include "gfx/vk/GraphicsPipeline.hpp"
-#include "gfx/vk/TexturePool.hpp"
-#include "gfx/vk/VkImages.hpp"
+#include "gfx/vk/GlyphPages.hpp"
 #include "ui/core/Batcher.hpp"
 
 #include <glm/vec2.hpp>
-
-#include <volk.h>
 
 #include <memory>
 #include <string>
@@ -43,14 +40,6 @@ public:
                 cinder::gfx::rhi::TextureBinding viewport);
 
 private:
-    struct GlyphPage {
-        cinder::gfx::vk::Allocated image;
-        VkImageView view = VK_NULL_HANDLE;
-        std::unique_ptr<cinder::gfx::rhi::TexturePool> pool;
-        cinder::gfx::rhi::TextureBinding set;
-        bool uploaded = false;
-    };
-
     struct Frame {
         std::unique_ptr<cinder::gfx::rhi::GpuBuffer> vertices;
         std::unique_ptr<cinder::gfx::rhi::GpuBuffer> indices;
@@ -59,8 +48,6 @@ private:
 
     void upload(cinder::gfx::rhi::Uploads cmd, Frame& frame, cinder::text::GlyphAtlas& atlas);
     void resolveNames(const cinder::ui::ElementList& list);
-    GlyphPage& page(std::size_t index);
-    void destroyPage(GlyphPage& page);
     static void reserve(const cinder::gfx::vk::VkCtx& ctx, std::unique_ptr<cinder::gfx::rhi::GpuBuffer>& buffer,
                         VkDeviceSize size, VkBufferUsageFlags usage);
     cinder::gfx::rhi::TextureBinding resolve(const cinder::ui::TextureRef& texture,
@@ -70,7 +57,7 @@ private:
     cinder::gfx::asset::Assets& assets_;
     const cinder::gfx::rhi::Presenter& presenter_;
     std::unique_ptr<cinder::gfx::rhi::GraphicsPipeline> pipeline_;
-    std::vector<GlyphPage> pages_;
+    std::unique_ptr<cinder::gfx::rhi::GlyphPages> pages_;
     std::vector<Frame> frames_;
     std::vector<cinder::gfx::rhi::TextureBinding> named_;
     std::unordered_set<std::string> failed_;
