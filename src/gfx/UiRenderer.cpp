@@ -4,7 +4,8 @@
 #include "gfx/vk/Commands.hpp"
 
 #include "gfx/asset/Assets.hpp"
-#include "gfx/vk/GraphicsPipelineBuilder.hpp"
+#include "gfx/rhi/PipelineBuilder.hpp"
+#include "gfx/vk/Presenter.hpp"
 #include "gfx/vk/VkCtx.hpp"
 #include "platform/Log.hpp"
 #include "text/GlyphAtlas.hpp"
@@ -22,7 +23,6 @@
 namespace cinder::gfx {
 
 using cinder::gfx::vk::GpuBuffer;
-using cinder::gfx::vk::GraphicsPipelineBuilder;
 using cinder::gfx::vk::VkCtx;
 using cinder::text::GlyphAtlas;
 using cinder::ui::TextureRef;
@@ -38,7 +38,7 @@ struct Push {
     float pixelsPerPoint = 1.0f;
 };
 
-constexpr VkShaderStageFlags PUSH_STAGES = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
+constexpr cinder::gfx::rhi::ShaderStages PUSH_STAGES = cinder::gfx::rhi::ShaderStages::Both;
 constexpr VkFormat PAGE_FORMAT = VK_FORMAT_R8_UNORM;
 
 uint32_t offsetOf(std::size_t offset) { return static_cast<uint32_t>(offset); }
@@ -60,19 +60,19 @@ void barrier(VkCommandBuffer cmd, VkImage image, VkImageLayout from, VkImageLayo
 
 }
 
-UiRenderer::UiRenderer(const VkCtx& ctx, cinder::gfx::asset::Assets& assets, VkRenderPass renderPass,
-                       cinder::gfx::rhi::Format format, uint32_t framesInFlight)
-    : ctx_(ctx), assets_(assets), frames_(framesInFlight) {
-    rebuild(renderPass, format);
+UiRenderer::UiRenderer(const VkCtx& ctx, cinder::gfx::asset::Assets& assets,
+                       const cinder::gfx::rhi::Presenter& presenter, uint32_t framesInFlight)
+    : ctx_(ctx), assets_(assets), presenter_(presenter), frames_(framesInFlight) {
+    rebuild();
 }
 
 UiRenderer::~UiRenderer() {
     for (GlyphPage& page : pages_) destroyPage(page);
 }
 
-void UiRenderer::rebuild(VkRenderPass renderPass, cinder::gfx::rhi::Format format) {
-    encode_ = !cinder::gfx::rhi::isSrgb(format);
-    pipeline_ = GraphicsPipelineBuilder(ctx_, renderPass)
+void UiRenderer::rebuild() {
+    encode_ = !cinder::gfx::rhi::isSrgb(presenter_.colorFormat());
+    pipeline_ = cinder::gfx::rhi::PipelineBuilder(presenter_, cinder::gfx::rhi::PassKind::Present)
                         .shader("ui")
                         .pushConstants(sizeof(Push), PUSH_STAGES)
                         .vertexStride(sizeof(UiVertex))

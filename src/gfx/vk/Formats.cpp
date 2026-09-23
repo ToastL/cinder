@@ -40,6 +40,20 @@ Format fromVk(VkFormat format) {
     return Format::Undefined;
 }
 
+VkShaderStageFlags toVk(ShaderStages stages) {
+    switch (stages) {
+        case ShaderStages::Vertex: return VK_SHADER_STAGE_VERTEX_BIT;
+        case ShaderStages::Fragment: return VK_SHADER_STAGE_FRAGMENT_BIT;
+        case ShaderStages::Both: return VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
+    }
+    return VK_SHADER_STAGE_VERTEX_BIT;
+}
+
+VkFrontFace toVk(Winding winding) {
+    return winding == Winding::Clockwise ? VK_FRONT_FACE_CLOCKWISE
+                                         : VK_FRONT_FACE_COUNTER_CLOCKWISE;
+}
+
 VkFormat toVk(VertexFormat format) {
     switch (format) {
         case VertexFormat::Float2: return VK_FORMAT_R32G32_SFLOAT;

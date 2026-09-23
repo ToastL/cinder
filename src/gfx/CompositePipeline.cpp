@@ -1,13 +1,12 @@
 #include "gfx/CompositePipeline.hpp"
 
 #include "gfx/rhi/Commands.hpp"
-
-#include "gfx/vk/GraphicsPipelineBuilder.hpp"
+#include "gfx/rhi/PipelineBuilder.hpp"
 
 namespace cinder::gfx {
 
-CompositePipeline::CompositePipeline(const cinder::gfx::vk::VkCtx& ctx, VkRenderPass renderPass) {
-    pipeline_ = cinder::gfx::vk::GraphicsPipelineBuilder(ctx, renderPass)
+CompositePipeline::CompositePipeline(const cinder::gfx::rhi::Presenter& presenter) {
+    pipeline_ = cinder::gfx::rhi::PipelineBuilder(presenter, cinder::gfx::rhi::PassKind::Present)
                         .shader("composite")
                         .build();
 }

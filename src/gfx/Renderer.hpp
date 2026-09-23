@@ -1,5 +1,7 @@
 #pragma once
 
+#include "gfx/rhi/Fwd.hpp"
+
 #include "gfx/CompositePipeline.hpp"
 #include "gfx/FrameTargets.hpp"
 #include "gfx/UiRenderer.hpp"
@@ -71,8 +73,7 @@ private:
     const cinder::gfx::vk::VkCtx& ctx_;
     cinder::platform::Window& window_;
 
-    VkRenderPass sceneRenderPass_ = VK_NULL_HANDLE;
-    VkRenderPass presentRenderPass_ = VK_NULL_HANDLE;
+    std::unique_ptr<cinder::gfx::rhi::Presenter> presenter_;
 
     std::unique_ptr<cinder::gfx::vk::Swapchain> swapchain_;
     FrameTargets targets_;

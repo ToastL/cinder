@@ -1,14 +1,13 @@
 #include "gfx/pass/SpritePipeline.hpp"
 
-#include "gfx/vk/GraphicsPipelineBuilder.hpp"
+#include "gfx/rhi/PipelineBuilder.hpp"
 
 namespace cinder::gfx::pass {
 
-using cinder::gfx::vk::GraphicsPipeline;
-using cinder::gfx::vk::GraphicsPipelineBuilder;
+using cinder::gfx::rhi::GraphicsPipeline;
 
-SpritePipeline::SpritePipeline(const cinder::gfx::vk::VkCtx& ctx, VkRenderPass renderPass) {
-    pipeline_ = GraphicsPipelineBuilder(ctx, renderPass)
+SpritePipeline::SpritePipeline(const cinder::gfx::rhi::Presenter& presenter) {
+    pipeline_ = cinder::gfx::rhi::PipelineBuilder(presenter, cinder::gfx::rhi::PassKind::Scene)
                         .shader("sprite")
                         .pushConstants(GraphicsPipeline::MATRIX_BYTES)
                         .vertexStride(VERTEX_STRIDE)

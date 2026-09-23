@@ -1,6 +1,7 @@
 #include "gfx/Renderer.hpp"
 
 #include "gfx/rhi/Commands.hpp"
+#include "gfx/vk/Presenter.hpp"
 #include "gfx/vk/Commands.hpp"
 
 #include "gfx/RendererDrawList.hpp"
@@ -54,20 +55,18 @@ Renderer::Renderer(const VkCtx& ctx, cinder::platform::Window& window) : ctx_(ct
     swapchain_ = std::make_unique<Swapchain>(ctx, window);
     measureScale();
 
-    sceneRenderPass_ = renderPasses::scene(ctx, swapchain_->format());
-    presentRenderPass_ = renderPasses::present(ctx, swapchain_->format());
+    presenter_ = std::make_unique<cinder::gfx::rhi::Presenter>(ctx, swapchain_->format());
 
     createTargets();
-    swapchain_->createFramebuffers(presentRenderPass_);
+    swapchain_->createFramebuffers(presenter_->renderPass(cinder::gfx::rhi::PassKind::Present));
     createCommandBuffers();
 
     sync_ = std::make_unique<FrameSync>(ctx, FRAMES_IN_FLIGHT, swapchain_->imageCount());
     assets_ = std::make_unique<Assets>(ctx);
-    spritePipeline_ = std::make_unique<cinder::gfx::pass::SpritePipeline>(ctx, sceneRenderPass_);
-    meshPipeline_ = std::make_unique<cinder::gfx::pass::MeshPipeline>(ctx, sceneRenderPass_);
-    compositePipeline_ = std::make_unique<CompositePipeline>(ctx, presentRenderPass_);
-    ui_ = std::make_unique<UiRenderer>(ctx, *assets_, presentRenderPass_, swapchain_->format(),
-                                       FRAMES_IN_FLIGHT);
+    spritePipeline_ = std::make_unique<cinder::gfx::pass::SpritePipeline>(*presenter_);
+    meshPipeline_ = std::make_unique<cinder::gfx::pass::MeshPipeline>(*presenter_);
+    compositePipeline_ = std::make_unique<CompositePipeline>(*presenter_);
+    ui_ = std::make_unique<UiRenderer>(ctx, *assets_, *presenter_, FRAMES_IN_FLIGHT);
 
     auto meshPass = std::make_unique<cinder::gfx::pass::MeshPass>(ctx, *assets_, *meshPipeline_);
     auto spritePass = std::make_unique<cinder::gfx::pass::SpritePass>(
@@ -97,8 +96,8 @@ VkExtent2D Renderer::targetExtent() const {
 }
 
 void Renderer::createTargets() {
-    targets_.recreate(ctx_, sceneRenderPass_, swapchain_->format(), targetExtent(),
-                      FRAMES_IN_FLIGHT);
+    targets_.recreate(ctx_, presenter_->renderPass(cinder::gfx::rhi::PassKind::Scene),
+                      swapchain_->format(), targetExtent(), FRAMES_IN_FLIGHT);
 }
 
 void Renderer::createCommandBuffers() {
@@ -175,7 +174,7 @@ void Renderer::recordCommandBuffer(VkCommandBuffer cmd, uint32_t imageIndex) {
 
     VkRenderPassBeginInfo scene{};
     scene.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-    scene.renderPass = sceneRenderPass_;
+    scene.renderPass = presenter_->renderPass(cinder::gfx::rhi::PassKind::Scene);
     scene.framebuffer = target.framebuffer();
     scene.renderArea.offset = {0, 0};
     scene.renderArea.extent = {target.width(), target.height()};
@@ -195,7 +194,7 @@ void Renderer::recordCommandBuffer(VkCommandBuffer cmd, uint32_t imageIndex) {
 
     VkRenderPassBeginInfo present{};
     present.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-    present.renderPass = presentRenderPass_;
+    present.renderPass = presenter_->renderPass(cinder::gfx::rhi::PassKind::Present);
     present.framebuffer = swapchain_->framebuffer(imageIndex);
     present.renderArea.offset = {0, 0};
     present.renderArea.extent = {swapchain_->width(), swapchain_->height()};
@@ -296,15 +295,12 @@ void Renderer::recreateSwapchain() {
     measureScale();
 
     if (swapchain_->format() != previousFormat) {
-        vkDestroyRenderPass(ctx_.device(), presentRenderPass_, nullptr);
-        vkDestroyRenderPass(ctx_.device(), sceneRenderPass_, nullptr);
-        sceneRenderPass_ = renderPasses::scene(ctx_, swapchain_->format());
-        presentRenderPass_ = renderPasses::present(ctx_, swapchain_->format());
-        ui_->rebuild(presentRenderPass_, swapchain_->format());
+        presenter_->rebuild(swapchain_->format());
+        ui_->rebuild();
     }
 
     createTargets();
-    swapchain_->createFramebuffers(presentRenderPass_);
+    swapchain_->createFramebuffers(presenter_->renderPass(cinder::gfx::rhi::PassKind::Present));
     resizeCameras();
     sync_->resize(swapchain_->imageCount());
 
@@ -388,8 +384,6 @@ Renderer::~Renderer() {
 
     swapchain_.reset();
 
-    vkDestroyRenderPass(ctx_.device(), presentRenderPass_, nullptr);
-    vkDestroyRenderPass(ctx_.device(), sceneRenderPass_, nullptr);
 }
 
 }

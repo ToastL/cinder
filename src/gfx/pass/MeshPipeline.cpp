@@ -1,16 +1,15 @@
 #include "gfx/pass/MeshPipeline.hpp"
 
 #include "gfx/asset/Mesh.hpp"
-#include "gfx/vk/GraphicsPipelineBuilder.hpp"
+#include "gfx/rhi/PipelineBuilder.hpp"
 
 namespace cinder::gfx::pass {
 
 using cinder::gfx::asset::Mesh;
-using cinder::gfx::vk::GraphicsPipeline;
-using cinder::gfx::vk::GraphicsPipelineBuilder;
+using cinder::gfx::rhi::GraphicsPipeline;
 
-MeshPipeline::MeshPipeline(const cinder::gfx::vk::VkCtx& ctx, VkRenderPass renderPass) {
-    pipeline_ = GraphicsPipelineBuilder(ctx, renderPass)
+MeshPipeline::MeshPipeline(const cinder::gfx::rhi::Presenter& presenter) {
+    pipeline_ = cinder::gfx::rhi::PipelineBuilder(presenter, cinder::gfx::rhi::PassKind::Scene)
                         .shader("mesh")
                         .pushConstants(2 * GraphicsPipeline::MATRIX_BYTES)
                         .vertexStride(Mesh::VERTEX_STRIDE)
@@ -19,7 +18,7 @@ MeshPipeline::MeshPipeline(const cinder::gfx::vk::VkCtx& ctx, VkRenderPass rende
                         .attribute(2, cinder::gfx::rhi::VertexFormat::Float2, 6 * sizeof(float))
                         .attribute(3, cinder::gfx::rhi::VertexFormat::Float4, 8 * sizeof(float))
                         .depthTest()
-                        .frontFace(VK_FRONT_FACE_CLOCKWISE)
+                        .frontFace(cinder::gfx::rhi::Winding::Clockwise)
                         .build();
 }
 

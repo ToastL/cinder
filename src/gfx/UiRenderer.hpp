@@ -1,6 +1,7 @@
 #pragma once
 
 #include "gfx/rhi/Format.hpp"
+#include "gfx/rhi/Fwd.hpp"
 #include "gfx/rhi/Handles.hpp"
 #include "gfx/vk/GpuBuffer.hpp"
 #include "gfx/vk/GraphicsPipeline.hpp"
@@ -25,14 +26,14 @@ class UiRenderer {
 public:
     static constexpr float DEFAULT_TEXT_GAMMA = 1.2f;
 
-    UiRenderer(const cinder::gfx::vk::VkCtx& ctx, cinder::gfx::asset::Assets& assets, VkRenderPass renderPass,
-               cinder::gfx::rhi::Format format, uint32_t framesInFlight);
+    UiRenderer(const cinder::gfx::vk::VkCtx& ctx, cinder::gfx::asset::Assets& assets,
+               const cinder::gfx::rhi::Presenter& presenter, uint32_t framesInFlight);
     ~UiRenderer();
 
     UiRenderer(const UiRenderer&) = delete;
     UiRenderer& operator=(const UiRenderer&) = delete;
 
-    void rebuild(VkRenderPass renderPass, cinder::gfx::rhi::Format format);
+    void rebuild();
     void setTextGamma(float gamma) { textGamma_ = gamma; }
 
     void prepare(cinder::gfx::rhi::Uploads cmd, uint32_t frame, const cinder::ui::ElementList& list);
@@ -65,7 +66,8 @@ private:
 
     const cinder::gfx::vk::VkCtx& ctx_;
     cinder::gfx::asset::Assets& assets_;
-    std::unique_ptr<cinder::gfx::vk::GraphicsPipeline> pipeline_;
+    const cinder::gfx::rhi::Presenter& presenter_;
+    std::unique_ptr<cinder::gfx::rhi::GraphicsPipeline> pipeline_;
     std::vector<GlyphPage> pages_;
     std::vector<Frame> frames_;
     std::vector<cinder::gfx::rhi::TextureBinding> named_;

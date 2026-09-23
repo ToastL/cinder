@@ -1,95 +1,46 @@
-#include "gfx/vk/GraphicsPipelineBuilder.hpp"
+#include "gfx/rhi/Pipeline.hpp"
 
-#include "gfx/vk/Shaders.hpp"
+#include "gfx/rhi/PipelineBuilder.hpp"
+
 #include "gfx/vk/Formats.hpp"
+#include "gfx/vk/GraphicsPipeline.hpp"
+#include "gfx/vk/Presenter.hpp"
+#include "gfx/vk/Shaders.hpp"
 #include "gfx/vk/VkCtx.hpp"
 #include "gfx/vk/VkUtil.hpp"
 
-#include <utility>
+#include <vector>
 
-namespace cinder::gfx::vk {
+namespace cinder::gfx::rhi {
 
-GraphicsPipelineBuilder::GraphicsPipelineBuilder(const VkCtx& ctx, VkRenderPass renderPass)
-    : ctx_(ctx), renderPass_(renderPass) {}
+using cinder::gfx::vk::check;
+namespace shaders = cinder::gfx::vk::shaders;
 
-GraphicsPipelineBuilder& GraphicsPipelineBuilder::shader(std::string program) {
-    program_ = std::move(program);
-    return *this;
-}
+std::unique_ptr<GraphicsPipeline> createPipeline(const Presenter& presenter,
+                                                 const PipelineDesc& desc) {
+    const cinder::gfx::vk::VkCtx& ctx = presenter.ctx();
 
-GraphicsPipelineBuilder& GraphicsPipelineBuilder::pushConstants(uint32_t bytes, VkShaderStageFlags stages) {
-    pushConstantBytes_ = bytes;
-    pushConstantStages_ = stages;
-    return *this;
-}
-
-GraphicsPipelineBuilder& GraphicsPipelineBuilder::vertexStride(uint32_t stride) {
-    vertexStride_ = stride;
-    return *this;
-}
-
-GraphicsPipelineBuilder& GraphicsPipelineBuilder::attribute(uint32_t location,
-                                                           rhi::VertexFormat format,
-                                                           uint32_t offset) {
-    VkVertexInputAttributeDescription description{};
-    description.location = location;
-    description.binding = 0;
-    description.format = rhi::toVk(format);
-    description.offset = offset;
-    attributes_.push_back(description);
-    return *this;
-}
-
-GraphicsPipelineBuilder& GraphicsPipelineBuilder::depthTest() {
-    depth_ = true;
-    depthWrite_ = true;
-    return *this;
-}
-
-GraphicsPipelineBuilder& GraphicsPipelineBuilder::depthRead() {
-    depth_ = true;
-    depthWrite_ = false;
-    return *this;
-}
-
-GraphicsPipelineBuilder& GraphicsPipelineBuilder::alphaBlend() {
-    alphaBlend_ = true;
-    return *this;
-}
-
-GraphicsPipelineBuilder& GraphicsPipelineBuilder::premultipliedBlend() {
-    alphaBlend_ = true;
-    premultiplied_ = true;
-    return *this;
-}
-
-GraphicsPipelineBuilder& GraphicsPipelineBuilder::frontFace(VkFrontFace face) {
-    frontFace_ = face;
-    return *this;
-}
-
-std::unique_ptr<GraphicsPipeline> GraphicsPipelineBuilder::build() {
     VkPushConstantRange push{};
-    push.stageFlags = pushConstantStages_;
+    push.stageFlags = toVk(desc.pushConstantStages);
     push.offset = 0;
-    push.size = pushConstantBytes_;
+    push.size = desc.pushConstantBytes;
 
     VkPipelineLayoutCreateInfo layoutInfo{};
     layoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
     layoutInfo.setLayoutCount = 1;
-    const VkDescriptorSetLayout setLayout = ctx_.textureLayout();
+    const VkDescriptorSetLayout setLayout = ctx.textureLayout();
     layoutInfo.pSetLayouts = &setLayout;
-    if (pushConstantBytes_ > 0) {
+    if (desc.pushConstantBytes > 0) {
         layoutInfo.pushConstantRangeCount = 1;
         layoutInfo.pPushConstantRanges = &push;
     }
 
     VkPipelineLayout layout = VK_NULL_HANDLE;
-    check(vkCreatePipelineLayout(ctx_.device(), &layoutInfo, nullptr, &layout),
+    check(vkCreatePipelineLayout(ctx.device(), &layoutInfo, nullptr, &layout),
           "vkCreatePipelineLayout");
 
-    const VkShaderModule vertModule = shaders::fromFile(ctx_, program_ + ".vs");
-    const VkShaderModule fragModule = shaders::fromFile(ctx_, program_ + ".ps");
+    const VkShaderModule vertModule = shaders::fromFile(ctx, desc.program + ".vs");
+    const VkShaderModule fragModule = shaders::fromFile(ctx, desc.program + ".ps");
 
     VkPipelineShaderStageCreateInfo stages[2]{};
     stages[0].sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
@@ -103,16 +54,27 @@ std::unique_ptr<GraphicsPipeline> GraphicsPipelineBuilder::build() {
 
     VkVertexInputBindingDescription binding{};
     binding.binding = 0;
-    binding.stride = vertexStride_;
+    binding.stride = desc.vertexStride;
     binding.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
+
+    std::vector<VkVertexInputAttributeDescription> attributes;
+    attributes.reserve(desc.attributes.size());
+    for (const VertexAttribute& attribute : desc.attributes) {
+        VkVertexInputAttributeDescription description{};
+        description.location = attribute.location;
+        description.binding = 0;
+        description.format = toVk(attribute.format);
+        description.offset = attribute.offset;
+        attributes.push_back(description);
+    }
 
     VkPipelineVertexInputStateCreateInfo vertexInput{};
     vertexInput.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
-    if (vertexStride_ > 0) {
+    if (desc.vertexStride > 0) {
         vertexInput.vertexBindingDescriptionCount = 1;
         vertexInput.pVertexBindingDescriptions = &binding;
-        vertexInput.vertexAttributeDescriptionCount = static_cast<uint32_t>(attributes_.size());
-        vertexInput.pVertexAttributeDescriptions = attributes_.data();
+        vertexInput.vertexAttributeDescriptionCount = static_cast<uint32_t>(attributes.size());
+        vertexInput.pVertexAttributeDescriptions = attributes.data();
     }
 
     VkPipelineInputAssemblyStateCreateInfo assembly{};
@@ -132,7 +94,7 @@ std::unique_ptr<GraphicsPipeline> GraphicsPipelineBuilder::build() {
     raster.polygonMode = VK_POLYGON_MODE_FILL;
     raster.lineWidth = 1.0f;
     raster.cullMode = VK_CULL_MODE_NONE;
-    raster.frontFace = frontFace_;
+    raster.frontFace = toVk(desc.winding);
     raster.depthBiasEnable = VK_FALSE;
 
     VkPipelineMultisampleStateCreateInfo multisample{};
@@ -142,18 +104,19 @@ std::unique_ptr<GraphicsPipeline> GraphicsPipelineBuilder::build() {
 
     VkPipelineDepthStencilStateCreateInfo depthStencil{};
     depthStencil.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
-    depthStencil.depthTestEnable = depth_ ? VK_TRUE : VK_FALSE;
-    depthStencil.depthWriteEnable = depthWrite_ ? VK_TRUE : VK_FALSE;
-    if (depth_) depthStencil.depthCompareOp = VK_COMPARE_OP_LESS;
+    depthStencil.depthTestEnable = desc.depthTest ? VK_TRUE : VK_FALSE;
+    depthStencil.depthWriteEnable = desc.depthWrite ? VK_TRUE : VK_FALSE;
+    if (desc.depthTest) depthStencil.depthCompareOp = VK_COMPARE_OP_LESS;
     depthStencil.depthBoundsTestEnable = VK_FALSE;
     depthStencil.stencilTestEnable = VK_FALSE;
 
     VkPipelineColorBlendAttachmentState attachment{};
     attachment.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT
             | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
-    attachment.blendEnable = alphaBlend_ ? VK_TRUE : VK_FALSE;
-    if (alphaBlend_) {
-        attachment.srcColorBlendFactor = premultiplied_ ? VK_BLEND_FACTOR_ONE : VK_BLEND_FACTOR_SRC_ALPHA;
+    attachment.blendEnable = desc.blend ? VK_TRUE : VK_FALSE;
+    if (desc.blend) {
+        attachment.srcColorBlendFactor =
+                desc.premultiplied ? VK_BLEND_FACTOR_ONE : VK_BLEND_FACTOR_SRC_ALPHA;
         attachment.dstColorBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
         attachment.colorBlendOp = VK_BLEND_OP_ADD;
         attachment.srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE;
@@ -186,18 +149,22 @@ std::unique_ptr<GraphicsPipeline> GraphicsPipelineBuilder::build() {
     info.pColorBlendState = &blend;
     info.pDynamicState = &dynamic;
     info.layout = layout;
-    info.renderPass = renderPass_;
+    info.renderPass = presenter.renderPass(desc.pass);
     info.subpass = 0;
 
     VkPipeline handle = VK_NULL_HANDLE;
     const VkResult result =
-            vkCreateGraphicsPipelines(ctx_.device(), VK_NULL_HANDLE, 1, &info, nullptr, &handle);
+            vkCreateGraphicsPipelines(ctx.device(), VK_NULL_HANDLE, 1, &info, nullptr, &handle);
 
-    vkDestroyShaderModule(ctx_.device(), fragModule, nullptr);
-    vkDestroyShaderModule(ctx_.device(), vertModule, nullptr);
+    vkDestroyShaderModule(ctx.device(), fragModule, nullptr);
+    vkDestroyShaderModule(ctx.device(), vertModule, nullptr);
 
     check(result, "vkCreateGraphicsPipelines");
-    return std::make_unique<GraphicsPipeline>(ctx_, layout, handle);
+    return std::make_unique<GraphicsPipeline>(ctx, layout, handle);
+}
+
+std::unique_ptr<GraphicsPipeline> PipelineBuilder::build() {
+    return createPipeline(presenter_, desc_);
 }
 
 }
