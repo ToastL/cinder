@@ -3,9 +3,7 @@
 #include "gfx/rhi/Format.hpp"
 #include "gfx/rhi/Fwd.hpp"
 #include "gfx/rhi/Handles.hpp"
-#include "gfx/vk/GpuBuffer.hpp"
-#include "gfx/vk/GraphicsPipeline.hpp"
-#include "gfx/vk/GlyphPages.hpp"
+#include "gfx/rhi/Backend.hpp"
 #include "ui/core/Batcher.hpp"
 
 #include <glm/vec2.hpp>

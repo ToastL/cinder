@@ -174,7 +174,7 @@ cinder/
     scene/ serial/ components/       the world model
     physics/                         rigid bodies, collision and the solver
     ui/core/ ui/framework/ ui/widgets/ ui/docking/  the UI framework the editor is built on
-    gfx/ gfx/vk/ gfx/asset/ gfx/pass/  the renderer
+    gfx/ gfx/rhi/ gfx/vk/ gfx/asset/ gfx/pass/  the renderer and its backend seam
     script/ core/                    the Lua host and the engine
     dev/                             editor panels, gizmos, history, play session; NOT part of `engine`
     player/ editor/                  the two executables
@@ -202,10 +202,11 @@ ui/core                    -> text, platform
 ui/framework               -> ui/core, text, platform
 ui/widgets                 -> ui/framework, ui/core, text, platform
 ui/docking                 -> ui/widgets, ui/framework, ui/core, text, platform
-gfx/vk                     -> platform
-gfx/asset                  -> gfx/vk, scene
-gfx/pass                   -> gfx/asset, gfx/vk, scene, lua, platform
-gfx                        -> gfx/pass, gfx/asset, gfx/vk, ui/core, text, scene, platform, lua
+gfx/rhi                    -> platform
+gfx/vk, gfx/mtl            -> gfx/rhi, platform          (only one compiles per binary)
+gfx/asset                  -> gfx/rhi, scene
+gfx/pass                   -> gfx/asset, gfx/rhi, scene, lua, platform
+gfx                        -> gfx/pass, gfx/asset, gfx/rhi, ui/core, text, scene, platform, lua
 script                     -> scene, reflect, gfx, physics, platform, lua
 core                       -> all of the above
 dev                        -> core and all of the above (a separate target, see below)
@@ -225,8 +226,22 @@ every layer logs, and `platform/Assets.hpp` is the only thing that turns a name 
 the only reason `serial`, `lua` and `gfx` have an edge to it, and neither header includes anything
 from the engine, so the edges cost nothing and create no cycle.
 
-`gfx` is split four ways and the seam that matters is `gfx/vk`: it knows Vulkan and knows nothing
-about this engine, so a new backend can be built on it without dragging in passes or assets. `gfx/asset` is what you draw with (`Assets`, `Texture`, `Mesh`),
+**`gfx` is split five ways and the seam that matters is `gfx/rhi`.** It is a neutral leaf — formats,
+`Commands`/`Uploads` handles, `TextureBinding`, the fluent `PipelineBuilder` — that *declares* the
+types a backend must provide: `Ctx`, `GpuBuffer`, `GraphicsPipeline`, `Texture`, `TexturePool`,
+`RenderTarget`, `GlyphPages`, `Presenter`. `gfx/vk` **defines** them in namespace
+`cinder::gfx::rhi`; a future `gfx/mtl` would define the same names, and CMake compiles exactly one
+of the two. The choice is a `CINDER_BACKEND` cache variable, not a runtime flag — the same reasoning
+that makes the dev tools a separate link target. No vtables: `Engine` still holds `rhi::Ctx ctx_` by
+value in the same declaration slot.
+
+`gfx/rhi/Backend.hpp` is **generated** by `configure_file` into the build tree and is one line —
+`#include "gfx/<backend>/Backend.hpp"`. Everything above the backend includes only that, so no
+first-party source names a backend. `AssertLayers.cmake` globs `src/` only, so the generated header
+is invisible to it and the checked graph stays a strict DAG. **Nothing outside `src/gfx/vk` names a
+Vulkan type**, and the one `<volk.h>` left outside it is `platform/Glfw.cpp`'s loader bootstrap,
+guarded by `CINDER_BACKEND_VK` — loader setup is the one place outside `gfx/` that names a backend,
+because it runs before `gfx` exists. `gfx/asset` is what you draw with (`Assets` and `Mesh`; `Texture` lives in the backend, since almost all of it is staging, barriers and copies),
 `gfx/pass` is how you draw it (`DrawPass` and its implementations, their pipelines, and `ViewCamera`), and
 `gfx` itself contains orchestration and frame resources: `Renderer`, `FrameTargets`, `RenderTarget`,
 `Capture`, `UiRenderer`, `CompositePipeline` and `RendererDrawList`. Nothing in a subdirectory includes

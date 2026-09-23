@@ -1,7 +1,6 @@
 #include "gfx/FrameTargets.hpp"
 
-#include "gfx/vk/Presenter.hpp"
-#include "gfx/vk/RenderTarget.hpp"
+#include "gfx/rhi/Backend.hpp"
 
 namespace cinder::gfx {
 

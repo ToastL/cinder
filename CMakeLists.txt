@@ -33,6 +33,11 @@ file(GLOB_RECURSE ENGINE_SOURCES CONFIGURE_DEPENDS
     src/components/*.cpp
     src/core/*.cpp
     src/gfx/*.cpp
+    src/gfx/asset/*.cpp
+    src/gfx/pass/*.cpp
+    src/gfx/rhi/*.cpp
+    src/gfx/${CINDER_BACKEND}/*.cpp
+    src/gfx/${CINDER_BACKEND}/*.mm
     src/lua/*.cpp
     src/physics/*.cpp
     src/platform/*.cpp

@@ -4,7 +4,7 @@
 
 #include "gfx/asset/Assets.hpp"
 #include "gfx/pass/SpritePipeline.hpp"
-#include "gfx/vk/GpuBuffer.hpp"
+#include "gfx/rhi/Backend.hpp"
 
 #include <glm/mat4x4.hpp>
 #include <glm/vec2.hpp>

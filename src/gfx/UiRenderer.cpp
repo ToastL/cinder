@@ -1,13 +1,10 @@
 #include "gfx/UiRenderer.hpp"
 
 #include "gfx/rhi/Commands.hpp"
-#include "gfx/vk/Commands.hpp"
 
 #include "gfx/asset/Assets.hpp"
 #include "gfx/rhi/PipelineBuilder.hpp"
-#include "gfx/vk/GlyphPages.hpp"
-#include "gfx/vk/Presenter.hpp"
-#include "gfx/vk/Ctx.hpp"
+#include "gfx/rhi/Backend.hpp"
 #include "platform/Log.hpp"
 #include "text/GlyphAtlas.hpp"
 #include "ui/core/ElementList.hpp"

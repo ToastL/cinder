@@ -1,5 +1,6 @@
 #pragma once
 
+#include "gfx/vk/GlyphPages.hpp"
 #include "gfx/vk/GpuBuffer.hpp"
 #include "gfx/vk/GraphicsPipeline.hpp"
 #include "gfx/vk/Presenter.hpp"

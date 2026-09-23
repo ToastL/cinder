@@ -327,17 +327,17 @@ DXC is the single HLSL frontend and already emits SPIR-V, DXIL and MSL/`.metalli
 *Commands* section. Only the Vulkan backend consumes its output; these are the phases that would
 change that. Each leaves the engine running on Vulkan after every step.
 
-- [ ] **The backend seam.** Vulkan is not confined to `src/gfx/vk/`: 273 `Vk*` references and 55 raw
+- [x] **The backend seam.** *(done)* Vulkan is not confined to `src/gfx/vk/`: 273 `Vk*` references and 55 raw
       `vk*()` calls live outside it. A neutral leaf `src/gfx/rhi/` (formats, `Commands`/`Uploads`
       handles, `TextureBinding`, a neutral pipeline builder) that `gfx/vk` and a future `gfx/mtl`
       each *define*, selected by a `CINDER_BACKEND` cache variable — compile-time, no vtables, so
       `Engine` keeps holding its context by value. The deliverable is deleting `gfx/vk` from
       `ALLOWED_gfx`, `ALLOWED_gfx/asset`, `ALLOWED_gfx/pass` and `ALLOWED_core`.
-      - [ ] Delete `VkDescriptorSetLayout` from eight constructors — there is exactly one layout in
+      - [x] Delete `VkDescriptorSetLayout` from eight constructors — there is exactly one layout in
             the engine and `setLayoutCount` is hardcoded to 1, so it is a constant pretending to be
             a parameter. This removes more Vulkan from headers than the new types add.
-      - [ ] `VkRenderPass` becomes a two-valued `PassKind` enum; Metal has no render pass objects.
-      - [ ] Extract a per-backend `Presenter` (swapchain, `FrameSync`, acquire/submit/present,
+      - [x] `VkRenderPass` becomes a two-valued `PassKind` enum; Metal has no render pass objects.
+      - [x] Extract a per-backend `Presenter` (swapchain, `FrameSync`, acquire/submit/present,
             window capture). Riskiest step: the `OUT_OF_DATE` path paints without recording, and
             `pixelsPerPoint` is measured only on swapchain rebuild.
 - [ ] **`src/gfx/mtl`** — a native Metal backend on that seam. Objective-C++, so `OBJCXX` joins the

@@ -3,7 +3,7 @@
 #include "gfx/rhi/Fwd.hpp"
 
 #include "gfx/rhi/Handles.hpp"
-#include "gfx/vk/GraphicsPipeline.hpp"
+#include "gfx/rhi/Backend.hpp"
 
 #include <memory>
 
