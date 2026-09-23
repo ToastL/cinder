@@ -43,7 +43,7 @@ set(IMGUI_SOURCES
     dev/PropertyWidgets.cpp
     dev/Toolbar.cpp
     dev/Viewport.cpp
-    editor/main.cpp)
+    editor/imgui_main.cpp)
 
 function(layer_of path output)
     if(path MATCHES "^(gfx/(vk|asset|pass)|ui/(core|framework|widgets|docking))/")

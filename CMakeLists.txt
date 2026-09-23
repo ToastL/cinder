@@ -54,8 +54,8 @@ target_compile_options(engine_dev PRIVATE -Wall -Wextra -Wno-unused-parameter)
 add_executable(editor src/editor/main.cpp)
 target_link_libraries(editor PRIVATE engine_dev)
 
-add_executable(editor_next src/editor/next.cpp)
-target_link_libraries(editor_next PRIVATE engine_dev)
+add_executable(editor_imgui src/editor/imgui_main.cpp)
+target_link_libraries(editor_imgui PRIVATE engine_dev)
 
 add_executable(player EXCLUDE_FROM_ALL src/player/main.cpp)
 target_link_libraries(player PRIVATE engine)
@@ -123,7 +123,7 @@ add_test(NAME shipping_binary_is_clean COMMAND ${CMAKE_COMMAND}
     -P ${CMAKE_CURRENT_SOURCE_DIR}/cmake/AssertNoDevTools.cmake)
 set_tests_properties(shipping_binary_is_clean PROPERTIES FIXTURES_REQUIRED player)
 
-add_test(NAME editor_next_is_imgui_free COMMAND ${CMAKE_COMMAND}
-    -DEXE=$<TARGET_FILE:editor_next>
+add_test(NAME editor_is_imgui_free COMMAND ${CMAKE_COMMAND}
+    -DEXE=$<TARGET_FILE:editor>
     -DALLOW_DEV=ON
     -P ${CMAKE_CURRENT_SOURCE_DIR}/cmake/AssertNoDevTools.cmake)

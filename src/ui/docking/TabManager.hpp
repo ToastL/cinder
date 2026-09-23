@@ -68,6 +68,7 @@ public:
     const LayoutNode& layout() const { return root_; }
     int stackCount() const;
     std::vector<std::string> tabsIn(int stackId) const;
+    int stackOf(const std::string& tab) const;
     const std::shared_ptr<TabStack>& stackWidget(int stackId) const;
 
 private:

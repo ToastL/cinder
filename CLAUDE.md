@@ -19,7 +19,8 @@ The repo holds the engine only. A game is a **project folder** — a `.cinder` f
 cmake -S . -B build -G Ninja && cmake --build build
 ```
 
-A plain build produces `engine`, `engine_dev`, `editor`, `ui_gallery` and `tests` — **no game**. The
+A plain build produces `engine`, `engine_dev`, `editor`, `editor_imgui`, `ui_gallery` and `tests` —
+**no game**. The
 runtime that plays a project, `player`, is `EXCLUDE_FROM_ALL` and only built on demand.
 
 ```bash
@@ -48,35 +49,38 @@ cmake --build build --target graphics_smoke
 DYLD_LIBRARY_PATH=/opt/homebrew/lib ./build/graphics_smoke
 ```
 
-It renders the editor panels, drives gizmo editing and undo/redo, saves a scene, cycles
-Play/Pause/Step/Resume/Stop through fresh Lua states, resizes the window and scene targets, and
-captures both the embedded and composited views. Its output stays in `build/graphics-smoke/`;
+It runs the editor's own UI and drives it with injected input: it clicks a node in the Explorer, drags
+a move gizmo in the Scene view, undoes and redoes with ⌘Z, saves a scene, plays and stops with ⌘P,
+cycles Play/Pause/Step/Resume/Stop through fresh Lua states, re-docks the console onto the Scene
+stack, resizes the window and scene targets, and captures both the window and the composited view. Its output stays in `build/graphics-smoke/`;
 it never saves over a sample project. On other platforms omit the Apple-specific library path.
 
 ```bash
-./build/editor samples/sandbox2d
+DYLD_LIBRARY_PATH=/opt/homebrew/lib ./build/editor samples/sandbox2d
 ```
 
-`editor` is the **dev build** — the same engine plus the ImGui overlay: a dockspace holding the Scene
-viewport, the Explorer, Properties and the console, with the play toolbar in the main menu bar. It opens a project in **Edit
-mode**: the scene is loaded and drawn, and no game code runs.
-Play/Pause/Step/Stop are on the toolbar and on ⌘P, ⌘⇧P and ⌘⌥P; ⌘S saves the scene, and ⌘Z and ⌘⇧Z
-undo and redo edits. In the Scene view 1, 2 and 3 pick the move, rotate and scale gizmos. It takes the project folder or its `.cinder` file, then
-`--scene <path>` (relative to `Content/`), `--play` (start in Play), `--frames <n>` and `--capture <png>`.
-The last two make it scriptable: `--frames 90 --capture out.png` runs headless-ish and writes a
-screenshot. See *The dev overlay* below for why this is a second executable rather than a flag.
+`editor` is the **dev build** — the same engine plus the editor UI, which is our own (see *The UI
+framework*): one window of docked tabs, the Explorer on the left, the Scene view in the middle with
+the console under it and Properties on the right, over a toolbar carrying the File, Edit, Window and
+Play menus. Drag a tab to another stack's middle or edge to re-dock it, close it, and reopen it from
+the Window menu. It opens a project in **Edit mode**: the scene is loaded and drawn, and no game code
+runs. Play/Pause/Step/Stop are on the toolbar and on ⌘P, ⌘⇧P and ⌘⌥P; ⌘S saves the scene, and ⌘Z and
+⌘⇧Z undo and redo edits. In the Scene view 1, 2 and 3 pick the move, rotate and scale gizmos. It takes
+the project folder or its `.cinder` file, then `--scene <path>` (relative to `Content/`), `--play`
+(start in Play), `--frames <n>`, `--capture <png>`, `--capture-window <png>` and `--input-script
+<file>`; a script can also `close` the window to exercise the unsaved-changes prompt. `--frames 90
+--capture out.png` runs headless-ish and writes a screenshot. `ctest` holds it to
+`editor_is_imgui_free`, which runs `nm` over it, so no ImGui object can be linked into it by
+accident. See *The dev overlay* below for why this is a second executable rather than a flag.
 
 ```bash
-DYLD_LIBRARY_PATH=/opt/homebrew/lib ./build/editor_next samples/sandbox3d
+DYLD_LIBRARY_PATH=/opt/homebrew/lib ./build/editor_imgui samples/sandbox2d
 ```
 
-`editor_next` is the editor being rebuilt on the new UI, beside `editor` until it reaches parity: today
-the toolbar with its File, Edit, Window and Play menus, and the Scene view and console as dockable
-tabs — drag a tab to another stack's middle or edge to re-dock it, close it, and reopen it from the
-Window menu. It
-takes `editor`'s arguments plus `--capture-window <png>` and `--input-script <file>`; a script can also
-`close` the window to exercise the unsaved-changes prompt. `ctest` holds it to `editor_next_is_imgui_free`,
-which runs `nm` over it, so no ImGui object can be linked into it by accident.
+`editor_imgui` is the old ImGui editor, kept beside the new one only until its last panel is deleted:
+a dockspace holding the Scene viewport, the Explorer, Properties and the console, with the play
+toolbar in the main menu bar. It takes the same arguments as `editor` except `--capture-window` and
+`--input-script`. Nothing new goes into it.
 
 ```bash
 cmake --build build --target player && ./build/player samples/sandbox3d

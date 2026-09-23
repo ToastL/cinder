@@ -282,6 +282,11 @@ std::vector<std::string> TabManager::tabsIn(int stackId) const {
     return found == stacks_.end() ? std::vector<std::string>{} : found->second->tabs();
 }
 
+int TabManager::stackOf(const std::string& tab) const {
+    const LayoutNode* node = stackWith(root_, tab);
+    return node != nullptr ? node->id : -1;
+}
+
 const std::shared_ptr<TabStack>& TabManager::stackWidget(int stackId) const {
     const auto found = stacks_.find(stackId);
     return found == stacks_.end() ? NO_STACK : found->second;

@@ -146,12 +146,14 @@ includes `scene`, `reflect` or `gfx` — the reflection-driven Properties panel 
       closed tab where it last lived. `editor_next` runs on it.
 - [ ] **Floating panels** — panels in their own OS windows, after parity: `VkCtx` has to stop owning
       the one GLFW surface — one device, a swapchain per window.
-- [ ] **Port the panels** into `editor_next` beside `editor`, then flip the names and delete ImGui and
-      `gfx::Overlay`. `PlaySession`, `History`, `Selection`, `Picking`, `EditorCamera`, `Manipulator`,
-      `GizmoGeometry` and `GizmoLines` have no ImGui in them and carry over as they are; the new
-      panels live in `dev/panels/` — `Toolbar`, `SceneView`, `Explorer`, `Properties`, `Console`.
-      `cmake/AssertLayers.cmake` lists the files still allowed to mention ImGui, and the list only
-      shrinks.
+- [x] **Port the panels** — `dev/panels/` holds `Toolbar`, `SceneView`, `Explorer`, `Properties`,
+      `Console` and the docked `Layout`, and `editor` is now the new UI while the old one lives on as
+      `editor_imgui` until its files go. `PlaySession`, `History`, `Selection`, `Picking`,
+      `EditorCamera`, `Manipulator`, `GizmoGeometry` and `GizmoLines` carried over unchanged, and
+      `graphics_smoke` drives the new editor with injected input.
+- [ ] **Delete ImGui** — the `IMGUI_SOURCES` files, `editor_imgui`, `Probe`, `gfx::Overlay` and
+      `OverlayTexture`, and the dependency itself. `cmake/AssertLayers.cmake` lists the files still
+      allowed to mention ImGui, and the list only shrinks.
 - [ ] **Game UI** — reflected widget classes saved as `.widget` assets under `Content/`, created from
       Lua and added to the viewport, never nodes in the `Scene`: Unreal's UMG, in its own layer over
       `ui`, `reflect` and `serial`, and its own plan once the editor is on the new UI.
