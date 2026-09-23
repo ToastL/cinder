@@ -19,8 +19,18 @@ The repo holds the engine only. A game is a **project folder** — a `.cinder` f
 cmake -S . -B build -G Ninja && cmake --build build
 ```
 
-A plain build produces `engine`, `engine_dev`, `editor` and `tests` — **no game**. The runtime that
-plays a project, `player`, is `EXCLUDE_FROM_ALL` and only built on demand.
+A plain build produces `engine`, `engine_dev`, `editor`, `ui_gallery` and `tests` — **no game**. The
+runtime that plays a project, `player`, is `EXCLUDE_FROM_ALL` and only built on demand.
+
+```bash
+DYLD_LIBRARY_PATH=/opt/homebrew/lib ./build/ui_gallery --frames 10 --capture-window gallery.png
+```
+
+`ui_gallery` is the test bench for the new UI, linked against `engine` alone: every widget, live, on
+one side of a splitter, and everything the UI renderer can draw on the other. `--capture-window` writes
+the swapchain image, UI included, which `--capture` never does; `--input-script <file>` replays input
+instead of the OS's (see *The UI framework*); `--lowdpi` turns off framebuffer scaling so text can be
+judged at 1x on a Retina display, and `--text-gamma` tunes glyph coverage.
 
 ```bash
 ctest --test-dir build --output-on-failure
@@ -38,23 +48,28 @@ cmake --build build --target graphics_smoke
 DYLD_LIBRARY_PATH=/opt/homebrew/lib ./build/graphics_smoke
 ```
 
-It renders the editor panels, drives gizmo editing and undo/redo, saves a scene, cycles
-Play/Pause/Step/Resume/Stop through fresh Lua states, resizes the window and scene targets, and
-captures both the embedded and composited views. Its output stays in `build/graphics-smoke/`;
+It runs the editor's own UI and drives it with injected input: it clicks a node in the Explorer, drags
+a move gizmo in the Scene view, undoes and redoes with ⌘Z, saves a scene, plays and stops with ⌘P,
+cycles Play/Pause/Step/Resume/Stop through fresh Lua states, re-docks the console onto the Scene
+stack, resizes the window and scene targets, and captures both the window and the composited view. Its output stays in `build/graphics-smoke/`;
 it never saves over a sample project. On other platforms omit the Apple-specific library path.
 
 ```bash
-./build/editor samples/sandbox2d
+DYLD_LIBRARY_PATH=/opt/homebrew/lib ./build/editor samples/sandbox2d
 ```
 
-`editor` is the **dev build** — the same engine plus the ImGui overlay: a dockspace holding the Scene
-viewport, the Explorer, Properties and the console, with the play toolbar in the main menu bar. It opens a project in **Edit
-mode**: the scene is loaded and drawn, and no game code runs.
-Play/Pause/Step/Stop are on the toolbar and on ⌘P, ⌘⇧P and ⌘⌥P; ⌘S saves the scene, and ⌘Z and ⌘⇧Z
-undo and redo edits. In the Scene view 1, 2 and 3 pick the move, rotate and scale gizmos. It takes the project folder or its `.cinder` file, then
-`--scene <path>` (relative to `Content/`), `--play` (start in Play), `--frames <n>` and `--capture <png>`.
-The last two make it scriptable: `--frames 90 --capture out.png` runs headless-ish and writes a
-screenshot. See *The dev overlay* below for why this is a second executable rather than a flag.
+`editor` is the **dev build** — the same engine plus the editor UI, which is our own (see *The UI
+framework*): one window of docked tabs, the Explorer on the left, the Scene view in the middle with
+the console under it and Properties on the right, over a toolbar carrying the File, Edit, Window and
+Play menus. Drag a tab to another stack's middle or edge to re-dock it, close it, and reopen it from
+the Window menu. It opens a project in **Edit mode**: the scene is loaded and drawn, and no game code
+runs. Play/Pause/Step/Stop are on the toolbar and on ⌘P, ⌘⇧P and ⌘⌥P; ⌘S saves the scene, and ⌘Z and
+⌘⇧Z undo and redo edits. In the Scene view 1, 2 and 3 pick the move, rotate and scale gizmos. It takes
+the project folder or its `.cinder` file, then `--scene <path>` (relative to `Content/`), `--play`
+(start in Play), `--frames <n>`, `--capture <png>`, `--capture-window <png>` and `--input-script
+<file>`; a script can also `close` the window to exercise the unsaved-changes prompt. `--frames 90
+--capture out.png` runs headless-ish and writes a screenshot. See *The dev tools* below for why this
+is a second executable rather than a flag.
 
 ```bash
 cmake --build build --target player && ./build/player samples/sandbox3d
@@ -70,16 +85,18 @@ cmake --build build --target package_game
 
 Stages a runnable game in `build/dist/<project>/` — see *Projects and packaging*.
 
-Note that `--capture` reads back the **scene render target**, not the swapchain, so an overlay would
-never appear in a capture anyway. That is deliberate: it is the game's picture, not the editor's. In
+Note that `--capture` reads back the **scene render target**, not the swapchain, so the editor's own
+UI never appears in a capture; `--capture-window` is the one that shows it. That is deliberate: it is the game's picture, not the editor's. In
 the editor that target is the size of the Scene panel, not the window, and in Edit mode its view is
 the editor camera's — which starts as a copy of a perspective scene camera, so an unattended `--frames
 --capture` still writes the game's frame. An orthographic scene starts from a perspective view framing
 the same rectangle instead. See *The editor camera*.
 
 The first configure fetches every dependency and needs network — glfw, glm, lua, VMA, stb, volk,
-Vulkan-Headers, Dear ImGui and doctest, all pinned in `cmake/Dependencies.cmake`. Nothing needs
-installing.
+Vulkan-Headers, doctest, FreeType and HarfBuzz, all pinned in `cmake/Dependencies.cmake`.
+Nothing needs installing: FreeType is built with zlib, bzip2, PNG, Brotli and HarfBuzz switched off, so
+it never finds Homebrew's copies, and HarfBuzz is compiled from its single-file `src/harfbuzz.cc`
+rather than through its community-maintained CMake build.
 `glslangValidator` is the one exception: it is a *build tool*, found with `find_program`, and it
 compiles `engine/shaders/*.{vert,frag}` to `.spv`. Editing a shader needs a rebuild, not just a
 restart. `brew install glslang` if it is missing.
@@ -115,15 +132,17 @@ caught a missing `TRANSFER_SRC_BIT` that no test would have.
 cinder/
   CMakeLists.txt
   cmake/          dependency, Lua, shader-compilation and packaging modules
-  engine/         engine data: shaders/ (GLSL and the compiled .spv) and lua/ (the prelude)
+  engine/         engine data: shaders/ (GLSL and the compiled .spv), lua/ (the prelude) and fonts/
+                  (Roboto and Roboto Mono, OFL-1.1, licences beside them)
   samples/        sandbox2d/, sandbox3d/ and physics/ — example projects
   src/
-    reflect/ lua/ platform/          leaves
+    reflect/ lua/ platform/ text/    leaves
     scene/ serial/ components/       the world model
     physics/                         rigid bodies, collision and the solver
+    ui/core/ ui/framework/ ui/widgets/ ui/docking/  the UI framework the editor is built on
     gfx/ gfx/vk/ gfx/asset/ gfx/pass/  the renderer
     script/ core/                    the Lua host and the engine
-    dev/                             ImGui, panels, dockspace, play session; NOT part of `engine`
+    dev/                             editor panels, gizmos, history, play session; NOT part of `engine`
     player/ editor/                  the two executables
   tests/
     selftest/                        a project whose scene runs the Lua smoke test
@@ -140,24 +159,32 @@ depend on `scene` + `reflect` without dragging in Vulkan or Lua.
 ```
 reflect, platform          -> leaves (no engine includes)
 lua                        -> platform
+text                       -> platform
 scene                      -> reflect
 serial                     -> scene, reflect, platform
 components                 -> scene, reflect
 physics                    -> scene, reflect, lua
+ui/core                    -> text, platform
+ui/framework               -> ui/core, text, platform
+ui/widgets                 -> ui/framework, ui/core, text, platform
+ui/docking                 -> ui/widgets, ui/framework, ui/core, text, platform
 gfx/vk                     -> platform
 gfx/asset                  -> gfx/vk, scene
 gfx/pass                   -> gfx/asset, gfx/vk, scene, lua, platform
-gfx                        -> gfx/pass, gfx/asset, gfx/vk, scene, platform, lua
+gfx                        -> gfx/pass, gfx/asset, gfx/vk, ui/core, text, scene, platform, lua
 script                     -> scene, reflect, gfx, physics, platform, lua
 core                       -> all of the above
 dev                        -> core and all of the above (a separate target, see below)
 ```
 
 Everything down to `core` is the `engine` library. **`dev` is not** — it is its own target,
-`engine_dev`, and it holds everything editor-only: ImGui, the console, the Scene viewport with its
-editor camera and gizmos, the Explorer and Properties, the dockspace, the play session and the
-toolbar. It is the only place ImGui may be mentioned. `player` links `engine`; `editor` links
-`engine_dev`. If a `#include <imgui.h>` ever appears outside `src/dev/`, the split is broken.
+`engine_dev`, and it holds everything editor-only: the panels in `dev/panels/`, the Scene view with
+its editor camera and gizmos, the selection, the undo history and the play session. `player` links
+`engine`; `editor` links `engine_dev`.
+
+**The editor's UI is the engine's own** — see *The UI framework* below. `text` and the four `ui`
+layers are part of `engine`, because the game will use them too; `ui` never includes `scene`,
+`reflect` or `gfx`. `ctest` runs `nm` over `player` to prove no `cinder::dev` symbol reached it.
 
 **`platform` is the one leaf everything may reach for**, because `platform/Log.hpp` lives there and
 every layer logs, and `platform/Assets.hpp` is the only thing that turns a name into a path. That is
@@ -165,22 +192,20 @@ the only reason `serial`, `lua` and `gfx` have an edge to it, and neither header
 from the engine, so the edges cost nothing and create no cycle.
 
 `gfx` is split four ways and the seam that matters is `gfx/vk`: it knows Vulkan and knows nothing
-about this engine, which is what let `dev/ImGuiLayer` build the ImGui Vulkan backend on it without
-dragging in passes or assets. `gfx/asset` is what you draw with (`Assets`, `Texture`, `Mesh`),
+about this engine, so a new backend can be built on it without dragging in passes or assets. `gfx/asset` is what you draw with (`Assets`, `Texture`, `Mesh`),
 `gfx/pass` is how you draw it (`DrawPass` and its implementations, their pipelines, and `ViewCamera`), and
 `gfx` itself contains orchestration and frame resources: `Renderer`, `FrameTargets`, `RenderTarget`,
-`Capture`, `Overlay`, `CompositePipeline` and `RendererDrawList`. Nothing in a subdirectory includes
-its parent. `cmake/AssertLayers.cmake` enforces these include directions through CTest and rejects
-ImGui includes or symbols outside `dev`; `editor` may include the `dev/ImGuiLayer` adapter.
+`Capture`, `UiRenderer`, `CompositePipeline` and `RendererDrawList`. Nothing in a subdirectory includes
+its parent. `cmake/AssertLayers.cmake` enforces these include directions through CTest. `ui` is split
+the same way, and the same rule holds: `ui/core` never includes `ui/widgets`.
 
-Six placements are load-bearing and were each chosen to kill a cycle: `Glfw`/`Window`/`Input` live
+Five placements are load-bearing and were each chosen to kill a cycle: `Glfw`/`Window`/`Input` live
 in `platform`, not next to `Engine`; `DrawList` lives in `scene`, so the scene graph never includes
 `gfx`; `LuaApi` lives in `lua`, so a pass can bind its own functions without including the script
 host; `PropValue` lives in `scene`, not `serial`, so a node's attributes are scene data that the
 serializer, the Lua bindings and Properties each read without an edge to one another;
-`SceneObserver` is an interface in `scene` with its only implementation in `script`, so the tree
-can announce changes to Lua it cannot name; and `Overlay` is an abstract interface in
-`gfx` with its only implementation in `dev`, so the renderer can host an ImGui layer it cannot name.
+and `SceneObserver` is an interface in `scene` with its only implementation in `script`, so the tree
+can announce changes to Lua it cannot name.
 
 `LuaHost` takes `(Scene&, Input&, Renderer&, physics::World&, quit)` — never `Engine&` — for the same reason.
 
@@ -346,23 +371,16 @@ triangle (`CompositePipeline`) sampling that target into the swapchain framebuff
 descriptor pool and descriptor set — deliberately *not* routed through `Assets`, whose pool has no
 `FREE_DESCRIPTOR_SET` flag and would leak a set per resize. There is one target **per frame in
 flight**; a single one would be cleared by frame N+1 while frame N's composite still sampled it.
-`FrameTargets` owns the collection. Each frame owns its `RenderTarget` followed by a move-only
-`OverlayTexture`, so its overlay registration is released before the image. `Renderer` owns the
-overlay before the collection, which also preserves that order during constructor unwinding.
-The target uses `swapchain.format()` (sRGB) so the encode/decode round trip is identity; a UNORM
+`FrameTargets` owns the collection. The target uses `swapchain.format()` (sRGB) so the encode/decode round trip is identity; a UNORM
 target would visibly brighten everything.
 
 **The target follows the window unless the host embeds it.** `setViewportSize(w, h)`, in window
 points, detaches it: both targets are rebuilt at `w × h` times the framebuffer scale, the cameras are
-resized to `w × h`, and the present pass stops drawing the composite triangle — the overlay shows
-the target instead. While embedded, `FrameTargets::recreate` registers each target's image view with the
-overlay through `OverlayTexture` and `Overlay::addTexture`, and `Renderer::viewport()` returns the current frame's
-registration. The target's own descriptor set cannot stand in for it: ImGui's Vulkan backend binds
-user textures as `SAMPLED_IMAGE` sets with its own sampler, and validation rejects a
-combined-image-sampler set there. `FrameTargets::clear` removes the registrations and targets, and every rebuild sits
-behind a `vkDeviceWaitIdle`, so no set is freed while a frame still reads it. A size change rebuilds
-on the spot, so the set the panel draws with in that same frame is already the new one. `player`
-never calls it and composites exactly as before.
+resized to `w × h`, and the present pass stops drawing the composite triangle — the Scene view draws
+the target instead, as an image element the `UiRenderer` binds from the frame's own descriptor set.
+Every rebuild sits behind a `vkDeviceWaitIdle`, so no set is freed while a frame still reads it, and a
+size change rebuilds on the spot, so the set the panel draws with in that same frame is already the
+new one. `player` never calls it and composites exactly as before.
 
 The scene pass carries a second subpass dependency (`0 -> EXTERNAL`, color-write -> fragment-read)
 that orders the composite's sample after the scene's writes. Any new pass that reads a previous
@@ -419,8 +437,26 @@ an unknown mesh logs once and draws a cube. The clear colour and the 2D virtual 
 props, pushed to the renderer every frame through `DrawList::background` and `camera`, so a scene
 file carries them.
 
-`Renderer::capture(path)` delegates target readback and PNG encoding to `gfx/Capture`. It stalls the device — a debug tool, not a
-per-frame feature.
+**The UI draws in the present pass**, after the composite, through
+`gfx/UiRenderer` — never as a `DrawPass`, because every `DrawPass` records in the scene pass, which has
+depth. `Renderer::setUiPaint` installs a hook that `beginFrame` calls with a fresh `ui::ElementList`,
+in window points, every frame. Paint runs before the frame fence, so it fills CPU
+arrays only: `UiRenderer::prepare`, recorded before the scene pass, batches the list with the GPU-free
+`ui::batch`, fills that frame's growable host-visible buffers and uploads the dirty rectangles of the
+list's glyph atlas into R8 pages — barriers from `SHADER_READ_ONLY` so the glyphs already there survive,
+and dirty rectangles cleared at record time, because the `OUT_OF_DATE` path paints without recording.
+One pipeline draws everything with a mode per vertex: solid, textured, glyph coverage with a gamma
+term, a rounded-box SDF for fills and borders, and an opaque image for the scene target, so the Scene
+view is never blended by its own alpha. Output is premultiplied; a non-sRGB swapchain gets a
+manual encode, and a format change rebuilds the pipeline. Only elements that sample a texture break a
+batch, so boxes, lines and text on one glyph page draw in one call. `pixelsPerPoint` is the swapchain
+width over the window's width in points, measured whenever the swapchain is rebuilt and never
+in between, so a live resize cannot rasterize glyphs at a stream of fractional sizes.
+
+`Renderer::capture(path)` delegates target readback and PNG encoding to `gfx/Capture`.
+`requestWindowCapture(path)` copies the swapchain image of the next frame instead, adding `TRANSFER_SRC`
+to the swapchain the first time it is asked. Both stall the device — debug tools, not
+per-frame features.
 
 ## Physics
 
@@ -547,98 +583,199 @@ sphere and a `1 2 1` capsule collider cover; `Picking` still treats every `MeshP
 What is missing is tracked in `TODO.md`: joints, CCD, sensors, collision layers and convex hulls. So is the one that is not physics' fault — nothing interpolates
 transforms, so at `fixedHz` 60 on a 120 Hz display a falling body visibly steps.
 
-## The dev overlay
+## The UI framework
+
+**The editor runs on a retained UI of our own, shaped like Unreal's Slate and named our own way.** Widgets are objects that persist between frames; each frame the `Application` asks the
+root for its desired size bottom-up (`Widget::prepass`), arranges children top-down
+(`arrangeChildren` hands out a `Geometry`), and paints into the renderer's `ui::ElementList`. The same
+paint builds the `HitTester`, so input always routes against what was last drawn. Everything in
+`text` and `ui` runs headlessly: `tests/ui_harness.hpp` drives a real `Application` with a
+`HeadlessPlatform` clock and clipboard.
+
+Widgets are built with `ui::make<T>()`, which returns the widget's `Args`; chained setters fill them,
+`[child]` sets the content, `+ T::slot()` adds a slot, and the `Args` convert to `std::shared_ptr<T>`
+— or to any base — by building the widget. `.assign(ptr)` keeps a handle, the way `SAssignNew` does:
+
+```cpp
+auto toolbar = ui::make<HorizontalBox>()
+    + HorizontalBox::slot().autoWidth().padding(4)
+    [
+        ui::make<Button>().text("Play").onClicked([&] { session.requestPlay(); return Reply::handled(); })
+    ]
+    + HorizontalBox::slot().fill(1)
+    [
+        ui::make<Label>().assign(title_).text([&] { return history.title(); })
+    ];
+```
+
+A widget declares `struct Args : ui::Args<Args, Widget>` with `UI_ATTR`, `UI_ARG`, `UI_EVENT`,
+`UI_CONTENT` and `UI_SLOTS`, each taking an optional default, and implements `construct(const Args&)`.
+`ui::Args` adds visibility, enabled, tooltip and cursor to every widget. An `Attribute<T>` holds a value
+or a getter called when read, which is how a label follows `history.title()` without being told.
+`auto x = ui::make<T>()...` is the `Args`, not the widget; name the type or call `.build()`. Slot types
+live at namespace scope, because clang cannot use a nested class's member initializers inside the
+class that encloses it.
+
+**Input goes through `platform::Input`'s event queue, not its edge flags.** `setRecording(true)`
+switches the queue on; the host drains it with `takeEvents()` in the UI paint hook and hands the batch
+to `Application::processEvents`. Keys arrive with repeats and modifiers — ⌘ is
+`modifiers::PRIMARY` on macOS and Control elsewhere — characters arrive separately, cursor moves
+coalesce, and losing window focus synthesizes releases for the UI and the game alike. `consume()`
+never touches the queue: it runs on every idle frame, which is all of Edit mode. Routing is Slate's:
+
+- the mouse bubbles from the widget under the pointer up its path until a `Reply` says handled, or
+  goes straight to the widget that captured it; a press focuses the deepest focusable widget and
+  clears focus when there is none, which is how a text field commits when you click elsewhere;
+- keys bubble from the focused widget, and only a key nobody handled reaches the global
+  `CommandList`s, so a text field keeps ⌘Z for itself;
+- hover is recomputed after every paint, a second press within `DOUBLE_CLICK_TIME` and
+  `DOUBLE_CLICK_DISTANCE` is a double click, and `Reply::detectDrag` fires `onDragDetected` once the
+  pointer passes `DRAG_THRESHOLD`;
+- disabled widgets are still hit, so they can show tooltips, but no handler of theirs runs.
+
+`platform/InputScript` replays a text file of timed input — `12 move 40 60`, `13 click left`,
+`14 type Crate`, `15 tap enter`, `20 capture out.png`, `21 quit` — through `Input::inject` with the
+OS's events ignored. It is how a change to a panel is verified without a human at the keyboard, and
+`graphics_smoke` drives the whole editor the same way.
+
+**The editor panels live in `dev/panels/`**, namespace `cinder::dev::panels`, over the units that
+know nothing about any UI: `Toolbar` (play controls, save, undo and redo, the dirty marker, the
+⌘ shortcuts as a `CommandList`, and the Save / Don't Save / Cancel `Dialog`), `SceneView` (a `Viewport`
+whose client drives `EditorCamera`, `Picking`, `Manipulation` and `GizmoLines`), `Explorer`,
+`Properties`, `Console` and the docked `Layout`. The host's
+paint hook runs, in order: `processEvents` on the drained queue, each panel's `update`, `paint`, then
+`SceneView::afterPaint`, which sets the camera override and the game's input suppression — keyboard
+while the Scene has focus, mouse while it is hovered or holds the capture, both while the cursor is
+locked. A panel's `update` is also where log lines queued by the sink join the console, so nothing
+edits the widget tree while it is being painted. `SceneView` is not the viewport's client itself: the
+widget would own it and it would own the widget, so a small forwarding client breaks the cycle.
+
+**Popups belong to the `Application`, not to a widget.** `pushPopup(content, anchor, options)` places
+the content below, beside or at a point next to an anchor rectangle, flipped and clamped into the
+window, and paints it above the whole tree, so a popup is never clipped by the panel that opened it. A
+press outside every popup closes them all and goes nowhere else — it cannot pick in the Scene view on
+its way — while a press in a lower popup closes the ones above it, and a press on a popup's `owner`,
+such as the combo that opened it, is routed normally so the owner can toggle. An Escape that nothing
+handled closes the top popup, and focus returns to whatever held it before. A popup opened during a
+press keeps the focus it took. Every menu, combo list, submenu, context menu and colour picker is one of
+these. **Tooltips** are the `Application`'s too: after `TOOLTIP_DELAY` over the deepest widget with
+`toolTipText`, disabled ones included, it draws the text beside the cursor, unhittable; a press hides it
+until the pointer leaves that widget. Widgets that open popups remember the `Application` they opened
+on, so tests can ask `isOpen()` outside a frame. Anything that reads the hit grid during paint — a
+`tick` — finds it empty, because paint rebuilds it; a menu row therefore anchors its submenu to the
+rectangle it last painted.
+
+`Menu` is built by `MenuBuilder` — entries, checks, headings, separators, submenus opened by hover
+after `SUBMENU_DELAY` or by the arrow keys, and `command(list, command)`, which takes its label,
+shortcut, enabled state and check from the `CommandList`, so a menu entry and a shortcut can never
+disagree. `MenuAnchor` opens any widget as a popup, `ComboButton` and `ComboBox` sit on it, and
+`MenuBar` opens on press and follows the pointer across titles, so press, drag and release picks.
+`SpinBox` keeps its value exact: a drag adds `step` per point from the threshold on (Shift ten times,
+Alt a tenth), a click types into it, and what is typed is evaluated as arithmetic; an edit that
+changes nothing writes nothing, it clamps only to bounds it was given, and it shows three decimals but
+edits the shortest text that reads back as the same float. `ColorPicker` works in sRGB-encoded HSV
+over a linear value, keeping the hue through greys, and its square is a mesh of per-vertex colours
+fine enough that interpolating in linear space does not show. `Shortcut::label()` spells modifiers out
+(`Shift+Cmd+P`) until shaping falls back to a symbol font, because Roboto has no ⌘.
+
+**A `TreeView` builds only the rows that fit.** Items are ids, never pointers, so Play, Stop and Undo
+rebuilding every node cannot invalidate a row: each frame it flattens the expanded items through
+`treeItemsSource` and `onGetChildren`, realizes the slice in view — reusing the row a visible item
+already has — and drops the rest, so a thousand items cost a dozen widgets. A `ListView` is a
+`TreeView` with no children callback. Selection is the tree's own, or the panel's when
+`isItemSelected` is bound, which is how the Explorer will follow `Selection` with nothing to keep in
+sync. A press on the expander arrow only expands; a press on the row selects and arms a drag; a double
+click expands or calls `onMouseButtonDoubleClick`; a right press selects and opens
+`onContextMenuOpening` at the pointer; arrow keys move the selection, expand and collapse, and
+`reveal` expands an item's ancestors and scrolls it into view.
+
+**Drag and drop is the `Application`'s, like popups.** `Reply::beginDragDrop(operation)` from
+`onDragDetected` starts it; while it runs, moves route `onDragEnter`/`onDragOver`/`onDragLeave` to the
+widgets under the pointer and the release routes `onDrop`, with the operation's `decorator()` painted
+at the cursor, clamped into the window and never hit-tested. Escape or losing the window cancels, and
+either way `onDropped(accepted)` tells the operation what happened. A tree answers `onCanAcceptDrop`
+with the zone it will take — above, onto or below a row, or the empty space below them — and paints
+that as an outline or a line. `Application::navigate` is Tab: it walks the widgets that take keyboard
+focus in paint order, backwards with Shift, and stays inside the popup the focus is in. `setFocus`,
+`pushPopup` and the dismissals set the thread's current `Application` themselves, so a panel may call
+them from its `update`, outside the paint.
+
+**Docking is a layout tree, not widget surgery.** `ui/docking`'s `TabManager` holds a `LayoutNode`
+tree of splits and stacks, and every change — a drop, a close, a reopen — edits that tree and rebuilds
+the widgets from it, carrying the splitter sizes over first, so nothing has to reparent a live
+`Splitter`. A tab's panel is spawned once and cached by id, so re-docking the Scene view keeps its
+camera and its render target. Dragging a tab carries a `TabDragDrop`; the stack under the pointer
+answers with the side it would take — its middle joins the stack, an edge splits it — and paints that
+as a translucent overlay. Closing the last tab of a stack collapses the stack, and a split left with
+one child is replaced by that child. `fillWindowMenu` builds the Window menu: a check per registered
+tab, disabled for a tab that may not close, such as the Scene. A tab bar keeps its `DockTab` widgets
+across an activation, because rebuilding them mid-press would destroy the widget whose drag was just
+armed.
+
+Styles come from a `Theme` of named entries — `"Button"`, `"Button.Primary"`, `"Label.Mono"`,
+`"Color.Primary"` — built by `ui::defaultTheme()` in the colours of Unreal's dark editor. Colours are
+linear `ui::Color`s authored as sRGB hex; the swapchain encodes them.
+
+## The dev tools
 
 **The dev tools are a separate link target, not a runtime flag.** `player` links `engine` and
-`editor` links `engine_dev`, so ImGui is physically absent from the shipping binary — `nm
-build/player | grep -i imgui` returns nothing. There is no `--dev`: to get the tools, run `editor`. `tests` links `engine_dev` as well, so the dev units
-with no ImGui in them — `History`, `Picking`, `EditorCamera`, `Manipulator` — are tested headlessly.
+`editor` links `engine_dev`, so nothing editor-only is in the shipping binary. There is no `--dev`:
+to get the tools, run `editor`. `tests` links `engine_dev` as well, so `History`, `Picking`,
+`EditorCamera`, `Manipulator` and the panels themselves are tested headlessly.
 
-The seam is [`gfx/Overlay.hpp`](src/gfx/Overlay.hpp) — a pure interface (`beginFrame`, `record`,
-`discardFrame`, `setMinImageCount`, `addTexture`, `removeTexture`) plus an `OverlayFactory` typedef.
-`gfx` knows only that.
-`dev/ImGuiLayer` is the only implementation; it owns the ImGui context and both backends, and draws
-**inside the present pass**, where the player draws the composite triangle. It samples the scene
-render target and never writes it.
+The seam is `Renderer::setUiPaint(std::function<void(ui::ElementList&)>)`: `gfx` knows how to draw an
+element list and nothing about panels, `Application` or `scene`. `editor/main.cpp` installs a hook
+that drains `Input`'s event queue into `Application::processEvents`, updates each panel, paints the
+widget tree into the list, and lets the Scene view apply its camera override and input suppression.
+`player` never installs one, and what remains in the shipping binary is an empty `std::function`, a
+zero viewport size, an empty camera override and a couple of branches per frame. That is the whole
+cost of the seam.
 
-`Renderer`'s constructor takes an `OverlayFactory`. `player` passes nothing and the pointer stays
-null; `editor` passes `cinder::dev::overlayFactory()`. Panels are a second, separate hook —
-`setOverlayDraw(std::function<void()>)`, called from `beginFrame()` between `ImGui::NewFrame` and the
-`ImGui::Render` that happens during command recording. `editor/main.cpp` sets it to draw
-`dev/Toolbar`, `dev/Dockspace`, `dev/Viewport`, `dev/Explorer`, `dev/Properties` and `dev/Console`, in
-that order — the dockspace has to be submitted before the windows it hosts. The two hooks together are what keep `gfx` free of both
-ImGui and `script`.
+`Input` installs its GLFW callbacks in its constructor, and `Engine` declares `input_` **before**
+`renderer_`; keep that order, because the window has to exist and its callbacks have to be installed
+before anything else listens.
 
-What remains in the shipping binary is a null `unique_ptr`, an empty `std::function`, a zero
-viewport size, an empty camera override, and four branches per frame. That is the whole cost of the
-seam.
+The editor's layout is not persisted between runs yet: `TabManager` holds it in memory, and writing
+it to the project's `Saved/` is the "editor layout persisted between runs" item in `TODO.md`.
 
-Three things about the ImGui frame lifecycle are load-bearing:
+### The Scene view
 
-- `NewFrame` and `Render` must pair exactly once per frame. `drawFrame()` can bail out early on
-  `VK_ERROR_OUT_OF_DATE_KHR` without recording, so that path calls `discardFrame()` — otherwise the
-  next `NewFrame` asserts.
-- `Input` installs its GLFW callbacks in its constructor, and `Engine` declares `input_` **before**
-  `renderer_`. ImGui's GLFW backend therefore installs second and chains to `Input`'s callbacks.
-  Swapping that declaration order silently breaks engine input.
-- volk is handled by `IMGUI_IMPL_VULKAN_USE_VOLK`, set on the `imgui` target. The backend then uses
-  volk's loaded pointers directly and no `ImGui_ImplVulkan_LoadFunctions` shim is needed, because
-  `VkCtx` has already called `volkLoadInstance` and `volkLoadDevice` by the time the layer is built.
-
-ImGui creates its own descriptor pool via `DescriptorPoolSize`, for the same reason `RenderTarget`
-does not route through `Assets`: that pool has no `FREE_DESCRIPTOR_SET` flag. ImGui's does, which is
-what lets `removeTexture` free the Scene panel's sets on every resize.
-
-`io.IniFilename` is `nullptr`, so no `imgui.ini` is written yet. Turning it on is the "editor layout
-persisted between runs" item in `TODO.md`, and the file belongs in the project's `Saved/`.
-
-The toolbar is the main menu bar, not a window, so it takes no dock slot and the dockspace sits
-below it. Its shortcuts use `ImGui::Shortcut` with `ImGuiInputFlags_RouteGlobal`, so they work while
-the cursor is locked by the game. `ImGuiMod_Ctrl` is ⌘ on macOS.
-
-### The Scene viewport
-
-`dev/Viewport` is the "Scene" window. Each frame it measures its content region, hands the size to
-`Renderer::setViewportSize` and the region's top-left to `Input::setViewportOrigin`, then draws
-`Renderer::viewport()` over an `InvisibleButton` covering the region — the button is what stops a
-click on the scene from dragging the window. The order is load-bearing: `setViewportSize` may
-rebuild the targets, so `viewport()` is read after it.
+`dev/panels/SceneView` is the "Scene" tab: a `ui::Viewport` widget whose client it drives. Each frame
+the widget's arrange step hands its size to `Renderer::setViewportSize` and its top-left to
+`Input::setViewportOrigin`, and its paint draws `TextureRef::viewport()` — the frame's scene target,
+opaque — with the gizmo strokes over it. The order is load-bearing: `setViewportSize` may rebuild the
+targets, so the image is drawn after it.
 
 `Input::mouseX`/`mouseY` subtract that origin, so `engine.mousePosition()` and `screenToWorld` work
 in the panel's own points, top-left at zero, exactly as they do across the player's whole window.
 
-The viewport also owns input routing, through `Input::setSuppressed`. The game gets the **keyboard
-while the Scene window is focused** and the **mouse while the image is hovered**, or while a press that
-started on it is held. A locked cursor gives the game both and sets `ImGuiConfigFlags_NoMouse`: GLFW
-still reports a virtual cursor while disabled, and ImGui would otherwise click whatever panel it
-wanders over. Entering `Playing` focuses the window, so Play and Resume hand the game the keyboard
-without a click on the scene first. The Explorer, Properties and console open with
-`NoFocusOnAppearing`: every new window takes focus on its first frame, and all three are submitted
-after the Scene, so without the flag `editor --play` would start with the keyboard in the console. The flags are set while building
-frame N's overlay and read by frame N+1's updates.
+The panel also owns input routing, through `Input::setSuppressed`, applied in `afterPaint`. The game
+gets the **keyboard while the Scene view has focus** and the **mouse while it is hovered** or holds the
+mouse capture. A locked cursor gives the game both and turns the UI's mouse off with
+`Application::setMouseEnabled(false)`: GLFW still reports a virtual cursor while disabled, and the UI
+would otherwise hover whatever panel it wanders over. Entering `Playing` focuses the Scene view, so
+Play and Resume hand the game the keyboard without a click on the scene first.
 
-In Edit mode a **left click** on the image picks. `dev/Picking` is a CPU raycast with no ImGui in it:
-the click unprojects through the editor camera and hits every enabled `MeshPart` as the unit cube
-`Mesh::cube` is — which is every mesh there is — every enabled `Sprite` as the quad it draws, in its
-own plane and axes, and every enabled `Camera` within 10 points of where it projects, taking the
-nearest. A tie goes to the later node in render order, so of two sprites in one plane the one drawn
-on top wins. A disabled node hides its subtree, as it
-does from `Scene::render`. A click is a press and release that stays inside ImGui's drag threshold;
-past it, a left drag still looks around. A hit selects with `reveal`, so the Explorer, drawn later in
-the same frame, opens the node's ancestors and scrolls to its row; a miss clears the selection. A press
-on a gizmo handle comes first: it drags the handle, and its release never picks — see *Transform
-gizmos*.
+In Edit mode a **left click** on the image picks. `dev/Picking` is a CPU raycast that knows nothing
+about the UI: the click unprojects through the editor camera and hits every enabled `MeshPart` as the
+unit cube `Mesh::cube` is — which is every mesh there is — every enabled `Sprite` as the quad it draws,
+in its own plane and axes, and every enabled `Camera` within 10 points of where it projects, taking the
+nearest. A tie goes to the later node in render order, so of two sprites in one plane the one drawn on
+top wins. A disabled node hides its subtree, as it does from `Scene::render`. A click is a press and
+release that stays inside `Application::DRAG_THRESHOLD`; past it, a left drag still looks around. A hit
+selects with `reveal`, so the Explorer expands the node's ancestors and scrolls to its row; a miss
+clears the selection. A press on a gizmo handle comes first: it drags the handle, and its release never
+picks — see *Transform gizmos*.
 
-`dev/Dockspace` builds the default layout — Properties down the right, Console along the bottom,
-Explorer left of the Scene — with the `DockBuilder` API from `imgui_internal.h`, once, when the
-dockspace node does not exist yet. With no ini file,
-that is every launch.
+`dev/panels/Layout` builds the default dock layout — the Explorer left, the Scene view in the middle
+with the console under it, Properties right — as a `TabManager` layout of splits and stacks, and hands
+the toolbar the Window menu that reopens a closed tab.
 
 ### The editor camera
 
-In Edit mode the Scene window looks through `dev/EditorCamera`, not through the scene's `Camera`.
-`Viewport` hands its view to `Renderer::overrideCamera` on every Edit frame and calls `releaseCamera`
-in every other state, so Play and Pause show the game's camera. The override covers the whole frame,
+In Edit mode the Scene view looks through `dev/EditorCamera`, not through the scene's `Camera`.
+`SceneView::afterPaint` hands its view to `Renderer::overrideCamera` on every Edit frame and calls
+`releaseCamera` in every other state, so Play and Pause show the game's camera. The override covers the whole frame,
 sprites included, so a 2D scene is flown around exactly like a 3D one — Unity's Scene view with 2D
 mode off.
 
@@ -652,40 +789,39 @@ slightly smaller than it will in Play. Stop does not reset it: like Unity's Scen
 you left it. It has no roll and is not saved. `tests/editor_camera_test` pins both seeds.
 
 Its controls are not read from `Input` — they are an interaction with a panel, and `Input` belongs to
-the game — and they only act on the Scene image: the mouse comes from ImGui, and the keys are polled
-with `glfwGetKey`. **WASD** fly, **Q/E** go down and up and **Shift** goes faster whenever the Scene window
-is focused, with no button held. Hold the **right button** to look around, and turn the wheel while
-looking to change fly speed. A left drag that does not start on a handle also looks around; drag the **middle
-button**, or left with **Alt**, to pan; scroll with no button held to dolly. A press on the image
-makes the `InvisibleButton` the active item, so the drag keeps working past the panel's edge, and it
-focuses the Scene window, so fly keys never land in the console.
+the game — and they only act on the Scene image: the mouse comes from the widget's own events and the
+keys from `Application::keyHeld`, which the UI fills from the event queue. **WASD** fly, **Q/E** go down
+and up and **Shift** goes faster whenever the Scene view has focus, with no button held. Hold the
+**right button** to look around, and turn the wheel while looking to change fly speed. A left drag that
+does not start on a handle also looks around; drag the **middle button**, or left with **Alt**, to pan;
+scroll with no button held to dolly. A press captures the mouse, so the drag keeps working past the
+panel's edge, and focuses the Scene view, so fly keys never land in the console.
 
-`dev/Gizmos` draws every enabled `Camera` while editing. A perspective camera is a wireframe frustum:
+The Scene view draws every enabled `Camera` while editing. A perspective camera is a wireframe frustum:
 the near and far rectangles, the four edges joining them, and dimmer lines from the camera to the near
 corners. An orthographic camera is its near rectangle alone — every cross-section of its box is that
 rectangle, so it is exactly what the camera sees. The corners come from `ViewCamera::corners()` at the
 panel's size — the size Play renders at — and a test pins them to the clip volume of both
-projections. They are drawn on the Scene
-window's `ImDrawList`, projected through the editor camera and clipped in clip space against the near
-plane and the four sides before the divide, so a corner behind the editor camera cannot fold across
-the image. The sides are inset by `INSET`, so a camera the editor is looking straight through — as
+projections. `dev/GizmoLines` turns them into strokes in panel points, which the panel paints into the
+element list as anti-aliased lines and convex fills. They are projected through the editor camera and clipped in clip space against the near plane and the four sides before the divide, so a
+corner behind the editor camera cannot fold across the image. The sides are inset by `INSET`, so a camera the editor is looking straight through — as
 it is right after seeding — draws nothing, rather than a frame along the border that float noise
-leaves half-drawn. Being overlay, the gizmos draw over geometry, cost the player nothing, and never
-appear in a `--capture`.
+leaves half-drawn. Being UI, the gizmos draw over geometry, cost the player nothing, and never appear
+in a `--capture`.
 
-`drawSelection` outlines the selection on the same draw list, in orange: the twelve edges of a
+`selectionStrokes` outlines the selection the same way, in orange: the twelve edges of a
 `MeshPart`'s cube, a `Camera`'s gizmo, or a `Sprite`'s quad, all through the editor camera.
 
 ### Transform gizmos
 
-In Edit mode a spatial selection gets a gizmo, drawn over it by `Gizmos::drawManipulator`. The Scene
-window's menu bar picks the tool — **Move**, **Rotate** or **Scale**, or **1**, **2** and **3** while the
-Scene window is focused — and, for Move, **World** or **Local** axes, toggled with **X**. The tools are not
-Unity's W/E/R because WASD and Q/E fly the editor camera with no button held. `Viewport` polls the keys
-with `glfwGetKey`, as it does the fly keys, and edge-detects them itself.
+In Edit mode a spatial selection gets a gizmo, drawn over it from `manipulatorStrokes`. The Scene
+view's tool row picks the tool — **Move**, **Rotate** or **Scale**, or **1**, **2** and **3** while the
+Scene view has focus — and, for Move, **World** or **Local** axes, toggled with **X**. The tools are not
+Unity's W/E/R because WASD and Q/E fly the editor camera with no button held; the panel takes those
+keys from its own `onKeyDown`.
 
-`dev/GizmoGeometry` owns handle geometry and hit testing; `dev/Manipulator` owns drag state.
-Neither includes ImGui:
+`dev/GizmoGeometry` owns handle geometry and hit testing; `dev/Manipulator` owns drag state. Neither
+knows about the UI:
 
 - `gizmoFor` places the gizmo at the node's world position, `GIZMO_POINTS` long on screen at that depth,
   so it keeps its size at any distance. There is none behind the editor camera, or under a parent whose
@@ -722,9 +858,9 @@ length; the centre square multiplies all three by the drag right and up.
 Holding **Ctrl — ⌘ on macOS** — snaps the change, not the value: `MOVE_SNAP` units along each dragged
 axis, `ROTATE_SNAP_DEGREES`, and factors in steps of `SCALE_SNAP`. **Esc** cancels a drag.
 
-`Viewport` hit-tests on hover and on the press that activates its `InvisibleButton`, through the editor
-camera as it was last drawn. A press on a handle starts the drag, stops the left button looking around
-and keeps the release from picking, until the button deactivates. Every write goes through `PropDef`, as
+The panel hit-tests on hover and on the press, through the editor camera as it was last drawn. A press
+on a handle starts the drag, stops the left button looking around and keeps the release from picking,
+until the capture is released. Every write goes through `PropDef`, as
 Properties' writes do, and calls `History::touch`, so a drag is one undo step labelled like "Move Box",
 and a cancelled drag saves to the same text and records nothing. While the mouse is still where it was
 pressed, a drag writes the start values themselves: arm64 fuses multiply-adds, so `cross(v, v)` is not
@@ -738,35 +874,39 @@ through `loadScene`, and ids are what `SceneCodec` round-trips, so a selection s
 `resolve` returns null — and forgets the id — once the node is gone or marked destroyed, so a node
 spawned during Play drops out of the selection on Stop.
 
-`dev/Explorer` draws the whole tree, scripts included. A row is the node's name followed, dimmed, by
-its class — or its file name, for a `Script` — and a node disabled itself or through a parent is
-dimmed unless it is selected. A click selects and a click on empty space clears. **"+"** lists every
-registered class and inserts one under the selection, or at the root. Right-clicking a row offers
-Insert, Duplicate (`Scene::clone`) and Delete; dragging a row onto another reparents it, cycles
-refused, and dropping it on empty space makes it a root. Delete or Backspace removes the selection
-while the Explorer has focus and no text field is active. A filter turns the tree into a flat list of
-the nodes whose name or class matches.
+`dev/panels/Explorer` is a `TreeView` over node **ids**, so it builds only the rows in view and
+nothing it holds can dangle: every row reads its node back out of the scene each frame. A row is the
+node's name followed, dimmed, by its class — or its file name, for a `Script` — and a node disabled
+itself or through a parent is dimmed unless it is selected. Selection is bound straight to
+`dev/Selection` through `isItemSelected`, so picking in the Scene view and clicking a row are the same
+state with nothing to keep in sync. A click selects and a click on empty space clears. **"+"** lists
+every registered class and inserts one under the selection, or at the root. Right-clicking a row
+offers Insert, Duplicate (`Scene::clone`) and Delete; dragging a row onto another reparents it, cycles
+refused, and dropping it below the rows makes it a root. Delete or Backspace removes the selection
+while the tree has focus — a focused text field keeps the key for itself. A filter turns the tree into
+a flat list of the nodes whose name or class matches, with no expanders.
 
-Structural edits are recorded during the tree walk and applied after it, so the walk never iterates a
-list it is changing. Delete uses `destroyNow`, because Edit mode never runs the `Scene::update` that
+Delete uses `destroyNow`, because Edit mode never runs the `Scene::update` that
 flushes a deferred destroy. An inserted or duplicated node becomes the selection. During Play the same
 edits act on the running game and are discarded by Stop.
 
-`dev/Properties` manages panel state and history; `dev/PropertyWidgets` edits reflected properties
-and attribute values. Neither needs per-node-class widget code. It shows the node's name, class and id, a Transform section for
-spatial nodes, the class's props and the attributes. A prop gets one widget per `PropType`: drags for
-numbers and vectors, a checkbox, a text field, and a combo filled from `PropDef::options()` for enums.
-Every write goes through `PropDef`, so clamping, in-place vector writes and `propChanged` behave
-exactly as they do from Lua and from the serializer. `step` is the drag speed; bounds reach ImGui only
-when the prop declares them, and `NoRoundToFormat` stops a drag rounding a value to its display
-precision. A prop declared with `CINDER_PROP_COLOR` gets a colour editor, and one declared with `CINDER_PROP_ANGLE`
-— `Transform.rotation` — is dragged in degrees and written back in radians, so Lua and scene files never
-see degrees. Text commits on
-`IsItemDeactivatedAfterEdit`, not per keystroke, so a texture path does not try to load every prefix
-of itself.
+`dev/panels/Properties` builds its rows from the prop list, with no per-node-class widget code: the
+node's name, class and id, a Transform section for spatial nodes, the class's props and the
+attributes, each section an `ExpandableArea` of name | value rows. The widget comes from the
+`PropType` and the `PropHint`: a `SpinBox` for numbers, a `VectorInputBox` for vectors, a `CheckBox`,
+a `TextBox`, a `ComboBox` filled from `PropDef::options()` for enums, and a `ColorBlock` that opens a
+picker for `CINDER_PROP_COLOR`. Every write goes through `PropDef`, so clamping, in-place vector
+writes and `propChanged` behave exactly as they do from Lua and from the serializer. `step` is the
+drag speed; bounds are applied only when the prop declares them, and a spin box never rounds a value
+to the three decimals it shows. `CINDER_PROP_ANGLE` — `Transform.rotation` — is dragged in degrees and
+written back in radians, so Lua and scene files never see degrees. Text commits on Enter or focus
+loss, not per keystroke, so a texture path does not try to load every prefix of itself.
+
+The panel holds the selected node's **id** and nothing else, and rebuilds its rows only when the
+selection or the attribute names change, so a drag is not fighting a fresh widget tree every frame.
 
 The **Attributes** section lists each attribute with a remove button, and **Add Attribute…** opens a
-popup for a name and a type. Every attribute number is edited as a float drag, integers included:
+popup for a name and a type. Every attribute number is edited as a float, integers included:
 `TextLoad` reads `40` back as an integer and `40.5` as a float, so an integer drag could never move a
 saved `40` to `40.5`. Writes go through `Node::setAttribute`, so an edit during Play fires the game's
 changed signals.
@@ -783,8 +923,9 @@ undoable: a prop, an attribute, an insert, a delete, a reparent and a console li
 kind of step, which is what makes a new `CINDER_PROP` undoable with zero editor code. It costs one
 scene save per finished edit and one load per undo.
 
-Panels and gizmos never push steps. They call `touch(label, selection)` when they write, and `dev/Toolbar` calls
-`settle` at the top of every overlay frame, which commits only once no ImGui item is active. A drag that
+Panels and gizmos never push steps. They call `touch(label, selection)` when they write, and
+`dev/panels/Toolbar` calls `settle(app.isInteracting())` in its `update`, which commits only once
+nothing holds the mouse capture, no text is being edited and no drag-and-drop is in flight. A drag that
 writes on forty frames is therefore one step, carrying the label and selection of its first frame, and
 an edit that saves to the same text as before records nothing. `MAX_STEPS` is 100.
 
@@ -792,7 +933,7 @@ Undo calls the codec directly, not `Engine::loadScene`, so it does not reboot Lu
 globals survive. That is only safe because history is enabled in Edit mode alone, where no script has
 started: during Play, `touch`, `settle` and the buttons do nothing, and Stop discards Play's edits anyway.
 Ids round-trip through the codec, so the selection stored with the step, and the Explorer's open rows,
-which ImGui keys by id, come back with it.
+which the tree keys by id, come back with it.
 
 The document is the text of the last commit, and it is **dirty** while it differs from the text last
 saved or opened — so undoing back to the saved state is clean again. Save commits a pending edit and
@@ -806,8 +947,7 @@ the other shortcuts, but an active text field claims ⌘Z for its own undo first
 
 Everything prints through `platform/Log.hpp` — `logInfo` / `logError`, printf-style and
 `__attribute__((format))`-checked. Both always write to stdout/stderr, and additionally to a
-`LogSink` if one is installed. `dev/Console` installs that sink in its constructor and clears it in
-its destructor, which is how `[lua]`/`[vk]`/`[serial]` output reaches the panel. The sink receives
+`LogSink` if one is installed. `dev/panels/Console` installs that sink in its constructor and clears it in its destructor, which is how `[lua]`/`[vk]`/`[serial]` output reaches the panel. The sink receives
 the line **without its trailing newline**. `Log` itself stays in `engine`: the sink is the seam a
 shipping build will use for a crash log file, so it is not a dev-only facility.
 
@@ -818,8 +958,8 @@ else, with `[console]` as the chunk name. In Edit mode that state holds the prel
 so the console can build a scene — `scene:create`, `node:setAttribute`, `node:add("Script")` — without starting
 any of it, and Save writes the result.
 
-Typing in the console does not also drive the game, because the console has focus and the Scene
-window does not — see *The Scene viewport*.
+Typing in the console does not also drive the game, because the console has focus and the Scene view
+does not — see *The Scene view*.
 
 ## Scripting
 
@@ -1130,7 +1270,7 @@ case`: macOS is case-insensitive by default, and the same project would not find
 case-sensitive system.
 
 `cmake --build build --target package_game` builds `player` and runs `cmake/PackageGame.cmake`, which
-stages `build/dist/<name>/` as `player`, `engine/shaders/*.spv`, `engine/lua/*.lua` and `project/`
+stages `build/dist/<name>/` as `player`, `engine/shaders/*.spv`, `engine/lua/*.lua`, `engine/fonts/` and `project/`
 holding the `.cinder` file, `Config/`, `Content/` and `Source/` — never `Saved/` or anything else in
 the folder. `<name>` is the `.cinder` file's stem. The cache variable `CINDER_PACKAGE_PROJECT` picks
 the project, defaulting to `samples/sandbox2d`.

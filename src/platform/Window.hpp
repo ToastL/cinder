@@ -1,7 +1,13 @@
 #pragma once
 
-#include <string>
+#include "platform/Cursor.hpp"
 
+#include <array>
+#include <cstddef>
+#include <string>
+#include <string_view>
+
+struct GLFWcursor;
 struct GLFWwindow;
 
 namespace cinder::platform {
@@ -29,12 +35,19 @@ public:
     bool wasResized() const { return resized_; }
     void clearResized() { resized_ = false; }
 
+    std::string clipboard() const;
+    void setClipboard(std::string_view text);
+    void setCursor(CursorShape shape);
+    float contentScale() const;
+
     void attach(Input* input) { input_ = input; }
     Input* input() const { return input_; }
 
 private:
     GLFWwindow* handle_ = nullptr;
     Input* input_ = nullptr;
+    std::array<GLFWcursor*, static_cast<std::size_t>(CursorShape::Count)> cursors_{};
+    CursorShape cursor_ = CursorShape::Arrow;
     int width_ = 0;
     int height_ = 0;
     int logicalWidth_ = 0;

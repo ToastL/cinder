@@ -9,7 +9,8 @@
 
 namespace cinder::gfx::vk {
 
-Swapchain::Swapchain(const VkCtx& ctx, const cinder::platform::Window& window) : ctx_(ctx) {
+Swapchain::Swapchain(const VkCtx& ctx, const cinder::platform::Window& window, VkImageUsageFlags extraUsage)
+    : ctx_(ctx) {
     VkSurfaceCapabilitiesKHR caps{};
     check(vkGetPhysicalDeviceSurfaceCapabilitiesKHR(ctx.physicalDevice(), ctx.surface(), &caps),
           "vkGetPhysicalDeviceSurfaceCapabilitiesKHR");
@@ -62,7 +63,7 @@ Swapchain::Swapchain(const VkCtx& ctx, const cinder::platform::Window& window) :
     info.imageColorSpace = chosen.colorSpace;
     info.imageExtent = extent_;
     info.imageArrayLayers = 1;
-    info.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
+    info.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | (extraUsage & caps.supportedUsageFlags);
     info.preTransform = caps.currentTransform;
     info.compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
     info.presentMode = presentMode;
@@ -89,6 +90,13 @@ Swapchain::Swapchain(const VkCtx& ctx, const cinder::platform::Window& window) :
     for (VkImage image : images_) {
         views_.push_back(images::view(ctx, image, format_, VK_IMAGE_ASPECT_COLOR_BIT));
     }
+}
+
+bool Swapchain::supports(const VkCtx& ctx, VkImageUsageFlags usage) {
+    VkSurfaceCapabilitiesKHR caps{};
+    check(vkGetPhysicalDeviceSurfaceCapabilitiesKHR(ctx.physicalDevice(), ctx.surface(), &caps),
+          "vkGetPhysicalDeviceSurfaceCapabilitiesKHR");
+    return (caps.supportedUsageFlags & usage) == usage;
 }
 
 void Swapchain::createFramebuffers(VkRenderPass renderPass) {

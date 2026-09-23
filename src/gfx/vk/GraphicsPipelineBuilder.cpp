@@ -18,8 +18,9 @@ GraphicsPipelineBuilder& GraphicsPipelineBuilder::shaders(std::string vert, std:
     return *this;
 }
 
-GraphicsPipelineBuilder& GraphicsPipelineBuilder::pushConstants(uint32_t bytes) {
+GraphicsPipelineBuilder& GraphicsPipelineBuilder::pushConstants(uint32_t bytes, VkShaderStageFlags stages) {
     pushConstantBytes_ = bytes;
+    pushConstantStages_ = stages;
     return *this;
 }
 
@@ -56,6 +57,12 @@ GraphicsPipelineBuilder& GraphicsPipelineBuilder::alphaBlend() {
     return *this;
 }
 
+GraphicsPipelineBuilder& GraphicsPipelineBuilder::premultipliedBlend() {
+    alphaBlend_ = true;
+    premultiplied_ = true;
+    return *this;
+}
+
 GraphicsPipelineBuilder& GraphicsPipelineBuilder::frontFace(VkFrontFace face) {
     frontFace_ = face;
     return *this;
@@ -63,7 +70,7 @@ GraphicsPipelineBuilder& GraphicsPipelineBuilder::frontFace(VkFrontFace face) {
 
 std::unique_ptr<GraphicsPipeline> GraphicsPipelineBuilder::build() {
     VkPushConstantRange push{};
-    push.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
+    push.stageFlags = pushConstantStages_;
     push.offset = 0;
     push.size = pushConstantBytes_;
 
@@ -145,7 +152,7 @@ std::unique_ptr<GraphicsPipeline> GraphicsPipelineBuilder::build() {
             | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
     attachment.blendEnable = alphaBlend_ ? VK_TRUE : VK_FALSE;
     if (alphaBlend_) {
-        attachment.srcColorBlendFactor = VK_BLEND_FACTOR_SRC_ALPHA;
+        attachment.srcColorBlendFactor = premultiplied_ ? VK_BLEND_FACTOR_ONE : VK_BLEND_FACTOR_SRC_ALPHA;
         attachment.dstColorBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
         attachment.colorBlendOp = VK_BLEND_OP_ADD;
         attachment.srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE;

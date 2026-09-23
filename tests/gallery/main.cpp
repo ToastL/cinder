@@ -1,0 +1,483 @@
+#include "core/Engine.hpp"
+#include "core/ProjectConfig.hpp"
+#include "platform/Assets.hpp"
+#include "platform/Glfw.hpp"
+#include "platform/InputScript.hpp"
+#include "platform/Log.hpp"
+#include "text/FontSet.hpp"
+#include "text/Shaper.hpp"
+#include "ui/core/Args.hpp"
+#include "ui/core/ElementList.hpp"
+#include "ui/framework/Application.hpp"
+#include "ui/framework/WindowPlatform.hpp"
+#include "ui/widgets/Border.hpp"
+#include "ui/widgets/BoxPanel.hpp"
+#include "ui/widgets/Button.hpp"
+#include "ui/widgets/ColorPicker.hpp"
+#include "ui/widgets/ComboBox.hpp"
+#include "ui/widgets/DefaultTheme.hpp"
+#include "ui/widgets/ExpandableArea.hpp"
+#include "ui/widgets/Label.hpp"
+#include "ui/widgets/Menu.hpp"
+#include "ui/widgets/ScrollBox.hpp"
+#include "ui/widgets/SizeBox.hpp"
+#include "ui/widgets/SpinBox.hpp"
+#include "ui/widgets/Splitter.hpp"
+#include "ui/widgets/TextField.hpp"
+#include "ui/widgets/TreeView.hpp"
+#include "ui/widgets/VectorInputBox.hpp"
+#include "ui/widgets/Viewport.hpp"
+
+#include <GLFW/glfw3.h>
+
+#include <glm/trigonometric.hpp>
+
+#include <algorithm>
+#include <array>
+#include <cmath>
+#include <map>
+#include <cstdio>
+#include <cstdlib>
+#include <cstring>
+#include <exception>
+#include <optional>
+#include <string>
+#include <vector>
+
+using namespace cinder::ui;
+using cinder::text::FontStyle;
+
+namespace {
+
+class Drawing : public LeafWidget {
+public:
+    struct Args : ::cinder::ui::Args<Args, Drawing> {};
+
+    void construct(const Args&) {}
+
+protected:
+    glm::vec2 computeDesiredSize(float) const override { return {420.0f, 520.0f}; }
+
+    int onPaint(const PaintArgs&, const Geometry& geometry, ElementList& list, int layer, const PaintStyle& style,
+                bool) const override {
+        Application& app = Application::get();
+        const Theme& theme = app.theme();
+        const glm::vec2 origin = geometry.position;
+        const auto write = [&](glm::vec2 at, std::string_view text, float size, Color color) {
+            list.text(layer + 2, origin + at, cinder::text::shape(app.fonts().get(FontStyle::Regular), text, size),
+                      color, app.atlas());
+        };
+
+        const std::array<float, 4> radii = {0.0f, 4.0f, 8.0f, 20.0f};
+        for (std::size_t i = 0; i < radii.size(); ++i) {
+            const Rect box = Rect::fromSize(origin + glm::vec2(static_cast<float>(i) * 96.0f, 0.0f), {84.0f, 40.0f});
+            list.box(layer, box, BoxStyle{theme.color("Color.Dropdown"), theme.color("Color.Outline"), 1.0f,
+                                          glm::vec4(radii[i])});
+            write({static_cast<float>(i) * 96.0f + 8.0f, 25.0f}, "r " + std::to_string(static_cast<int>(radii[i])),
+                  11.0f, theme.color("Color.ForegroundDim"));
+        }
+        for (int i = 0; i < 3; ++i) {
+            const Color color = theme.color(i == 0 ? "Color.AxisX" : (i == 1 ? "Color.AxisY" : "Color.AxisZ"));
+            list.box(layer + 1 + i, Rect::fromSize(origin + glm::vec2(i * 36.0f, 60.0f + i * 8.0f), {60.0f, 40.0f}),
+                     BoxStyle{color.withAlpha(0.5f), Color::transparent(), 0.0f, glm::vec4(6.0f)});
+        }
+
+        const std::array<float, 5> widths = {0.5f, 1.0f, 1.5f, 2.5f, 4.0f};
+        for (std::size_t i = 0; i < widths.size(); ++i) {
+            const float x = origin.x + 160.0f + static_cast<float>(i) * 30.0f;
+            const std::array<glm::vec2, 2> line = {glm::vec2(x, origin.y + 60.0f), glm::vec2(x + 20.0f, origin.y + 150.0f)};
+            list.lines(layer, line, theme.color("Color.ForegroundBright"), widths[i]);
+        }
+
+        std::vector<glm::vec2> circle;
+        const glm::vec2 centre = origin + glm::vec2(360.0f, 105.0f);
+        for (int i = 0; i < 48; ++i) {
+            const float angle = glm::radians(static_cast<float>(i) * 7.5f);
+            circle.push_back(centre + glm::vec2(std::cos(angle), std::sin(angle)) * 40.0f);
+        }
+        list.lines(layer, circle, theme.color("Color.Warning"), 1.5f, true);
+
+        const glm::vec2 base = origin + glm::vec2(40.0f, 230.0f);
+        const std::array<glm::vec2, 3> triangle = {base + glm::vec2(0.0f, -40.0f), base + glm::vec2(40.0f, 30.0f),
+                                                   base + glm::vec2(-40.0f, 30.0f)};
+        list.polygon(layer, triangle, theme.color("Color.AxisX"));
+
+        const glm::vec2 pivot = origin + glm::vec2(230.0f, 230.0f);
+        const float angle = glm::radians(20.0f);
+        Transform2D turn;
+        turn.linear = glm::mat2(std::cos(angle), std::sin(angle), -std::sin(angle), std::cos(angle));
+        list.pushTransform(Transform2D::translate(-pivot).then(turn).then(Transform2D::translate(pivot)));
+        list.box(layer, Rect::fromSize(pivot - glm::vec2(70.0f, 30.0f), {140.0f, 60.0f}),
+                 BoxStyle{theme.color("Color.Dropdown"), theme.color("Color.Primary"), 1.5f, glm::vec4(8.0f)});
+        write({230.0f - 50.0f, 236.0f}, "Rotated 20\xC2\xB0", 14.0f, style.foreground);
+        list.popTransform();
+
+        const Rect scene = Rect::fromSize(origin + glm::vec2(0.0f, 310.0f), {200.0f, 110.0f});
+        list.image(layer, scene, TextureRef::viewport(), Color::white(), glm::vec2(0.0f), glm::vec2(1.0f), true);
+        write({210.0f, 360.0f}, "scene target, opaque", 12.0f, theme.color("Color.ForegroundDim"));
+        return layer + 4;
+    }
+};
+
+std::shared_ptr<Widget> section(std::string title, std::shared_ptr<Widget> content) {
+    return make<VerticalBox>()
+           + VerticalBox::slot().autoHeight().padding(Margin(0.0f, 10.0f, 0.0f, 6.0f))
+                     [make<Label>().text(std::move(title)).textStyle("Label.Header")]
+           + VerticalBox::slot().autoHeight()[std::move(content)];
+}
+
+struct Outline {
+    std::map<ItemId, std::string> names;
+    std::map<ItemId, std::vector<ItemId>> kids;
+    std::map<ItemId, ItemId> parents;
+    std::vector<ItemId> roots;
+    ItemId next = 1;
+
+    ItemId add(std::string name, ItemId parent) {
+        const ItemId item = next++;
+        names[item] = std::move(name);
+        if (parent == 0) roots.push_back(item);
+        else {
+            kids[parent].push_back(item);
+            parents[item] = parent;
+        }
+        return item;
+    }
+
+    std::vector<ItemId> childrenOf(ItemId item) const {
+        const auto found = kids.find(item);
+        return found == kids.end() ? std::vector<ItemId>{} : found->second;
+    }
+
+    std::optional<ItemId> parentOf(ItemId item) const {
+        const auto found = parents.find(item);
+        return found == parents.end() ? std::nullopt : std::optional<ItemId>(found->second);
+    }
+
+    bool under(ItemId item, ItemId ancestor) const {
+        for (std::optional<ItemId> at = parentOf(item); at; at = parentOf(*at)) {
+            if (*at == ancestor) return true;
+        }
+        return false;
+    }
+
+    void detach(ItemId item) {
+        if (const std::optional<ItemId> old = parentOf(item)) {
+            std::vector<ItemId>& list = kids[*old];
+            list.erase(std::remove(list.begin(), list.end(), item), list.end());
+            parents.erase(item);
+        } else {
+            roots.erase(std::remove(roots.begin(), roots.end(), item), roots.end());
+        }
+    }
+
+    bool reparent(ItemId item, std::optional<ItemId> parent) {
+        if (parent && (*parent == item || under(*parent, item))) return false;
+        detach(item);
+        if (parent) {
+            kids[*parent].push_back(item);
+            parents[item] = *parent;
+        } else {
+            roots.push_back(item);
+        }
+        return true;
+    }
+
+    void remove(ItemId item) {
+        for (const ItemId child : childrenOf(item)) remove(child);
+        kids.erase(item);
+        detach(item);
+        names.erase(item);
+    }
+};
+
+std::shared_ptr<Widget> row(std::string label, std::shared_ptr<Widget> editor) {
+    return make<HorizontalBox>()
+           + HorizontalBox::slot().autoWidth().vAlign(VAlign::Center).padding(Margin(0.0f, 0.0f, 8.0f, 0.0f))
+                 [make<SizeBox>().widthOverride(90.0f)[make<Label>().text(std::move(label))]]
+           + HorizontalBox::slot().fill(1.0f)[std::move(editor)];
+}
+
+struct Gallery {
+    int clicks = 0;
+    bool grid = true;
+    bool snap = false;
+    std::string name = "Box";
+    std::string committed;
+    std::string status = "ready";
+    double fov = 60.0;
+    double count = 3.0;
+    double yaw = 45.0;
+    glm::dvec3 position{1.5, 0.0, -6.0};
+    std::string projection = "perspective";
+    Color tint{0.9f, 0.35f, 0.1f, 0.8f};
+    std::shared_ptr<ScrollBox> log;
+    std::shared_ptr<TreeView> tree;
+    Outline outline;
+
+    std::shared_ptr<Widget> outliner() {
+        for (int folder = 1; folder <= 8; ++folder) {
+            const ItemId parent = outline.add("Folder " + std::to_string(folder), 0);
+            for (int child = 1; child <= 20; ++child) {
+                outline.add("Crate " + std::to_string(folder) + "." + std::to_string(child), parent);
+            }
+        }
+        return make<TreeView>()
+                .assign(tree)
+                .treeItemsSource([this] { return outline.roots; })
+                .onGetChildren([this](ItemId item) { return outline.childrenOf(item); })
+                .onGetParent([this](ItemId item) { return outline.parentOf(item); })
+                .onGenerateRow([this](ItemId item) {
+                    return make<HorizontalBox>()
+                           + HorizontalBox::slot().autoWidth().vAlign(VAlign::Center)
+                                 [make<Label>().text([this, item] { return outline.names.count(item) ? outline.names.at(item) : std::string(); })]
+                           + HorizontalBox::slot().fill(1.0f).vAlign(VAlign::Center).padding(Margin(6.0f, 0.0f, 0.0f, 0.0f))
+                                 [make<Label>()
+                                      .text([this, item] { return outline.childrenOf(item).empty() ? "MeshPart" : "Folder"; })
+                                      .textStyle("Label.Small")
+                                      .colorAndOpacity(Attribute<Color>([] { return Application::get().theme().color("Color.ForegroundDim"); }))];
+                })
+                .onSelectionChanged([this](std::optional<ItemId> item, SelectInfo) {
+                    status = item ? "selected " + outline.names[*item] : "selection cleared";
+                })
+                .onContextMenuOpening([this](std::optional<ItemId> item) -> std::shared_ptr<Widget> {
+                    MenuBuilder menu;
+                    menu.entry("Add Child", [this, item] { outline.add("New", item.value_or(0)); tree->refresh(); })
+                            .entry("Delete", [this, item] {
+                                if (item) outline.remove(*item);
+                                tree->refresh();
+                            })
+                            .enabledIf([item] { return item.has_value(); });
+                    return menu.build();
+                })
+                .onDragDetected([this](ItemId item) -> std::shared_ptr<DragDropOperation> {
+                    return std::make_shared<ItemDragDrop>(std::vector<ItemId>{item}, outline.names[item]);
+                })
+                .onCanAcceptDrop([this](const DragDropEvent& event, std::optional<ItemId> item, DropZone) -> std::optional<DropZone> {
+                    const auto* carried = dynamic_cast<const ItemDragDrop*>(event.operation.get());
+                    if (carried == nullptr) return std::nullopt;
+                    const ItemId dragged = carried->items().front();
+                    if (item && (*item == dragged || outline.under(*item, dragged))) return std::nullopt;
+                    return DropZone::Onto;
+                })
+                .onAcceptDrop([this](const DragDropEvent& event, std::optional<ItemId> item, DropZone) {
+                    const auto* carried = dynamic_cast<const ItemDragDrop*>(event.operation.get());
+                    if (carried == nullptr) return;
+                    if (outline.reparent(carried->items().front(), item)) {
+                        status = "moved " + outline.names[carried->items().front()];
+                        tree->refresh();
+                    }
+                });
+    }
+
+    std::shared_ptr<Widget> menus() {
+        return make<MenuBar>()
+                .menu("File", [this](MenuBuilder& menu) {
+                    menu.entry("New Scene", [this] { status = "File > New Scene"; }, "Cmd+N")
+                            .entry("Save", [this] { status = "File > Save"; }, "Cmd+S")
+                            .entry("Save As...", [] {})
+                            .enabledIf([] { return false; })
+                            .separator()
+                            .subMenu("Recent", [this](MenuBuilder& recent) {
+                                recent.entry("sandbox2d", [this] { status = "Recent > sandbox2d"; })
+                                        .entry("sandbox3d", [this] { status = "Recent > sandbox3d"; })
+                                        .entry("physics", [this] { status = "Recent > physics"; });
+                            });
+                })
+                .menu("View", [this](MenuBuilder& menu) {
+                    menu.heading("Scene")
+                            .check("Show Grid", [this] { grid = !grid; }, [this] { return grid; })
+                            .check("Snap", [this] { snap = !snap; }, [this] { return snap; }, "Cmd+G");
+                });
+    }
+
+    std::shared_ptr<Widget> editors() {
+        return make<VerticalBox>()
+               + VerticalBox::slot().autoHeight().padding(Margin(0.0f, 0.0f, 0.0f, 4.0f))
+                     [row("Field of view", make<SpinBox>()
+                                                   .value([this] { return fov; })
+                                                   .minValue(1.0)
+                                                   .maxValue(179.0)
+                                                   .step(0.5)
+                                                   .units("\xC2\xB0")
+                                                   .onValueChanged([this](double value) { fov = value; })
+                                                   .toolTipText("Drag, or click to type. Bounds 1 to 179."))]
+               + VerticalBox::slot().autoHeight().padding(Margin(0.0f, 0.0f, 0.0f, 4.0f))
+                     [row("Count", make<SpinBox>()
+                                           .value([this] { return count; })
+                                           .integral(true)
+                                           .onValueChanged([this](double value) { count = value; }))]
+               + VerticalBox::slot().autoHeight().padding(Margin(0.0f, 0.0f, 0.0f, 4.0f))
+                     [row("Position", make<VectorInputBox>()
+                                              .value([this](int index) { return position[index]; })
+                                              .onComponentChanged([this](int index, double value) { position[index] = value; }))]
+               + VerticalBox::slot().autoHeight().padding(Margin(0.0f, 0.0f, 0.0f, 4.0f))
+                     [row("Projection", make<ComboBox>()
+                                                .options(std::vector<std::string>{"perspective", "orthographic"})
+                                                .selectedOption([this] { return projection; })
+                                                .onSelectionChanged([this](const std::string& option) { projection = option; }))]
+               + VerticalBox::slot().autoHeight()
+                     [row("Tint", make<HorizontalBox>()
+                                          + HorizontalBox::slot().autoWidth()
+                                                [make<ColorBlock>()
+                                                     .color([this] { return tint; })
+                                                     .opensPicker(true)
+                                                     .onColorChanged([this](Color value) { tint = value; })]
+                                          + HorizontalBox::slot().fill(1.0f).vAlign(VAlign::Center).padding(Margin(8.0f, 0.0f, 0.0f, 0.0f))
+                                                [make<Label>().text([this] { return "#" + toHex(tint, true) + "   " + status; }).textStyle("Label.Small")])];
+    }
+
+    std::shared_ptr<Widget> build() {
+        auto rows = make<ScrollBox>().assign(log);
+        for (int i = 0; i < 40; ++i) {
+            rows + ScrollBox::slot().padding(Margin(4.0f, 1.0f))
+                           [make<Label>().text("[lua] row " + std::to_string(i) + "  print(engine.time())").textStyle("Label.Mono")];
+        }
+
+        auto widgets = make<VerticalBox>()
+            + VerticalBox::slot().autoHeight().padding(Margin(0.0f, 0.0f, 0.0f, 4.0f))[menus()]
+            + VerticalBox::slot().autoHeight()[section("Buttons",
+                make<HorizontalBox>()
+                + HorizontalBox::slot().autoWidth().padding(Margin(0.0f, 0.0f, 6.0f, 0.0f))
+                      [make<Button>().text("Play").buttonStyle("Button.Primary").onClicked([this] {
+                          ++clicks;
+                          return Reply::handled();
+                      })]
+                + HorizontalBox::slot().autoWidth().padding(Margin(0.0f, 0.0f, 6.0f, 0.0f))
+                      [make<Button>().text("Stop").onClicked([this] {
+                          clicks = 0;
+                          return Reply::handled();
+                      })]
+                + HorizontalBox::slot().autoWidth().padding(Margin(0.0f, 0.0f, 12.0f, 0.0f))
+                      [make<Button>().text("Step").isEnabled(false).toolTipText("Only while paused")]
+                + HorizontalBox::slot().vAlign(VAlign::Center)
+                      [make<Label>().text([this] { return "clicked " + std::to_string(clicks) + " times"; })])]
+            + VerticalBox::slot().autoHeight()[section("Check boxes",
+                make<HorizontalBox>()
+                + HorizontalBox::slot().autoWidth().padding(Margin(0.0f, 0.0f, 16.0f, 0.0f))
+                      [make<CheckBox>().isChecked([this] { return grid; }).onCheckStateChanged([this](bool on) { grid = on; })
+                           [make<Label>().text("Show grid")]]
+                + HorizontalBox::slot().autoWidth()
+                      [make<CheckBox>().isChecked([this] { return snap; }).onCheckStateChanged([this](bool on) { snap = on; })
+                           [make<Label>().text("Snap")]])]
+            + VerticalBox::slot().autoHeight()[section("Text",
+                make<VerticalBox>()
+                + VerticalBox::slot().autoHeight().padding(Margin(0.0f, 0.0f, 0.0f, 6.0f))
+                      [make<TextBox>().text([this] { return name; }).onTextCommitted([this](const std::string& text, TextCommit) {
+                          name = text;
+                          committed = "committed \"" + text + "\"";
+                      })]
+                + VerticalBox::slot().autoHeight().padding(Margin(0.0f, 0.0f, 0.0f, 6.0f))
+                      [make<TextBox>().hintText("Filter").selectAllOnFocus(true)]
+                + VerticalBox::slot().autoHeight()
+                      [make<Label>().text([this] { return committed; }).textStyle("Label.Small")])]
+            + VerticalBox::slot().autoHeight()[section("Value editors", editors())]
+            + VerticalBox::slot().autoHeight().padding(Margin(0.0f, 10.0f, 0.0f, 0.0f))[make<ExpandableArea>().areaTitle("Labels").initiallyCollapsed(true).padding(Margin(8.0f, 6.0f)).bodyContent(
+                make<VerticalBox>()
+                + VerticalBox::slot().autoHeight()[make<Label>().text("Small 11: The quick brown fox jumps over the lazy dog").textStyle("Label.Small")]
+                + VerticalBox::slot().autoHeight()[make<Label>().text("Regular 13: Kerning AV Wa To \xC3\xA9\xC3\xA0\xC3\xBC \xE2\x80\x94 12\xC2\xB0")]
+                + VerticalBox::slot().autoHeight()[make<Label>().text("Bold 13: Properties  Explorer  Transform").textStyle("Label.Bold")]
+                + VerticalBox::slot().autoHeight()[make<Label>().text("Mono 12: > engine.time()  1.2500").textStyle("Label.Mono")])]
+            + VerticalBox::slot().fill(1.0f).padding(Margin(0.0f, 10.0f, 0.0f, 0.0f))
+                  [make<Splitter>()
+                   + Splitter::slot().value(1.0f)
+                         [make<Border>().brush(Brush::rounded(Color::hex(0x0F0F0FFF), 4.0f)).padding(Margin(2.0f))[outliner()]]
+                   + Splitter::slot().value(1.0f)
+                         [make<Border>().brush(Brush::rounded(Color::hex(0x0F0F0FFF), 4.0f)).padding(Margin(2.0f))
+                       .toolTipText("Right-click for a context menu")
+                       .onMouseDown([this](const Geometry&, const PointerEvent& event) {
+                           if (event.button != cinder::platform::buttons::RIGHT) return Reply::unhandled();
+                           MenuBuilder menu;
+                           menu.entry("Clear", [this] { log->clearChildren(); })
+                               .entry("Scroll to End", [this] { log->scrollToEnd(); })
+                               .separator()
+                               .entry("Copy", [] {}).enabledIf([] { return false; });
+                           showContextMenu(menu.build(), event.position);
+                           return Reply::handled();
+                       })[rows]]];
+
+        return make<Border>().brush(Brush::color(Color::hex(0x151515FF))).padding(Margin(0.0f))
+            [make<Splitter>()
+             + Splitter::slot().value(1.0f)
+                   [make<Border>().brush(Brush::color(Color::hex(0x242424FF))).padding(Margin(16.0f))[widgets]]
+             + Splitter::slot().value(1.0f)
+                   [make<Border>().brush(Brush::color(Color::hex(0x1A1A1AFF))).padding(Margin(16.0f))
+                        [section("Drawing", make<Drawing>())]]];
+    }
+};
+
+}
+
+int main(int argc, char** argv) {
+    std::setvbuf(stdout, nullptr, _IOLBF, 0);
+    cinder::platform::locateExecutable(argv[0]);
+    cinder::platform::Glfw::acquire();
+
+    int frameLimit = 0;
+    std::string capture;
+    std::string script;
+    float gamma = cinder::gfx::UiRenderer::DEFAULT_TEXT_GAMMA;
+    for (int i = 1; i < argc; ++i) {
+        if (std::strcmp(argv[i], "--frames") == 0 && i + 1 < argc) frameLimit = std::atoi(argv[++i]);
+        else if (std::strcmp(argv[i], "--capture-window") == 0 && i + 1 < argc) capture = argv[++i];
+        else if (std::strcmp(argv[i], "--input-script") == 0 && i + 1 < argc) script = argv[++i];
+        else if (std::strcmp(argv[i], "--text-gamma") == 0 && i + 1 < argc) gamma = static_cast<float>(std::atof(argv[++i]));
+        else if (std::strcmp(argv[i], "--lowdpi") == 0) glfwWindowHint(GLFW_SCALE_FRAMEBUFFER, GLFW_FALSE);
+    }
+
+    try {
+        {
+            cinder::core::ProjectConfig config;
+            config.title = "UI Gallery";
+            config.width = 1100;
+            config.height = 720;
+            cinder::core::Engine engine(config);
+            engine.renderer().ui().setTextGamma(gamma);
+
+            const cinder::text::FontSet fonts = cinder::text::FontSet::engineDefault();
+            WindowPlatform platform(engine.window());
+            Application app(platform, fonts, defaultTheme());
+            Gallery gallery;
+            app.setRoot(gallery.build());
+
+            cinder::platform::Input& input = engine.input();
+            input.setRecording(true);
+            std::optional<cinder::platform::InputScript> steps;
+            if (!script.empty()) {
+                steps = cinder::platform::InputScript::load(script);
+                input.setIgnoreSystem(true);
+            }
+
+            engine.renderer().setUiPaint([&](ElementList& list) {
+                const std::vector<cinder::platform::InputEvent> events = input.takeEvents();
+                app.processEvents(events);
+                app.paint(list);
+            });
+
+            int frames = 0;
+            while (engine.running()) {
+                cinder::platform::Glfw::pollEvents();
+                if (engine.minimized()) {
+                    cinder::platform::Glfw::waitEvents();
+                    continue;
+                }
+                if (steps) {
+                    steps->apply(input, frames);
+                    if (std::optional<std::string> path = steps->capture(frames)) engine.renderer().requestWindowCapture(*path);
+                    if (steps->quits(frames)) break;
+                }
+                const bool last = frameLimit > 0 && frames + 1 >= frameLimit;
+                if (last && !capture.empty()) engine.renderer().requestWindowCapture(capture);
+                engine.render(0.0f);
+                if (last) break;
+                ++frames;
+            }
+            engine.renderer().setUiPaint(nullptr);
+        }
+        cinder::platform::Glfw::release();
+        return 0;
+    } catch (const std::exception& error) {
+        cinder::platform::logError("[fatal] %s\n", error.what());
+        return 1;
+    }
+}

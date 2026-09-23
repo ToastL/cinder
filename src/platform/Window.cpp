@@ -40,8 +40,54 @@ Window::Window(const std::string& title, int width, int height) {
 }
 
 Window::~Window() {
+    for (GLFWcursor* cursor : cursors_) {
+        if (cursor != nullptr) glfwDestroyCursor(cursor);
+    }
     if (handle_ != nullptr) glfwDestroyWindow(handle_);
     Glfw::release();
+}
+
+std::string Window::clipboard() const {
+    const char* text = glfwGetClipboardString(handle_);
+    return text != nullptr ? std::string(text) : std::string();
+}
+
+void Window::setClipboard(std::string_view text) {
+    const std::string copy(text);
+    glfwSetClipboardString(handle_, copy.c_str());
+}
+
+void Window::setCursor(CursorShape shape) {
+    if (shape == cursor_ || shape == CursorShape::Count) return;
+    cursor_ = shape;
+    if (shape == CursorShape::Arrow) {
+        glfwSetCursor(handle_, nullptr);
+        return;
+    }
+
+    GLFWcursor*& cursor = cursors_[static_cast<std::size_t>(shape)];
+    if (cursor == nullptr) {
+        int standard = GLFW_ARROW_CURSOR;
+        switch (shape) {
+            case CursorShape::IBeam: standard = GLFW_IBEAM_CURSOR; break;
+            case CursorShape::Hand: standard = GLFW_POINTING_HAND_CURSOR; break;
+            case CursorShape::Crosshair: standard = GLFW_CROSSHAIR_CURSOR; break;
+            case CursorShape::ResizeHorizontal: standard = GLFW_RESIZE_EW_CURSOR; break;
+            case CursorShape::ResizeVertical: standard = GLFW_RESIZE_NS_CURSOR; break;
+            case CursorShape::ResizeAll: standard = GLFW_RESIZE_ALL_CURSOR; break;
+            case CursorShape::NotAllowed: standard = GLFW_NOT_ALLOWED_CURSOR; break;
+            default: break;
+        }
+        cursor = glfwCreateStandardCursor(standard);
+    }
+    glfwSetCursor(handle_, cursor);
+}
+
+float Window::contentScale() const {
+    float x = 1.0f;
+    float y = 1.0f;
+    glfwGetWindowContentScale(handle_, &x, &y);
+    return x;
 }
 
 bool Window::shouldClose() const { return glfwWindowShouldClose(handle_) == GLFW_TRUE; }

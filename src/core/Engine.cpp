@@ -6,13 +6,11 @@
 
 namespace cinder::core {
 
-Engine::Engine(const ProjectConfig& config) : Engine(config, {}) {}
-
-Engine::Engine(const ProjectConfig& config, const cinder::gfx::OverlayFactory& overlay)
+Engine::Engine(const ProjectConfig& config)
     : window_(config.title, config.width, config.height),
       input_(window_),
       ctx_(window_),
-      renderer_(ctx_, window_, overlay) {
+      renderer_(ctx_, window_) {
     cinder::components::registerBuiltins(types_);
     cinder::physics::registerNodes(types_);
     physics_.setGravity(config.gravity);
@@ -64,7 +62,6 @@ void Engine::render(float alpha) {
 
 Engine::~Engine() {
     ctx_.waitIdle();
-    renderer_.setOverlayDraw(nullptr);
     scene_.clear();
     script_.reset();
 }

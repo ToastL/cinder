@@ -9,6 +9,7 @@
 #include "gfx/vk/VkRenderPasses.hpp"
 #include "gfx/vk/VkUtil.hpp"
 #include "lua/LuaApi.hpp"
+#include "platform/Log.hpp"
 #include "platform/Window.hpp"
 #include "scene/DrawList.hpp"
 
@@ -48,10 +49,9 @@ int screenToWorld(lua_State* state) {
 
 }
 
-Renderer::Renderer(const VkCtx& ctx, cinder::platform::Window& window,
-                   const OverlayFactory& overlay)
-    : ctx_(ctx), window_(window) {
+Renderer::Renderer(const VkCtx& ctx, cinder::platform::Window& window) : ctx_(ctx), window_(window) {
     swapchain_ = std::make_unique<Swapchain>(ctx, window);
+    measureScale();
     depthFormat_ = DepthBuffer::chooseFormat(ctx.physicalDevice());
 
     sceneRenderPass_ = renderPasses::scene(ctx, swapchain_->format(), depthFormat_);
@@ -69,6 +69,8 @@ Renderer::Renderer(const VkCtx& ctx, cinder::platform::Window& window,
     meshPipeline_ = std::make_unique<cinder::gfx::pass::MeshPipeline>(
             ctx, sceneRenderPass_, textureLayout_);
     compositePipeline_ = std::make_unique<CompositePipeline>(ctx, presentRenderPass_, textureLayout_);
+    ui_ = std::make_unique<UiRenderer>(ctx, *assets_, presentRenderPass_, swapchain_->format(), textureLayout_,
+                                       FRAMES_IN_FLIGHT);
 
     auto meshPass = std::make_unique<cinder::gfx::pass::MeshPass>(ctx, *assets_, *meshPipeline_);
     auto spritePass = std::make_unique<cinder::gfx::pass::SpritePass>(
@@ -80,11 +82,6 @@ Renderer::Renderer(const VkCtx& ctx, cinder::platform::Window& window,
     passes_.push_back(std::move(spritePass));
 
     resizeCameras();
-
-    if (overlay) {
-        overlay_ = overlay(ctx, window, presentRenderPass_, swapchain_->imageCount(),
-                           swapchain_->imageCount());
-    }
 }
 
 VkDescriptorSetLayout Renderer::createTextureLayout() {
@@ -105,11 +102,15 @@ VkDescriptorSetLayout Renderer::createTextureLayout() {
     return layout;
 }
 
+void Renderer::measureScale() {
+    if (window_.logicalWidth() <= 0) return;
+    pixelsPerPoint_ = static_cast<float>(swapchain_->width()) / static_cast<float>(window_.logicalWidth());
+}
+
 VkExtent2D Renderer::targetExtent() const {
     if (!embedded()) return {swapchain_->width(), swapchain_->height()};
 
-    const float scale = static_cast<float>(window_.width())
-            / static_cast<float>(std::max(1, window_.logicalWidth()));
+    const float scale = pixelsPerPoint();
     const auto pixels = [scale](int points) {
         return static_cast<uint32_t>(std::max(1L, std::lround(static_cast<float>(points) * scale)));
     };
@@ -118,7 +119,7 @@ VkExtent2D Renderer::targetExtent() const {
 
 void Renderer::createTargets() {
     targets_.recreate(ctx_, sceneRenderPass_, textureLayout_, swapchain_->format(), depthFormat_,
-                      targetExtent(), FRAMES_IN_FLIGHT, embedded() ? overlay_.get() : nullptr);
+                      targetExtent(), FRAMES_IN_FLIGHT);
 }
 
 void Renderer::createCommandBuffers() {
@@ -171,13 +172,8 @@ void Renderer::releaseCamera() { override_.reset(); }
 void Renderer::beginFrame() {
     for (const std::unique_ptr<DrawPass>& pass : passes_) pass->beginFrame();
 
-    if (overlay_ == nullptr) return;
-    overlay_->beginFrame();
-    if (overlayDraw_) overlayDraw_();
-}
-
-VkDescriptorSet Renderer::viewport() const {
-    return targets_.viewport(sync_->frame());
+    uiElements_.reset(glm::vec2(window_.logicalWidth(), window_.logicalHeight()), pixelsPerPoint());
+    if (uiPaint_) uiPaint_(uiElements_);
 }
 
 void Renderer::registerApi(cinder::lua::LuaApi& api) {
@@ -208,6 +204,7 @@ void Renderer::recordCommandBuffer(VkCommandBuffer cmd, uint32_t imageIndex) {
     VkCommandBufferBeginInfo begin{};
     begin.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
     check(vkBeginCommandBuffer(cmd, &begin), "vkBeginCommandBuffer");
+    ui_->prepare(cmd, sync_->frame(), uiElements_);
 
     VkClearValue sceneClear[2]{};
     sceneClear[0].color = {{clearR_, clearG_, clearB_, 1.0f}};
@@ -243,8 +240,9 @@ void Renderer::recordCommandBuffer(VkCommandBuffer cmd, uint32_t imageIndex) {
     vkCmdBeginRenderPass(cmd, &present, VK_SUBPASS_CONTENTS_INLINE);
     setViewport(cmd, swapchain_->width(), swapchain_->height());
     if (!embedded()) compositePipeline_->draw(cmd, target.descriptorSet());
-    if (overlay_ != nullptr) overlay_->record(cmd);
+    ui_->record(cmd, sync_->frame(), {swapchain_->width(), swapchain_->height()}, target.descriptorSet());
     vkCmdEndRenderPass(cmd);
+    recordWindowCapture(cmd, imageIndex);
 
     check(vkEndCommandBuffer(cmd), "vkEndCommandBuffer");
 }
@@ -258,7 +256,6 @@ void Renderer::drawFrame() {
                                             sync_->imageAvailable(), VK_NULL_HANDLE, &imageIndex);
 
     if (result == VK_ERROR_OUT_OF_DATE_KHR) {
-        if (overlay_ != nullptr) overlay_->discardFrame();
         recreateSwapchain();
         return;
     }
@@ -301,6 +298,14 @@ void Renderer::drawFrame() {
     present.pImageIndices = &imageIndex;
 
     result = vkQueuePresentKHR(ctx_.presentQueue(), &present);
+    if (captureRecorded_) {
+        ctx_.waitIdle();
+        writeCapture(windowCapture_, swapchain_->width(), swapchain_->height(), captureBuffer_->mapped(),
+                     swapchain_->format());
+        cinder::platform::logInfo("[capture] wrote %s\n", windowCapture_.c_str());
+        windowCapture_.clear();
+        captureRecorded_ = false;
+    }
     if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR || window_.wasResized()) {
         recreateSwapchain();
     } else if (result != VK_SUCCESS) {
@@ -319,20 +324,21 @@ void Renderer::recreateSwapchain() {
 
     swapchain_.reset();
     targets_.clear();
-    swapchain_ = std::make_unique<Swapchain>(ctx_, window_);
+    swapchain_ = std::make_unique<Swapchain>(ctx_, window_, swapchainUsage_);
+    measureScale();
 
     if (swapchain_->format() != previousFormat) {
         vkDestroyRenderPass(ctx_.device(), presentRenderPass_, nullptr);
         vkDestroyRenderPass(ctx_.device(), sceneRenderPass_, nullptr);
         sceneRenderPass_ = renderPasses::scene(ctx_, swapchain_->format(), depthFormat_);
         presentRenderPass_ = renderPasses::present(ctx_, swapchain_->format());
+        ui_->rebuild(presentRenderPass_, swapchain_->format());
     }
 
     createTargets();
     swapchain_->createFramebuffers(presentRenderPass_);
     resizeCameras();
     sync_->resize(swapchain_->imageCount());
-    if (overlay_ != nullptr) overlay_->setMinImageCount(swapchain_->imageCount());
 
     window_.clearResized();
 }
@@ -341,15 +347,67 @@ void Renderer::capture(const std::string& path) {
     captureTarget(ctx_, targets_.at(lastFrame_), swapchain_->format(), path);
 }
 
+void Renderer::requestWindowCapture(const std::string& path) {
+    if (!Swapchain::supports(ctx_, VK_IMAGE_USAGE_TRANSFER_SRC_BIT)) {
+        cinder::platform::logError("[capture] this device cannot copy out of the swapchain\n");
+        return;
+    }
+    windowCapture_ = path;
+    if ((swapchainUsage_ & VK_IMAGE_USAGE_TRANSFER_SRC_BIT) == 0) {
+        swapchainUsage_ |= VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
+        recreateSwapchain();
+    }
+}
+
+void Renderer::recordWindowCapture(VkCommandBuffer cmd, uint32_t imageIndex) {
+    if (windowCapture_.empty() || (swapchainUsage_ & VK_IMAGE_USAGE_TRANSFER_SRC_BIT) == 0) return;
+
+    const uint32_t width = swapchain_->width();
+    const uint32_t height = swapchain_->height();
+    const VkDeviceSize size = static_cast<VkDeviceSize>(width) * height * 4;
+    if (!captureBuffer_ || captureBuffer_->size() < size) {
+        captureBuffer_ = std::make_unique<cinder::gfx::vk::GpuBuffer>(ctx_, size, VK_BUFFER_USAGE_TRANSFER_DST_BIT,
+                                                                      true);
+    }
+
+    VkImageMemoryBarrier barrier{};
+    barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+    barrier.oldLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+    barrier.newLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
+    barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+    barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+    barrier.image = swapchain_->image(imageIndex);
+    barrier.subresourceRange = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1};
+    barrier.srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+    barrier.dstAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
+    vkCmdPipelineBarrier(cmd, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, 0, 0,
+                         nullptr, 0, nullptr, 1, &barrier);
+
+    VkBufferImageCopy copy{};
+    copy.imageSubresource = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, 1};
+    copy.imageExtent = {width, height, 1};
+    vkCmdCopyImageToBuffer(cmd, barrier.image, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, captureBuffer_->handle(), 1,
+                           &copy);
+
+    barrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
+    barrier.newLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+    barrier.srcAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
+    barrier.dstAccessMask = 0;
+    vkCmdPipelineBarrier(cmd, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, 0, 0, nullptr,
+                         0, nullptr, 1, &barrier);
+    captureRecorded_ = true;
+}
+
 cinder::scene::DrawList& Renderer::draws() { return *draws_; }
 
 Renderer::~Renderer() {
     ctx_.waitIdle();
     targets_.clear();
-    overlay_.reset();
     draws_.reset();
     passes_.clear();
     compositePipeline_.reset();
+    captureBuffer_.reset();
+    ui_.reset();
     meshPipeline_.reset();
     spritePipeline_.reset();
     assets_.reset();

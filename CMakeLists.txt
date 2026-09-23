@@ -27,13 +27,15 @@ file(GLOB_RECURSE ENGINE_SOURCES CONFIGURE_DEPENDS
     src/reflect/*.cpp
     src/scene/*.cpp
     src/script/*.cpp
-    src/serial/*.cpp)
+    src/serial/*.cpp
+    src/text/*.cpp
+    src/ui/*.cpp)
 
 add_library(engine STATIC ${ENGINE_SOURCES})
 add_dependencies(engine shaders)
 
 target_include_directories(engine PUBLIC src)
-target_link_libraries(engine PUBLIC volk glfw glm::glm lua vma_impl stb)
+target_link_libraries(engine PUBLIC volk glfw glm::glm lua vma_impl stb freetype harfbuzz)
 target_compile_definitions(engine PUBLIC
     GLFW_INCLUDE_NONE
     GLM_FORCE_DEPTH_ZERO_TO_ONE
@@ -46,7 +48,7 @@ target_compile_options(engine PRIVATE -Wall -Wextra -Wno-unused-parameter)
 file(GLOB_RECURSE DEV_SOURCES CONFIGURE_DEPENDS src/dev/*.cpp)
 
 add_library(engine_dev STATIC ${DEV_SOURCES})
-target_link_libraries(engine_dev PUBLIC engine imgui)
+target_link_libraries(engine_dev PUBLIC engine)
 target_compile_options(engine_dev PRIVATE -Wall -Wextra -Wno-unused-parameter)
 
 add_executable(editor src/editor/main.cpp)
@@ -54,6 +56,9 @@ target_link_libraries(editor PRIVATE engine_dev)
 
 add_executable(player EXCLUDE_FROM_ALL src/player/main.cpp)
 target_link_libraries(player PRIVATE engine)
+
+add_executable(ui_gallery tests/gallery/main.cpp)
+target_link_libraries(ui_gallery PRIVATE engine)
 
 set(CINDER_PACKAGE_PROJECT "${CMAKE_CURRENT_SOURCE_DIR}/samples/sandbox2d" CACHE PATH
     "Project folder the package_game target stages next to the player")

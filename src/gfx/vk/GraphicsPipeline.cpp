@@ -18,6 +18,11 @@ void GraphicsPipeline::push(VkCommandBuffer cmd, uint32_t offset, const glm::mat
                        glm::value_ptr(value));
 }
 
+void GraphicsPipeline::push(VkCommandBuffer cmd, VkShaderStageFlags stages, uint32_t size,
+                            const void* data) const {
+    vkCmdPushConstants(cmd, layout_, stages, 0, size, data);
+}
+
 void GraphicsPipeline::bindDescriptorSet(VkCommandBuffer cmd, VkDescriptorSet set) const {
     vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, layout_, 0, 1, &set, 0, nullptr);
 }

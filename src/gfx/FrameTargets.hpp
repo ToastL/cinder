@@ -1,6 +1,5 @@
 #pragma once
 
-#include "gfx/Overlay.hpp"
 #include "gfx/RenderTarget.hpp"
 
 #include <memory>
@@ -12,18 +11,12 @@ class FrameTargets {
 public:
     void recreate(const cinder::gfx::vk::VkCtx& ctx, VkRenderPass renderPass,
                   VkDescriptorSetLayout textureLayout, VkFormat format, VkFormat depthFormat,
-                  VkExtent2D extent, uint32_t count, Overlay* overlay);
+                  VkExtent2D extent, uint32_t count);
     void clear();
-    RenderTarget& at(uint32_t frame) const { return *frames_[frame].target; }
-    VkDescriptorSet viewport(uint32_t frame) const;
+    RenderTarget& at(uint32_t frame) const { return *frames_[frame]; }
 
 private:
-    struct Frame {
-        std::unique_ptr<RenderTarget> target;
-        OverlayTexture texture;
-    };
-
-    std::vector<Frame> frames_;
+    std::vector<std::unique_ptr<RenderTarget>> frames_;
 };
 
 }
