@@ -1,5 +1,7 @@
 #include "gfx/vk/VkCtx.hpp"
 
+#include "gfx/vk/DepthBuffer.hpp"
+#include "gfx/vk/Formats.hpp"
 #include "gfx/vk/VkUtil.hpp"
 #include "platform/Log.hpp"
 #include "platform/Window.hpp"
@@ -86,6 +88,7 @@ VkCtx::VkCtx(cinder::platform::Window& window) {
     createLogicalDevice();
     createCommandPool();
     createTextureLayout();
+    chooseDepthFormat();
     createAllocator();
 }
 
@@ -247,6 +250,10 @@ void VkCtx::createLogicalDevice() {
 
     vkGetDeviceQueue(device_, static_cast<uint32_t>(graphicsFamily_), 0, &graphicsQueue_);
     vkGetDeviceQueue(device_, static_cast<uint32_t>(presentFamily_), 0, &presentQueue_);
+}
+
+void VkCtx::chooseDepthFormat() {
+    depthFormat_ = rhi::fromVk(DepthBuffer::chooseFormat(physicalDevice_));
 }
 
 void VkCtx::createTextureLayout() {

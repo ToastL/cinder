@@ -1,5 +1,7 @@
 #pragma once
 
+#include "gfx/rhi/Handles.hpp"
+
 #include <volk.h>
 
 namespace cinder::gfx::vk {
@@ -14,7 +16,7 @@ public:
     TexturePool(const TexturePool&) = delete;
     TexturePool& operator=(const TexturePool&) = delete;
 
-    VkDescriptorSet bind(VkImageView view) const;
+    rhi::TextureBinding bind(VkImageView view) const;
 
 private:
     const VkCtx& ctx_;

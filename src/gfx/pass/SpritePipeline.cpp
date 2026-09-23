@@ -12,9 +12,9 @@ SpritePipeline::SpritePipeline(const cinder::gfx::vk::VkCtx& ctx, VkRenderPass r
                         .shader("sprite")
                         .pushConstants(GraphicsPipeline::MATRIX_BYTES)
                         .vertexStride(VERTEX_STRIDE)
-                        .attribute(0, VK_FORMAT_R32G32B32_SFLOAT, 0)
-                        .attribute(1, VK_FORMAT_R32G32_SFLOAT, 3 * sizeof(float))
-                        .attribute(2, VK_FORMAT_R32G32B32A32_SFLOAT, 5 * sizeof(float))
+                        .attribute(0, cinder::gfx::rhi::VertexFormat::Float3, 0)
+                        .attribute(1, cinder::gfx::rhi::VertexFormat::Float2, 3 * sizeof(float))
+                        .attribute(2, cinder::gfx::rhi::VertexFormat::Float4, 5 * sizeof(float))
                         .depthRead()
                         .alphaBlend()
                         .build();

@@ -1,5 +1,6 @@
 #include "gfx/vk/TexturePool.hpp"
 
+#include "gfx/vk/Bindings.hpp"
 #include "gfx/vk/VkCtx.hpp"
 #include "gfx/vk/VkDescriptors.hpp"
 #include "gfx/vk/VkImages.hpp"
@@ -11,10 +12,10 @@ TexturePool::TexturePool(const VkCtx& ctx, uint32_t maxSets, VkFilter filter) : 
     sampler_ = images::sampler(ctx, filter);
 }
 
-VkDescriptorSet TexturePool::bind(VkImageView view) const {
+rhi::TextureBinding TexturePool::bind(VkImageView view) const {
     const VkDescriptorSet set = descriptors::allocate(ctx_, pool_, ctx_.textureLayout());
     descriptors::writeCombinedImageSampler(ctx_, set, view, sampler_);
-    return set;
+    return rhi::binding(set);
 }
 
 TexturePool::~TexturePool() {

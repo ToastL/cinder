@@ -1,5 +1,6 @@
 #pragma once
 
+#include "gfx/rhi/Format.hpp"
 #include "gfx/vk/GraphicsPipeline.hpp"
 
 #include <memory>
@@ -17,7 +18,8 @@ public:
     GraphicsPipelineBuilder& shader(std::string program);
     GraphicsPipelineBuilder& pushConstants(uint32_t bytes, VkShaderStageFlags stages = VK_SHADER_STAGE_VERTEX_BIT);
     GraphicsPipelineBuilder& vertexStride(uint32_t stride);
-    GraphicsPipelineBuilder& attribute(uint32_t location, VkFormat format, uint32_t offset);
+    GraphicsPipelineBuilder& attribute(uint32_t location, rhi::VertexFormat format,
+                                       uint32_t offset);
     GraphicsPipelineBuilder& depthTest();
     GraphicsPipelineBuilder& depthRead();
     GraphicsPipelineBuilder& alphaBlend();

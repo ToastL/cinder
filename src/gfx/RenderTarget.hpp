@@ -1,5 +1,6 @@
 #pragma once
 
+#include "gfx/rhi/Format.hpp"
 #include "gfx/vk/DepthBuffer.hpp"
 #include "gfx/vk/TexturePool.hpp"
 #include "gfx/vk/VkImages.hpp"
@@ -11,7 +12,7 @@ namespace cinder::gfx {
 class RenderTarget {
 public:
     RenderTarget(const cinder::gfx::vk::VkCtx& ctx, VkRenderPass renderPass,
-                 VkFormat format, VkFormat depthFormat, uint32_t width, uint32_t height);
+                 cinder::gfx::rhi::Format format, uint32_t width, uint32_t height);
     ~RenderTarget();
 
     RenderTarget(const RenderTarget&) = delete;
@@ -20,7 +21,7 @@ public:
     VkFramebuffer framebuffer() const { return framebuffer_; }
     VkImage image() const { return image_.image; }
     VkImageView view() const { return view_; }
-    VkDescriptorSet descriptorSet() const { return descriptorSet_; }
+    cinder::gfx::rhi::TextureBinding binding() const { return binding_; }
     uint32_t width() const { return width_; }
     uint32_t height() const { return height_; }
 
@@ -31,7 +32,7 @@ private:
     std::unique_ptr<cinder::gfx::vk::DepthBuffer> depth_;
     VkFramebuffer framebuffer_ = VK_NULL_HANDLE;
     std::unique_ptr<cinder::gfx::vk::TexturePool> pool_;
-    VkDescriptorSet descriptorSet_ = VK_NULL_HANDLE;
+    cinder::gfx::rhi::TextureBinding binding_;
     uint32_t width_ = 0;
     uint32_t height_ = 0;
 };

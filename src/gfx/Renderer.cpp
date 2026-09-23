@@ -7,7 +7,6 @@
 #include "gfx/Capture.hpp"
 #include "gfx/pass/MeshPass.hpp"
 #include "gfx/pass/SpritePass.hpp"
-#include "gfx/vk/DepthBuffer.hpp"
 #include "gfx/vk/VkCtx.hpp"
 #include "gfx/vk/VkRenderPasses.hpp"
 #include "gfx/vk/VkUtil.hpp"
@@ -24,7 +23,6 @@ namespace cinder::gfx {
 
 using cinder::gfx::asset::Assets;
 using cinder::gfx::pass::DrawPass;
-using cinder::gfx::vk::DepthBuffer;
 using cinder::gfx::vk::FrameSync;
 using cinder::gfx::vk::Swapchain;
 using cinder::gfx::vk::VkCtx;
@@ -55,9 +53,8 @@ int screenToWorld(lua_State* state) {
 Renderer::Renderer(const VkCtx& ctx, cinder::platform::Window& window) : ctx_(ctx), window_(window) {
     swapchain_ = std::make_unique<Swapchain>(ctx, window);
     measureScale();
-    depthFormat_ = DepthBuffer::chooseFormat(ctx.physicalDevice());
 
-    sceneRenderPass_ = renderPasses::scene(ctx, swapchain_->format(), depthFormat_);
+    sceneRenderPass_ = renderPasses::scene(ctx, swapchain_->format());
     presentRenderPass_ = renderPasses::present(ctx, swapchain_->format());
 
     createTargets();
@@ -100,8 +97,8 @@ VkExtent2D Renderer::targetExtent() const {
 }
 
 void Renderer::createTargets() {
-    targets_.recreate(ctx_, sceneRenderPass_, swapchain_->format(), depthFormat_,
-                      targetExtent(), FRAMES_IN_FLIGHT);
+    targets_.recreate(ctx_, sceneRenderPass_, swapchain_->format(), targetExtent(),
+                      FRAMES_IN_FLIGHT);
 }
 
 void Renderer::createCommandBuffers() {
@@ -209,9 +206,9 @@ void Renderer::recordCommandBuffer(VkCommandBuffer cmd, uint32_t imageIndex) {
     const cinder::gfx::rhi::Commands presentCmd = cinder::gfx::rhi::commands(cmd);
     cinder::gfx::rhi::viewport(presentCmd, swapchain_->width(), swapchain_->height());
     cinder::gfx::rhi::scissor(presentCmd, 0, 0, swapchain_->width(), swapchain_->height());
-    if (!embedded()) compositePipeline_->draw(presentCmd, target.descriptorSet());
+    if (!embedded()) compositePipeline_->draw(presentCmd, target.binding());
     ui_->record(presentCmd, sync_->frame(), {swapchain_->width(), swapchain_->height()},
-                target.descriptorSet());
+                target.binding());
     vkCmdEndRenderPass(cmd);
     recordWindowCapture(cmd, imageIndex);
 
@@ -291,7 +288,7 @@ void Renderer::recreateSwapchain() {
 
     ctx_.waitIdle();
 
-    const VkFormat previousFormat = swapchain_->format();
+    const cinder::gfx::rhi::Format previousFormat = swapchain_->format();
 
     swapchain_.reset();
     targets_.clear();
@@ -301,7 +298,7 @@ void Renderer::recreateSwapchain() {
     if (swapchain_->format() != previousFormat) {
         vkDestroyRenderPass(ctx_.device(), presentRenderPass_, nullptr);
         vkDestroyRenderPass(ctx_.device(), sceneRenderPass_, nullptr);
-        sceneRenderPass_ = renderPasses::scene(ctx_, swapchain_->format(), depthFormat_);
+        sceneRenderPass_ = renderPasses::scene(ctx_, swapchain_->format());
         presentRenderPass_ = renderPasses::present(ctx_, swapchain_->format());
         ui_->rebuild(presentRenderPass_, swapchain_->format());
     }

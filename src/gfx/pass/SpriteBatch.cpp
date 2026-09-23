@@ -111,9 +111,7 @@ void SpriteBatch::flush(cinder::gfx::rhi::Commands cmd, uint32_t frameIndex,
         uint32_t end = start;
         while (end < quadCount_ && quadTexture_[end] == texture) end++;
 
-        const VkDescriptorSet set = assets_.get(texture).descriptorSet();
-        vkCmdBindDescriptorSets(unwrap(cmd), VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline_.layout(),
-                                0, 1, &set, 0, nullptr);
+        pipeline_.bindTexture(cmd, assets_.get(texture).binding());
         cinder::gfx::rhi::drawIndexed(cmd, (end - start) * 6, start * 6);
         start = end;
     }

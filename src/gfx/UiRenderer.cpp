@@ -41,15 +41,6 @@ struct Push {
 constexpr VkShaderStageFlags PUSH_STAGES = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
 constexpr VkFormat PAGE_FORMAT = VK_FORMAT_R8_UNORM;
 
-bool srgb(VkFormat format) {
-    switch (format) {
-        case VK_FORMAT_B8G8R8A8_SRGB:
-        case VK_FORMAT_R8G8B8A8_SRGB:
-        case VK_FORMAT_A8B8G8R8_SRGB_PACK32: return true;
-        default: return false;
-    }
-}
-
 uint32_t offsetOf(std::size_t offset) { return static_cast<uint32_t>(offset); }
 
 void barrier(VkCommandBuffer cmd, VkImage image, VkImageLayout from, VkImageLayout to, VkAccessFlags srcAccess,
@@ -70,7 +61,7 @@ void barrier(VkCommandBuffer cmd, VkImage image, VkImageLayout from, VkImageLayo
 }
 
 UiRenderer::UiRenderer(const VkCtx& ctx, cinder::gfx::asset::Assets& assets, VkRenderPass renderPass,
-                       VkFormat format, uint32_t framesInFlight)
+                       cinder::gfx::rhi::Format format, uint32_t framesInFlight)
     : ctx_(ctx), assets_(assets), frames_(framesInFlight) {
     rebuild(renderPass, format);
 }
@@ -79,18 +70,18 @@ UiRenderer::~UiRenderer() {
     for (GlyphPage& page : pages_) destroyPage(page);
 }
 
-void UiRenderer::rebuild(VkRenderPass renderPass, VkFormat format) {
-    encode_ = !srgb(format);
+void UiRenderer::rebuild(VkRenderPass renderPass, cinder::gfx::rhi::Format format) {
+    encode_ = !cinder::gfx::rhi::isSrgb(format);
     pipeline_ = GraphicsPipelineBuilder(ctx_, renderPass)
                         .shader("ui")
                         .pushConstants(sizeof(Push), PUSH_STAGES)
                         .vertexStride(sizeof(UiVertex))
-                        .attribute(0, VK_FORMAT_R32G32_SFLOAT, offsetOf(offsetof(UiVertex, position)))
-                        .attribute(1, VK_FORMAT_R32G32_SFLOAT, offsetOf(offsetof(UiVertex, uv)))
-                        .attribute(2, VK_FORMAT_R32G32B32A32_SFLOAT, offsetOf(offsetof(UiVertex, color)))
-                        .attribute(3, VK_FORMAT_R32G32B32A32_SFLOAT, offsetOf(offsetof(UiVertex, border)))
-                        .attribute(4, VK_FORMAT_R32G32B32A32_SFLOAT, offsetOf(offsetof(UiVertex, shape)))
-                        .attribute(5, VK_FORMAT_R32G32B32A32_SFLOAT, offsetOf(offsetof(UiVertex, radii)))
+                        .attribute(0, cinder::gfx::rhi::VertexFormat::Float2, offsetOf(offsetof(UiVertex, position)))
+                        .attribute(1, cinder::gfx::rhi::VertexFormat::Float2, offsetOf(offsetof(UiVertex, uv)))
+                        .attribute(2, cinder::gfx::rhi::VertexFormat::Float4, offsetOf(offsetof(UiVertex, color)))
+                        .attribute(3, cinder::gfx::rhi::VertexFormat::Float4, offsetOf(offsetof(UiVertex, border)))
+                        .attribute(4, cinder::gfx::rhi::VertexFormat::Float4, offsetOf(offsetof(UiVertex, shape)))
+                        .attribute(5, cinder::gfx::rhi::VertexFormat::Float4, offsetOf(offsetof(UiVertex, radii)))
                         .premultipliedBlend()
                         .build();
 }
@@ -182,10 +173,10 @@ void UiRenderer::upload(cinder::gfx::rhi::Uploads cmd, Frame& frame, GlyphAtlas&
 void UiRenderer::resolveNames(const cinder::ui::ElementList& list) {
     named_.clear();
     for (const std::string& name : list.names()) {
-        VkDescriptorSet set = assets_.get(0).descriptorSet();
+        cinder::gfx::rhi::TextureBinding set = assets_.get(0).binding();
         if (!failed_.contains(name)) {
             try {
-                set = assets_.get(assets_.load(name)).descriptorSet();
+                set = assets_.get(assets_.load(name)).binding();
             } catch (const std::exception& error) {
                 failed_.insert(name);
                 cinder::platform::logError("[ui] %s\n", error.what());
@@ -216,24 +207,25 @@ void UiRenderer::prepare(cinder::gfx::rhi::Uploads cmd, uint32_t frame,
     std::memcpy(data.indices->mapped(), geometry_.indices.data(), static_cast<std::size_t>(indexBytes));
 }
 
-VkDescriptorSet UiRenderer::resolve(const TextureRef& texture, VkDescriptorSet viewport) const {
+cinder::gfx::rhi::TextureBinding UiRenderer::resolve(const TextureRef& texture,
+                                                     cinder::gfx::rhi::TextureBinding viewport) const {
     switch (texture.kind) {
         case TextureRef::Kind::GlyphPage:
             if (texture.index < pages_.size()) return pages_[texture.index].set;
             break;
         case TextureRef::Kind::Viewport:
-            if (viewport != VK_NULL_HANDLE) return viewport;
+            if (viewport) return viewport;
             break;
         case TextureRef::Kind::Named:
             if (texture.index < named_.size()) return named_[texture.index];
             break;
         case TextureRef::Kind::None: break;
     }
-    return assets_.get(0).descriptorSet();
+    return assets_.get(0).binding();
 }
 
 void UiRenderer::record(cinder::gfx::rhi::Commands cmd, uint32_t frame, VkExtent2D extent,
-                        VkDescriptorSet viewport) {
+                        cinder::gfx::rhi::TextureBinding viewport) {
     if (geometry_.empty()) return;
     Frame& data = frames_[frame];
 
@@ -250,7 +242,7 @@ void UiRenderer::record(cinder::gfx::rhi::Commands cmd, uint32_t frame, VkExtent
     vkCmdBindVertexBuffers(unwrap(cmd), 0, 1, &vertexBuffer, &zero);
     vkCmdBindIndexBuffer(unwrap(cmd), data.indices->handle(), 0, VK_INDEX_TYPE_UINT32);
 
-    VkDescriptorSet bound = VK_NULL_HANDLE;
+    cinder::gfx::rhi::TextureBinding bound;
     const float scale = push.pixelsPerPoint;
     for (const cinder::ui::UiBatch& batch : geometry_.batches) {
         const float left = std::clamp(std::floor(batch.clip.min.x * scale), 0.0f, static_cast<float>(extent.width));
@@ -263,9 +255,9 @@ void UiRenderer::record(cinder::gfx::rhi::Commands cmd, uint32_t frame, VkExtent
                                   static_cast<uint32_t>(right - left),
                                   static_cast<uint32_t>(bottom - top));
 
-        const VkDescriptorSet set = resolve(batch.texture, viewport);
+        const cinder::gfx::rhi::TextureBinding set = resolve(batch.texture, viewport);
         if (set != bound) {
-            pipeline_->bindDescriptorSet(cmd, set);
+            pipeline_->bindTexture(cmd, set);
             bound = set;
         }
         cinder::gfx::rhi::drawIndexed(cmd, batch.indexCount, batch.firstIndex);

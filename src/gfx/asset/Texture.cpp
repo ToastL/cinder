@@ -11,6 +11,11 @@
 #include <utility>
 
 namespace cinder::gfx::asset {
+namespace {
+
+constexpr VkFormat FORMAT = VK_FORMAT_R8G8B8A8_SRGB;
+
+}
 
 using cinder::gfx::vk::GpuBuffer;
 using cinder::gfx::vk::VkCtx;
@@ -95,7 +100,7 @@ Texture Texture::white(const VkCtx& ctx) {
 
 Texture::Texture(Texture&& other) noexcept
     : ctx_(other.ctx_), image_(other.image_), view_(other.view_),
-      descriptorSet_(other.descriptorSet_), width_(other.width_), height_(other.height_) {
+      binding_(other.binding_), width_(other.width_), height_(other.height_) {
     other.image_ = {};
     other.view_ = VK_NULL_HANDLE;
 }

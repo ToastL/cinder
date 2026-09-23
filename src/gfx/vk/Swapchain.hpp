@@ -1,5 +1,7 @@
 #pragma once
 
+#include "gfx/rhi/Format.hpp"
+
 #include <volk.h>
 
 #include <vector>
@@ -26,7 +28,7 @@ public:
     uint32_t imageCount() const { return static_cast<uint32_t>(images_.size()); }
     VkFramebuffer framebuffer(uint32_t index) const { return framebuffers_[index]; }
     VkImage image(uint32_t index) const { return images_[index]; }
-    VkFormat format() const { return format_; }
+    rhi::Format format() const;
     uint32_t width() const { return extent_.width; }
     uint32_t height() const { return extent_.height; }
 

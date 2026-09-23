@@ -14,7 +14,7 @@
 namespace cinder::gfx {
 
 void captureTarget(const cinder::gfx::vk::VkCtx& ctx, const RenderTarget& target,
-                   VkFormat format, const std::string& path) {
+                   cinder::gfx::rhi::Format format, const std::string& path) {
     ctx.waitIdle();
 
     const uint32_t width = target.width();
@@ -59,14 +59,13 @@ void captureTarget(const cinder::gfx::vk::VkCtx& ctx, const RenderTarget& target
     writeCapture(path, width, height, staging.mapped(), format);
 }
 
-void writeCapture(const std::string& path, uint32_t width, uint32_t height, const void* data, VkFormat format) {
+void writeCapture(const std::string& path, uint32_t width, uint32_t height, const void* data,
+                  cinder::gfx::rhi::Format format) {
     const std::size_t size = static_cast<std::size_t>(width) * height * 4;
     std::vector<unsigned char> pixels(size);
     std::memcpy(pixels.data(), data, size);
 
-    const bool bgra = format == VK_FORMAT_B8G8R8A8_SRGB
-            || format == VK_FORMAT_B8G8R8A8_UNORM;
-    if (bgra) {
+    if (cinder::gfx::rhi::isBgra(format)) {
         for (std::size_t i = 0; i < pixels.size(); i += 4) std::swap(pixels[i], pixels[i + 2]);
     }
 

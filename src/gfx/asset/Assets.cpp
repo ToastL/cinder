@@ -18,7 +18,7 @@ int Assets::registerTexture(Texture texture) {
         throw std::runtime_error("Texture limit reached (" + std::to_string(MAX_TEXTURES) + ")");
     }
 
-    texture.setDescriptorSet(pool_.bind(texture.view()));
+    texture.setBinding(pool_.bind(texture.view()));
 
     textures_.push_back(std::move(texture));
     return static_cast<int>(textures_.size()) - 1;

@@ -1,5 +1,6 @@
 #include "gfx/vk/GraphicsPipeline.hpp"
 
+#include "gfx/vk/Bindings.hpp"
 #include "gfx/vk/Commands.hpp"
 #include "gfx/vk/VkCtx.hpp"
 
@@ -24,7 +25,8 @@ void GraphicsPipeline::push(rhi::Commands cmd, VkShaderStageFlags stages, uint32
     vkCmdPushConstants(unwrap(cmd), layout_, stages, 0, size, data);
 }
 
-void GraphicsPipeline::bindDescriptorSet(rhi::Commands cmd, VkDescriptorSet set) const {
+void GraphicsPipeline::bindTexture(rhi::Commands cmd, rhi::TextureBinding texture) const {
+    const VkDescriptorSet set = unwrap(texture);
     vkCmdBindDescriptorSets(unwrap(cmd), VK_PIPELINE_BIND_POINT_GRAPHICS, layout_, 0, 1, &set, 0, nullptr);
 }
 

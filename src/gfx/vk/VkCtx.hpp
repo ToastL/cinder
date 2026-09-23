@@ -1,5 +1,7 @@
 #pragma once
 
+#include "gfx/rhi/Format.hpp"
+
 #include <volk.h>
 
 #include <vk_mem_alloc.h>
@@ -24,6 +26,7 @@ public:
     VkSurfaceKHR surface() const { return surface_; }
     VkCommandPool commandPool() const { return commandPool_; }
     VkDescriptorSetLayout textureLayout() const { return textureLayout_; }
+    rhi::Format depthFormat() const { return depthFormat_; }
     VmaAllocator allocator() const { return allocator_; }
     uint32_t graphicsFamily() const { return static_cast<uint32_t>(graphicsFamily_); }
     uint32_t presentFamily() const { return static_cast<uint32_t>(presentFamily_); }
@@ -42,6 +45,7 @@ private:
     void createLogicalDevice();
     void createCommandPool();
     void createTextureLayout();
+    void chooseDepthFormat();
     void createAllocator();
 
     bool validation_ = false;
@@ -56,6 +60,7 @@ private:
     int presentFamily_ = -1;
     VkCommandPool commandPool_ = VK_NULL_HANDLE;
     VkDescriptorSetLayout textureLayout_ = VK_NULL_HANDLE;
+    rhi::Format depthFormat_ = rhi::Format::Undefined;
     VmaAllocator allocator_ = VK_NULL_HANDLE;
 };
 

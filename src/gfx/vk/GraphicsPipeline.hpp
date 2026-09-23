@@ -23,9 +23,8 @@ public:
     void bind(rhi::Commands cmd) const;
     void push(rhi::Commands cmd, uint32_t offset, const glm::mat4& value) const;
     void push(rhi::Commands cmd, VkShaderStageFlags stages, uint32_t size, const void* data) const;
-    void bindDescriptorSet(rhi::Commands cmd, VkDescriptorSet set) const;
+    void bindTexture(rhi::Commands cmd, rhi::TextureBinding texture) const;
 
-    VkPipelineLayout layout() const { return layout_; }
 
 private:
     const VkCtx& ctx_;

@@ -3,6 +3,7 @@
 #include "gfx/vk/VkCtx.hpp"
 #include "gfx/vk/VkImages.hpp"
 #include "gfx/vk/VkUtil.hpp"
+#include "gfx/vk/Formats.hpp"
 #include "platform/Window.hpp"
 
 #include <algorithm>
@@ -120,5 +121,8 @@ Swapchain::~Swapchain() {
     for (VkImageView view : views_) vkDestroyImageView(ctx_.device(), view, nullptr);
     if (handle_ != VK_NULL_HANDLE) vkDestroySwapchainKHR(ctx_.device(), handle_, nullptr);
 }
+
+
+rhi::Format Swapchain::format() const { return rhi::fromVk(format_); }
 
 }

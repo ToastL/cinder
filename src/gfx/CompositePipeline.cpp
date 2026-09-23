@@ -12,9 +12,10 @@ CompositePipeline::CompositePipeline(const cinder::gfx::vk::VkCtx& ctx, VkRender
                         .build();
 }
 
-void CompositePipeline::draw(cinder::gfx::rhi::Commands cmd, VkDescriptorSet descriptorSet) const {
+void CompositePipeline::draw(cinder::gfx::rhi::Commands cmd,
+                             cinder::gfx::rhi::TextureBinding texture) const {
     pipeline_->bind(cmd);
-    pipeline_->bindDescriptorSet(cmd, descriptorSet);
+    pipeline_->bindTexture(cmd, texture);
     cinder::gfx::rhi::draw(cmd, FULLSCREEN_TRIANGLE_VERTICES);
 }
 

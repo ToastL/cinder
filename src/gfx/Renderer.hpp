@@ -71,7 +71,6 @@ private:
     const cinder::gfx::vk::VkCtx& ctx_;
     cinder::platform::Window& window_;
 
-    VkFormat depthFormat_ = VK_FORMAT_UNDEFINED;
     VkRenderPass sceneRenderPass_ = VK_NULL_HANDLE;
     VkRenderPass presentRenderPass_ = VK_NULL_HANDLE;
 

@@ -1,7 +1,6 @@
 #include "gfx/pass/MeshPass.hpp"
 
 #include "gfx/rhi/Commands.hpp"
-#include "gfx/vk/Commands.hpp"
 
 #include "gfx/pass/Overflow.hpp"
 #include "gfx/vk/VkCtx.hpp"
@@ -109,9 +108,7 @@ void MeshPass::record(cinder::gfx::rhi::Commands cmd, uint32_t frameInFlight,
             boundMesh = mesh;
         }
         if (drawTexture_[i] != boundTexture) {
-            const VkDescriptorSet set = assets_.get(drawTexture_[i]).descriptorSet();
-            vkCmdBindDescriptorSets(unwrap(cmd), VK_PIPELINE_BIND_POINT_GRAPHICS,
-                                    pipeline_.layout(), 0, 1, &set, 0, nullptr);
+            pipeline_.bindTexture(cmd, assets_.get(drawTexture_[i]).binding());
             boundTexture = drawTexture_[i];
         }
         pipeline_.pushModel(cmd, drawModel_[i]);

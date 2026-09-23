@@ -1,6 +1,7 @@
 #include "gfx/vk/GraphicsPipelineBuilder.hpp"
 
 #include "gfx/vk/Shaders.hpp"
+#include "gfx/vk/Formats.hpp"
 #include "gfx/vk/VkCtx.hpp"
 #include "gfx/vk/VkUtil.hpp"
 
@@ -27,12 +28,13 @@ GraphicsPipelineBuilder& GraphicsPipelineBuilder::vertexStride(uint32_t stride) 
     return *this;
 }
 
-GraphicsPipelineBuilder& GraphicsPipelineBuilder::attribute(uint32_t location, VkFormat format,
-                                                            uint32_t offset) {
+GraphicsPipelineBuilder& GraphicsPipelineBuilder::attribute(uint32_t location,
+                                                           rhi::VertexFormat format,
+                                                           uint32_t offset) {
     VkVertexInputAttributeDescription description{};
     description.location = location;
     description.binding = 0;
-    description.format = format;
+    description.format = rhi::toVk(format);
     description.offset = offset;
     attributes_.push_back(description);
     return *this;
