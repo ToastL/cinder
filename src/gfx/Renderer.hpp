@@ -10,9 +10,6 @@
 #include "gfx/pass/MeshPipeline.hpp"
 #include "gfx/pass/SpritePipeline.hpp"
 #include "gfx/pass/ViewCamera.hpp"
-#include "gfx/vk/FrameSync.hpp"
-#include "gfx/vk/GpuBuffer.hpp"
-#include "gfx/vk/Swapchain.hpp"
 #include "ui/core/ElementList.hpp"
 
 #include <glm/vec2.hpp>
@@ -46,12 +43,12 @@ public:
     void drawFrame();
     void capture(const std::string& path);
     void requestWindowCapture(const std::string& path);
-    bool windowCapturePending() const { return !windowCapture_.empty(); }
+    bool windowCapturePending() const;
 
     cinder::gfx::asset::Assets& assets() { return *assets_; }
     cinder::gfx::pass::ViewCamera& camera() { return camera_; }
     UiRenderer& ui() { return *ui_; }
-    float pixelsPerPoint() const { return pixelsPerPoint_; }
+    float pixelsPerPoint() const;
     cinder::scene::DrawList& draws();
 
     void setUiPaint(std::function<void(cinder::ui::ElementList&)> paint) { uiPaint_ = std::move(paint); }
@@ -61,24 +58,16 @@ public:
 private:
     bool embedded() const { return viewportWidth_ > 0; }
     glm::vec2 viewSize() const;
-    VkExtent2D targetExtent() const;
+    glm::uvec2 targetExtent() const;
     void createTargets();
-    void createCommandBuffers();
     void resizeCameras();
-    void measureScale();
-    void recreateSwapchain();
-    void recordCommandBuffer(VkCommandBuffer cmd, uint32_t imageIndex);
-    void recordWindowCapture(VkCommandBuffer cmd, uint32_t imageIndex);
 
     const cinder::gfx::vk::VkCtx& ctx_;
     cinder::platform::Window& window_;
 
     std::unique_ptr<cinder::gfx::rhi::Presenter> presenter_;
 
-    std::unique_ptr<cinder::gfx::vk::Swapchain> swapchain_;
     FrameTargets targets_;
-    std::vector<VkCommandBuffer> commandBuffers_;
-    std::unique_ptr<cinder::gfx::vk::FrameSync> sync_;
     std::unique_ptr<cinder::gfx::asset::Assets> assets_;
     std::unique_ptr<cinder::gfx::pass::SpritePipeline> spritePipeline_;
     std::unique_ptr<cinder::gfx::pass::MeshPipeline> meshPipeline_;
@@ -93,11 +82,6 @@ private:
     std::optional<cinder::gfx::pass::ViewCamera> override_;
 
     uint32_t lastFrame_ = 0;
-    std::string windowCapture_;
-    std::unique_ptr<cinder::gfx::rhi::GpuBuffer> captureBuffer_;
-    VkImageUsageFlags swapchainUsage_ = 0;
-    bool captureRecorded_ = false;
-    float pixelsPerPoint_ = 1.0f;
     int viewportWidth_ = 0;
     int viewportHeight_ = 0;
 

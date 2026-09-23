@@ -9,6 +9,8 @@
 #include "gfx/vk/VkImages.hpp"
 #include "ui/core/Batcher.hpp"
 
+#include <glm/vec2.hpp>
+
 #include <volk.h>
 
 #include <memory>
@@ -37,7 +39,7 @@ public:
     void setTextGamma(float gamma) { textGamma_ = gamma; }
 
     void prepare(cinder::gfx::rhi::Uploads cmd, uint32_t frame, const cinder::ui::ElementList& list);
-    void record(cinder::gfx::rhi::Commands cmd, uint32_t frame, VkExtent2D extent,
+    void record(cinder::gfx::rhi::Commands cmd, uint32_t frame, glm::uvec2 extent,
                 cinder::gfx::rhi::TextureBinding viewport);
 
 private:

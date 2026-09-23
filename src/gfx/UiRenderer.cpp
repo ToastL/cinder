@@ -224,7 +224,7 @@ cinder::gfx::rhi::TextureBinding UiRenderer::resolve(const TextureRef& texture,
     return assets_.get(0).binding();
 }
 
-void UiRenderer::record(cinder::gfx::rhi::Commands cmd, uint32_t frame, VkExtent2D extent,
+void UiRenderer::record(cinder::gfx::rhi::Commands cmd, uint32_t frame, glm::uvec2 extent,
                         cinder::gfx::rhi::TextureBinding viewport) {
     if (geometry_.empty()) return;
     Frame& data = frames_[frame];
@@ -233,7 +233,7 @@ void UiRenderer::record(cinder::gfx::rhi::Commands cmd, uint32_t frame, VkExtent
     push.viewport = viewport_;
     push.encode = encode_ ? 1.0f : 0.0f;
     push.textGamma = textGamma_;
-    push.pixelsPerPoint = static_cast<float>(extent.width) / viewport_.x;
+    push.pixelsPerPoint = static_cast<float>(extent.x) / viewport_.x;
 
     pipeline_->bind(cmd);
     pipeline_->push(cmd, PUSH_STAGES, sizeof(Push), &push);
@@ -245,10 +245,10 @@ void UiRenderer::record(cinder::gfx::rhi::Commands cmd, uint32_t frame, VkExtent
     cinder::gfx::rhi::TextureBinding bound;
     const float scale = push.pixelsPerPoint;
     for (const cinder::ui::UiBatch& batch : geometry_.batches) {
-        const float left = std::clamp(std::floor(batch.clip.min.x * scale), 0.0f, static_cast<float>(extent.width));
-        const float top = std::clamp(std::floor(batch.clip.min.y * scale), 0.0f, static_cast<float>(extent.height));
-        const float right = std::clamp(std::ceil(batch.clip.max.x * scale), 0.0f, static_cast<float>(extent.width));
-        const float bottom = std::clamp(std::ceil(batch.clip.max.y * scale), 0.0f, static_cast<float>(extent.height));
+        const float left = std::clamp(std::floor(batch.clip.min.x * scale), 0.0f, static_cast<float>(extent.x));
+        const float top = std::clamp(std::floor(batch.clip.min.y * scale), 0.0f, static_cast<float>(extent.y));
+        const float right = std::clamp(std::ceil(batch.clip.max.x * scale), 0.0f, static_cast<float>(extent.x));
+        const float bottom = std::clamp(std::ceil(batch.clip.max.y * scale), 0.0f, static_cast<float>(extent.y));
         if (right <= left || bottom <= top) continue;
 
         cinder::gfx::rhi::scissor(cmd, static_cast<int32_t>(left), static_cast<int32_t>(top),
@@ -263,7 +263,7 @@ void UiRenderer::record(cinder::gfx::rhi::Commands cmd, uint32_t frame, VkExtent
         cinder::gfx::rhi::drawIndexed(cmd, batch.indexCount, batch.firstIndex);
     }
 
-    cinder::gfx::rhi::scissor(cmd, 0, 0, extent.width, extent.height);
+    cinder::gfx::rhi::scissor(cmd, 0, 0, extent.x, extent.y);
 }
 
 }
