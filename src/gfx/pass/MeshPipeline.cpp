@@ -9,9 +9,8 @@ using cinder::gfx::asset::Mesh;
 using cinder::gfx::vk::GraphicsPipeline;
 using cinder::gfx::vk::GraphicsPipelineBuilder;
 
-MeshPipeline::MeshPipeline(const cinder::gfx::vk::VkCtx& ctx, VkRenderPass renderPass,
-                           VkDescriptorSetLayout descriptorSetLayout) {
-    pipeline_ = GraphicsPipelineBuilder(ctx, renderPass, descriptorSetLayout)
+MeshPipeline::MeshPipeline(const cinder::gfx::vk::VkCtx& ctx, VkRenderPass renderPass) {
+    pipeline_ = GraphicsPipelineBuilder(ctx, renderPass)
                         .shader("mesh")
                         .pushConstants(2 * GraphicsPipeline::MATRIX_BYTES)
                         .vertexStride(Mesh::VERTEX_STRIDE)

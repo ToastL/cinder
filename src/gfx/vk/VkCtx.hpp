@@ -23,6 +23,7 @@ public:
     VkQueue presentQueue() const { return presentQueue_; }
     VkSurfaceKHR surface() const { return surface_; }
     VkCommandPool commandPool() const { return commandPool_; }
+    VkDescriptorSetLayout textureLayout() const { return textureLayout_; }
     VmaAllocator allocator() const { return allocator_; }
     uint32_t graphicsFamily() const { return static_cast<uint32_t>(graphicsFamily_); }
     uint32_t presentFamily() const { return static_cast<uint32_t>(presentFamily_); }
@@ -40,6 +41,7 @@ private:
     bool findQueueFamilies(VkPhysicalDevice candidate);
     void createLogicalDevice();
     void createCommandPool();
+    void createTextureLayout();
     void createAllocator();
 
     bool validation_ = false;
@@ -53,6 +55,7 @@ private:
     int graphicsFamily_ = -1;
     int presentFamily_ = -1;
     VkCommandPool commandPool_ = VK_NULL_HANDLE;
+    VkDescriptorSetLayout textureLayout_ = VK_NULL_HANDLE;
     VmaAllocator allocator_ = VK_NULL_HANDLE;
 };
 

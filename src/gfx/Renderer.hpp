@@ -68,7 +68,6 @@ private:
     void recordCommandBuffer(VkCommandBuffer cmd, uint32_t imageIndex);
     void recordWindowCapture(VkCommandBuffer cmd, uint32_t imageIndex);
     static void setViewport(VkCommandBuffer cmd, uint32_t width, uint32_t height);
-    VkDescriptorSetLayout createTextureLayout();
 
     const cinder::gfx::vk::VkCtx& ctx_;
     cinder::platform::Window& window_;
@@ -76,7 +75,6 @@ private:
     VkFormat depthFormat_ = VK_FORMAT_UNDEFINED;
     VkRenderPass sceneRenderPass_ = VK_NULL_HANDLE;
     VkRenderPass presentRenderPass_ = VK_NULL_HANDLE;
-    VkDescriptorSetLayout textureLayout_ = VK_NULL_HANDLE;
 
     std::unique_ptr<cinder::gfx::vk::Swapchain> swapchain_;
     FrameTargets targets_;

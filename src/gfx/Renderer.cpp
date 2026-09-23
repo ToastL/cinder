@@ -57,19 +57,16 @@ Renderer::Renderer(const VkCtx& ctx, cinder::platform::Window& window) : ctx_(ct
     sceneRenderPass_ = renderPasses::scene(ctx, swapchain_->format(), depthFormat_);
     presentRenderPass_ = renderPasses::present(ctx, swapchain_->format());
 
-    textureLayout_ = createTextureLayout();
     createTargets();
     swapchain_->createFramebuffers(presentRenderPass_);
     createCommandBuffers();
 
     sync_ = std::make_unique<FrameSync>(ctx, FRAMES_IN_FLIGHT, swapchain_->imageCount());
-    assets_ = std::make_unique<Assets>(ctx, textureLayout_);
-    spritePipeline_ = std::make_unique<cinder::gfx::pass::SpritePipeline>(
-            ctx, sceneRenderPass_, textureLayout_);
-    meshPipeline_ = std::make_unique<cinder::gfx::pass::MeshPipeline>(
-            ctx, sceneRenderPass_, textureLayout_);
-    compositePipeline_ = std::make_unique<CompositePipeline>(ctx, presentRenderPass_, textureLayout_);
-    ui_ = std::make_unique<UiRenderer>(ctx, *assets_, presentRenderPass_, swapchain_->format(), textureLayout_,
+    assets_ = std::make_unique<Assets>(ctx);
+    spritePipeline_ = std::make_unique<cinder::gfx::pass::SpritePipeline>(ctx, sceneRenderPass_);
+    meshPipeline_ = std::make_unique<cinder::gfx::pass::MeshPipeline>(ctx, sceneRenderPass_);
+    compositePipeline_ = std::make_unique<CompositePipeline>(ctx, presentRenderPass_);
+    ui_ = std::make_unique<UiRenderer>(ctx, *assets_, presentRenderPass_, swapchain_->format(),
                                        FRAMES_IN_FLIGHT);
 
     auto meshPass = std::make_unique<cinder::gfx::pass::MeshPass>(ctx, *assets_, *meshPipeline_);
@@ -82,24 +79,6 @@ Renderer::Renderer(const VkCtx& ctx, cinder::platform::Window& window) : ctx_(ct
     passes_.push_back(std::move(spritePass));
 
     resizeCameras();
-}
-
-VkDescriptorSetLayout Renderer::createTextureLayout() {
-    VkDescriptorSetLayoutBinding binding{};
-    binding.binding = 0;
-    binding.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-    binding.descriptorCount = 1;
-    binding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
-
-    VkDescriptorSetLayoutCreateInfo info{};
-    info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
-    info.bindingCount = 1;
-    info.pBindings = &binding;
-
-    VkDescriptorSetLayout layout = VK_NULL_HANDLE;
-    check(vkCreateDescriptorSetLayout(ctx_.device(), &info, nullptr, &layout),
-          "vkCreateDescriptorSetLayout");
-    return layout;
 }
 
 void Renderer::measureScale() {
@@ -118,7 +97,7 @@ VkExtent2D Renderer::targetExtent() const {
 }
 
 void Renderer::createTargets() {
-    targets_.recreate(ctx_, sceneRenderPass_, textureLayout_, swapchain_->format(), depthFormat_,
+    targets_.recreate(ctx_, sceneRenderPass_, swapchain_->format(), depthFormat_,
                       targetExtent(), FRAMES_IN_FLIGHT);
 }
 
@@ -420,7 +399,6 @@ Renderer::~Renderer() {
 
     swapchain_.reset();
 
-    vkDestroyDescriptorSetLayout(ctx_.device(), textureLayout_, nullptr);
     vkDestroyRenderPass(ctx_.device(), presentRenderPass_, nullptr);
     vkDestroyRenderPass(ctx_.device(), sceneRenderPass_, nullptr);
 }

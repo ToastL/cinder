@@ -7,9 +7,8 @@ namespace cinder::gfx::pass {
 using cinder::gfx::vk::GraphicsPipeline;
 using cinder::gfx::vk::GraphicsPipelineBuilder;
 
-SpritePipeline::SpritePipeline(const cinder::gfx::vk::VkCtx& ctx, VkRenderPass renderPass,
-                               VkDescriptorSetLayout descriptorSetLayout) {
-    pipeline_ = GraphicsPipelineBuilder(ctx, renderPass, descriptorSetLayout)
+SpritePipeline::SpritePipeline(const cinder::gfx::vk::VkCtx& ctx, VkRenderPass renderPass) {
+    pipeline_ = GraphicsPipelineBuilder(ctx, renderPass)
                         .shader("sprite")
                         .pushConstants(GraphicsPipeline::MATRIX_BYTES)
                         .vertexStride(VERTEX_STRIDE)

@@ -1,6 +1,7 @@
 #pragma once
 
 #include "gfx/vk/DepthBuffer.hpp"
+#include "gfx/vk/TexturePool.hpp"
 #include "gfx/vk/VkImages.hpp"
 
 #include <memory>
@@ -10,7 +11,6 @@ namespace cinder::gfx {
 class RenderTarget {
 public:
     RenderTarget(const cinder::gfx::vk::VkCtx& ctx, VkRenderPass renderPass,
-                 VkDescriptorSetLayout descriptorSetLayout,
                  VkFormat format, VkFormat depthFormat, uint32_t width, uint32_t height);
     ~RenderTarget();
 
@@ -30,8 +30,7 @@ private:
     VkImageView view_ = VK_NULL_HANDLE;
     std::unique_ptr<cinder::gfx::vk::DepthBuffer> depth_;
     VkFramebuffer framebuffer_ = VK_NULL_HANDLE;
-    VkSampler sampler_ = VK_NULL_HANDLE;
-    VkDescriptorPool pool_ = VK_NULL_HANDLE;
+    std::unique_ptr<cinder::gfx::vk::TexturePool> pool_;
     VkDescriptorSet descriptorSet_ = VK_NULL_HANDLE;
     uint32_t width_ = 0;
     uint32_t height_ = 0;

@@ -1,7 +1,6 @@
 #include "gfx/asset/Assets.hpp"
 
 #include "gfx/vk/VkCtx.hpp"
-#include "gfx/vk/VkDescriptors.hpp"
 #include "scene/DrawList.hpp"
 
 #include <stdexcept>
@@ -9,13 +8,8 @@
 
 namespace cinder::gfx::asset {
 
-namespace descriptors = cinder::gfx::vk::descriptors;
-namespace images = cinder::gfx::vk::images;
-
-Assets::Assets(const cinder::gfx::vk::VkCtx& ctx, VkDescriptorSetLayout descriptorSetLayout)
-    : ctx_(ctx), layout_(descriptorSetLayout) {
-    pool_ = descriptors::pool(ctx, MAX_TEXTURES);
-    sampler_ = images::sampler(ctx, VK_FILTER_NEAREST);
+Assets::Assets(const cinder::gfx::vk::VkCtx& ctx)
+    : ctx_(ctx), pool_(ctx, MAX_TEXTURES, VK_FILTER_NEAREST) {
     registerTexture(Texture::white(ctx));
 }
 
@@ -24,9 +18,7 @@ int Assets::registerTexture(Texture texture) {
         throw std::runtime_error("Texture limit reached (" + std::to_string(MAX_TEXTURES) + ")");
     }
 
-    const VkDescriptorSet set = descriptors::allocate(ctx_, pool_, layout_);
-    descriptors::writeCombinedImageSampler(ctx_, set, texture.view(), sampler_);
-    texture.setDescriptorSet(set);
+    texture.setDescriptorSet(pool_.bind(texture.view()));
 
     textures_.push_back(std::move(texture));
     return static_cast<int>(textures_.size()) - 1;
@@ -48,10 +40,6 @@ const Texture& Assets::get(int id) const {
     return textures_[static_cast<std::size_t>(id)];
 }
 
-Assets::~Assets() {
-    textures_.clear();
-    vkDestroySampler(ctx_.device(), sampler_, nullptr);
-    vkDestroyDescriptorPool(ctx_.device(), pool_, nullptr);
-}
+Assets::~Assets() { textures_.clear(); }
 
 }

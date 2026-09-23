@@ -8,9 +8,8 @@
 
 namespace cinder::gfx::vk {
 
-GraphicsPipelineBuilder::GraphicsPipelineBuilder(const VkCtx& ctx, VkRenderPass renderPass,
-                                                 VkDescriptorSetLayout descriptorSetLayout)
-    : ctx_(ctx), renderPass_(renderPass), descriptorSetLayout_(descriptorSetLayout) {}
+GraphicsPipelineBuilder::GraphicsPipelineBuilder(const VkCtx& ctx, VkRenderPass renderPass)
+    : ctx_(ctx), renderPass_(renderPass) {}
 
 GraphicsPipelineBuilder& GraphicsPipelineBuilder::shader(std::string program) {
     program_ = std::move(program);
@@ -76,7 +75,8 @@ std::unique_ptr<GraphicsPipeline> GraphicsPipelineBuilder::build() {
     VkPipelineLayoutCreateInfo layoutInfo{};
     layoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
     layoutInfo.setLayoutCount = 1;
-    layoutInfo.pSetLayouts = &descriptorSetLayout_;
+    const VkDescriptorSetLayout setLayout = ctx_.textureLayout();
+    layoutInfo.pSetLayouts = &setLayout;
     if (pushConstantBytes_ > 0) {
         layoutInfo.pushConstantRangeCount = 1;
         layoutInfo.pPushConstantRanges = &push;

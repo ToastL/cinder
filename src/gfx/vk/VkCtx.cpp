@@ -85,6 +85,7 @@ VkCtx::VkCtx(cinder::platform::Window& window) {
     pickPhysicalDevice();
     createLogicalDevice();
     createCommandPool();
+    createTextureLayout();
     createAllocator();
 }
 
@@ -248,6 +249,22 @@ void VkCtx::createLogicalDevice() {
     vkGetDeviceQueue(device_, static_cast<uint32_t>(presentFamily_), 0, &presentQueue_);
 }
 
+void VkCtx::createTextureLayout() {
+    VkDescriptorSetLayoutBinding binding{};
+    binding.binding = 0;
+    binding.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+    binding.descriptorCount = 1;
+    binding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+
+    VkDescriptorSetLayoutCreateInfo info{};
+    info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+    info.bindingCount = 1;
+    info.pBindings = &binding;
+
+    check(vkCreateDescriptorSetLayout(device_, &info, nullptr, &textureLayout_),
+          "vkCreateDescriptorSetLayout");
+}
+
 void VkCtx::createCommandPool() {
     VkCommandPoolCreateInfo info{};
     info.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
@@ -306,6 +323,9 @@ void VkCtx::endSingleTime(VkCommandBuffer cmd) const {
 
 VkCtx::~VkCtx() {
     if (allocator_ != VK_NULL_HANDLE) vmaDestroyAllocator(allocator_);
+    if (textureLayout_ != VK_NULL_HANDLE) {
+        vkDestroyDescriptorSetLayout(device_, textureLayout_, nullptr);
+    }
     if (commandPool_ != VK_NULL_HANDLE) vkDestroyCommandPool(device_, commandPool_, nullptr);
     if (device_ != VK_NULL_HANDLE) vkDestroyDevice(device_, nullptr);
     if (surface_ != VK_NULL_HANDLE) vkDestroySurfaceKHR(instance_, surface_, nullptr);

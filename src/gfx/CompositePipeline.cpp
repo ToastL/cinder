@@ -4,9 +4,8 @@
 
 namespace cinder::gfx {
 
-CompositePipeline::CompositePipeline(const cinder::gfx::vk::VkCtx& ctx, VkRenderPass renderPass,
-                                     VkDescriptorSetLayout descriptorSetLayout) {
-    pipeline_ = cinder::gfx::vk::GraphicsPipelineBuilder(ctx, renderPass, descriptorSetLayout)
+CompositePipeline::CompositePipeline(const cinder::gfx::vk::VkCtx& ctx, VkRenderPass renderPass) {
+    pipeline_ = cinder::gfx::vk::GraphicsPipelineBuilder(ctx, renderPass)
                         .shader("composite")
                         .build();
 }

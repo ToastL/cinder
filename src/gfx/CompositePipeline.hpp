@@ -8,8 +8,7 @@ namespace cinder::gfx {
 
 class CompositePipeline {
 public:
-    CompositePipeline(const cinder::gfx::vk::VkCtx& ctx, VkRenderPass renderPass,
-                      VkDescriptorSetLayout descriptorSetLayout);
+    CompositePipeline(const cinder::gfx::vk::VkCtx& ctx, VkRenderPass renderPass);
 
     void draw(VkCommandBuffer cmd, VkDescriptorSet descriptorSet) const;
 

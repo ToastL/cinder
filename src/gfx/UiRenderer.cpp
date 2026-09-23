@@ -3,7 +3,6 @@
 #include "gfx/asset/Assets.hpp"
 #include "gfx/vk/GraphicsPipelineBuilder.hpp"
 #include "gfx/vk/VkCtx.hpp"
-#include "gfx/vk/VkDescriptors.hpp"
 #include "platform/Log.hpp"
 #include "text/GlyphAtlas.hpp"
 #include "ui/core/ElementList.hpp"
@@ -25,7 +24,6 @@ using cinder::gfx::vk::VkCtx;
 using cinder::text::GlyphAtlas;
 using cinder::ui::TextureRef;
 using cinder::ui::UiVertex;
-namespace descriptors = cinder::gfx::vk::descriptors;
 namespace images = cinder::gfx::vk::images;
 
 namespace {
@@ -69,20 +67,18 @@ void barrier(VkCommandBuffer cmd, VkImage image, VkImageLayout from, VkImageLayo
 }
 
 UiRenderer::UiRenderer(const VkCtx& ctx, cinder::gfx::asset::Assets& assets, VkRenderPass renderPass,
-                       VkFormat format, VkDescriptorSetLayout textureLayout, uint32_t framesInFlight)
-    : ctx_(ctx), assets_(assets), textureLayout_(textureLayout), frames_(framesInFlight) {
-    sampler_ = images::sampler(ctx, VK_FILTER_LINEAR);
+                       VkFormat format, uint32_t framesInFlight)
+    : ctx_(ctx), assets_(assets), frames_(framesInFlight) {
     rebuild(renderPass, format);
 }
 
 UiRenderer::~UiRenderer() {
     for (GlyphPage& page : pages_) destroyPage(page);
-    vkDestroySampler(ctx_.device(), sampler_, nullptr);
 }
 
 void UiRenderer::rebuild(VkRenderPass renderPass, VkFormat format) {
     encode_ = !srgb(format);
-    pipeline_ = GraphicsPipelineBuilder(ctx_, renderPass, textureLayout_)
+    pipeline_ = GraphicsPipelineBuilder(ctx_, renderPass)
                         .shader("ui")
                         .pushConstants(sizeof(Push), PUSH_STAGES)
                         .vertexStride(sizeof(UiVertex))
@@ -110,15 +106,14 @@ UiRenderer::GlyphPage& UiRenderer::page(std::size_t index) {
         created.image = images::create(ctx_, PAGE_FORMAT, size, size,
                                        VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT);
         created.view = images::view(ctx_, created.image.image, PAGE_FORMAT, VK_IMAGE_ASPECT_COLOR_BIT);
-        created.pool = descriptors::pool(ctx_, 1);
-        created.set = descriptors::allocate(ctx_, created.pool, textureLayout_);
-        descriptors::writeCombinedImageSampler(ctx_, created.set, created.view, sampler_);
+        created.pool = std::make_unique<cinder::gfx::vk::TexturePool>(ctx_, 1, VK_FILTER_LINEAR);
+        created.set = created.pool->bind(created.view);
     }
     return pages_[index];
 }
 
 void UiRenderer::destroyPage(GlyphPage& page) {
-    vkDestroyDescriptorPool(ctx_.device(), page.pool, nullptr);
+    page.pool.reset();
     vkDestroyImageView(ctx_.device(), page.view, nullptr);
     vmaDestroyImage(ctx_.allocator(), page.image.image, page.image.allocation);
 }

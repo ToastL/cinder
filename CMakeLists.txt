@@ -12,6 +12,16 @@ endif()
 
 set(CINDER_ENGINE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/engine")
 
+set(CINDER_BACKEND vk CACHE STRING "Graphics backend: vk or mtl")
+set_property(CACHE CINDER_BACKEND PROPERTY STRINGS vk mtl)
+
+if(NOT IS_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/src/gfx/${CINDER_BACKEND}")
+    message(FATAL_ERROR "CINDER_BACKEND=${CINDER_BACKEND}: src/gfx/${CINDER_BACKEND} does not exist")
+endif()
+
+configure_file(cmake/Backend.hpp.in
+    ${CMAKE_BINARY_DIR}/generated/gfx/rhi/Backend.hpp @ONLY)
+
 include(cmake/Dependencies.cmake)
 include(cmake/Shaders.cmake)
 
@@ -34,7 +44,7 @@ file(GLOB_RECURSE ENGINE_SOURCES CONFIGURE_DEPENDS
 add_library(engine STATIC ${ENGINE_SOURCES})
 add_dependencies(engine shaders)
 
-target_include_directories(engine PUBLIC src)
+target_include_directories(engine PUBLIC src ${CMAKE_BINARY_DIR}/generated)
 target_link_libraries(engine PUBLIC volk glfw glm::glm lua vma_impl stb freetype harfbuzz)
 target_compile_definitions(engine PUBLIC
     GLFW_INCLUDE_NONE

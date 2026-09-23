@@ -10,8 +10,7 @@ namespace cinder::gfx {
 class FrameTargets {
 public:
     void recreate(const cinder::gfx::vk::VkCtx& ctx, VkRenderPass renderPass,
-                  VkDescriptorSetLayout textureLayout, VkFormat format, VkFormat depthFormat,
-                  VkExtent2D extent, uint32_t count);
+                  VkFormat format, VkFormat depthFormat, VkExtent2D extent, uint32_t count);
     void clear();
     RenderTarget& at(uint32_t frame) const { return *frames_[frame]; }
 

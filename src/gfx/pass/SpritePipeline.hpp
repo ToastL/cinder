@@ -11,8 +11,7 @@ public:
     static constexpr uint32_t FLOATS_PER_VERTEX = 9;
     static constexpr uint32_t VERTEX_STRIDE = FLOATS_PER_VERTEX * sizeof(float);
 
-    SpritePipeline(const cinder::gfx::vk::VkCtx& ctx, VkRenderPass renderPass,
-                   VkDescriptorSetLayout descriptorSetLayout);
+    SpritePipeline(const cinder::gfx::vk::VkCtx& ctx, VkRenderPass renderPass);
 
     void bind(VkCommandBuffer cmd, const glm::mat4& viewProjection) const;
     VkPipelineLayout layout() const { return pipeline_->layout(); }

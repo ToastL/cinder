@@ -2,6 +2,7 @@
 
 #include "gfx/vk/GpuBuffer.hpp"
 #include "gfx/vk/GraphicsPipeline.hpp"
+#include "gfx/vk/TexturePool.hpp"
 #include "gfx/vk/VkImages.hpp"
 #include "ui/core/Batcher.hpp"
 
@@ -23,7 +24,7 @@ public:
     static constexpr float DEFAULT_TEXT_GAMMA = 1.2f;
 
     UiRenderer(const cinder::gfx::vk::VkCtx& ctx, cinder::gfx::asset::Assets& assets, VkRenderPass renderPass,
-               VkFormat format, VkDescriptorSetLayout textureLayout, uint32_t framesInFlight);
+               VkFormat format, uint32_t framesInFlight);
     ~UiRenderer();
 
     UiRenderer(const UiRenderer&) = delete;
@@ -39,7 +40,7 @@ private:
     struct GlyphPage {
         cinder::gfx::vk::Allocated image;
         VkImageView view = VK_NULL_HANDLE;
-        VkDescriptorPool pool = VK_NULL_HANDLE;
+        std::unique_ptr<cinder::gfx::vk::TexturePool> pool;
         VkDescriptorSet set = VK_NULL_HANDLE;
         bool uploaded = false;
     };
@@ -60,9 +61,7 @@ private:
 
     const cinder::gfx::vk::VkCtx& ctx_;
     cinder::gfx::asset::Assets& assets_;
-    VkDescriptorSetLayout textureLayout_;
     std::unique_ptr<cinder::gfx::vk::GraphicsPipeline> pipeline_;
-    VkSampler sampler_ = VK_NULL_HANDLE;
     std::vector<GlyphPage> pages_;
     std::vector<Frame> frames_;
     std::vector<VkDescriptorSet> named_;

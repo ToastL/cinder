@@ -8,8 +8,7 @@ namespace cinder::gfx::pass {
 
 class MeshPipeline {
 public:
-    MeshPipeline(const cinder::gfx::vk::VkCtx& ctx, VkRenderPass renderPass,
-                 VkDescriptorSetLayout descriptorSetLayout);
+    MeshPipeline(const cinder::gfx::vk::VkCtx& ctx, VkRenderPass renderPass);
 
     void bind(VkCommandBuffer cmd, const glm::mat4& viewProjection) const;
     void pushModel(VkCommandBuffer cmd, const glm::mat4& model) const;
