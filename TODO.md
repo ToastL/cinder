@@ -10,9 +10,10 @@ code that runs top to bottom, attributes on nodes, and per-file hot reload that 
 code started. A Roblox-style tree of nodes
 with a prop system that feeds the serializer and the script bindings from one declaration. A
 bidirectional `Archive` with text and INI backends, and games that are project folders in Unreal's
-shape — a `.cinder` file, `Config/`, `Content/` and `Source/` — rather than scripts in the engine. Dear ImGui is up in a separate `engine_dev` target, with a
-dockspace holding the Scene viewport and a console with a live Lua REPL, and a play toolbar in the
-main menu bar — `player` ships without a byte of it. The editor opens a project in Edit mode, seen
+shape — a `.cinder` file, `Config/`, `Content/` and `Source/` — rather than scripts in the engine. The
+editor runs on a UI framework of our own, in a separate `engine_dev` target: docked tabs holding the
+Explorer, the Scene view, Properties and a console with a live Lua REPL, over a toolbar with the File,
+Edit, Window and Play menus — `player` ships without a byte of it. The editor opens a project in Edit mode, seen
 through a free-flying editor camera — 2D scenes included — with a gizmo drawn for every scene camera; Play serializes the
 scene into a fresh Lua state and Stop restores it. An Explorer shows the whole node tree, scripts
 included, and Properties edits the selected node's fields and attributes with no per-type editor
@@ -25,34 +26,35 @@ and hear about contacts, with a `planar` body making a 2D scene physical. 222 he
 a 65-check Lua selftest.
 
 Foundations, the scene model, the scripting ergonomics, serialization and the Edit/Play split are
-done. The editor shell is underway — ImGui, the console, the toolbar, the Scene viewport, the
-editor camera, the Explorer, Properties, picking, undo and transform gizmos have landed.
+done. The editor shell is underway — the UI framework, docking, the console, the toolbar, the Scene
+view, the editor camera, the Explorer, Properties, picking, undo and transform gizmos have landed,
+and ImGui is gone.
 
 ---
 
 ## Editor shell
 
-- [x] Add Dear ImGui with its Vulkan backend. `gfx/vk` was kept free of engine concepts precisely so
-      the backend can build on it without dragging in passes or assets. Lives in `src/dev`, behind
-      the abstract `gfx::Overlay`, drawn inside the present pass. `editor` is the dev build;
-      `player` links `engine` and contains no ImGui symbols at all.
-- [ ] Docking layout: viewport, explorer, properties, console, asset browser. `dev/Dockspace` is up
-      with Scene, Explorer, Properties and Console; the asset browser docks into it when it lands.
-- [x] **Viewport** — `dev/Viewport`, the "Scene" window. The target is sized to the panel through
-      `Renderer::setViewportSize` and registered with ImGui through `Overlay::addTexture`, and
-      `engine.mousePosition()` is relative to the panel's top-left.
-- [x] **Explorer** — `dev/Explorer`, the whole node tree with scripts as children: a filter, "+" to
-      insert any registered class, right-click to insert, duplicate or delete, and drag to reparent.
-      `dev/Selection` holds a node id, so the selection survives Play and Stop.
+- [x] The editor's UI is our own — see *UI framework*. `editor` is the dev build on `engine_dev`;
+      `player` links `engine` and `ctest` runs `nm` over both.
+- [x] Docking layout: the Scene view, Explorer, Properties and Console as tabs in splits, with
+      drag-to-redock and a Window menu; the asset browser docks into it when it lands.
+- [x] **Scene view** — `dev/panels/SceneView`. The target is sized to the panel through
+      `Renderer::setViewportSize` and drawn as an opaque image element, and `engine.mousePosition()`
+      is relative to the panel's top-left.
+- [x] **Explorer** — `dev/panels/Explorer`, a virtualized tree over node ids with scripts as
+      children: a filter, "+" to insert any registered class, right-click to insert, duplicate or
+      delete, and drag to reparent. `dev/Selection` holds a node id, so the selection survives Play
+      and Stop.
 - [ ] Explorer: multi-select, inline rename, copy and paste
-- [x] **Properties** — `dev/Properties` shows one node: its transform when it is spatial, its
-      class's props with one widget per `PropType` (enum combos, colour pickers), and its attributes
-      with add and remove. An edit during Play fires the game's changed signals.
+- [x] **Properties** — `dev/panels/Properties` shows one node: its transform when it is spatial, its
+      class's props with a widget per `PropType` and `PropHint` (spin boxes, vector boxes, enum
+      combos, colour pickers), and its attributes with add and remove. An edit during Play fires the
+      game's changed signals.
 - [ ] Properties: an asset-reference widget for texture and mesh names, and a node-reference widget
 - [x] **Gizmos** — `dev/Manipulator` moves along world or local axes and planes, rotates on gimbal
       rings that each turn one Euler angle, and scales along local axes or uniformly; ⌘ snaps and
-      Esc cancels. 1/2/3 pick the tool and X toggles World/Local. `dev/Gizmos` draws the handles from
-      the same shapes the hit test uses, and every scene `Camera` as a frustum.
+      Esc cancels. 1/2/3 pick the tool and X toggles World/Local. `dev/GizmoLines` builds the strokes
+      from the same shapes the hit test uses, and every scene `Camera` as a frustum.
 - [ ] Gizmos: world- and local-space rotation rings and a view-facing ring — rotation is gimbal-only
 - [ ] Gizmos: snapping to absolute grid positions, and snap steps set in the editor
 - [ ] Gizmos during Play — like picking, they only exist in Edit mode
@@ -81,7 +83,7 @@ editor camera, the Explorer, Properties, picking, undo and transform gizmos have
 - [ ] Project picker and new-project template — the editor takes the project folder or its
       `.cinder` file on the command line; the template writes `Content/Scenes/` and `Content/Textures/`,
       and the picker lists each descriptor's `category` and `description`. The *Project browser*
-      under *UI framework*, not in ImGui.
+      under *UI framework*.
 - [ ] Project Settings panel — `ProjectConfig::walk` already writes `Config/Game.ini` through `IniSave`
 - [ ] Scene switching — open, new and save-as. The editor edits the one scene named by
       `startScene` in `Config/Game.ini` or `--scene`.
@@ -97,12 +99,11 @@ sugar, never the primary surface.
 ## UI framework
 
 **The editor's UI is our own, by decision, and it is shaped like Unreal's without borrowing its
-names** — not Qt, not RmlUi, and ImGui only until the replacement reaches parity. Unreal builds its
-editor on Slate and its game UI on UMG, which wraps Slate; this engine does the same, so one framework
-is both the game UI system and the editor's toolkit. Qt would be a second UI system, an installed
-dependency with LGPL terms, and it and GLFW both want to own the macOS app; RmlUi would still leave
-every editor widget, docking and multiple windows to build. ImGui stays the working `editor` until the
-last panel is ported.
+names** — not Qt, not RmlUi, and no longer ImGui. Unreal builds its editor on Slate and its game UI on
+UMG, which wraps Slate; this engine does the same, so one framework is both the game UI system and the
+editor's toolkit. Qt would be a second UI system, an installed dependency with LGPL terms, and it and
+GLFW both want to own the macOS app; RmlUi would still leave every editor widget, docking and multiple
+windows to build.
 
 The shape is Slate's: a retained tree of widgets with plain names — `Button`, `Label`, `TextBox`,
 `HorizontalBox`, `Splitter`, `Canvas` — built with `ui::make<T>()`, slots and chained arguments; layout
@@ -125,14 +126,14 @@ includes `scene`, `reflect` or `gfx` — the reflection-driven Properties panel 
       and the first widgets: boxes, border, overlay, canvas, scaler, label, image, button, check box,
       scroll box, splitter, text field and box, viewport. `Input` records an ordered event queue with
       characters, repeats and modifiers, and `platform/InputScript` replays one for tests and captures.
-- [x] **Vertical slice** — `editor_next` with the toolbar, the Scene view and the console on the new UI
+- [x] **Vertical slice** — the toolbar, the Scene view and the console on the new UI
       in a fixed layout: picking, gizmo drags, the editor camera, undo, Play/Stop, the console's Lua
       line and the close prompt all run on it, and `--input-script` drives every one of them.
 - [x] **Value editors and menus** — popups and tooltips in the `Application`; `SpinBox` (drag, click
       to type an expression, bounds only when declared, never rounded to its display),
       `VectorInputBox`, `ComboBox`, `ExpandableArea`, `ColorBlock` and `ColorPicker`; `Menu`,
       `MenuBuilder`, `MenuAnchor`, `MenuBar` and context menus, with commands, checks and submenus.
-      `editor_next`'s toolbar has File, Edit and Play menus.
+      The editor's toolbar has File, Edit and Play menus.
 - [x] **Lists and trees** — `TreeView` (a `ListView` is one with no children) builds only the rows in
       view, keyed by item id, with selection by mouse and arrow keys, expansion from the arrow or a
       double click, `reveal` through collapsed ancestors, context menus, and drag and drop carrying a
@@ -143,20 +144,20 @@ includes `scene`, `reflect` or `gfx` — the reflection-driven Properties panel 
       spawns a tab's panel once and keeps it across re-docks, and rebuilds the widgets on every
       change, carrying the splitter sizes over. A tab drags to another stack's middle or against an
       edge, which splits it; closing the last tab of a stack collapses it; the Window menu reopens a
-      closed tab where it last lived. `editor_next` runs on it.
+      closed tab where it last lived. The editor runs on it.
 - [ ] **Floating panels** — panels in their own OS windows, after parity: `VkCtx` has to stop owning
       the one GLFW surface — one device, a swapchain per window.
 - [x] **Port the panels** — `dev/panels/` holds `Toolbar`, `SceneView`, `Explorer`, `Properties`,
-      `Console` and the docked `Layout`, and `editor` is now the new UI while the old one lives on as
-      `editor_imgui` until its files go. `PlaySession`, `History`, `Selection`, `Picking`,
-      `EditorCamera`, `Manipulator`, `GizmoGeometry` and `GizmoLines` carried over unchanged, and
+      `Console` and the docked `Layout`, and `editor` is now the new UI. `PlaySession`, `History`,
+      `Selection`, `Picking`, `EditorCamera`, `Manipulator`, `GizmoGeometry` and `GizmoLines`
+      carried over unchanged, and
       `graphics_smoke` drives the new editor with injected input.
-- [ ] **Delete ImGui** — the `IMGUI_SOURCES` files, `editor_imgui`, `Probe`, `gfx::Overlay` and
-      `OverlayTexture`, and the dependency itself. `cmake/AssertLayers.cmake` lists the files still
-      allowed to mention ImGui, and the list only shrinks.
+- [x] **Delete ImGui** — the old panels, `editor_imgui`, `Probe`, `gfx::Overlay`, `OverlayTexture`
+      and the dependency itself are gone, and `cmake/AssertLayers.cmake` now fails any file that
+      names ImGui at all.
 - [ ] **Game UI** — reflected widget classes saved as `.widget` assets under `Content/`, created from
       Lua and added to the viewport, never nodes in the `Scene`: Unreal's UMG, in its own layer over
-      `ui`, `reflect` and `serial`, and its own plan once the editor is on the new UI.
+      `ui`, `reflect` and `serial`, and its own plan.
 - [ ] **Project browser** — the first screen of `editor` with no argument: recent projects and
       templates, as Unreal's Project Browser and Godot's Project Manager do. Built on the new UI once
       it lands, and designed separately.
@@ -304,12 +305,9 @@ includes `scene`, `reflect` or `gfx` — the reflection-driven Properties panel 
 - [ ] **Resizing the Scene panel stalls the device.** `Renderer::setViewportSize` calls
       `vkDeviceWaitIdle` and rebuilds both targets on every size change, so dragging a dock splitter
       stalls once per frame. Rebuilding each target when its own fence comes round would avoid it,
-      but the ImGui registration already recorded for that frame would have to survive the rebuild.
-- [ ] **ImGui blends the Scene image by its alpha.** The mesh pipeline writes `albedo.a` unblended,
-      so a translucent mesh lets the panel background through in the editor, while the player's
-      opaque swapchain ignores it. Sprites are fine — their alpha factors keep the target at 1.
+      but the descriptor set already recorded for that frame would have to survive the rebuild.
 - [x] **Enforce the layer graph.** CTest runs `architecture_layers` against first-party includes and
-      `architecture_checker` against allowed/forbidden fixtures, including the editor-only ImGui rule.
+      `architecture_checker` against allowed/forbidden fixtures, including the no-ImGui rule.
 - [ ] **Scene text numeric parsing still follows the process locale.** `TextLoad` uses `std::stod` /
       `std::stoll`, which also accept numeric prefixes. The refactor shares writer formatting only;
       changing this grammar and its error behavior belongs in a separate correctness change.

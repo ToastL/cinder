@@ -6,7 +6,6 @@
 #include "gfx/asset/Assets.hpp"
 #include "gfx/pass/DrawPass.hpp"
 #include "gfx/pass/MeshPipeline.hpp"
-#include "gfx/Overlay.hpp"
 #include "gfx/pass/SpritePipeline.hpp"
 #include "gfx/pass/ViewCamera.hpp"
 #include "gfx/vk/FrameSync.hpp"
@@ -31,8 +30,7 @@ class Renderer {
 public:
     static constexpr uint32_t FRAMES_IN_FLIGHT = 2;
 
-    Renderer(const cinder::gfx::vk::VkCtx& ctx, cinder::platform::Window& window,
-             const OverlayFactory& overlay);
+    Renderer(const cinder::gfx::vk::VkCtx& ctx, cinder::platform::Window& window);
     ~Renderer();
 
     Renderer(const Renderer&) = delete;
@@ -52,10 +50,8 @@ public:
     cinder::gfx::pass::ViewCamera& camera() { return camera_; }
     UiRenderer& ui() { return *ui_; }
     float pixelsPerPoint() const { return pixelsPerPoint_; }
-    VkDescriptorSet viewport() const;
     cinder::scene::DrawList& draws();
 
-    void setOverlayDraw(std::function<void()> draw) { overlayDraw_ = std::move(draw); }
     void setUiPaint(std::function<void(cinder::ui::ElementList&)> paint) { uiPaint_ = std::move(paint); }
 
     void registerApi(cinder::lua::LuaApi& api);
@@ -83,7 +79,6 @@ private:
     VkDescriptorSetLayout textureLayout_ = VK_NULL_HANDLE;
 
     std::unique_ptr<cinder::gfx::vk::Swapchain> swapchain_;
-    std::unique_ptr<Overlay> overlay_;
     FrameTargets targets_;
     std::vector<VkCommandBuffer> commandBuffers_;
     std::unique_ptr<cinder::gfx::vk::FrameSync> sync_;
@@ -94,7 +89,6 @@ private:
     std::unique_ptr<UiRenderer> ui_;
     std::vector<std::unique_ptr<cinder::gfx::pass::DrawPass>> passes_;
     std::unique_ptr<cinder::scene::DrawList> draws_;
-    std::function<void()> overlayDraw_;
     std::function<void(cinder::ui::ElementList&)> uiPaint_;
     cinder::ui::ElementList uiElements_;
 

@@ -29,22 +29,6 @@ set(ALLOWED_dev ${ALLOWED_core} core)
 set(ALLOWED_player core platform)
 set(ALLOWED_editor core dev ui/core ui/framework ui/widgets ui/docking text platform)
 
-set(IMGUI_SOURCES
-    dev/Console.cpp
-    dev/Console.hpp
-    dev/Dockspace.cpp
-    dev/Explorer.cpp
-    dev/Gizmos.cpp
-    dev/Gizmos.hpp
-    dev/ImGuiLayer.cpp
-    dev/ImGuiLayer.hpp
-    dev/Probe.cpp
-    dev/Properties.cpp
-    dev/PropertyWidgets.cpp
-    dev/Toolbar.cpp
-    dev/Viewport.cpp
-    editor/imgui_main.cpp)
-
 function(layer_of path output)
     if(path MATCHES "^(gfx/(vk|asset|pass)|ui/(core|framework|widgets|docking))/")
         set(${output} "${CMAKE_MATCH_1}" PARENT_SCOPE)
@@ -63,8 +47,8 @@ foreach(SOURCE IN LISTS SOURCES)
     endif()
 
     file(READ "${SOURCE_DIR}/${SOURCE}" CONTENT)
-    if(NOT SOURCE IN_LIST IMGUI_SOURCES AND CONTENT MATCHES "ImGui|ImDraw|ImVec[24]|IMGUI_|imgui")
-        message(FATAL_ERROR "Editor-only ImGui reference in ${SOURCE}")
+    if(CONTENT MATCHES "ImGui|ImDraw|ImVec[24]|IMGUI_|imgui")
+        message(FATAL_ERROR "ImGui reference in ${SOURCE}; the editor has its own UI")
     endif()
 
     file(STRINGS "${SOURCE_DIR}/${SOURCE}" INCLUDES REGEX "^[ \t]*#[ \t]*include[ \t]+[\"<]")

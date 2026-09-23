@@ -48,14 +48,11 @@ target_compile_options(engine PRIVATE -Wall -Wextra -Wno-unused-parameter)
 file(GLOB_RECURSE DEV_SOURCES CONFIGURE_DEPENDS src/dev/*.cpp)
 
 add_library(engine_dev STATIC ${DEV_SOURCES})
-target_link_libraries(engine_dev PUBLIC engine imgui)
+target_link_libraries(engine_dev PUBLIC engine)
 target_compile_options(engine_dev PRIVATE -Wall -Wextra -Wno-unused-parameter)
 
 add_executable(editor src/editor/main.cpp)
 target_link_libraries(editor PRIVATE engine_dev)
-
-add_executable(editor_imgui src/editor/imgui_main.cpp)
-target_link_libraries(editor_imgui PRIVATE engine_dev)
 
 add_executable(player EXCLUDE_FROM_ALL src/player/main.cpp)
 target_link_libraries(player PRIVATE engine)

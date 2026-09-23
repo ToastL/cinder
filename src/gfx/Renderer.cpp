@@ -49,9 +49,7 @@ int screenToWorld(lua_State* state) {
 
 }
 
-Renderer::Renderer(const VkCtx& ctx, cinder::platform::Window& window,
-                   const OverlayFactory& overlay)
-    : ctx_(ctx), window_(window) {
+Renderer::Renderer(const VkCtx& ctx, cinder::platform::Window& window) : ctx_(ctx), window_(window) {
     swapchain_ = std::make_unique<Swapchain>(ctx, window);
     measureScale();
     depthFormat_ = DepthBuffer::chooseFormat(ctx.physicalDevice());
@@ -84,11 +82,6 @@ Renderer::Renderer(const VkCtx& ctx, cinder::platform::Window& window,
     passes_.push_back(std::move(spritePass));
 
     resizeCameras();
-
-    if (overlay) {
-        overlay_ = overlay(ctx, window, presentRenderPass_, swapchain_->imageCount(),
-                           swapchain_->imageCount());
-    }
 }
 
 VkDescriptorSetLayout Renderer::createTextureLayout() {
@@ -126,7 +119,7 @@ VkExtent2D Renderer::targetExtent() const {
 
 void Renderer::createTargets() {
     targets_.recreate(ctx_, sceneRenderPass_, textureLayout_, swapchain_->format(), depthFormat_,
-                      targetExtent(), FRAMES_IN_FLIGHT, embedded() ? overlay_.get() : nullptr);
+                      targetExtent(), FRAMES_IN_FLIGHT);
 }
 
 void Renderer::createCommandBuffers() {
@@ -179,17 +172,8 @@ void Renderer::releaseCamera() { override_.reset(); }
 void Renderer::beginFrame() {
     for (const std::unique_ptr<DrawPass>& pass : passes_) pass->beginFrame();
 
-    if (overlay_ != nullptr) {
-        overlay_->beginFrame();
-        if (overlayDraw_) overlayDraw_();
-    }
-
     uiElements_.reset(glm::vec2(window_.logicalWidth(), window_.logicalHeight()), pixelsPerPoint());
     if (uiPaint_) uiPaint_(uiElements_);
-}
-
-VkDescriptorSet Renderer::viewport() const {
-    return targets_.viewport(sync_->frame());
 }
 
 void Renderer::registerApi(cinder::lua::LuaApi& api) {
@@ -257,7 +241,6 @@ void Renderer::recordCommandBuffer(VkCommandBuffer cmd, uint32_t imageIndex) {
     setViewport(cmd, swapchain_->width(), swapchain_->height());
     if (!embedded()) compositePipeline_->draw(cmd, target.descriptorSet());
     ui_->record(cmd, sync_->frame(), {swapchain_->width(), swapchain_->height()}, target.descriptorSet());
-    if (overlay_ != nullptr) overlay_->record(cmd);
     vkCmdEndRenderPass(cmd);
     recordWindowCapture(cmd, imageIndex);
 
@@ -273,7 +256,6 @@ void Renderer::drawFrame() {
                                             sync_->imageAvailable(), VK_NULL_HANDLE, &imageIndex);
 
     if (result == VK_ERROR_OUT_OF_DATE_KHR) {
-        if (overlay_ != nullptr) overlay_->discardFrame();
         recreateSwapchain();
         return;
     }
@@ -357,7 +339,6 @@ void Renderer::recreateSwapchain() {
     swapchain_->createFramebuffers(presentRenderPass_);
     resizeCameras();
     sync_->resize(swapchain_->imageCount());
-    if (overlay_ != nullptr) overlay_->setMinImageCount(swapchain_->imageCount());
 
     window_.clearResized();
 }
@@ -422,7 +403,6 @@ cinder::scene::DrawList& Renderer::draws() { return *draws_; }
 Renderer::~Renderer() {
     ctx_.waitIdle();
     targets_.clear();
-    overlay_.reset();
     draws_.reset();
     passes_.clear();
     compositePipeline_.reset();
