@@ -27,8 +27,7 @@ a 65-check Lua selftest.
 
 Foundations, the scene model, the scripting ergonomics, serialization and the Edit/Play split are
 done. The editor shell is underway — the UI framework, docking, the console, the toolbar, the Scene
-view, the editor camera, the Explorer, Properties, picking, undo and transform gizmos have landed,
-and ImGui is gone.
+view, the editor camera, the Explorer, Properties, picking, undo and transform gizmos have landed.
 
 ---
 
@@ -99,11 +98,11 @@ sugar, never the primary surface.
 ## UI framework
 
 **The editor's UI is our own, by decision, and it is shaped like Unreal's without borrowing its
-names** — not Qt, not RmlUi, and no longer ImGui. Unreal builds its editor on Slate and its game UI on
-UMG, which wraps Slate; this engine does the same, so one framework is both the game UI system and the
-editor's toolkit. Qt would be a second UI system, an installed dependency with LGPL terms, and it and
-GLFW both want to own the macOS app; RmlUi would still leave every editor widget, docking and multiple
-windows to build.
+names** — not Qt, not RmlUi, and not an immediate-mode debug UI. Unreal builds its editor on Slate and
+its game UI on UMG, which wraps Slate; this engine does the same, so one framework is both the game UI
+system and the editor's toolkit. Qt would be a second UI system, an installed dependency with LGPL
+terms, and it and GLFW both want to own the macOS app; RmlUi would still leave every editor widget,
+docking and multiple windows to build.
 
 The shape is Slate's: a retained tree of widgets with plain names — `Button`, `Label`, `TextBox`,
 `HorizontalBox`, `Splitter`, `Canvas` — built with `ui::make<T>()`, slots and chained arguments; layout
@@ -152,9 +151,9 @@ includes `scene`, `reflect` or `gfx` — the reflection-driven Properties panel 
       `Selection`, `Picking`, `EditorCamera`, `Manipulator`, `GizmoGeometry` and `GizmoLines`
       carried over unchanged, and
       `graphics_smoke` drives the new editor with injected input.
-- [x] **Delete ImGui** — the old panels, `editor_imgui`, `Probe`, `gfx::Overlay`, `OverlayTexture`
-      and the dependency itself are gone, and `cmake/AssertLayers.cmake` now fails any file that
-      names ImGui at all.
+- [x] **Retire the old UI** — the previous immediate-mode panels, their second executable, `Probe`,
+      `gfx::Overlay` with its `OverlayTexture` and the third-party dependency behind them are all
+      gone; `Renderer`'s only UI seam is `setUiPaint`.
 - [ ] **Game UI** — reflected widget classes saved as `.widget` assets under `Content/`, created from
       Lua and added to the viewport, never nodes in the `Scene`: Unreal's UMG, in its own layer over
       `ui`, `reflect` and `serial`, and its own plan.
@@ -307,7 +306,7 @@ includes `scene`, `reflect` or `gfx` — the reflection-driven Properties panel 
       stalls once per frame. Rebuilding each target when its own fence comes round would avoid it,
       but the descriptor set already recorded for that frame would have to survive the rebuild.
 - [x] **Enforce the layer graph.** CTest runs `architecture_layers` against first-party includes and
-      `architecture_checker` against allowed/forbidden fixtures, including the no-ImGui rule.
+      `architecture_checker` against allowed and forbidden include fixtures.
 - [ ] **Scene text numeric parsing still follows the process locale.** `TextLoad` uses `std::stod` /
       `std::stoll`, which also accept numeric prefixes. The refactor shares writer formatting only;
       changing this grammar and its error behavior belongs in a separate correctness change.

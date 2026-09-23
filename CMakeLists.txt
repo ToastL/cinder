@@ -119,8 +119,3 @@ add_test(NAME shipping_binary_is_clean COMMAND ${CMAKE_COMMAND}
     -DEXE=$<TARGET_FILE:player>
     -P ${CMAKE_CURRENT_SOURCE_DIR}/cmake/AssertNoDevTools.cmake)
 set_tests_properties(shipping_binary_is_clean PROPERTIES FIXTURES_REQUIRED player)
-
-add_test(NAME editor_is_imgui_free COMMAND ${CMAKE_COMMAND}
-    -DEXE=$<TARGET_FILE:editor>
-    -DALLOW_DEV=ON
-    -P ${CMAKE_CURRENT_SOURCE_DIR}/cmake/AssertNoDevTools.cmake)

@@ -68,9 +68,8 @@ runs. Play/Pause/Step/Stop are on the toolbar and on ⌘P, ⌘⇧P and ⌘⌥P; 
 the project folder or its `.cinder` file, then `--scene <path>` (relative to `Content/`), `--play`
 (start in Play), `--frames <n>`, `--capture <png>`, `--capture-window <png>` and `--input-script
 <file>`; a script can also `close` the window to exercise the unsaved-changes prompt. `--frames 90
---capture out.png` runs headless-ish and writes a screenshot. `ctest` holds it to
-`editor_is_imgui_free`, which runs `nm` over it, so no ImGui object can be linked into it by
-accident. See *The dev tools* below for why this is a second executable rather than a flag.
+--capture out.png` runs headless-ish and writes a screenshot. See *The dev tools* below for why this
+is a second executable rather than a flag.
 
 ```bash
 cmake --build build --target player && ./build/player samples/sandbox3d
@@ -183,10 +182,9 @@ Everything down to `core` is the `engine` library. **`dev` is not** — it is it
 its editor camera and gizmos, the selection, the undo history and the play session. `player` links
 `engine`; `editor` links `engine_dev`.
 
-**The editor's UI is our own and ImGui is gone** — see *The UI framework* below. `text` and the four
-`ui` layers are part of `engine`, because the game will use them too; `ui` never includes `scene`,
-`reflect` or `gfx`. `cmake/AssertLayers.cmake` fails any file that so much as names ImGui, and
-`ctest` runs `nm` over `player` and `editor` for the same reason.
+**The editor's UI is the engine's own** — see *The UI framework* below. `text` and the four `ui`
+layers are part of `engine`, because the game will use them too; `ui` never includes `scene`,
+`reflect` or `gfx`. `ctest` runs `nm` over `player` to prove no `cinder::dev` symbol reached it.
 
 **`platform` is the one leaf everything may reach for**, because `platform/Log.hpp` lives there and
 every layer logs, and `platform/Assets.hpp` is the only thing that turns a name into a path. That is

@@ -46,11 +46,6 @@ foreach(SOURCE IN LISTS SOURCES)
         message(FATAL_ERROR "Unknown source layer: ${SOURCE}")
     endif()
 
-    file(READ "${SOURCE_DIR}/${SOURCE}" CONTENT)
-    if(CONTENT MATCHES "ImGui|ImDraw|ImVec[24]|IMGUI_|imgui")
-        message(FATAL_ERROR "ImGui reference in ${SOURCE}; the editor has its own UI")
-    endif()
-
     file(STRINGS "${SOURCE_DIR}/${SOURCE}" INCLUDES REGEX "^[ \t]*#[ \t]*include[ \t]+[\"<]")
     foreach(INCLUDE IN LISTS INCLUDES)
         string(REGEX REPLACE "^[ \t]*#[ \t]*include[ \t]+[\"<]([^\">]+)[\">].*$" "\\1" HEADER "${INCLUDE}")

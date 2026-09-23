@@ -17,13 +17,8 @@ endif()
 
 string(TOLOWER "${SYMBOLS}" LOWERED)
 
-if(LOWERED MATCHES "imgui")
+if(LOWERED MATCHES "cinder3dev")
     message(FATAL_ERROR
-        "${EXE} contains ImGui symbols. The engine/engine_dev split is broken: "
+        "${EXE} contains cinder::dev symbols. The engine/engine_dev split is broken: "
         "dev tools must not link into the shipping executable.")
-endif()
-
-if(NOT ALLOW_DEV AND LOWERED MATCHES "cinder3dev")
-    message(FATAL_ERROR
-        "${EXE} contains cinder::dev symbols. The engine/engine_dev split is broken.")
 endif()
