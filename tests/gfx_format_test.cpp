@@ -1,14 +1,20 @@
 #include <doctest/doctest.h>
 
 #include "gfx/rhi/Format.hpp"
+#if defined(CINDER_BACKEND_VK)
 #include "gfx/vk/Formats.hpp"
+#elif defined(CINDER_BACKEND_MTL)
+#include "gfx/mtl/Formats.hpp"
+#endif
 
 using cinder::gfx::rhi::Format;
-using cinder::gfx::rhi::fromVk;
 using cinder::gfx::rhi::isBgra;
 using cinder::gfx::rhi::isDepth;
 using cinder::gfx::rhi::isSrgb;
+#if defined(CINDER_BACKEND_VK)
+using cinder::gfx::rhi::fromVk;
 using cinder::gfx::rhi::toVk;
+#endif
 using cinder::gfx::rhi::VertexFormat;
 
 namespace {
@@ -21,11 +27,20 @@ constexpr Format ALL[] = {
 
 }
 
+#if defined(CINDER_BACKEND_VK)
 TEST_CASE("every format round-trips through Vulkan") {
     for (Format format : ALL) {
         CHECK(fromVk(toVk(format)) == format);
     }
 }
+#elif defined(CINDER_BACKEND_MTL)
+TEST_CASE("every concrete format maps to a Metal pixel format") {
+    for (Format format : ALL) {
+        const std::uint64_t mapped = cinder::gfx::mtl::pixelFormat(format);
+        CHECK((mapped != 0) == (format != Format::Undefined));
+    }
+}
+#endif
 
 TEST_CASE("only real sRGB formats report sRGB") {
     CHECK(isSrgb(Format::BGRA8Srgb));
@@ -57,6 +72,7 @@ TEST_CASE("depth formats are exactly the three the device may choose") {
     }
 }
 
+#if defined(CINDER_BACKEND_VK)
 TEST_CASE("the sRGB and BGRA tables match the Vulkan constants they replaced") {
     CHECK(isSrgb(fromVk(VK_FORMAT_B8G8R8A8_SRGB)));
     CHECK(isSrgb(fromVk(VK_FORMAT_R8G8B8A8_SRGB)));
@@ -73,3 +89,10 @@ TEST_CASE("vertex formats map to the sizes the pipelines declare") {
     CHECK(toVk(VertexFormat::Float3) == VK_FORMAT_R32G32B32_SFLOAT);
     CHECK(toVk(VertexFormat::Float4) == VK_FORMAT_R32G32B32A32_SFLOAT);
 }
+#elif defined(CINDER_BACKEND_MTL)
+TEST_CASE("vertex formats map to concrete Metal formats") {
+    CHECK(cinder::gfx::mtl::vertexFormat(VertexFormat::Float2) != 0);
+    CHECK(cinder::gfx::mtl::vertexFormat(VertexFormat::Float3) != 0);
+    CHECK(cinder::gfx::mtl::vertexFormat(VertexFormat::Float4) != 0);
+}
+#endif

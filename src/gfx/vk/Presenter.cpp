@@ -109,7 +109,7 @@ std::optional<Frame> Presenter::begin() {
     return frame;
 }
 
-void Presenter::beginScenePass(const Frame& frame, const RenderTarget& target, float r, float g,
+void Presenter::beginScenePass(Frame& frame, const RenderTarget& target, float r, float g,
                                float b) {
     VkClearValue clears[2]{};
     clears[0].color = {{r, g, b, 1.0f}};
@@ -127,7 +127,7 @@ void Presenter::beginScenePass(const Frame& frame, const RenderTarget& target, f
     vkCmdBeginRenderPass(unwrap(frame.commands), &info, VK_SUBPASS_CONTENTS_INLINE);
 }
 
-void Presenter::beginPresentPass(const Frame& frame, float r, float g, float b) {
+void Presenter::beginPresentPass(Frame& frame, float r, float g, float b) {
     VkClearValue clear{};
     clear.color = {{r, g, b, 1.0f}};
 
@@ -143,9 +143,9 @@ void Presenter::beginPresentPass(const Frame& frame, float r, float g, float b) 
     vkCmdBeginRenderPass(unwrap(frame.commands), &info, VK_SUBPASS_CONTENTS_INLINE);
 }
 
-void Presenter::endPass(const Frame& frame) { vkCmdEndRenderPass(unwrap(frame.commands)); }
+void Presenter::endPass(Frame& frame) { vkCmdEndRenderPass(unwrap(frame.commands)); }
 
-void Presenter::end(const Frame& frame) {
+void Presenter::end(Frame& frame) {
     VkCommandBuffer cmd = unwrap(frame.commands);
     recordWindowCapture(cmd, frame.image);
     check(vkEndCommandBuffer(cmd), "vkEndCommandBuffer");

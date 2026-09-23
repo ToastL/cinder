@@ -102,8 +102,10 @@ function(cinder_compile_shaders target)
             if("msl" IN_LIST SHADER_FORMATS)
                 if(STAGE STREQUAL vs)
                     set(MSL_STAGE vert)
+                    set(MSL_COORDINATE_OPTIONS --flip-vert-y)
                 else()
                     set(MSL_STAGE frag)
+                    set(MSL_COORDINATE_OPTIONS)
                 endif()
 
                 set(METAL ${OUT_DIR}/${NAME}.${STAGE}.metal)
@@ -111,6 +113,7 @@ function(cinder_compile_shaders target)
                     OUTPUT ${METAL}
                     COMMAND ${SPIRV_CROSS} --msl --msl-version ${CINDER_MSL_VERSION}
                             --msl-decoration-binding
+                            ${MSL_COORDINATE_OPTIONS}
                             --rename-entry-point ${ENTRY}Main ${ENTRY}Main ${MSL_STAGE}
                             ${SPV} --output ${METAL}
                     DEPENDS ${SPV}
@@ -131,7 +134,9 @@ function(cinder_compile_shaders target)
                     set(AIR ${OUT_DIR}/${NAME}.${STAGE}.air)
                     add_custom_command(
                         OUTPUT ${AIR}
-                        COMMAND ${XCRUN} metal -std=${CINDER_METAL_STD} -c ${METAL} -o ${AIR}
+                        COMMAND ${XCRUN} metal -std=${CINDER_METAL_STD}
+                                -fmodules-cache-path=${OUT_DIR}/metal-module-cache
+                                -c ${METAL} -o ${AIR}
                         DEPENDS ${METAL}
                         COMMENT "metal ${NAME}.${STAGE}"
                         VERBATIM)

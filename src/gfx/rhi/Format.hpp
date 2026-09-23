@@ -40,6 +40,11 @@ enum class BufferUsage : std::uint8_t {
     TransferDst,
 };
 
+enum class SamplerFilter : std::uint8_t {
+    Nearest,
+    Linear,
+};
+
 enum class Winding : std::uint8_t {
     Clockwise,
     CounterClockwise,

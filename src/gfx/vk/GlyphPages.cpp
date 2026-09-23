@@ -39,7 +39,7 @@ GlyphPages::Page& GlyphPages::page(std::size_t index) {
                                        VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT);
         created.view = images::view(ctx_, created.image.image, PAGE_FORMAT,
                                     VK_IMAGE_ASPECT_COLOR_BIT);
-        created.pool = std::make_unique<TexturePool>(ctx_, 1, VK_FILTER_LINEAR);
+        created.pool = std::make_unique<TexturePool>(ctx_, 1, SamplerFilter::Linear);
         created.set = created.pool->bind(created.view);
     }
     return pages_[index];

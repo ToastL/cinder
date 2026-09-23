@@ -1,12 +1,11 @@
 #pragma once
 
+#include "gfx/mtl/Commands.hpp"
 #include "gfx/rhi/Format.hpp"
 #include "gfx/rhi/Fwd.hpp"
 #include "gfx/rhi/Handles.hpp"
 
 #include <glm/vec2.hpp>
-
-#include <volk.h>
 
 #include <cstdint>
 #include <functional>
@@ -17,13 +16,6 @@
 
 namespace cinder::platform { class Window; }
 
-namespace cinder::gfx::rhi { class Ctx; }
-
-namespace cinder::gfx::vk {
-class Swapchain;
-class FrameSync;
-}
-
 namespace cinder::gfx::rhi {
 
 struct Frame {
@@ -31,11 +23,15 @@ struct Frame {
     std::uint32_t image = 0;
     Commands commands;
     Uploads uploads;
+
+    std::unique_ptr<cinder::gfx::mtl::CommandState> state;
+    void* commandBuffer = nullptr;
+    void* drawable = nullptr;
 };
 
 class Presenter {
 public:
-    Presenter(const cinder::gfx::rhi::Ctx& ctx, cinder::platform::Window& window,
+    Presenter(const Ctx& ctx, cinder::platform::Window& window,
               std::uint32_t framesInFlight);
     ~Presenter();
 
@@ -46,9 +42,8 @@ public:
         recreated_ = std::move(handler);
     }
 
-    const cinder::gfx::rhi::Ctx& ctx() const { return ctx_; }
-    Format colorFormat() const;
-    VkRenderPass renderPass(PassKind pass) const;
+    const Ctx& ctx() const { return ctx_; }
+    Format colorFormat() const { return Format::BGRA8Srgb; }
     glm::uvec2 extent() const;
     float pixelsPerPoint() const { return pixelsPerPoint_; }
 
@@ -61,33 +56,22 @@ public:
     void end(Frame& frame);
 
     void captureTarget(const RenderTarget& target, const std::string& path) const;
-    void requestWindowCapture(const std::string& path);
+    void requestWindowCapture(const std::string& path) { windowCapture_ = path; }
     bool windowCapturePending() const { return !windowCapture_.empty(); }
 
 private:
-    void createRenderPasses();
-    void destroyRenderPasses();
-    void createCommandBuffers();
-    void measureScale();
-    void recreateSwapchain();
-    void recordWindowCapture(VkCommandBuffer cmd, std::uint32_t imageIndex);
+    void resize();
+    void capture(void* texture, std::uint32_t width, std::uint32_t height,
+                 const std::string& path) const;
 
-    const cinder::gfx::rhi::Ctx& ctx_;
+    const Ctx& ctx_;
     cinder::platform::Window& window_;
     std::uint32_t framesInFlight_ = 0;
-
-    std::unique_ptr<cinder::gfx::vk::Swapchain> swapchain_;
-    std::unique_ptr<cinder::gfx::vk::FrameSync> sync_;
-    std::vector<VkCommandBuffer> commandBuffers_;
-    VkRenderPass scenePass_ = VK_NULL_HANDLE;
-    VkRenderPass presentPass_ = VK_NULL_HANDLE;
-
+    std::uint32_t frame_ = 0;
+    void* layer_ = nullptr;
+    std::vector<void*> inFlight_;
     std::function<void(bool)> recreated_;
-
     std::string windowCapture_;
-    std::unique_ptr<GpuBuffer> captureBuffer_;
-    VkImageUsageFlags swapchainUsage_ = 0;
-    bool captureRecorded_ = false;
     float pixelsPerPoint_ = 1.0f;
 };
 

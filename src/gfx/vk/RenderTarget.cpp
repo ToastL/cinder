@@ -24,7 +24,7 @@ RenderTarget::RenderTarget(const rhi::Ctx& ctx, VkRenderPass renderPass,
     const VkImageView attachments[] = {view_, depth_->view()};
     framebuffer_ = images::framebuffer(ctx, renderPass, attachments, 2, width, height);
 
-    pool_ = std::make_unique<TexturePool>(ctx, 1, VK_FILTER_LINEAR);
+    pool_ = std::make_unique<TexturePool>(ctx, 1, SamplerFilter::Linear);
     binding_ = pool_->bind(view_);
 }
 

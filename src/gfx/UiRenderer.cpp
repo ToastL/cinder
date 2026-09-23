@@ -25,8 +25,6 @@ using cinder::gfx::rhi::Ctx;
 using cinder::text::GlyphAtlas;
 using cinder::ui::TextureRef;
 using cinder::ui::UiVertex;
-namespace images = cinder::gfx::vk::images;
-
 namespace {
 
 struct Push {

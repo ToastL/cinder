@@ -12,7 +12,13 @@ endif()
 
 set(CINDER_ENGINE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/engine")
 
-set(CINDER_BACKEND vk CACHE STRING "Graphics backend: vk or mtl")
+if(APPLE)
+    set(CINDER_BACKEND_DEFAULT mtl)
+else()
+    set(CINDER_BACKEND_DEFAULT vk)
+endif()
+
+set(CINDER_BACKEND ${CINDER_BACKEND_DEFAULT} CACHE STRING "Graphics backend: vk or mtl")
 set_property(CACHE CINDER_BACKEND PROPERTY STRINGS vk mtl)
 
 if(NOT IS_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/src/gfx/${CINDER_BACKEND}")
@@ -23,6 +29,17 @@ configure_file(cmake/Backend.hpp.in
     ${CMAKE_BINARY_DIR}/generated/gfx/rhi/Backend.hpp @ONLY)
 
 string(TOUPPER ${CINDER_BACKEND} CINDER_BACKEND_UPPER)
+
+if(CINDER_BACKEND STREQUAL "mtl")
+    if(NOT APPLE)
+        message(FATAL_ERROR "CINDER_BACKEND=mtl is only available on Apple platforms")
+    endif()
+    enable_language(OBJC)
+    enable_language(OBJCXX)
+    set(CMAKE_OBJC_STANDARD 11)
+    set(CMAKE_OBJCXX_STANDARD 20)
+    set(CMAKE_OBJCXX_STANDARD_REQUIRED ON)
+endif()
 
 include(cmake/Dependencies.cmake)
 include(cmake/Shaders.cmake)
@@ -48,11 +65,22 @@ file(GLOB_RECURSE ENGINE_SOURCES CONFIGURE_DEPENDS
     src/text/*.cpp
     src/ui/*.cpp)
 
+# The recursive gfx glob above picks up backend implementations as well as the
+# backend-neutral renderer. Keep exactly the backend selected by CINDER_BACKEND.
+list(FILTER ENGINE_SOURCES EXCLUDE REGEX "/src/gfx/(vk|mtl)/")
+file(GLOB_RECURSE CINDER_BACKEND_SOURCES CONFIGURE_DEPENDS
+    src/gfx/${CINDER_BACKEND}/*.cpp
+    src/gfx/${CINDER_BACKEND}/*.mm)
+list(APPEND ENGINE_SOURCES ${CINDER_BACKEND_SOURCES})
+
 add_library(engine STATIC ${ENGINE_SOURCES})
 add_dependencies(engine shaders)
 
 target_include_directories(engine PUBLIC src ${CMAKE_BINARY_DIR}/generated)
-target_link_libraries(engine PUBLIC volk glfw glm::glm lua vma_impl stb freetype harfbuzz)
+target_link_libraries(engine PUBLIC glfw glm::glm lua stb freetype harfbuzz)
+if(CINDER_BACKEND STREQUAL "vk")
+    target_link_libraries(engine PUBLIC volk vma_impl)
+endif()
 target_compile_definitions(engine PUBLIC
     GLFW_INCLUDE_NONE
     GLM_FORCE_DEPTH_ZERO_TO_ONE
@@ -63,6 +91,14 @@ target_compile_definitions(engine PRIVATE
     CINDER_SHADERS_DEFAULT="${CMAKE_BINARY_DIR}/shaders"
     CINDER_VERSION="${PROJECT_VERSION}")
 target_compile_options(engine PRIVATE -Wall -Wextra -Wno-unused-parameter)
+
+if(CINDER_BACKEND STREQUAL "mtl")
+    target_compile_options(engine PRIVATE $<$<COMPILE_LANGUAGE:OBJCXX>:-fobjc-arc>)
+    target_link_libraries(engine PUBLIC
+        "-framework Metal" "-framework QuartzCore" "-framework Foundation"
+        "-framework CoreGraphics" "-framework AppKit")
+    target_compile_definitions(engine PUBLIC GLFW_EXPOSE_NATIVE_COCOA)
+endif()
 
 file(GLOB_RECURSE DEV_SOURCES CONFIGURE_DEPENDS src/dev/*.cpp)
 
