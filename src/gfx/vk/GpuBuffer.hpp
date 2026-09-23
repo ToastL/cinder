@@ -1,5 +1,6 @@
 #pragma once
 
+#include "gfx/rhi/Format.hpp"
 #include "gfx/rhi/Handles.hpp"
 
 #include <volk.h>
@@ -8,14 +9,14 @@
 
 #include <cstddef>
 
-namespace cinder::gfx::vk { class VkCtx; }
+namespace cinder::gfx::rhi { class Ctx; }
 
 namespace cinder::gfx::rhi {
 
 
 class GpuBuffer {
 public:
-    GpuBuffer(const cinder::gfx::vk::VkCtx& ctx, VkDeviceSize size, VkBufferUsageFlags usage, bool hostVisible);
+    GpuBuffer(const Ctx& ctx, std::uint64_t size, BufferUsage usage, bool hostVisible);
     ~GpuBuffer();
 
     GpuBuffer(const GpuBuffer&) = delete;
@@ -34,7 +35,7 @@ public:
 private:
     void release();
 
-    const cinder::gfx::vk::VkCtx* ctx_ = nullptr;
+    const cinder::gfx::rhi::Ctx* ctx_ = nullptr;
     VkBuffer handle_ = VK_NULL_HANDLE;
     VmaAllocation allocation_ = nullptr;
     void* mapped_ = nullptr;

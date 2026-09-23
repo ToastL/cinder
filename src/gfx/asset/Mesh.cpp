@@ -2,7 +2,7 @@
 
 #include "gfx/vk/Commands.hpp"
 
-#include "gfx/vk/VkCtx.hpp"
+#include "gfx/vk/Ctx.hpp"
 
 #include <glm/gtc/constants.hpp>
 
@@ -12,7 +12,7 @@
 namespace cinder::gfx::asset {
 
 using cinder::gfx::rhi::GpuBuffer;
-using cinder::gfx::vk::VkCtx;
+using cinder::gfx::rhi::Ctx;
 
 namespace {
 
@@ -24,22 +24,22 @@ void cross(const float* a, const float* b, float* out) {
 
 }
 
-Mesh::Mesh(const VkCtx& ctx, const std::vector<float>& vertices,
+Mesh::Mesh(const Ctx& ctx, const std::vector<float>& vertices,
            const std::vector<uint32_t>& indices)
     : indexCount_(static_cast<uint32_t>(indices.size())) {
-    const VkDeviceSize vertexBytes = vertices.size() * sizeof(float);
-    const VkDeviceSize indexBytes = indices.size() * sizeof(uint32_t);
+    const std::uint64_t vertexBytes = vertices.size() * sizeof(float);
+    const std::uint64_t indexBytes = indices.size() * sizeof(uint32_t);
 
     vertexBuffer_ = std::make_unique<GpuBuffer>(ctx, vertexBytes,
-                                                VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, true);
+                                                cinder::gfx::rhi::BufferUsage::Vertex, true);
     indexBuffer_ = std::make_unique<GpuBuffer>(ctx, indexBytes,
-                                               VK_BUFFER_USAGE_INDEX_BUFFER_BIT, true);
+                                               cinder::gfx::rhi::BufferUsage::Index, true);
 
     std::memcpy(vertexBuffer_->mapped(), vertices.data(), static_cast<std::size_t>(vertexBytes));
     std::memcpy(indexBuffer_->mapped(), indices.data(), static_cast<std::size_t>(indexBytes));
 }
 
-Mesh Mesh::cube(const VkCtx& ctx, float r, float g, float b) {
+Mesh Mesh::cube(const Ctx& ctx, float r, float g, float b) {
     const float normals[6][3] = {
         {0, 0, 1}, {0, 0, -1},
         {1, 0, 0}, {-1, 0, 0},
@@ -92,7 +92,7 @@ Mesh Mesh::cube(const VkCtx& ctx, float r, float g, float b) {
     return Mesh(ctx, vertices, indices);
 }
 
-Mesh Mesh::sphere(const VkCtx& ctx, float r, float g, float b) {
+Mesh Mesh::sphere(const Ctx& ctx, float r, float g, float b) {
     constexpr int SEGMENTS = 32;
     constexpr int RINGS = 16;
 
@@ -125,7 +125,7 @@ Mesh Mesh::sphere(const VkCtx& ctx, float r, float g, float b) {
     return Mesh(ctx, vertices, indices);
 }
 
-Mesh Mesh::capsule(const VkCtx& ctx, float r, float g, float b) {
+Mesh Mesh::capsule(const Ctx& ctx, float r, float g, float b) {
     constexpr int SEGMENTS = 32;
     constexpr int RINGS = 8;
     constexpr float RADIUS = 0.5f;

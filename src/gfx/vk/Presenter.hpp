@@ -17,8 +17,9 @@
 
 namespace cinder::platform { class Window; }
 
+namespace cinder::gfx::rhi { class Ctx; }
+
 namespace cinder::gfx::vk {
-class VkCtx;
 class Swapchain;
 class FrameSync;
 }
@@ -34,7 +35,7 @@ struct Frame {
 
 class Presenter {
 public:
-    Presenter(const cinder::gfx::vk::VkCtx& ctx, cinder::platform::Window& window,
+    Presenter(const cinder::gfx::rhi::Ctx& ctx, cinder::platform::Window& window,
               std::uint32_t framesInFlight);
     ~Presenter();
 
@@ -45,7 +46,7 @@ public:
         recreated_ = std::move(handler);
     }
 
-    const cinder::gfx::vk::VkCtx& ctx() const { return ctx_; }
+    const cinder::gfx::rhi::Ctx& ctx() const { return ctx_; }
     Format colorFormat() const;
     VkRenderPass renderPass(PassKind pass) const;
     glm::uvec2 extent() const;
@@ -71,7 +72,7 @@ private:
     void recreateSwapchain();
     void recordWindowCapture(VkCommandBuffer cmd, std::uint32_t imageIndex);
 
-    const cinder::gfx::vk::VkCtx& ctx_;
+    const cinder::gfx::rhi::Ctx& ctx_;
     cinder::platform::Window& window_;
     std::uint32_t framesInFlight_ = 0;
 

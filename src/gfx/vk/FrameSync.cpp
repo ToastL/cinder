@@ -1,13 +1,13 @@
 #include "gfx/vk/FrameSync.hpp"
 
-#include "gfx/vk/VkCtx.hpp"
+#include "gfx/vk/Ctx.hpp"
 #include "gfx/vk/VkUtil.hpp"
 
 #include <limits>
 
 namespace cinder::gfx::vk {
 
-FrameSync::FrameSync(const VkCtx& ctx, uint32_t framesInFlight, uint32_t imageCount)
+FrameSync::FrameSync(const rhi::Ctx& ctx, uint32_t framesInFlight, uint32_t imageCount)
     : ctx_(ctx), framesInFlight_(framesInFlight) {
     VkSemaphoreCreateInfo semaphore{};
     semaphore.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;

@@ -4,30 +4,30 @@
 #include "gfx/vk/Commands.hpp"
 
 #include "gfx/pass/Overflow.hpp"
-#include "gfx/vk/VkCtx.hpp"
+#include "gfx/vk/Ctx.hpp"
 
 #include <cstring>
 
 namespace cinder::gfx::pass {
 
 using cinder::gfx::rhi::GpuBuffer;
-using cinder::gfx::vk::VkCtx;
+using cinder::gfx::rhi::Ctx;
 
-SpriteBatch::SpriteBatch(const VkCtx& ctx, cinder::gfx::asset::Assets& assets,
+SpriteBatch::SpriteBatch(const Ctx& ctx, cinder::gfx::asset::Assets& assets,
                          const SpritePipeline& pipeline, uint32_t framesInFlight)
     : assets_(assets), pipeline_(pipeline),
       vertices_(static_cast<std::size_t>(MAX_QUADS) * FLOATS_PER_QUAD),
       quadTexture_(MAX_QUADS) {
-    const VkDeviceSize vertexBytes =
-            static_cast<VkDeviceSize>(MAX_QUADS) * FLOATS_PER_QUAD * sizeof(float);
+    const std::uint64_t vertexBytes =
+            static_cast<std::uint64_t>(MAX_QUADS) * FLOATS_PER_QUAD * sizeof(float);
 
     vertexBuffers_.reserve(framesInFlight);
     for (uint32_t i = 0; i < framesInFlight; ++i) {
-        vertexBuffers_.emplace_back(ctx, vertexBytes, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, true);
+        vertexBuffers_.emplace_back(ctx, vertexBytes, cinder::gfx::rhi::BufferUsage::Vertex, true);
     }
 
-    const VkDeviceSize indexBytes = static_cast<VkDeviceSize>(MAX_QUADS) * 6 * sizeof(uint32_t);
-    indexBuffer_ = std::make_unique<GpuBuffer>(ctx, indexBytes, VK_BUFFER_USAGE_INDEX_BUFFER_BIT,
+    const std::uint64_t indexBytes = static_cast<std::uint64_t>(MAX_QUADS) * 6 * sizeof(uint32_t);
+    indexBuffer_ = std::make_unique<GpuBuffer>(ctx, indexBytes, cinder::gfx::rhi::BufferUsage::Index,
                                                true);
 
     auto* indices = static_cast<uint32_t*>(indexBuffer_->mapped());

@@ -4,14 +4,14 @@
 
 #include <volk.h>
 
-namespace cinder::gfx::vk {
+namespace cinder::gfx::rhi { class Ctx; }
 
-class VkCtx;
+namespace cinder::gfx::vk {
 
 namespace renderPasses {
 
-VkRenderPass scene(const VkCtx& ctx, rhi::Format colorFormat);
-VkRenderPass present(const VkCtx& ctx, rhi::Format colorFormat);
+VkRenderPass scene(const rhi::Ctx& ctx, rhi::Format colorFormat);
+VkRenderPass present(const rhi::Ctx& ctx, rhi::Format colorFormat);
 
 }
 

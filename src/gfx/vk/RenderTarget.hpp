@@ -11,7 +11,7 @@ namespace cinder::gfx::rhi {
 
 class RenderTarget {
 public:
-    RenderTarget(const cinder::gfx::vk::VkCtx& ctx, VkRenderPass renderPass,
+    RenderTarget(const cinder::gfx::rhi::Ctx& ctx, VkRenderPass renderPass,
                  Format format, uint32_t width, uint32_t height);
     ~RenderTarget();
 
@@ -26,7 +26,7 @@ public:
     uint32_t height() const { return height_; }
 
 private:
-    const cinder::gfx::vk::VkCtx& ctx_;
+    const cinder::gfx::rhi::Ctx& ctx_;
     cinder::gfx::vk::Allocated image_;
     VkImageView view_ = VK_NULL_HANDLE;
     std::unique_ptr<cinder::gfx::vk::DepthBuffer> depth_;

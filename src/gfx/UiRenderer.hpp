@@ -25,7 +25,7 @@ class UiRenderer {
 public:
     static constexpr float DEFAULT_TEXT_GAMMA = 1.2f;
 
-    UiRenderer(const cinder::gfx::vk::VkCtx& ctx, cinder::gfx::asset::Assets& assets,
+    UiRenderer(const cinder::gfx::rhi::Ctx& ctx, cinder::gfx::asset::Assets& assets,
                const cinder::gfx::rhi::Presenter& presenter, uint32_t framesInFlight);
     ~UiRenderer();
 
@@ -48,12 +48,12 @@ private:
 
     void upload(cinder::gfx::rhi::Uploads cmd, Frame& frame, cinder::text::GlyphAtlas& atlas);
     void resolveNames(const cinder::ui::ElementList& list);
-    static void reserve(const cinder::gfx::vk::VkCtx& ctx, std::unique_ptr<cinder::gfx::rhi::GpuBuffer>& buffer,
-                        VkDeviceSize size, VkBufferUsageFlags usage);
+    static void reserve(const cinder::gfx::rhi::Ctx& ctx, std::unique_ptr<cinder::gfx::rhi::GpuBuffer>& buffer,
+                        std::uint64_t size, cinder::gfx::rhi::BufferUsage usage);
     cinder::gfx::rhi::TextureBinding resolve(const cinder::ui::TextureRef& texture,
                                              cinder::gfx::rhi::TextureBinding viewport) const;
 
-    const cinder::gfx::vk::VkCtx& ctx_;
+    const cinder::gfx::rhi::Ctx& ctx_;
     cinder::gfx::asset::Assets& assets_;
     const cinder::gfx::rhi::Presenter& presenter_;
     std::unique_ptr<cinder::gfx::rhi::GraphicsPipeline> pipeline_;

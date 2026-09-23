@@ -3,7 +3,7 @@
 #include "gfx/rhi/Commands.hpp"
 
 #include "gfx/pass/Overflow.hpp"
-#include "gfx/vk/VkCtx.hpp"
+#include "gfx/vk/Ctx.hpp"
 #include "lua/LuaApi.hpp"
 #include "scene/DrawList.hpp"
 
@@ -51,7 +51,7 @@ int drawMesh(lua_State* state) {
 
 }
 
-MeshPass::MeshPass(const cinder::gfx::vk::VkCtx& ctx, cinder::gfx::asset::Assets& assets,
+MeshPass::MeshPass(const cinder::gfx::rhi::Ctx& ctx, cinder::gfx::asset::Assets& assets,
                    const MeshPipeline& pipeline)
     : ctx_(ctx), assets_(assets), pipeline_(pipeline),
       drawMesh_(MAX_DRAWS), drawTexture_(MAX_DRAWS), drawModel_(MAX_DRAWS, glm::mat4(1.0f)) {

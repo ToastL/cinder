@@ -7,7 +7,7 @@
 
 #include <glm/mat4x4.hpp>
 
-namespace cinder::gfx::vk { class VkCtx; }
+namespace cinder::gfx::rhi { class Ctx; }
 
 namespace cinder::gfx::rhi {
 
@@ -15,7 +15,7 @@ class GraphicsPipeline {
 public:
     static constexpr uint32_t MATRIX_BYTES = 16 * sizeof(float);
 
-    GraphicsPipeline(const cinder::gfx::vk::VkCtx& ctx, VkPipelineLayout layout,
+    GraphicsPipeline(const cinder::gfx::rhi::Ctx& ctx, VkPipelineLayout layout,
                      VkPipeline handle);
     ~GraphicsPipeline();
 
@@ -29,7 +29,7 @@ public:
 
 
 private:
-    const cinder::gfx::vk::VkCtx& ctx_;
+    const cinder::gfx::rhi::Ctx& ctx_;
     VkPipelineLayout layout_;
     VkPipeline handle_;
 };

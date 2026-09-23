@@ -11,10 +11,10 @@ namespace cinder::gfx::rhi {
 class Texture {
 public:
 
-    static Texture load(const cinder::gfx::vk::VkCtx& ctx, const std::string& path);
-    static Texture white(const cinder::gfx::vk::VkCtx& ctx);
+    static Texture load(const cinder::gfx::rhi::Ctx& ctx, const std::string& path);
+    static Texture white(const cinder::gfx::rhi::Ctx& ctx);
 
-    Texture(const cinder::gfx::vk::VkCtx& ctx, const unsigned char* pixels,
+    Texture(const cinder::gfx::rhi::Ctx& ctx, const unsigned char* pixels,
             uint32_t width, uint32_t height);
     ~Texture();
 
@@ -30,7 +30,7 @@ public:
     void setBinding(TextureBinding binding) { binding_ = binding; }
 
 private:
-    const cinder::gfx::vk::VkCtx* ctx_ = nullptr;
+    const cinder::gfx::rhi::Ctx* ctx_ = nullptr;
     cinder::gfx::vk::Allocated image_;
     VkImageView view_ = VK_NULL_HANDLE;
     TextureBinding binding_;

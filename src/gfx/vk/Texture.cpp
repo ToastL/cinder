@@ -1,7 +1,7 @@
 #include "gfx/vk/Texture.hpp"
 
 #include "gfx/vk/GpuBuffer.hpp"
-#include "gfx/vk/VkCtx.hpp"
+#include "gfx/vk/Ctx.hpp"
 
 #define STB_IMAGE_IMPLEMENTATION
 #include <stb_image.h>
@@ -18,14 +18,14 @@ constexpr VkFormat FORMAT = VK_FORMAT_R8G8B8A8_SRGB;
 }
 
 using cinder::gfx::rhi::GpuBuffer;
-using cinder::gfx::vk::VkCtx;
+using cinder::gfx::rhi::Ctx;
 namespace images = cinder::gfx::vk::images;
 
-Texture::Texture(const VkCtx& ctx, const unsigned char* pixels, uint32_t width, uint32_t height)
+Texture::Texture(const rhi::Ctx& ctx, const unsigned char* pixels, uint32_t width, uint32_t height)
     : ctx_(&ctx), width_(width), height_(height) {
     const VkDeviceSize size = static_cast<VkDeviceSize>(width) * height * 4;
 
-    GpuBuffer staging(ctx, size, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, true);
+    GpuBuffer staging(ctx, size, BufferUsage::TransferSrc, true);
     std::memcpy(staging.mapped(), pixels, static_cast<std::size_t>(size));
 
     image_ = images::create(ctx, FORMAT, width, height,
@@ -78,7 +78,7 @@ Texture::Texture(const VkCtx& ctx, const unsigned char* pixels, uint32_t width, 
     view_ = images::view(ctx, image_.image, FORMAT, VK_IMAGE_ASPECT_COLOR_BIT);
 }
 
-Texture Texture::load(const VkCtx& ctx, const std::string& path) {
+Texture Texture::load(const rhi::Ctx& ctx, const std::string& path) {
     int width = 0;
     int height = 0;
     int channels = 0;
@@ -93,7 +93,7 @@ Texture Texture::load(const VkCtx& ctx, const std::string& path) {
     return texture;
 }
 
-Texture Texture::white(const VkCtx& ctx) {
+Texture Texture::white(const rhi::Ctx& ctx) {
     const unsigned char pixels[4] = {0xFF, 0xFF, 0xFF, 0xFF};
     return Texture(ctx, pixels, 1, 1);
 }

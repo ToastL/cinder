@@ -49,6 +49,16 @@ VkShaderStageFlags toVk(ShaderStages stages) {
     return VK_SHADER_STAGE_VERTEX_BIT;
 }
 
+VkBufferUsageFlags toVk(BufferUsage usage) {
+    switch (usage) {
+        case BufferUsage::Vertex: return VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
+        case BufferUsage::Index: return VK_BUFFER_USAGE_INDEX_BUFFER_BIT;
+        case BufferUsage::TransferSrc: return VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
+        case BufferUsage::TransferDst: return VK_BUFFER_USAGE_TRANSFER_DST_BIT;
+    }
+    return 0;
+}
+
 VkFrontFace toVk(Winding winding) {
     return winding == Winding::Clockwise ? VK_FRONT_FACE_CLOCKWISE
                                          : VK_FRONT_FACE_COUNTER_CLOCKWISE;

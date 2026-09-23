@@ -9,7 +9,7 @@
 #include <memory>
 #include <vector>
 
-namespace cinder::gfx::vk { class VkCtx; }
+namespace cinder::gfx::rhi { class Ctx; }
 
 namespace cinder::gfx::rhi {
 
@@ -26,7 +26,7 @@ struct GlyphRegion {
 
 class GlyphPages {
 public:
-    GlyphPages(const cinder::gfx::vk::VkCtx& ctx, std::uint32_t size);
+    GlyphPages(const cinder::gfx::rhi::Ctx& ctx, std::uint32_t size);
     ~GlyphPages();
 
     GlyphPages(const GlyphPages&) = delete;
@@ -50,7 +50,7 @@ private:
 
     Page& page(std::size_t index);
 
-    const cinder::gfx::vk::VkCtx& ctx_;
+    const cinder::gfx::rhi::Ctx& ctx_;
     std::uint32_t size_ = 0;
     std::vector<Page> pages_;
 };

@@ -1,11 +1,11 @@
 #include "gfx/vk/VkImages.hpp"
 
-#include "gfx/vk/VkCtx.hpp"
+#include "gfx/vk/Ctx.hpp"
 #include "gfx/vk/VkUtil.hpp"
 
 namespace cinder::gfx::vk::images {
 
-Allocated create(const VkCtx& ctx, VkFormat format, uint32_t width, uint32_t height,
+Allocated create(const rhi::Ctx& ctx, VkFormat format, uint32_t width, uint32_t height,
                  VkImageUsageFlags usage) {
     VkImageCreateInfo info{};
     info.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
@@ -29,7 +29,7 @@ Allocated create(const VkCtx& ctx, VkFormat format, uint32_t width, uint32_t hei
     return out;
 }
 
-VkImageView view(const VkCtx& ctx, VkImage image, VkFormat format, VkImageAspectFlags aspect) {
+VkImageView view(const rhi::Ctx& ctx, VkImage image, VkFormat format, VkImageAspectFlags aspect) {
     VkImageViewCreateInfo info{};
     info.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
     info.image = image;
@@ -46,7 +46,7 @@ VkImageView view(const VkCtx& ctx, VkImage image, VkFormat format, VkImageAspect
     return handle;
 }
 
-VkSampler sampler(const VkCtx& ctx, VkFilter filter) {
+VkSampler sampler(const rhi::Ctx& ctx, VkFilter filter) {
     VkSamplerCreateInfo info{};
     info.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
     info.magFilter = filter;
@@ -65,7 +65,7 @@ VkSampler sampler(const VkCtx& ctx, VkFilter filter) {
     return handle;
 }
 
-VkFramebuffer framebuffer(const VkCtx& ctx, VkRenderPass renderPass,
+VkFramebuffer framebuffer(const rhi::Ctx& ctx, VkRenderPass renderPass,
                           const VkImageView* attachments, uint32_t count,
                           uint32_t width, uint32_t height) {
     VkFramebufferCreateInfo info{};

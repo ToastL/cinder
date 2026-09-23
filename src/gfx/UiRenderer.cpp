@@ -7,7 +7,7 @@
 #include "gfx/rhi/PipelineBuilder.hpp"
 #include "gfx/vk/GlyphPages.hpp"
 #include "gfx/vk/Presenter.hpp"
-#include "gfx/vk/VkCtx.hpp"
+#include "gfx/vk/Ctx.hpp"
 #include "platform/Log.hpp"
 #include "text/GlyphAtlas.hpp"
 #include "ui/core/ElementList.hpp"
@@ -24,7 +24,7 @@
 namespace cinder::gfx {
 
 using cinder::gfx::rhi::GpuBuffer;
-using cinder::gfx::vk::VkCtx;
+using cinder::gfx::rhi::Ctx;
 using cinder::text::GlyphAtlas;
 using cinder::ui::TextureRef;
 using cinder::ui::UiVertex;
@@ -45,7 +45,7 @@ uint32_t offsetOf(std::size_t offset) { return static_cast<uint32_t>(offset); }
 
 }
 
-UiRenderer::UiRenderer(const VkCtx& ctx, cinder::gfx::asset::Assets& assets,
+UiRenderer::UiRenderer(const Ctx& ctx, cinder::gfx::asset::Assets& assets,
                        const cinder::gfx::rhi::Presenter& presenter, uint32_t framesInFlight)
     : ctx_(ctx), assets_(assets), presenter_(presenter), frames_(framesInFlight) {
     pages_ = std::make_unique<cinder::gfx::rhi::GlyphPages>(
@@ -71,10 +71,10 @@ void UiRenderer::rebuild() {
                         .build();
 }
 
-void UiRenderer::reserve(const VkCtx& ctx, std::unique_ptr<GpuBuffer>& buffer, VkDeviceSize size,
-                         VkBufferUsageFlags usage) {
+void UiRenderer::reserve(const Ctx& ctx, std::unique_ptr<GpuBuffer>& buffer, std::uint64_t size,
+                         cinder::gfx::rhi::BufferUsage usage) {
     if (buffer && buffer->size() >= size) return;
-    const VkDeviceSize grown = std::max(size, buffer ? buffer->size() * 2 : VkDeviceSize{4096});
+    const std::uint64_t grown = std::max(size, buffer ? buffer->size() * 2 : std::uint64_t{4096});
     buffer = std::make_unique<GpuBuffer>(ctx, grown, usage, true);
 }
 
@@ -99,7 +99,7 @@ void UiRenderer::upload(cinder::gfx::rhi::Uploads cmd, Frame& frame, GlyphAtlas&
     }
     if (regions.empty()) return;
 
-    reserve(ctx_, frame.staging, total, VK_BUFFER_USAGE_TRANSFER_SRC_BIT);
+    reserve(ctx_, frame.staging, total, cinder::gfx::rhi::BufferUsage::TransferSrc);
     auto* staging = static_cast<std::uint8_t*>(frame.staging->mapped());
 
     for (const cinder::gfx::rhi::GlyphRegion& region : regions) {
@@ -148,10 +148,10 @@ void UiRenderer::prepare(cinder::gfx::rhi::Uploads cmd, uint32_t frame,
     viewport_ = glm::max(list.size(), glm::vec2(1.0f));
     if (geometry_.empty()) return;
 
-    const VkDeviceSize vertexBytes = geometry_.vertices.size() * sizeof(UiVertex);
-    const VkDeviceSize indexBytes = geometry_.indices.size() * sizeof(std::uint32_t);
-    reserve(ctx_, data.vertices, vertexBytes, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT);
-    reserve(ctx_, data.indices, indexBytes, VK_BUFFER_USAGE_INDEX_BUFFER_BIT);
+    const std::uint64_t vertexBytes = geometry_.vertices.size() * sizeof(UiVertex);
+    const std::uint64_t indexBytes = geometry_.indices.size() * sizeof(std::uint32_t);
+    reserve(ctx_, data.vertices, vertexBytes, cinder::gfx::rhi::BufferUsage::Vertex);
+    reserve(ctx_, data.indices, indexBytes, cinder::gfx::rhi::BufferUsage::Index);
     std::memcpy(data.vertices->mapped(), geometry_.vertices.data(), static_cast<std::size_t>(vertexBytes));
     std::memcpy(data.indices->mapped(), geometry_.indices.data(), static_cast<std::size_t>(indexBytes));
 }

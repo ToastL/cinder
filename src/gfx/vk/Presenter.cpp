@@ -6,7 +6,7 @@
 #include "gfx/vk/GpuBuffer.hpp"
 #include "gfx/vk/RenderTarget.hpp"
 #include "gfx/vk/Swapchain.hpp"
-#include "gfx/vk/VkCtx.hpp"
+#include "gfx/vk/Ctx.hpp"
 #include "gfx/vk/VkRenderPasses.hpp"
 #include "gfx/vk/VkUtil.hpp"
 #include "platform/Log.hpp"
@@ -21,7 +21,7 @@ using cinder::gfx::vk::FrameSync;
 using cinder::gfx::vk::Swapchain;
 namespace renderPasses = cinder::gfx::vk::renderPasses;
 
-Presenter::Presenter(const cinder::gfx::vk::VkCtx& ctx, cinder::platform::Window& window,
+Presenter::Presenter(const cinder::gfx::rhi::Ctx& ctx, cinder::platform::Window& window,
                      std::uint32_t framesInFlight)
     : ctx_(ctx), window_(window), framesInFlight_(framesInFlight) {
     swapchain_ = std::make_unique<Swapchain>(ctx, window);
@@ -221,7 +221,7 @@ void Presenter::recreateSwapchain() {
 }
 
 void Presenter::captureTarget(const RenderTarget& target, const std::string& path) const {
-    const cinder::gfx::vk::VkCtx& ctx = ctx_;
+    const cinder::gfx::rhi::Ctx& ctx = ctx_;
     const Format format = swapchain_->format();
     ctx.waitIdle();
 
@@ -229,7 +229,7 @@ void Presenter::captureTarget(const RenderTarget& target, const std::string& pat
     const uint32_t height = target.height();
     const VkDeviceSize size = static_cast<VkDeviceSize>(width) * height * 4;
 
-    GpuBuffer staging(ctx, size, VK_BUFFER_USAGE_TRANSFER_DST_BIT, true);
+    GpuBuffer staging(ctx, size, BufferUsage::TransferDst, true);
 
     VkCommandBuffer cmd = ctx.beginSingleTime();
 
@@ -287,7 +287,7 @@ void Presenter::recordWindowCapture(VkCommandBuffer cmd, std::uint32_t imageInde
     const VkDeviceSize size = static_cast<VkDeviceSize>(width) * height * 4;
     if (!captureBuffer_ || captureBuffer_->size() < size) {
         captureBuffer_ =
-                std::make_unique<GpuBuffer>(ctx_, size, VK_BUFFER_USAGE_TRANSFER_DST_BIT, true);
+                std::make_unique<GpuBuffer>(ctx_, size, BufferUsage::TransferDst, true);
     }
 
     VkImageMemoryBarrier barrier{};

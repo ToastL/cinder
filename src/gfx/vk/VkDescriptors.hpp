@@ -2,15 +2,15 @@
 
 #include <volk.h>
 
-namespace cinder::gfx::vk {
+namespace cinder::gfx::rhi { class Ctx; }
 
-class VkCtx;
+namespace cinder::gfx::vk {
 
 namespace descriptors {
 
-VkDescriptorPool pool(const VkCtx& ctx, uint32_t maxSets);
-VkDescriptorSet allocate(const VkCtx& ctx, VkDescriptorPool pool, VkDescriptorSetLayout layout);
-void writeCombinedImageSampler(const VkCtx& ctx, VkDescriptorSet set,
+VkDescriptorPool pool(const rhi::Ctx& ctx, uint32_t maxSets);
+VkDescriptorSet allocate(const rhi::Ctx& ctx, VkDescriptorPool pool, VkDescriptorSetLayout layout);
+void writeCombinedImageSampler(const rhi::Ctx& ctx, VkDescriptorSet set,
                                VkImageView view, VkSampler sampler);
 
 }

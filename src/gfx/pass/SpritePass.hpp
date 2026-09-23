@@ -7,7 +7,7 @@ namespace cinder::gfx::pass {
 
 class SpritePass : public DrawPass {
 public:
-    SpritePass(const cinder::gfx::vk::VkCtx& ctx, cinder::gfx::asset::Assets& assets,
+    SpritePass(const cinder::gfx::rhi::Ctx& ctx, cinder::gfx::asset::Assets& assets,
                const SpritePipeline& pipeline, uint32_t framesInFlight);
 
     void beginFrame() override;

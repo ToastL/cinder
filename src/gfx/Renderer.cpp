@@ -6,7 +6,7 @@
 #include "gfx/RendererDrawList.hpp"
 #include "gfx/pass/MeshPass.hpp"
 #include "gfx/pass/SpritePass.hpp"
-#include "gfx/vk/VkCtx.hpp"
+#include "gfx/vk/Ctx.hpp"
 #include "lua/LuaApi.hpp"
 #include "platform/Log.hpp"
 #include "platform/Window.hpp"
@@ -19,7 +19,7 @@ namespace cinder::gfx {
 
 using cinder::gfx::asset::Assets;
 using cinder::gfx::pass::DrawPass;
-using cinder::gfx::vk::VkCtx;
+using cinder::gfx::rhi::Ctx;
 
 namespace {
 
@@ -42,7 +42,7 @@ int screenToWorld(lua_State* state) {
 
 }
 
-Renderer::Renderer(const VkCtx& ctx, cinder::platform::Window& window) : ctx_(ctx), window_(window) {
+Renderer::Renderer(const Ctx& ctx, cinder::platform::Window& window) : ctx_(ctx), window_(window) {
     presenter_ = std::make_unique<cinder::gfx::rhi::Presenter>(ctx, window, FRAMES_IN_FLIGHT);
     presenter_->onRecreated([this](bool formatChanged) {
         if (formatChanged) ui_->rebuild();

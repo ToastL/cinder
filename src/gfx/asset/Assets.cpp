@@ -1,6 +1,6 @@
 #include "gfx/asset/Assets.hpp"
 
-#include "gfx/vk/VkCtx.hpp"
+#include "gfx/vk/Ctx.hpp"
 #include "scene/DrawList.hpp"
 
 #include <stdexcept>
@@ -8,7 +8,7 @@
 
 namespace cinder::gfx::asset {
 
-Assets::Assets(const cinder::gfx::vk::VkCtx& ctx)
+Assets::Assets(const cinder::gfx::rhi::Ctx& ctx)
     : ctx_(ctx), pool_(ctx, MAX_TEXTURES, VK_FILTER_NEAREST) {
     registerTexture(cinder::gfx::rhi::Texture::white(ctx));
 }

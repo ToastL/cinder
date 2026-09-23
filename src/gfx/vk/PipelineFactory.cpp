@@ -6,7 +6,7 @@
 #include "gfx/vk/GraphicsPipeline.hpp"
 #include "gfx/vk/Presenter.hpp"
 #include "gfx/vk/Shaders.hpp"
-#include "gfx/vk/VkCtx.hpp"
+#include "gfx/vk/Ctx.hpp"
 #include "gfx/vk/VkUtil.hpp"
 
 #include <vector>
@@ -18,7 +18,7 @@ namespace shaders = cinder::gfx::vk::shaders;
 
 std::unique_ptr<GraphicsPipeline> createPipeline(const Presenter& presenter,
                                                  const PipelineDesc& desc) {
-    const cinder::gfx::vk::VkCtx& ctx = presenter.ctx();
+    const cinder::gfx::rhi::Ctx& ctx = presenter.ctx();
 
     VkPushConstantRange push{};
     push.stageFlags = toVk(desc.pushConstantStages);

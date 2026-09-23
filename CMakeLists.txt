@@ -22,6 +22,8 @@ endif()
 configure_file(cmake/Backend.hpp.in
     ${CMAKE_BINARY_DIR}/generated/gfx/rhi/Backend.hpp @ONLY)
 
+string(TOUPPER ${CINDER_BACKEND} CINDER_BACKEND_UPPER)
+
 include(cmake/Dependencies.cmake)
 include(cmake/Shaders.cmake)
 
@@ -50,6 +52,7 @@ target_compile_definitions(engine PUBLIC
     GLFW_INCLUDE_NONE
     GLM_FORCE_DEPTH_ZERO_TO_ONE
     GLM_ENABLE_EXPERIMENTAL)
+target_compile_definitions(engine PUBLIC CINDER_BACKEND_${CINDER_BACKEND_UPPER})
 target_compile_definitions(engine PRIVATE
     CINDER_ENGINE_DEFAULT="${CINDER_ENGINE_DIR}"
     CINDER_SHADERS_DEFAULT="${CMAKE_BINARY_DIR}/shaders"

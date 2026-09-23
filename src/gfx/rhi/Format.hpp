@@ -33,6 +33,13 @@ enum class ShaderStages : std::uint8_t {
     Both,
 };
 
+enum class BufferUsage : std::uint8_t {
+    Vertex,
+    Index,
+    TransferSrc,
+    TransferDst,
+};
+
 enum class Winding : std::uint8_t {
     Clockwise,
     CounterClockwise,

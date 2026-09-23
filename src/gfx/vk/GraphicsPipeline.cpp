@@ -3,13 +3,13 @@
 #include "gfx/vk/Bindings.hpp"
 #include "gfx/vk/Formats.hpp"
 #include "gfx/vk/Commands.hpp"
-#include "gfx/vk/VkCtx.hpp"
+#include "gfx/vk/Ctx.hpp"
 
 #include <glm/gtc/type_ptr.hpp>
 
 namespace cinder::gfx::rhi {
 
-GraphicsPipeline::GraphicsPipeline(const cinder::gfx::vk::VkCtx& ctx, VkPipelineLayout layout,
+GraphicsPipeline::GraphicsPipeline(const cinder::gfx::rhi::Ctx& ctx, VkPipelineLayout layout,
                                    VkPipeline handle)
     : ctx_(ctx), layout_(layout), handle_(handle) {}
 

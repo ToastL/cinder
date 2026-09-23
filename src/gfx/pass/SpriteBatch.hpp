@@ -21,7 +21,7 @@ public:
     static constexpr uint32_t MAX_QUADS = 10000;
     static constexpr uint32_t FLOATS_PER_QUAD = 4 * SpritePipeline::FLOATS_PER_VERTEX;
 
-    SpriteBatch(const cinder::gfx::vk::VkCtx& ctx, cinder::gfx::asset::Assets& assets,
+    SpriteBatch(const cinder::gfx::rhi::Ctx& ctx, cinder::gfx::asset::Assets& assets,
                 const SpritePipeline& pipeline, uint32_t framesInFlight);
 
     void reset() { quadCount_ = 0; }

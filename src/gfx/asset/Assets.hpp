@@ -12,7 +12,7 @@ class Assets {
 public:
     static constexpr uint32_t MAX_TEXTURES = 256;
 
-    explicit Assets(const cinder::gfx::vk::VkCtx& ctx);
+    explicit Assets(const cinder::gfx::rhi::Ctx& ctx);
     ~Assets();
 
     Assets(const Assets&) = delete;
@@ -24,7 +24,7 @@ public:
 private:
     int registerTexture(cinder::gfx::rhi::Texture texture);
 
-    const cinder::gfx::vk::VkCtx& ctx_;
+    const cinder::gfx::rhi::Ctx& ctx_;
     cinder::gfx::rhi::TexturePool pool_;
     std::vector<cinder::gfx::rhi::Texture> textures_;
     std::unordered_map<std::string, int> byPath_;

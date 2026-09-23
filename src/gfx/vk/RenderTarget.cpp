@@ -1,15 +1,15 @@
 #include "gfx/vk/RenderTarget.hpp"
 
 #include "gfx/vk/Formats.hpp"
-#include "gfx/vk/VkCtx.hpp"
+#include "gfx/vk/Ctx.hpp"
 
 namespace cinder::gfx::rhi {
 
 using cinder::gfx::vk::DepthBuffer;
-using cinder::gfx::vk::VkCtx;
+using cinder::gfx::rhi::Ctx;
 namespace images = cinder::gfx::vk::images;
 
-RenderTarget::RenderTarget(const VkCtx& ctx, VkRenderPass renderPass,
+RenderTarget::RenderTarget(const rhi::Ctx& ctx, VkRenderPass renderPass,
                            Format format, uint32_t width, uint32_t height)
     : ctx_(ctx), width_(width), height_(height) {
     const VkFormat color = toVk(format);

@@ -4,7 +4,7 @@
 
 namespace cinder::gfx::pass {
 
-SpritePass::SpritePass(const cinder::gfx::vk::VkCtx& ctx, cinder::gfx::asset::Assets& assets,
+SpritePass::SpritePass(const cinder::gfx::rhi::Ctx& ctx, cinder::gfx::asset::Assets& assets,
                        const SpritePipeline& pipeline, uint32_t framesInFlight)
     : batch_(ctx, assets, pipeline, framesInFlight) {}
 

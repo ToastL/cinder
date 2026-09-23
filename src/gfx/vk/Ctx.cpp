@@ -1,4 +1,4 @@
-#include "gfx/vk/VkCtx.hpp"
+#include "gfx/vk/Ctx.hpp"
 
 #include "gfx/vk/DepthBuffer.hpp"
 #include "gfx/vk/Formats.hpp"
@@ -14,7 +14,10 @@
 #include <string>
 #include <vector>
 
-namespace cinder::gfx::vk {
+namespace cinder::gfx::rhi {
+
+using cinder::gfx::vk::check;
+using cinder::gfx::vk::DepthBuffer;
 namespace {
 
 constexpr const char* VALIDATION_LAYER = "VK_LAYER_KHRONOS_validation";
@@ -73,7 +76,7 @@ VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(VkDebugUtilsMessageSeverityFlagBits
 
 }
 
-VkCtx::VkCtx(cinder::platform::Window& window) {
+Ctx::Ctx(cinder::platform::Window& window) {
     const std::vector<std::string> available = instanceExtensions();
     validation_ = layerAvailable(VALIDATION_LAYER)
             && has(available, VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
@@ -92,7 +95,7 @@ VkCtx::VkCtx(cinder::platform::Window& window) {
     createAllocator();
 }
 
-void VkCtx::createInstance() {
+void Ctx::createInstance() {
     const std::vector<std::string> available = instanceExtensions();
 
     uint32_t glfwCount = 0;
@@ -153,7 +156,7 @@ void VkCtx::createInstance() {
     volkLoadInstance(instance_);
 }
 
-void VkCtx::createDebugMessenger() {
+void Ctx::createDebugMessenger() {
     VkDebugUtilsMessengerCreateInfoEXT info{};
     info.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT;
     info.messageSeverity = VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT
@@ -167,12 +170,12 @@ void VkCtx::createDebugMessenger() {
           "vkCreateDebugUtilsMessengerEXT");
 }
 
-void VkCtx::createSurface(cinder::platform::Window& window) {
+void Ctx::createSurface(cinder::platform::Window& window) {
     check(glfwCreateWindowSurface(instance_, window.handle(), nullptr, &surface_),
           "glfwCreateWindowSurface");
 }
 
-void VkCtx::pickPhysicalDevice() {
+void Ctx::pickPhysicalDevice() {
     uint32_t count = 0;
     check(vkEnumeratePhysicalDevices(instance_, &count, nullptr), "vkEnumeratePhysicalDevices");
     if (count == 0) throw std::runtime_error("No Vulkan-capable GPU found");
@@ -194,7 +197,7 @@ void VkCtx::pickPhysicalDevice() {
     throw std::runtime_error("No suitable GPU (needs graphics + present + swapchain)");
 }
 
-bool VkCtx::findQueueFamilies(VkPhysicalDevice candidate) {
+bool Ctx::findQueueFamilies(VkPhysicalDevice candidate) {
     graphicsFamily_ = -1;
     presentFamily_ = -1;
 
@@ -216,7 +219,7 @@ bool VkCtx::findQueueFamilies(VkPhysicalDevice candidate) {
     return graphicsFamily_ >= 0 && presentFamily_ >= 0;
 }
 
-void VkCtx::createLogicalDevice() {
+void Ctx::createLogicalDevice() {
     const std::vector<std::string> supported = deviceExtensions(physicalDevice_);
     const std::set<int> unique = {graphicsFamily_, presentFamily_};
 
@@ -252,11 +255,11 @@ void VkCtx::createLogicalDevice() {
     vkGetDeviceQueue(device_, static_cast<uint32_t>(presentFamily_), 0, &presentQueue_);
 }
 
-void VkCtx::chooseDepthFormat() {
+void Ctx::chooseDepthFormat() {
     depthFormat_ = rhi::fromVk(DepthBuffer::chooseFormat(physicalDevice_));
 }
 
-void VkCtx::createTextureLayout() {
+void Ctx::createTextureLayout() {
     VkDescriptorSetLayoutBinding binding{};
     binding.binding = 0;
     binding.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
@@ -272,7 +275,7 @@ void VkCtx::createTextureLayout() {
           "vkCreateDescriptorSetLayout");
 }
 
-void VkCtx::createCommandPool() {
+void Ctx::createCommandPool() {
     VkCommandPoolCreateInfo info{};
     info.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
     info.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
@@ -281,7 +284,7 @@ void VkCtx::createCommandPool() {
     check(vkCreateCommandPool(device_, &info, nullptr, &commandPool_), "vkCreateCommandPool");
 }
 
-void VkCtx::createAllocator() {
+void Ctx::createAllocator() {
     VmaVulkanFunctions functions{};
     functions.vkGetInstanceProcAddr = vkGetInstanceProcAddr;
     functions.vkGetDeviceProcAddr = vkGetDeviceProcAddr;
@@ -296,9 +299,9 @@ void VkCtx::createAllocator() {
     check(vmaCreateAllocator(&info, &allocator_), "vmaCreateAllocator");
 }
 
-void VkCtx::waitIdle() const { vkDeviceWaitIdle(device_); }
+void Ctx::waitIdle() const { vkDeviceWaitIdle(device_); }
 
-VkCommandBuffer VkCtx::beginSingleTime() const {
+VkCommandBuffer Ctx::beginSingleTime() const {
     VkCommandBufferAllocateInfo alloc{};
     alloc.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
     alloc.commandPool = commandPool_;
@@ -315,7 +318,7 @@ VkCommandBuffer VkCtx::beginSingleTime() const {
     return cmd;
 }
 
-void VkCtx::endSingleTime(VkCommandBuffer cmd) const {
+void Ctx::endSingleTime(VkCommandBuffer cmd) const {
     check(vkEndCommandBuffer(cmd), "vkEndCommandBuffer");
 
     VkSubmitInfo submit{};
@@ -328,7 +331,7 @@ void VkCtx::endSingleTime(VkCommandBuffer cmd) const {
     vkFreeCommandBuffers(device_, commandPool_, 1, &cmd);
 }
 
-VkCtx::~VkCtx() {
+Ctx::~Ctx() {
     if (allocator_ != VK_NULL_HANDLE) vmaDestroyAllocator(allocator_);
     if (textureLayout_ != VK_NULL_HANDLE) {
         vkDestroyDescriptorSetLayout(device_, textureLayout_, nullptr);

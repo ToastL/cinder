@@ -29,7 +29,7 @@ class Renderer {
 public:
     static constexpr uint32_t FRAMES_IN_FLIGHT = 2;
 
-    Renderer(const cinder::gfx::vk::VkCtx& ctx, cinder::platform::Window& window);
+    Renderer(const cinder::gfx::rhi::Ctx& ctx, cinder::platform::Window& window);
     ~Renderer();
 
     Renderer(const Renderer&) = delete;
@@ -62,7 +62,7 @@ private:
     void createTargets();
     void resizeCameras();
 
-    const cinder::gfx::vk::VkCtx& ctx_;
+    const cinder::gfx::rhi::Ctx& ctx_;
     cinder::platform::Window& window_;
 
     std::unique_ptr<cinder::gfx::rhi::Presenter> presenter_;

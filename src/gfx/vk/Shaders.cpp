@@ -1,6 +1,6 @@
 #include "gfx/vk/Shaders.hpp"
 
-#include "gfx/vk/VkCtx.hpp"
+#include "gfx/vk/Ctx.hpp"
 #include "gfx/vk/VkUtil.hpp"
 #include "platform/Assets.hpp"
 
@@ -12,7 +12,7 @@
 
 namespace cinder::gfx::vk::shaders {
 
-VkShaderModule fromFile(const VkCtx& ctx, std::string_view name) {
+VkShaderModule fromFile(const rhi::Ctx& ctx, std::string_view name) {
     const std::filesystem::path path = cinder::platform::shaderPath(std::string(name) + ".spv");
 
     std::ifstream in(path, std::ios::binary | std::ios::ate);

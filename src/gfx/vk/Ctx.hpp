@@ -8,15 +8,15 @@
 
 namespace cinder::platform { class Window; }
 
-namespace cinder::gfx::vk {
+namespace cinder::gfx::rhi {
 
-class VkCtx {
+class Ctx {
 public:
-    explicit VkCtx(cinder::platform::Window& window);
-    ~VkCtx();
+    explicit Ctx(cinder::platform::Window& window);
+    ~Ctx();
 
-    VkCtx(const VkCtx&) = delete;
-    VkCtx& operator=(const VkCtx&) = delete;
+    Ctx(const Ctx&) = delete;
+    Ctx& operator=(const Ctx&) = delete;
 
     VkInstance instance() const { return instance_; }
     VkPhysicalDevice physicalDevice() const { return physicalDevice_; }

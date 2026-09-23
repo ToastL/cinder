@@ -1,6 +1,6 @@
 #include "gfx/vk/Swapchain.hpp"
 
-#include "gfx/vk/VkCtx.hpp"
+#include "gfx/vk/Ctx.hpp"
 #include "gfx/vk/VkImages.hpp"
 #include "gfx/vk/VkUtil.hpp"
 #include "gfx/vk/Formats.hpp"
@@ -10,7 +10,7 @@
 
 namespace cinder::gfx::vk {
 
-Swapchain::Swapchain(const VkCtx& ctx, const cinder::platform::Window& window, VkImageUsageFlags extraUsage)
+Swapchain::Swapchain(const rhi::Ctx& ctx, const cinder::platform::Window& window, VkImageUsageFlags extraUsage)
     : ctx_(ctx) {
     VkSurfaceCapabilitiesKHR caps{};
     check(vkGetPhysicalDeviceSurfaceCapabilitiesKHR(ctx.physicalDevice(), ctx.surface(), &caps),
@@ -93,7 +93,7 @@ Swapchain::Swapchain(const VkCtx& ctx, const cinder::platform::Window& window, V
     }
 }
 
-bool Swapchain::supports(const VkCtx& ctx, VkImageUsageFlags usage) {
+bool Swapchain::supports(const rhi::Ctx& ctx, VkImageUsageFlags usage) {
     VkSurfaceCapabilitiesKHR caps{};
     check(vkGetPhysicalDeviceSurfaceCapabilitiesKHR(ctx.physicalDevice(), ctx.surface(), &caps),
           "vkGetPhysicalDeviceSurfaceCapabilitiesKHR");

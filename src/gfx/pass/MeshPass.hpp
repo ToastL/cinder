@@ -16,7 +16,7 @@ class MeshPass : public DrawPass {
 public:
     static constexpr uint32_t MAX_DRAWS = 4096;
 
-    MeshPass(const cinder::gfx::vk::VkCtx& ctx, cinder::gfx::asset::Assets& assets,
+    MeshPass(const cinder::gfx::rhi::Ctx& ctx, cinder::gfx::asset::Assets& assets,
              const MeshPipeline& pipeline);
 
     void beginFrame() override;
@@ -31,7 +31,7 @@ public:
 private:
     bool accept(int mesh);
 
-    const cinder::gfx::vk::VkCtx& ctx_;
+    const cinder::gfx::rhi::Ctx& ctx_;
     cinder::gfx::asset::Assets& assets_;
     const MeshPipeline& pipeline_;
 

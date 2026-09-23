@@ -1,7 +1,8 @@
 #include "gfx/vk/GpuBuffer.hpp"
 
 #include "gfx/vk/Commands.hpp"
-#include "gfx/vk/VkCtx.hpp"
+#include "gfx/vk/Formats.hpp"
+#include "gfx/vk/Ctx.hpp"
 #include "gfx/vk/VkUtil.hpp"
 
 #include <utility>
@@ -10,13 +11,12 @@ namespace cinder::gfx::rhi {
 
 using cinder::gfx::vk::check;
 
-GpuBuffer::GpuBuffer(const cinder::gfx::vk::VkCtx& ctx, VkDeviceSize size, VkBufferUsageFlags usage,
-                     bool hostVisible)
+GpuBuffer::GpuBuffer(const Ctx& ctx, std::uint64_t size, BufferUsage usage, bool hostVisible)
     : ctx_(&ctx), size_(size) {
     VkBufferCreateInfo info{};
     info.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
     info.size = size;
-    info.usage = usage;
+    info.usage = toVk(usage);
     info.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
 
     VmaAllocationCreateInfo alloc{};

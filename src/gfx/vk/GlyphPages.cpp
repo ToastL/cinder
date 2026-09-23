@@ -2,7 +2,7 @@
 
 #include "gfx/vk/Commands.hpp"
 #include "gfx/vk/GpuBuffer.hpp"
-#include "gfx/vk/VkCtx.hpp"
+#include "gfx/vk/Ctx.hpp"
 
 namespace cinder::gfx::rhi {
 namespace images = cinder::gfx::vk::images;
@@ -29,7 +29,7 @@ void barrier(VkCommandBuffer cmd, VkImage image, VkImageLayout from, VkImageLayo
 
 }
 
-GlyphPages::GlyphPages(const cinder::gfx::vk::VkCtx& ctx, std::uint32_t size)
+GlyphPages::GlyphPages(const cinder::gfx::rhi::Ctx& ctx, std::uint32_t size)
     : ctx_(ctx), size_(size) {}
 
 GlyphPages::Page& GlyphPages::page(std::size_t index) {
