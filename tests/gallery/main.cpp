@@ -1,4 +1,5 @@
 #include "core/Engine.hpp"
+#include "core/LaunchOptions.hpp"
 #include "core/ProjectConfig.hpp"
 #include "platform/Assets.hpp"
 #include "platform/Glfw.hpp"
@@ -411,28 +412,18 @@ struct Gallery {
 int main(int argc, char** argv) {
     std::setvbuf(stdout, nullptr, _IOLBF, 0);
     cinder::platform::locateExecutable(argv[0]);
-    cinder::platform::Glfw::acquire();
-
-    int frameLimit = 0;
-    std::string capture;
-    std::string script;
-    float gamma = cinder::gfx::UiRenderer::DEFAULT_TEXT_GAMMA;
-    for (int i = 1; i < argc; ++i) {
-        if (std::strcmp(argv[i], "--frames") == 0 && i + 1 < argc) frameLimit = std::atoi(argv[++i]);
-        else if (std::strcmp(argv[i], "--capture-window") == 0 && i + 1 < argc) capture = argv[++i];
-        else if (std::strcmp(argv[i], "--input-script") == 0 && i + 1 < argc) script = argv[++i];
-        else if (std::strcmp(argv[i], "--text-gamma") == 0 && i + 1 < argc) gamma = static_cast<float>(std::atof(argv[++i]));
-        else if (std::strcmp(argv[i], "--lowdpi") == 0) glfwWindowHint(GLFW_SCALE_FRAMEBUFFER, GLFW_FALSE);
-    }
+    const auto options = cinder::core::LaunchOptions::parse(argc, argv, cinder::core::LaunchTarget::Gallery);
 
     try {
+        const cinder::platform::GlfwSession glfw;
+        if (options.lowDpi) glfwWindowHint(GLFW_SCALE_FRAMEBUFFER, GLFW_FALSE);
         {
             cinder::core::ProjectConfig config;
             config.title = "UI Gallery";
             config.width = 1100;
             config.height = 720;
             cinder::core::Engine engine(config);
-            engine.renderer().ui().setTextGamma(gamma);
+            engine.renderer().ui().setTextGamma(options.textGamma.value_or(cinder::gfx::UiRenderer::DEFAULT_TEXT_GAMMA));
 
             const cinder::text::FontSet fonts = cinder::text::FontSet::engineDefault();
             WindowPlatform platform(engine.window());
@@ -443,8 +434,8 @@ int main(int argc, char** argv) {
             cinder::platform::Input& input = engine.input();
             input.setRecording(true);
             std::optional<cinder::platform::InputScript> steps;
-            if (!script.empty()) {
-                steps = cinder::platform::InputScript::load(script);
+            if (!options.inputScript.empty()) {
+                steps = cinder::platform::InputScript::load(options.inputScript);
                 input.setIgnoreSystem(true);
             }
 
@@ -466,15 +457,14 @@ int main(int argc, char** argv) {
                     if (std::optional<std::string> path = steps->capture(frames)) engine.renderer().requestWindowCapture(*path);
                     if (steps->quits(frames)) break;
                 }
-                const bool last = frameLimit > 0 && frames + 1 >= frameLimit;
-                if (last && !capture.empty()) engine.renderer().requestWindowCapture(capture);
+                const bool last = options.frameLimit > 0 && frames + 1 >= options.frameLimit;
+                if (last && !options.windowCapture.empty()) engine.renderer().requestWindowCapture(options.windowCapture);
                 engine.render(0.0f);
                 if (last) break;
                 ++frames;
             }
             engine.renderer().setUiPaint(nullptr);
         }
-        cinder::platform::Glfw::release();
         return 0;
     } catch (const std::exception& error) {
         cinder::platform::logError("[fatal] %s\n", error.what());

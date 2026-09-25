@@ -41,7 +41,7 @@ function(layer_of path output)
     endif()
 endfunction()
 
-file(GLOB_RECURSE SOURCES RELATIVE "${SOURCE_DIR}" "${SOURCE_DIR}/*.cpp" "${SOURCE_DIR}/*.hpp")
+file(GLOB_RECURSE SOURCES RELATIVE "${SOURCE_DIR}" "${SOURCE_DIR}/*.cpp" "${SOURCE_DIR}/*.hpp" "${SOURCE_DIR}/*.mm")
 foreach(SOURCE IN LISTS SOURCES)
     layer_of("${SOURCE}" LAYER)
     if(NOT LAYER IN_LIST LAYERS)

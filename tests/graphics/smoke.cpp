@@ -272,17 +272,12 @@ void exercise() {
 int main(int, char** argv) {
     std::setvbuf(stdout, nullptr, _IOLBF, 0);
     cinder::platform::locateExecutable(argv[0]);
-    bool acquired = false;
     try {
-        cinder::platform::Glfw::acquire();
-        acquired = true;
+        const cinder::platform::GlfwSession glfw;
         exercise();
-        cinder::platform::Glfw::release();
-        acquired = false;
         std::puts("graphics smoke: ALL PASS");
         return 0;
     } catch (const std::exception& error) {
-        if (acquired) cinder::platform::Glfw::release();
         std::fprintf(stderr, "graphics smoke: %s\n", error.what());
         return 1;
     }

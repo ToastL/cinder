@@ -19,8 +19,8 @@ The repo holds the engine only. A game is a **project folder** — a `.cinder` f
 cmake -S . -B build -G Ninja && cmake --build build
 ```
 
-`CINDER_BACKEND` picks the graphics backend: `vk` (the default) or `mtl`, the native Metal renderer,
-which is macOS-only.
+`CINDER_BACKEND` picks the graphics backend: `mtl` (the default on macOS) or `vk`
+(the default elsewhere). The native Metal renderer is macOS-only.
 
 ```bash
 cmake -S . -B build-mtl -G Ninja -DCINDER_BACKEND=mtl && cmake --build build-mtl

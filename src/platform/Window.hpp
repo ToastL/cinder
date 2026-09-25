@@ -1,6 +1,7 @@
 #pragma once
 
 #include "platform/Cursor.hpp"
+#include "platform/Glfw.hpp"
 
 #include <array>
 #include <cstddef>
@@ -44,6 +45,7 @@ public:
     Input* input() const { return input_; }
 
 private:
+    GlfwSession glfw_;
     GLFWwindow* handle_ = nullptr;
     Input* input_ = nullptr;
     std::array<GLFWcursor*, static_cast<std::size_t>(CursorShape::Count)> cursors_{};

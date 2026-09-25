@@ -11,4 +11,13 @@ public:
     static double time();
 };
 
+class GlfwSession {
+public:
+    GlfwSession() { Glfw::acquire(); }
+    ~GlfwSession() { Glfw::release(); }
+
+    GlfwSession(const GlfwSession&) = delete;
+    GlfwSession& operator=(const GlfwSession&) = delete;
+};
+
 }

@@ -1,7 +1,5 @@
 #include "platform/Window.hpp"
 
-#include "platform/Glfw.hpp"
-
 #include <GLFW/glfw3.h>
 
 #include <stdexcept>
@@ -9,14 +7,11 @@
 namespace cinder::platform {
 
 Window::Window(const std::string& title, int width, int height) {
-    Glfw::acquire();
-
     glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
     glfwWindowHint(GLFW_RESIZABLE, GLFW_TRUE);
 
     handle_ = glfwCreateWindow(width, height, title.c_str(), nullptr, nullptr);
     if (handle_ == nullptr) {
-        Glfw::release();
         throw std::runtime_error("Failed to create window");
     }
 
@@ -44,7 +39,6 @@ Window::~Window() {
         if (cursor != nullptr) glfwDestroyCursor(cursor);
     }
     if (handle_ != nullptr) glfwDestroyWindow(handle_);
-    Glfw::release();
 }
 
 std::string Window::clipboard() const {

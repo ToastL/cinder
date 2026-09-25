@@ -38,3 +38,6 @@ check_case(backend_leak_core core/Example.cpp "#include \"gfx/vk/Ctx.hpp\"\n" FA
 check_case(backends_are_blind gfx/mtl/Example.cpp "#include \"gfx/vk/Ctx.hpp\"\n" FALSE)
 check_case(metal_on_rhi gfx/mtl/Example.cpp "#include \"gfx/rhi/Handles.hpp\"\n" TRUE)
 check_case(unknown unknown/Example.cpp "#include <vector>\n" FALSE)
+
+check_case(metal_implementation_on_rhi gfx/mtl/Example.mm "#include \"gfx/rhi/Handles.hpp\"\n" TRUE)
+check_case(metal_implementation_upward gfx/mtl/Example.mm "#include \"core/Engine.hpp\"\n" FALSE)
