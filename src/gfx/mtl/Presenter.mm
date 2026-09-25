@@ -17,10 +17,31 @@
 #include <cstring>
 #include <vector>
 
+extern "C" void* objc_autoreleasePoolPush(void);
+extern "C" void objc_autoreleasePoolPop(void* token);
+
 namespace cinder::gfx::rhi {
 namespace {
 
 constexpr NSUInteger COPY_ALIGNMENT = 256;
+
+class PoolScope {
+public:
+    PoolScope() : token_(objc_autoreleasePoolPush()) {}
+    ~PoolScope() { if (token_ != nullptr) objc_autoreleasePoolPop(token_); }
+
+    PoolScope(const PoolScope&) = delete;
+    PoolScope& operator=(const PoolScope&) = delete;
+
+    void* detach() {
+        void* token = token_;
+        token_ = nullptr;
+        return token;
+    }
+
+private:
+    void* token_ = nullptr;
+};
 
 NSUInteger alignedRowBytes(std::uint32_t width) {
     const NSUInteger bytes = static_cast<NSUInteger>(width) * 4;
@@ -104,38 +125,39 @@ std::unique_ptr<RenderTarget> Presenter::createTarget(glm::uvec2 size) const {
 }
 
 std::optional<Frame> Presenter::begin() {
-    @autoreleasepool {
-        if (window_.isMinimized()) return std::nullopt;
-        if (window_.wasResized()) {
-            ctx_.waitIdle();
-            resize();
-            if (recreated_) recreated_(false);
-            window_.clearResized();
-        }
+    PoolScope pool;
 
-        if (inFlight_[frame_] != nullptr) {
-            id<MTLCommandBuffer> previous =
-                    cinder::gfx::mtl::bridge<id<MTLCommandBuffer>>(inFlight_[frame_]);
-            [previous waitUntilCompleted];
-            cinder::gfx::mtl::release(inFlight_[frame_]);
-        }
-
-        CAMetalLayer* layer = cinder::gfx::mtl::bridge<CAMetalLayer*>(layer_);
-        id<CAMetalDrawable> drawable = [layer nextDrawable];
-        if (drawable == nil) return std::nullopt;
-        id<MTLCommandQueue> queue = cinder::gfx::mtl::bridge<id<MTLCommandQueue>>(ctx_.queue());
-        id<MTLCommandBuffer> commandBuffer = [queue commandBuffer];
-        if (commandBuffer == nil) throw cinder::gfx::mtl::error("Could not create Metal command buffer");
-
-        Frame frame;
-        frame.index = frame_;
-        frame.state = std::make_unique<cinder::gfx::mtl::CommandState>();
-        frame.commands = cinder::gfx::rhi::commands(frame.state.get());
-        frame.uploads = cinder::gfx::rhi::uploads((__bridge void*)commandBuffer);
-        frame.commandBuffer = cinder::gfx::mtl::retain(commandBuffer);
-        frame.drawable = cinder::gfx::mtl::retain(drawable);
-        return frame;
+    if (window_.isMinimized()) return std::nullopt;
+    if (window_.wasResized()) {
+        ctx_.waitIdle();
+        resize();
+        if (recreated_) recreated_(false);
+        window_.clearResized();
     }
+
+    if (inFlight_[frame_] != nullptr) {
+        id<MTLCommandBuffer> previous =
+                cinder::gfx::mtl::bridge<id<MTLCommandBuffer>>(inFlight_[frame_]);
+        [previous waitUntilCompleted];
+        cinder::gfx::mtl::release(inFlight_[frame_]);
+    }
+
+    CAMetalLayer* layer = cinder::gfx::mtl::bridge<CAMetalLayer*>(layer_);
+    id<CAMetalDrawable> drawable = [layer nextDrawable];
+    if (drawable == nil) return std::nullopt;
+    id<MTLCommandQueue> queue = cinder::gfx::mtl::bridge<id<MTLCommandQueue>>(ctx_.queue());
+    id<MTLCommandBuffer> commandBuffer = [queue commandBuffer];
+    if (commandBuffer == nil) throw cinder::gfx::mtl::error("Could not create Metal command buffer");
+
+    Frame frame;
+    frame.index = frame_;
+    frame.state = std::make_unique<cinder::gfx::mtl::CommandState>();
+    frame.commands = cinder::gfx::rhi::commands(frame.state.get());
+    frame.uploads = cinder::gfx::rhi::uploads((__bridge void*)commandBuffer);
+    frame.commandBuffer = cinder::gfx::mtl::retain(commandBuffer);
+    frame.drawable = cinder::gfx::mtl::retain(drawable);
+    frame.pool = pool.detach();
+    return frame;
 }
 
 void Presenter::beginScenePass(Frame& frame, const RenderTarget& target, float r, float g,
@@ -180,34 +202,37 @@ void Presenter::endPass(Frame& frame) {
 }
 
 void Presenter::end(Frame& frame) {
-    @autoreleasepool {
-        id<MTLCommandBuffer> buffer =
-                cinder::gfx::mtl::bridge<id<MTLCommandBuffer>>(frame.commandBuffer);
-        id<CAMetalDrawable> drawable =
-                cinder::gfx::mtl::bridge<id<CAMetalDrawable>>(frame.drawable);
+    id<MTLCommandBuffer> buffer =
+            cinder::gfx::mtl::bridge<id<MTLCommandBuffer>>(frame.commandBuffer);
+    id<CAMetalDrawable> drawable =
+            cinder::gfx::mtl::bridge<id<CAMetalDrawable>>(frame.drawable);
 
-        id<MTLBuffer> captureBuffer = nil;
-        const bool capturing = !windowCapture_.empty();
-        if (capturing) {
-            const glm::uvec2 size = extent();
-            id<MTLDevice> device = cinder::gfx::mtl::bridge<id<MTLDevice>>(ctx_.device());
-            captureBuffer = encodeCapture(device, buffer, drawable.texture, size.x, size.y);
-        }
+    id<MTLBuffer> captureBuffer = nil;
+    const bool capturing = !windowCapture_.empty();
+    if (capturing) {
+        const glm::uvec2 size = extent();
+        id<MTLDevice> device = cinder::gfx::mtl::bridge<id<MTLDevice>>(ctx_.device());
+        captureBuffer = encodeCapture(device, buffer, drawable.texture, size.x, size.y);
+    }
 
-        [buffer presentDrawable:drawable];
-        [buffer commit];
-        if (capturing) {
-            [buffer waitUntilCompleted];
-            const glm::uvec2 size = extent();
-            writeBuffer(windowCapture_, captureBuffer, size.x, size.y);
-            cinder::platform::logInfo("[capture] wrote %s\n", windowCapture_.c_str());
-            windowCapture_.clear();
-        }
+    [buffer presentDrawable:drawable];
+    [buffer commit];
+    if (capturing) {
+        [buffer waitUntilCompleted];
+        const glm::uvec2 size = extent();
+        writeBuffer(windowCapture_, captureBuffer, size.x, size.y);
+        cinder::platform::logInfo("[capture] wrote %s\n", windowCapture_.c_str());
+        windowCapture_.clear();
+    }
 
-        cinder::gfx::mtl::release(frame.drawable);
-        inFlight_[frame.index] = frame.commandBuffer;
-        frame.commandBuffer = nullptr;
-        frame_ = (frame_ + 1) % framesInFlight_;
+    cinder::gfx::mtl::release(frame.drawable);
+    inFlight_[frame.index] = frame.commandBuffer;
+    frame.commandBuffer = nullptr;
+    frame_ = (frame_ + 1) % framesInFlight_;
+
+    if (frame.pool != nullptr) {
+        objc_autoreleasePoolPop(frame.pool);
+        frame.pool = nullptr;
     }
 }
 

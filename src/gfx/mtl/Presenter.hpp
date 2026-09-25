@@ -27,6 +27,7 @@ struct Frame {
     std::unique_ptr<cinder::gfx::mtl::CommandState> state;
     void* commandBuffer = nullptr;
     void* drawable = nullptr;
+    void* pool = nullptr;
 };
 
 class Presenter {
