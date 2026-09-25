@@ -1,35 +1,33 @@
 #include "gfx/pass/MeshPipeline.hpp"
 
 #include "gfx/asset/Mesh.hpp"
-#include "gfx/vk/GraphicsPipelineBuilder.hpp"
+#include "gfx/rhi/PipelineBuilder.hpp"
 
 namespace cinder::gfx::pass {
 
 using cinder::gfx::asset::Mesh;
-using cinder::gfx::vk::GraphicsPipeline;
-using cinder::gfx::vk::GraphicsPipelineBuilder;
+using cinder::gfx::rhi::GraphicsPipeline;
 
-MeshPipeline::MeshPipeline(const cinder::gfx::vk::VkCtx& ctx, VkRenderPass renderPass,
-                           VkDescriptorSetLayout descriptorSetLayout) {
-    pipeline_ = GraphicsPipelineBuilder(ctx, renderPass, descriptorSetLayout)
+MeshPipeline::MeshPipeline(const cinder::gfx::rhi::Presenter& presenter) {
+    pipeline_ = cinder::gfx::rhi::PipelineBuilder(presenter, cinder::gfx::rhi::PassKind::Scene)
                         .shader("mesh")
                         .pushConstants(2 * GraphicsPipeline::MATRIX_BYTES)
                         .vertexStride(Mesh::VERTEX_STRIDE)
-                        .attribute(0, VK_FORMAT_R32G32B32_SFLOAT, 0)
-                        .attribute(1, VK_FORMAT_R32G32B32_SFLOAT, 3 * sizeof(float))
-                        .attribute(2, VK_FORMAT_R32G32_SFLOAT, 6 * sizeof(float))
-                        .attribute(3, VK_FORMAT_R32G32B32A32_SFLOAT, 8 * sizeof(float))
+                        .attribute(0, cinder::gfx::rhi::VertexFormat::Float3, 0)
+                        .attribute(1, cinder::gfx::rhi::VertexFormat::Float3, 3 * sizeof(float))
+                        .attribute(2, cinder::gfx::rhi::VertexFormat::Float2, 6 * sizeof(float))
+                        .attribute(3, cinder::gfx::rhi::VertexFormat::Float4, 8 * sizeof(float))
                         .depthTest()
-                        .frontFace(VK_FRONT_FACE_CLOCKWISE)
+                        .frontFace(cinder::gfx::rhi::Winding::Clockwise)
                         .build();
 }
 
-void MeshPipeline::bind(VkCommandBuffer cmd, const glm::mat4& viewProjection) const {
+void MeshPipeline::bind(cinder::gfx::rhi::Commands cmd, const glm::mat4& viewProjection) const {
     pipeline_->bind(cmd);
     pipeline_->push(cmd, 0, viewProjection);
 }
 
-void MeshPipeline::pushModel(VkCommandBuffer cmd, const glm::mat4& model) const {
+void MeshPipeline::pushModel(cinder::gfx::rhi::Commands cmd, const glm::mat4& model) const {
     pipeline_->push(cmd, GraphicsPipeline::MATRIX_BYTES, model);
 }
 

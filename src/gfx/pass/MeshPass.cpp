@@ -1,7 +1,9 @@
 #include "gfx/pass/MeshPass.hpp"
 
+#include "gfx/rhi/Commands.hpp"
+
 #include "gfx/pass/Overflow.hpp"
-#include "gfx/vk/VkCtx.hpp"
+#include "gfx/rhi/Backend.hpp"
 #include "lua/LuaApi.hpp"
 #include "scene/DrawList.hpp"
 
@@ -49,7 +51,7 @@ int drawMesh(lua_State* state) {
 
 }
 
-MeshPass::MeshPass(const cinder::gfx::vk::VkCtx& ctx, cinder::gfx::asset::Assets& assets,
+MeshPass::MeshPass(const cinder::gfx::rhi::Ctx& ctx, cinder::gfx::asset::Assets& assets,
                    const MeshPipeline& pipeline)
     : ctx_(ctx), assets_(assets), pipeline_(pipeline),
       drawMesh_(MAX_DRAWS), drawTexture_(MAX_DRAWS), drawModel_(MAX_DRAWS, glm::mat4(1.0f)) {
@@ -90,7 +92,8 @@ int MeshPass::addCube(float r, float g, float b) {
     return static_cast<int>(meshes_.size()) - 1;
 }
 
-void MeshPass::record(VkCommandBuffer cmd, uint32_t frameInFlight, const glm::mat4& viewProjection) {
+void MeshPass::record(cinder::gfx::rhi::Commands cmd, uint32_t frameInFlight,
+                      const glm::mat4& viewProjection) {
     if (drawCount_ == 0) return;
 
     pipeline_.bind(cmd, viewProjection);
@@ -105,13 +108,11 @@ void MeshPass::record(VkCommandBuffer cmd, uint32_t frameInFlight, const glm::ma
             boundMesh = mesh;
         }
         if (drawTexture_[i] != boundTexture) {
-            const VkDescriptorSet set = assets_.get(drawTexture_[i]).descriptorSet();
-            vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline_.layout(),
-                                    0, 1, &set, 0, nullptr);
+            pipeline_.bindTexture(cmd, assets_.get(drawTexture_[i]).binding());
             boundTexture = drawTexture_[i];
         }
         pipeline_.pushModel(cmd, drawModel_[i]);
-        vkCmdDrawIndexed(cmd, meshes_[static_cast<std::size_t>(mesh)].indexCount(), 1, 0, 0, 0);
+        cinder::gfx::rhi::drawIndexed(cmd, meshes_[static_cast<std::size_t>(mesh)].indexCount(), 0);
     }
 }
 

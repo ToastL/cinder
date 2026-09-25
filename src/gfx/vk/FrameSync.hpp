@@ -4,13 +4,13 @@
 
 #include <vector>
 
-namespace cinder::gfx::vk {
+namespace cinder::gfx::rhi { class Ctx; }
 
-class VkCtx;
+namespace cinder::gfx::vk {
 
 class FrameSync {
 public:
-    FrameSync(const VkCtx& ctx, uint32_t framesInFlight, uint32_t imageCount);
+    FrameSync(const rhi::Ctx& ctx, uint32_t framesInFlight, uint32_t imageCount);
     ~FrameSync();
 
     FrameSync(const FrameSync&) = delete;
@@ -31,7 +31,7 @@ private:
     void createPerImage(uint32_t imageCount);
     void destroyPerImage();
 
-    const VkCtx& ctx_;
+    const rhi::Ctx& ctx_;
     std::vector<VkSemaphore> imageAvailable_;
     std::vector<VkFence> inFlight_;
     std::vector<VkSemaphore> renderFinished_;

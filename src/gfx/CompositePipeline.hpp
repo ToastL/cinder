@@ -1,6 +1,10 @@
 #pragma once
 
-#include "gfx/vk/GraphicsPipeline.hpp"
+#include "gfx/rhi/Fwd.hpp"
+
+#include "gfx/rhi/Handles.hpp"
+
+#include "gfx/rhi/Backend.hpp"
 
 #include <memory>
 
@@ -8,15 +12,14 @@ namespace cinder::gfx {
 
 class CompositePipeline {
 public:
-    CompositePipeline(const cinder::gfx::vk::VkCtx& ctx, VkRenderPass renderPass,
-                      VkDescriptorSetLayout descriptorSetLayout);
+    explicit CompositePipeline(const cinder::gfx::rhi::Presenter& presenter);
 
-    void draw(VkCommandBuffer cmd, VkDescriptorSet descriptorSet) const;
+    void draw(cinder::gfx::rhi::Commands cmd, cinder::gfx::rhi::TextureBinding texture) const;
 
 private:
     static constexpr uint32_t FULLSCREEN_TRIANGLE_VERTICES = 3;
 
-    std::unique_ptr<cinder::gfx::vk::GraphicsPipeline> pipeline_;
+    std::unique_ptr<cinder::gfx::rhi::GraphicsPipeline> pipeline_;
 };
 
 }

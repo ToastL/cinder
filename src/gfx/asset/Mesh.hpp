@@ -1,6 +1,7 @@
 #pragma once
 
-#include "gfx/vk/GpuBuffer.hpp"
+#include "gfx/rhi/Handles.hpp"
+#include "gfx/rhi/Backend.hpp"
 
 #include <memory>
 #include <vector>
@@ -11,19 +12,19 @@ class Mesh {
 public:
     static constexpr uint32_t VERTEX_STRIDE = 12 * sizeof(float);
 
-    Mesh(const cinder::gfx::vk::VkCtx& ctx, const std::vector<float>& vertices,
+    Mesh(const cinder::gfx::rhi::Ctx& ctx, const std::vector<float>& vertices,
          const std::vector<uint32_t>& indices);
 
-    static Mesh cube(const cinder::gfx::vk::VkCtx& ctx, float r, float g, float b);
-    static Mesh sphere(const cinder::gfx::vk::VkCtx& ctx, float r, float g, float b);
-    static Mesh capsule(const cinder::gfx::vk::VkCtx& ctx, float r, float g, float b);
+    static Mesh cube(const cinder::gfx::rhi::Ctx& ctx, float r, float g, float b);
+    static Mesh sphere(const cinder::gfx::rhi::Ctx& ctx, float r, float g, float b);
+    static Mesh capsule(const cinder::gfx::rhi::Ctx& ctx, float r, float g, float b);
 
-    void bind(VkCommandBuffer cmd) const;
+    void bind(cinder::gfx::rhi::Commands cmd) const;
     uint32_t indexCount() const { return indexCount_; }
 
 private:
-    std::unique_ptr<cinder::gfx::vk::GpuBuffer> vertexBuffer_;
-    std::unique_ptr<cinder::gfx::vk::GpuBuffer> indexBuffer_;
+    std::unique_ptr<cinder::gfx::rhi::GpuBuffer> vertexBuffer_;
+    std::unique_ptr<cinder::gfx::rhi::GpuBuffer> indexBuffer_;
     uint32_t indexCount_ = 0;
 };
 

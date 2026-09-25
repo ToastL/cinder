@@ -16,11 +16,12 @@ class MeshPass : public DrawPass {
 public:
     static constexpr uint32_t MAX_DRAWS = 4096;
 
-    MeshPass(const cinder::gfx::vk::VkCtx& ctx, cinder::gfx::asset::Assets& assets,
+    MeshPass(const cinder::gfx::rhi::Ctx& ctx, cinder::gfx::asset::Assets& assets,
              const MeshPipeline& pipeline);
 
     void beginFrame() override;
-    void record(VkCommandBuffer cmd, uint32_t frameInFlight, const glm::mat4& viewProjection) override;
+    void record(cinder::gfx::rhi::Commands cmd, uint32_t frameInFlight,
+                const glm::mat4& viewProjection) override;
     void registerApi(cinder::lua::LuaApi& api) override;
 
     void submit(int mesh, int texture, const glm::mat4& model);
@@ -30,7 +31,7 @@ public:
 private:
     bool accept(int mesh);
 
-    const cinder::gfx::vk::VkCtx& ctx_;
+    const cinder::gfx::rhi::Ctx& ctx_;
     cinder::gfx::asset::Assets& assets_;
     const MeshPipeline& pipeline_;
 

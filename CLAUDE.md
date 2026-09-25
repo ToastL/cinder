@@ -4,8 +4,8 @@ Guidance for Claude Code (claude.ai/code) when working in this repository.
 
 ## What this is
 
-A from-scratch C++20 game engine: Vulkan renderer, GLFW windowing, Lua 5.4 scripting. The long-term
-target is a Unity/Unreal-shaped editor workflow — select a node, edit its fields, hit Play, hit
+A from-scratch C++20 game engine: Vulkan and Metal renderers, GLFW windowing, Lua 5.4 scripting.
+The long-term target is a Unity/Unreal-shaped editor workflow — select a node, edit its fields, hit Play, hit
 Stop, land back where you started. `TODO.md` is the authoritative roadmap; read it before proposing
 architectural work, since it records what is deliberately deferred and what is out of scope.
 
@@ -18,6 +18,16 @@ The repo holds the engine only. A game is a **project folder** — a `.cinder` f
 ```bash
 cmake -S . -B build -G Ninja && cmake --build build
 ```
+
+`CINDER_BACKEND` picks the graphics backend: `vk` (the default) or `mtl`, the native Metal renderer,
+which is macOS-only.
+
+```bash
+cmake -S . -B build-mtl -G Ninja -DCINDER_BACKEND=mtl && cmake --build build-mtl
+```
+
+A Metal build needs no `DYLD_LIBRARY_PATH` and no Vulkan SDK at runtime, and it still compiles the
+SPIR-V, because `CINDER_SHADER_FORMATS` is independent of the backend.
 
 A plain build produces `engine`, `engine_dev`, `editor`, `ui_gallery` and `tests` — **no game**. The
 runtime that plays a project, `player`, is `EXCLUDE_FROM_ALL` and only built on demand.
@@ -97,14 +107,43 @@ Vulkan-Headers, doctest, FreeType and HarfBuzz, all pinned in `cmake/Dependencie
 Nothing needs installing: FreeType is built with zlib, bzip2, PNG, Brotli and HarfBuzz switched off, so
 it never finds Homebrew's copies, and HarfBuzz is compiled from its single-file `src/harfbuzz.cc`
 rather than through its community-maintained CMake build.
-`dxc` is the one exception: it is a *build tool*, found with `find_program` on `PATH` or in
-`$VULKAN_SDK/bin`. Shaders are HLSL, one `engine/shaders/<name>.hlsl` per program holding `VSMain` and
-`PSMain`, and it compiles each to `<name>.vs.spv` and `<name>.ps.spv`; `GraphicsPipelineBuilder::shader`
-takes the program name. Bindings, varyings and vertex inputs carry explicit `[[vk::binding]]` and
-`[[vk::location]]`, and textures are `[[vk::combinedImageSampler]]` pairs, so the descriptor layouts
-are combined image samplers. Matrices stay HLSL's default `column_major`, which is glm's memory
-layout, applied as `mul(matrix, vector)`. Editing a shader needs a rebuild, not just a restart. DXC is
-not on Homebrew; install the LunarG Vulkan SDK if it is missing.
+The shader compilers are the exception: they are *build tools*, found with `find_program` on `PATH`
+or in `$VULKAN_SDK/bin`. Shaders are HLSL, one `engine/shaders/<name>.hlsl` per program holding
+`VSMain` and `PSMain`, and `GraphicsPipelineBuilder::shader` takes the program name.
+
+**DXC is the one frontend, and the target decides the backend.** `cmake/Shaders.cmake` compiles each
+program to the formats in `CINDER_SHADER_FORMATS`, a cache list defaulting to `spirv;msl` on macOS,
+`spirv;dxil` on Windows and `spirv` on Linux; `spirv` is always built, because it is the only format
+the engine loads today and MSL is derived from it.
+
+| Format | How |
+|---|---|
+| SPIR-V | `dxc -spirv` -> `<name>.vs.spv` / `<name>.ps.spv` |
+| DXIL | `dxc` with no `-spirv` -> `<name>.vs.dxil` / `<name>.ps.dxil` |
+| MSL | `spirv-cross --msl` on the SPIR-V -> `<name>.<stage>.metal`, then `xcrun metal`/`metallib` -> one `<name>.metallib` per program holding both entry points, plus a `<name>.<stage>.json` reflection dump |
+
+`--msl-decoration-binding` makes MSL resource indices equal the SPIR-V binding numbers and
+`--rename-entry-point` keeps `VSMain`/`PSMain`, so a Metal backend reads the binding map rather than
+guessing it. DXIL cannot be *signed* without `dxil.dll`, which is Windows-only, so DXIL built
+anywhere else is unsigned, rejected by D3D12 outside developer mode, and a syntax check only —
+the build warns. `metal` and `metallib` are invoked through `xcrun` rather than resolved to absolute
+paths, because the Metal Toolchain lives in a version-stamped cryptex mount that moves when it
+updates; when it is absent the build emits `.metal` source and skips the metallib step instead of
+failing. Install it with `xcodebuild -downloadComponent MetalToolchain`.
+
+One HLSL source serves every target: bindings, varyings and vertex inputs carry explicit
+`[[vk::binding]]` and `[[vk::location]]` **alongside** `register(t0)`/`register(s0)`/`register(b0)`,
+and DXC ignores whichever set does not apply. Textures are `[[vk::combinedImageSampler]]` pairs, so
+the Vulkan descriptor layouts are combined image samplers, while D3D and Metal see the separate SRV
+and sampler they want. Push constants are `[[vk::push_constant]] ConstantBuffer<Push>`, which is a
+push-constant block in SPIR-V and cbuffer `b0` everywhere else. Matrices stay HLSL's default
+`column_major`, which is glm's memory layout, applied as `mul(matrix, vector)`. Editing a shader
+needs a rebuild, not just a restart. DXC is not on Homebrew; install the LunarG Vulkan SDK if it is
+missing. `spirv-cross` is `brew install spirv-cross`.
+
+**Compiled shaders live in the build tree, not the source tree** — `${CMAKE_BINARY_DIR}/shaders/` —
+and are gitignored. `ctest`'s `shaders_are_valid` asserts every program produced every artifact its
+formats call for, checks the SPIR-V magic number, and runs `spirv-val` when it is on `PATH`.
 
 `player/main.cpp` and `editor/main.cpp` duplicate their arg parsing on purpose, and their loops have
 diverged: the player only ever calls `GameLoop::tick`, while the editor calls `PlaySession::tick`,
@@ -137,7 +176,7 @@ caught a missing `TRANSFER_SRC_BIT` that no test would have.
 cinder/
   CMakeLists.txt
   cmake/          dependency, Lua, shader-compilation and packaging modules
-  engine/         engine data: shaders/ (HLSL and the compiled .spv), lua/ (the prelude) and fonts/
+  engine/         engine data: shaders/ (HLSL; compiled output goes to the build tree), lua/ (the prelude) and fonts/
                   (Roboto and Roboto Mono, OFL-1.1, licences beside them)
   samples/        sandbox2d/, sandbox3d/ and physics/ — example projects
   src/
@@ -145,7 +184,7 @@ cinder/
     scene/ serial/ components/       the world model
     physics/                         rigid bodies, collision and the solver
     ui/core/ ui/framework/ ui/widgets/ ui/docking/  the UI framework the editor is built on
-    gfx/ gfx/vk/ gfx/asset/ gfx/pass/  the renderer
+    gfx/ gfx/rhi/ gfx/vk/ gfx/mtl/ gfx/asset/ gfx/pass/  the renderer, its seam and two backends
     script/ core/                    the Lua host and the engine
     dev/                             editor panels, gizmos, history, play session; NOT part of `engine`
     player/ editor/                  the two executables
@@ -173,10 +212,11 @@ ui/core                    -> text, platform
 ui/framework               -> ui/core, text, platform
 ui/widgets                 -> ui/framework, ui/core, text, platform
 ui/docking                 -> ui/widgets, ui/framework, ui/core, text, platform
-gfx/vk                     -> platform
-gfx/asset                  -> gfx/vk, scene
-gfx/pass                   -> gfx/asset, gfx/vk, scene, lua, platform
-gfx                        -> gfx/pass, gfx/asset, gfx/vk, ui/core, text, scene, platform, lua
+gfx/rhi                    -> platform
+gfx/vk, gfx/mtl            -> gfx/rhi, platform          (only one compiles per binary)
+gfx/asset                  -> gfx/rhi, scene
+gfx/pass                   -> gfx/asset, gfx/rhi, scene, lua, platform
+gfx                        -> gfx/pass, gfx/asset, gfx/rhi, ui/core, text, scene, platform, lua
 script                     -> scene, reflect, gfx, physics, platform, lua
 core                       -> all of the above
 dev                        -> core and all of the above (a separate target, see below)
@@ -196,8 +236,39 @@ every layer logs, and `platform/Assets.hpp` is the only thing that turns a name 
 the only reason `serial`, `lua` and `gfx` have an edge to it, and neither header includes anything
 from the engine, so the edges cost nothing and create no cycle.
 
-`gfx` is split four ways and the seam that matters is `gfx/vk`: it knows Vulkan and knows nothing
-about this engine, so a new backend can be built on it without dragging in passes or assets. `gfx/asset` is what you draw with (`Assets`, `Texture`, `Mesh`),
+**`gfx` is split five ways and the seam that matters is `gfx/rhi`.** It is a neutral leaf — formats,
+`Commands`/`Uploads` handles, `TextureBinding`, the fluent `PipelineBuilder` — that *declares* the
+types a backend must provide: `Ctx`, `GpuBuffer`, `GraphicsPipeline`, `Texture`, `TexturePool`,
+`RenderTarget`, `GlyphPages`, `Presenter`. `gfx/vk` **defines** them in namespace
+`cinder::gfx::rhi`, and `gfx/mtl` defines the same names in Objective-C++; CMake compiles exactly
+one of the two. The choice is a `CINDER_BACKEND` cache variable, not a runtime flag — the same reasoning
+that makes the dev tools a separate link target. No vtables: `Engine` still holds `rhi::Ctx ctx_` by
+value in the same declaration slot.
+
+**Both backends work.** `-DCINDER_BACKEND=vk` (the default) builds the Vulkan renderer;
+`-DCINDER_BACKEND=mtl` builds the native Metal one, which is macOS-only and turns on `OBJCXX` with
+`-fobjc-arc` and the Metal, QuartzCore, Foundation, CoreGraphics and AppKit frameworks. The Metal
+backend is about half the Vulkan one's size, because Metal has no allocator, no descriptor pools,
+no layout barriers and no explicit frame synchronization — those concepts are deleted rather than
+ported. Its headers are plain C++ holding `void*`, bridged inside the `.mm` files, because neutral
+`.cpp` translation units include them through the selector.
+
+Three places are where Metal genuinely differs from Vulkan, and each shaped the seam:
+`beginScenePass`/`beginPresentPass` take `Frame&` rather than `const Frame&`, because Metal makes a
+fresh encoder per pass while Vulkan reuses one command buffer; `Commands::handle` points at a
+`CommandState` carrying the encoder, the current index buffer and a push-constant staging block,
+because Metal has no index-buffer binding point and `drawIndexed` must find it; and
+`TextureBinding::id` points at a texture/sampler pair, because Metal binds those separately where
+Vulkan has one combined image sampler. `PipelineFactory` loads the `.metallib` phase 1 produced and
+falls back to compiling the `.metal` source at runtime when it is absent.
+
+`gfx/rhi/Backend.hpp` is **generated** by `configure_file` into the build tree and is one line —
+`#include "gfx/<backend>/Backend.hpp"`. Everything above the backend includes only that, so no
+first-party source names a backend. `AssertLayers.cmake` globs `src/` only, so the generated header
+is invisible to it and the checked graph stays a strict DAG. **Nothing outside a backend directory names a
+Vulkan or Metal type**, and the one `<volk.h>` left outside it is `platform/Glfw.cpp`'s loader bootstrap,
+guarded by `CINDER_BACKEND_VK` — loader setup is the one place outside `gfx/` that names a backend,
+because it runs before `gfx` exists. `gfx/asset` is what you draw with (`Assets` and `Mesh`; `Texture` lives in the backend, since almost all of it is staging, barriers and copies),
 `gfx/pass` is how you draw it (`DrawPass` and its implementations, their pipelines, and `ViewCamera`), and
 `gfx` itself contains orchestration and frame resources: `Renderer`, `FrameTargets`, `RenderTarget`,
 `Capture`, `UiRenderer`, `CompositePipeline` and `RendererDrawList`. Nothing in a subdirectory includes
@@ -1256,11 +1327,16 @@ prefixes the file name. `serial/Json` is the format: `parseJson` builds a `PropV
 through `from_chars`/`to_chars`. INI has no arrays, attribute bags or nested sections, and asking for
 one throws `std::logic_error`.
 
-`platform/Assets` is the only thing that turns a name into a path, and it has three roots:
+`platform/Assets` is the only thing that turns a name into a path, and it has four roots:
 
-- **`enginePath`** — shaders and the prelude. `CINDER_ENGINE` if set; else `engine/` next to the
+- **`enginePath`** — the prelude and the fonts. `CINDER_ENGINE` if set; else `engine/` next to the
   executable, if it exists, which is the packaged layout; else the source tree's `engine/`, baked in
   at configure time as `CINDER_ENGINE_DEFAULT`.
+- **`shaderPath`** — the compiled shaders, which are built into the build tree rather than beside
+  their HLSL. `CINDER_SHADERS` if set; else `engine/shaders/` next to the executable, if it exists,
+  which is the packaged layout; else `${CMAKE_BINARY_DIR}/shaders`, baked in as
+  `CINDER_SHADERS_DEFAULT`; else `engineRoot() / "shaders"`. The packaged layout deliberately beats
+  the baked build directory, so a packaged game run on the dev machine never reads the build tree.
 - **`contentPath`** — `Content/`: the scene to open, `Sprite.texture`, `MeshPart.texture` and
   `engine.loadTexture`.
 - **`sourcePath`** — `Source/`: a `Script`'s `file`, through `__scriptRead`.
@@ -1275,14 +1351,16 @@ case`: macOS is case-insensitive by default, and the same project would not find
 case-sensitive system.
 
 `cmake --build build --target package_game` builds `player` and runs `cmake/PackageGame.cmake`, which
-stages `build/dist/<name>/` as `player`, `engine/shaders/*.spv`, `engine/lua/*.lua`, `engine/fonts/` and `project/`
+stages `build/dist/<name>/` as `player`, the compiled shaders, `engine/lua/*.lua`, `engine/fonts/` and `project/`
 holding the `.cinder` file, `Config/`, `Content/` and `Source/` — never `Saved/` or anything else in
 the folder. `<name>` is the `.cinder` file's stem. The cache variable `CINDER_PACKAGE_PROJECT` picks
 the project, defaulting to `samples/sandbox2d`.
 
 It reads the descriptor with CMake's own `string(JSON)`. Before staging it refuses a project whose
 `targetPlatforms` does not list the host and runs the host's `preBuildSteps`; after staging it runs
-`postBuildSteps`. Each step runs through `sh -c` — `cmd /c` on Windows — in the project folder, with
+`postBuildSteps`. **`targetPlatforms` also picks which shader formats are staged** — macOS takes
+`*.spv` and `*.metallib`, Linux `*.spv`, Windows `*.dxil`, and a descriptor that names no platform
+takes all three; a format the build did not produce is a warning naming the missing pattern. Each step runs through `sh -c` — `cmd /c` on Windows — in the project folder, with
 `$(ProjectDir)`, `$(EngineDir)` and `$(StageDir)` expanded, and a step that fails stops the package.
 
 ## Conventions

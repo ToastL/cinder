@@ -11,13 +11,19 @@
 #define CINDER_ENGINE_DEFAULT "engine"
 #endif
 
+#ifndef CINDER_SHADERS_DEFAULT
+#define CINDER_SHADERS_DEFAULT "engine/shaders"
+#endif
+
 namespace cinder::platform {
 namespace {
 
 std::filesystem::path exeDir;
 std::filesystem::path engine;
+std::filesystem::path shaders;
 std::filesystem::path project;
 bool engineResolved = false;
+bool shadersResolved = false;
 
 std::filesystem::path resolveEngine() {
     if (const char* env = std::getenv("CINDER_ENGINE"); env != nullptr && *env != '\0') return env;
@@ -28,6 +34,19 @@ std::filesystem::path resolveEngine() {
     if (std::filesystem::exists(baked)) return baked;
 
     return std::filesystem::path("engine");
+}
+
+std::filesystem::path resolveShaders() {
+    if (const char* env = std::getenv("CINDER_SHADERS"); env != nullptr && *env != '\0') return env;
+
+    if (!exeDir.empty() && std::filesystem::exists(exeDir / "engine" / "shaders")) {
+        return exeDir / "engine" / "shaders";
+    }
+
+    const std::filesystem::path baked(CINDER_SHADERS_DEFAULT);
+    if (std::filesystem::exists(baked)) return baked;
+
+    return engineRoot() / "shaders";
 }
 
 std::filesystem::path under(const std::filesystem::path& root, std::string_view relative) {
@@ -91,6 +110,16 @@ const std::filesystem::path& engineRoot() {
 }
 
 std::filesystem::path enginePath(std::string_view relative) { return under(engineRoot(), relative); }
+
+const std::filesystem::path& shaderRoot() {
+    if (!shadersResolved) {
+        shaders = resolveShaders();
+        shadersResolved = true;
+    }
+    return shaders;
+}
+
+std::filesystem::path shaderPath(std::string_view relative) { return under(shaderRoot(), relative); }
 
 void setProjectRoot(const std::filesystem::path& root) { project = std::filesystem::absolute(root); }
 

@@ -1,32 +1,35 @@
 #pragma once
 
+#include "gfx/rhi/Format.hpp"
+#include "gfx/rhi/Handles.hpp"
+
 #include <volk.h>
 
 #include <glm/mat4x4.hpp>
 
-namespace cinder::gfx::vk {
+namespace cinder::gfx::rhi { class Ctx; }
 
-class VkCtx;
+namespace cinder::gfx::rhi {
 
 class GraphicsPipeline {
 public:
     static constexpr uint32_t MATRIX_BYTES = 16 * sizeof(float);
 
-    GraphicsPipeline(const VkCtx& ctx, VkPipelineLayout layout, VkPipeline handle);
+    GraphicsPipeline(const cinder::gfx::rhi::Ctx& ctx, VkPipelineLayout layout,
+                     VkPipeline handle);
     ~GraphicsPipeline();
 
     GraphicsPipeline(const GraphicsPipeline&) = delete;
     GraphicsPipeline& operator=(const GraphicsPipeline&) = delete;
 
-    void bind(VkCommandBuffer cmd) const;
-    void push(VkCommandBuffer cmd, uint32_t offset, const glm::mat4& value) const;
-    void push(VkCommandBuffer cmd, VkShaderStageFlags stages, uint32_t size, const void* data) const;
-    void bindDescriptorSet(VkCommandBuffer cmd, VkDescriptorSet set) const;
+    void bind(Commands cmd) const;
+    void push(Commands cmd, uint32_t offset, const glm::mat4& value) const;
+    void push(Commands cmd, ShaderStages stages, uint32_t size, const void* data) const;
+    void bindTexture(Commands cmd, TextureBinding texture) const;
 
-    VkPipelineLayout layout() const { return layout_; }
 
 private:
-    const VkCtx& ctx_;
+    const cinder::gfx::rhi::Ctx& ctx_;
     VkPipelineLayout layout_;
     VkPipeline handle_;
 };

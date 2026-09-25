@@ -56,3 +56,9 @@ perf.data*
 
 ### Per-user and generated project data ###
 Saved/
+
+*.spv
+*.dxil
+*.metal
+*.air
+*.metallib

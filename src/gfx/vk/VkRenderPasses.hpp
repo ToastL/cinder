@@ -1,15 +1,17 @@
 #pragma once
 
+#include "gfx/rhi/Format.hpp"
+
 #include <volk.h>
+
+namespace cinder::gfx::rhi { class Ctx; }
 
 namespace cinder::gfx::vk {
 
-class VkCtx;
-
 namespace renderPasses {
 
-VkRenderPass scene(const VkCtx& ctx, VkFormat colorFormat, VkFormat depthFormat);
-VkRenderPass present(const VkCtx& ctx, VkFormat colorFormat);
+VkRenderPass scene(const rhi::Ctx& ctx, rhi::Format colorFormat);
+VkRenderPass present(const rhi::Ctx& ctx, rhi::Format colorFormat);
 
 }
 

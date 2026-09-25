@@ -1,12 +1,12 @@
 #include "gfx/vk/DepthBuffer.hpp"
 
-#include "gfx/vk/VkCtx.hpp"
+#include "gfx/vk/Ctx.hpp"
 
 #include <stdexcept>
 
 namespace cinder::gfx::vk {
 
-DepthBuffer::DepthBuffer(const VkCtx& ctx, VkFormat format, uint32_t width, uint32_t height)
+DepthBuffer::DepthBuffer(const rhi::Ctx& ctx, VkFormat format, uint32_t width, uint32_t height)
     : ctx_(ctx) {
     image_ = images::create(ctx, format, width, height, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT);
     view_ = images::view(ctx, image_.image, format, VK_IMAGE_ASPECT_DEPTH_BIT);

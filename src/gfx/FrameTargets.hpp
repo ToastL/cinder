@@ -1,6 +1,8 @@
 #pragma once
 
-#include "gfx/RenderTarget.hpp"
+#include "gfx/rhi/Fwd.hpp"
+
+#include <glm/vec2.hpp>
 
 #include <memory>
 #include <vector>
@@ -9,14 +11,13 @@ namespace cinder::gfx {
 
 class FrameTargets {
 public:
-    void recreate(const cinder::gfx::vk::VkCtx& ctx, VkRenderPass renderPass,
-                  VkDescriptorSetLayout textureLayout, VkFormat format, VkFormat depthFormat,
-                  VkExtent2D extent, uint32_t count);
+    void recreate(const cinder::gfx::rhi::Presenter& presenter, glm::uvec2 extent,
+                  uint32_t count);
     void clear();
-    RenderTarget& at(uint32_t frame) const { return *frames_[frame]; }
+    cinder::gfx::rhi::RenderTarget& at(uint32_t frame) const { return *frames_[frame]; }
 
 private:
-    std::vector<std::unique_ptr<RenderTarget>> frames_;
+    std::vector<std::unique_ptr<cinder::gfx::rhi::RenderTarget>> frames_;
 };
 
 }

@@ -1,0 +1,67 @@
+#pragma once
+
+#include "gfx/rhi/Format.hpp"
+
+#include <volk.h>
+
+#include <vk_mem_alloc.h>
+
+namespace cinder::platform { class Window; }
+
+namespace cinder::gfx::rhi {
+
+class Ctx {
+public:
+    explicit Ctx(cinder::platform::Window& window);
+    ~Ctx();
+
+    Ctx(const Ctx&) = delete;
+    Ctx& operator=(const Ctx&) = delete;
+
+    VkInstance instance() const { return instance_; }
+    VkPhysicalDevice physicalDevice() const { return physicalDevice_; }
+    VkDevice device() const { return device_; }
+    VkQueue graphicsQueue() const { return graphicsQueue_; }
+    VkQueue presentQueue() const { return presentQueue_; }
+    VkSurfaceKHR surface() const { return surface_; }
+    VkCommandPool commandPool() const { return commandPool_; }
+    VkDescriptorSetLayout textureLayout() const { return textureLayout_; }
+    rhi::Format depthFormat() const { return depthFormat_; }
+    VmaAllocator allocator() const { return allocator_; }
+    uint32_t graphicsFamily() const { return static_cast<uint32_t>(graphicsFamily_); }
+    uint32_t presentFamily() const { return static_cast<uint32_t>(presentFamily_); }
+
+    void waitIdle() const;
+
+    VkCommandBuffer beginSingleTime() const;
+    void endSingleTime(VkCommandBuffer cmd) const;
+
+private:
+    void createInstance();
+    void createDebugMessenger();
+    void createSurface(cinder::platform::Window& window);
+    void pickPhysicalDevice();
+    bool findQueueFamilies(VkPhysicalDevice candidate);
+    void createLogicalDevice();
+    void createCommandPool();
+    void createTextureLayout();
+    void chooseDepthFormat();
+    void createAllocator();
+
+    bool validation_ = false;
+    VkInstance instance_ = VK_NULL_HANDLE;
+    VkDebugUtilsMessengerEXT debugMessenger_ = VK_NULL_HANDLE;
+    VkSurfaceKHR surface_ = VK_NULL_HANDLE;
+    VkPhysicalDevice physicalDevice_ = VK_NULL_HANDLE;
+    VkDevice device_ = VK_NULL_HANDLE;
+    VkQueue graphicsQueue_ = VK_NULL_HANDLE;
+    VkQueue presentQueue_ = VK_NULL_HANDLE;
+    int graphicsFamily_ = -1;
+    int presentFamily_ = -1;
+    VkCommandPool commandPool_ = VK_NULL_HANDLE;
+    VkDescriptorSetLayout textureLayout_ = VK_NULL_HANDLE;
+    rhi::Format depthFormat_ = rhi::Format::Undefined;
+    VmaAllocator allocator_ = VK_NULL_HANDLE;
+};
+
+}

@@ -2,13 +2,15 @@
 
 #include "platform/Log.hpp"
 
+#if defined(CINDER_BACKEND_VK)
 #include <volk.h>
+#endif
 
 #include <GLFW/glfw3.h>
 
 #include <stdexcept>
 
-#if defined(__APPLE__) || defined(__linux__)
+#if defined(CINDER_BACKEND_VK) && (defined(__APPLE__) || defined(__linux__))
 #include <dlfcn.h>
 #endif
 
@@ -16,6 +18,8 @@ namespace cinder::platform {
 namespace {
 
 int owners = 0;
+
+#if defined(CINDER_BACKEND_VK)
 
 #if defined(__APPLE__)
 constexpr const char* LOADER_CANDIDATES[] = {
@@ -36,9 +40,13 @@ constexpr const char* LOADER_CANDIDATES[] = {
 };
 #endif
 
+#endif
+
 void errorCallback(int code, const char* description) {
     logError("[glfw] %d: %s\n", code, description);
 }
+
+#if defined(CINDER_BACKEND_VK)
 
 PFN_vkGetInstanceProcAddr findLoader() {
 #if defined(__APPLE__) || defined(__linux__)
@@ -67,17 +75,24 @@ void initVulkan() {
     volkInitializeCustom(entry);
 }
 
+#endif
+
 }
 
 void Glfw::acquire() {
     if (owners++ > 0) return;
 
     try {
+#if defined(CINDER_BACKEND_VK)
         initVulkan();
         glfwSetErrorCallback(errorCallback);
         glfwInitVulkanLoader(vkGetInstanceProcAddr);
         if (!glfwInit()) throw std::runtime_error("Failed to init GLFW");
         if (!glfwVulkanSupported()) throw std::runtime_error("No Vulkan loader found");
+#else
+        glfwSetErrorCallback(errorCallback);
+        if (!glfwInit()) throw std::runtime_error("Failed to init GLFW");
+#endif
     } catch (...) {
         release();
         throw;

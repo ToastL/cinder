@@ -4,13 +4,13 @@
 
 #include <string_view>
 
-namespace cinder::gfx::vk {
+namespace cinder::gfx::rhi { class Ctx; }
 
-class VkCtx;
+namespace cinder::gfx::vk {
 
 namespace shaders {
 
-VkShaderModule fromFile(const VkCtx& ctx, std::string_view name);
+VkShaderModule fromFile(const rhi::Ctx& ctx, std::string_view name);
 
 }
 

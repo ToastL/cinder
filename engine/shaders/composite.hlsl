@@ -3,8 +3,8 @@ struct Varyings {
     [[vk::location(0)]] float2 uv : TEXCOORD0;
 };
 
-[[vk::combinedImageSampler]] [[vk::binding(0, 0)]] Texture2D scene;
-[[vk::combinedImageSampler]] [[vk::binding(0, 0)]] SamplerState sceneSampler;
+[[vk::combinedImageSampler]] [[vk::binding(0, 0)]] Texture2D scene : register(t0);
+[[vk::combinedImageSampler]] [[vk::binding(0, 0)]] SamplerState sceneSampler : register(s0);
 
 Varyings VSMain(uint vertex : SV_VertexID) {
     Varyings output;

@@ -1,5 +1,7 @@
 #pragma once
 
+#include "gfx/rhi/Fwd.hpp"
+
 #include "gfx/CompositePipeline.hpp"
 #include "gfx/FrameTargets.hpp"
 #include "gfx/UiRenderer.hpp"
@@ -8,9 +10,6 @@
 #include "gfx/pass/MeshPipeline.hpp"
 #include "gfx/pass/SpritePipeline.hpp"
 #include "gfx/pass/ViewCamera.hpp"
-#include "gfx/vk/FrameSync.hpp"
-#include "gfx/vk/GpuBuffer.hpp"
-#include "gfx/vk/Swapchain.hpp"
 #include "ui/core/ElementList.hpp"
 
 #include <glm/vec2.hpp>
@@ -30,7 +29,7 @@ class Renderer {
 public:
     static constexpr uint32_t FRAMES_IN_FLIGHT = 2;
 
-    Renderer(const cinder::gfx::vk::VkCtx& ctx, cinder::platform::Window& window);
+    Renderer(const cinder::gfx::rhi::Ctx& ctx, cinder::platform::Window& window);
     ~Renderer();
 
     Renderer(const Renderer&) = delete;
@@ -44,12 +43,12 @@ public:
     void drawFrame();
     void capture(const std::string& path);
     void requestWindowCapture(const std::string& path);
-    bool windowCapturePending() const { return !windowCapture_.empty(); }
+    bool windowCapturePending() const;
 
     cinder::gfx::asset::Assets& assets() { return *assets_; }
     cinder::gfx::pass::ViewCamera& camera() { return camera_; }
     UiRenderer& ui() { return *ui_; }
-    float pixelsPerPoint() const { return pixelsPerPoint_; }
+    float pixelsPerPoint() const;
     cinder::scene::DrawList& draws();
 
     void setUiPaint(std::function<void(cinder::ui::ElementList&)> paint) { uiPaint_ = std::move(paint); }
@@ -59,29 +58,16 @@ public:
 private:
     bool embedded() const { return viewportWidth_ > 0; }
     glm::vec2 viewSize() const;
-    VkExtent2D targetExtent() const;
+    glm::uvec2 targetExtent() const;
     void createTargets();
-    void createCommandBuffers();
     void resizeCameras();
-    void measureScale();
-    void recreateSwapchain();
-    void recordCommandBuffer(VkCommandBuffer cmd, uint32_t imageIndex);
-    void recordWindowCapture(VkCommandBuffer cmd, uint32_t imageIndex);
-    static void setViewport(VkCommandBuffer cmd, uint32_t width, uint32_t height);
-    VkDescriptorSetLayout createTextureLayout();
 
-    const cinder::gfx::vk::VkCtx& ctx_;
+    const cinder::gfx::rhi::Ctx& ctx_;
     cinder::platform::Window& window_;
 
-    VkFormat depthFormat_ = VK_FORMAT_UNDEFINED;
-    VkRenderPass sceneRenderPass_ = VK_NULL_HANDLE;
-    VkRenderPass presentRenderPass_ = VK_NULL_HANDLE;
-    VkDescriptorSetLayout textureLayout_ = VK_NULL_HANDLE;
+    std::unique_ptr<cinder::gfx::rhi::Presenter> presenter_;
 
-    std::unique_ptr<cinder::gfx::vk::Swapchain> swapchain_;
     FrameTargets targets_;
-    std::vector<VkCommandBuffer> commandBuffers_;
-    std::unique_ptr<cinder::gfx::vk::FrameSync> sync_;
     std::unique_ptr<cinder::gfx::asset::Assets> assets_;
     std::unique_ptr<cinder::gfx::pass::SpritePipeline> spritePipeline_;
     std::unique_ptr<cinder::gfx::pass::MeshPipeline> meshPipeline_;
@@ -96,11 +82,6 @@ private:
     std::optional<cinder::gfx::pass::ViewCamera> override_;
 
     uint32_t lastFrame_ = 0;
-    std::string windowCapture_;
-    std::unique_ptr<cinder::gfx::vk::GpuBuffer> captureBuffer_;
-    VkImageUsageFlags swapchainUsage_ = 0;
-    bool captureRecorded_ = false;
-    float pixelsPerPoint_ = 1.0f;
     int viewportWidth_ = 0;
     int viewportHeight_ = 0;
 

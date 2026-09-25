@@ -1,12 +1,13 @@
 #include "gfx/vk/VkRenderPasses.hpp"
 
-#include "gfx/vk/VkCtx.hpp"
+#include "gfx/vk/Formats.hpp"
+#include "gfx/vk/Ctx.hpp"
 #include "gfx/vk/VkUtil.hpp"
 
 namespace cinder::gfx::vk::renderPasses {
 namespace {
 
-VkRenderPass create(const VkCtx& ctx, const VkAttachmentDescription* attachments, uint32_t count,
+VkRenderPass create(const rhi::Ctx& ctx, const VkAttachmentDescription* attachments, uint32_t count,
                     const VkSubpassDescription& subpass,
                     const VkSubpassDependency* dependencies, uint32_t dependencyCount) {
     VkRenderPassCreateInfo info{};
@@ -25,7 +26,9 @@ VkRenderPass create(const VkCtx& ctx, const VkAttachmentDescription* attachments
 
 }
 
-VkRenderPass scene(const VkCtx& ctx, VkFormat colorFormat, VkFormat depthFormat) {
+VkRenderPass scene(const rhi::Ctx& ctx, rhi::Format format) {
+    const VkFormat colorFormat = rhi::toVk(format);
+    const VkFormat depthFormat = rhi::toVk(ctx.depthFormat());
     VkAttachmentDescription attachments[2]{};
 
     attachments[0].format = colorFormat;
@@ -82,7 +85,8 @@ VkRenderPass scene(const VkCtx& ctx, VkFormat colorFormat, VkFormat depthFormat)
     return create(ctx, attachments, 2, subpass, dependencies, 2);
 }
 
-VkRenderPass present(const VkCtx& ctx, VkFormat colorFormat) {
+VkRenderPass present(const rhi::Ctx& ctx, rhi::Format format) {
+    const VkFormat colorFormat = rhi::toVk(format);
     VkAttachmentDescription color{};
     color.format = colorFormat;
     color.samples = VK_SAMPLE_COUNT_1_BIT;

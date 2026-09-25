@@ -2,7 +2,7 @@
 
 #include "core/ProjectConfig.hpp"
 #include "gfx/Renderer.hpp"
-#include "gfx/vk/VkCtx.hpp"
+#include "gfx/rhi/Backend.hpp"
 #include "physics/World.hpp"
 #include "platform/Input.hpp"
 #include "platform/Window.hpp"
@@ -52,7 +52,7 @@ private:
 
     cinder::platform::Window window_;
     cinder::platform::Input input_;
-    cinder::gfx::vk::VkCtx ctx_;
+    cinder::gfx::rhi::Ctx ctx_;
     cinder::gfx::Renderer renderer_;
     cinder::scene::NodeTypes types_;
     cinder::scene::Scene scene_{types_};

@@ -2,13 +2,13 @@
 
 #include "gfx/vk/VkImages.hpp"
 
-namespace cinder::gfx::vk {
+namespace cinder::gfx::rhi { class Ctx; }
 
-class VkCtx;
+namespace cinder::gfx::vk {
 
 class DepthBuffer {
 public:
-    DepthBuffer(const VkCtx& ctx, VkFormat format, uint32_t width, uint32_t height);
+    DepthBuffer(const rhi::Ctx& ctx, VkFormat format, uint32_t width, uint32_t height);
     ~DepthBuffer();
 
     DepthBuffer(const DepthBuffer&) = delete;
@@ -19,7 +19,7 @@ public:
     VkImageView view() const { return view_; }
 
 private:
-    const VkCtx& ctx_;
+    const rhi::Ctx& ctx_;
     Allocated image_;
     VkImageView view_ = VK_NULL_HANDLE;
 };

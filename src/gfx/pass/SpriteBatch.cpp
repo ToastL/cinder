@@ -1,30 +1,32 @@
 #include "gfx/pass/SpriteBatch.hpp"
 
+#include "gfx/rhi/Commands.hpp"
+
 #include "gfx/pass/Overflow.hpp"
-#include "gfx/vk/VkCtx.hpp"
+#include "gfx/rhi/Backend.hpp"
 
 #include <cstring>
 
 namespace cinder::gfx::pass {
 
-using cinder::gfx::vk::GpuBuffer;
-using cinder::gfx::vk::VkCtx;
+using cinder::gfx::rhi::GpuBuffer;
+using cinder::gfx::rhi::Ctx;
 
-SpriteBatch::SpriteBatch(const VkCtx& ctx, cinder::gfx::asset::Assets& assets,
+SpriteBatch::SpriteBatch(const Ctx& ctx, cinder::gfx::asset::Assets& assets,
                          const SpritePipeline& pipeline, uint32_t framesInFlight)
     : assets_(assets), pipeline_(pipeline),
       vertices_(static_cast<std::size_t>(MAX_QUADS) * FLOATS_PER_QUAD),
       quadTexture_(MAX_QUADS) {
-    const VkDeviceSize vertexBytes =
-            static_cast<VkDeviceSize>(MAX_QUADS) * FLOATS_PER_QUAD * sizeof(float);
+    const std::uint64_t vertexBytes =
+            static_cast<std::uint64_t>(MAX_QUADS) * FLOATS_PER_QUAD * sizeof(float);
 
     vertexBuffers_.reserve(framesInFlight);
     for (uint32_t i = 0; i < framesInFlight; ++i) {
-        vertexBuffers_.emplace_back(ctx, vertexBytes, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, true);
+        vertexBuffers_.emplace_back(ctx, vertexBytes, cinder::gfx::rhi::BufferUsage::Vertex, true);
     }
 
-    const VkDeviceSize indexBytes = static_cast<VkDeviceSize>(MAX_QUADS) * 6 * sizeof(uint32_t);
-    indexBuffer_ = std::make_unique<GpuBuffer>(ctx, indexBytes, VK_BUFFER_USAGE_INDEX_BUFFER_BIT,
+    const std::uint64_t indexBytes = static_cast<std::uint64_t>(MAX_QUADS) * 6 * sizeof(uint32_t);
+    indexBuffer_ = std::make_unique<GpuBuffer>(ctx, indexBytes, cinder::gfx::rhi::BufferUsage::Index,
                                                true);
 
     auto* indices = static_cast<uint32_t*>(indexBuffer_->mapped());
@@ -81,14 +83,15 @@ void SpriteBatch::draw(int texture, const glm::mat4& model, glm::vec2 size, cons
 
 void SpriteBatch::drawRegion(int texture, const glm::mat4& model, glm::vec2 size,
                              const glm::vec4& region, const glm::vec4& color) {
-    const cinder::gfx::asset::Texture& tex = assets_.get(texture);
+    const cinder::gfx::rhi::Texture& tex = assets_.get(texture);
     const glm::vec2 texels(static_cast<float>(tex.width()), static_cast<float>(tex.height()));
     const glm::vec2 from = glm::vec2(region.x, region.y) / texels;
     const glm::vec2 to = glm::vec2(region.x + region.z, region.y + region.w) / texels;
     quad(texture, model, size, glm::vec4(from, to), color);
 }
 
-void SpriteBatch::flush(VkCommandBuffer cmd, uint32_t frameIndex, const glm::mat4& viewProjection) {
+void SpriteBatch::flush(cinder::gfx::rhi::Commands cmd, uint32_t frameIndex,
+                        const glm::mat4& viewProjection) {
     if (quadCount_ == 0) return;
 
     std::memcpy(vertexBuffers_[frameIndex].mapped(), vertices_.data(),
@@ -96,10 +99,8 @@ void SpriteBatch::flush(VkCommandBuffer cmd, uint32_t frameIndex, const glm::mat
 
     pipeline_.bind(cmd, viewProjection);
 
-    const VkBuffer vertexBuffer = vertexBuffers_[frameIndex].handle();
-    const VkDeviceSize offset = 0;
-    vkCmdBindVertexBuffers(cmd, 0, 1, &vertexBuffer, &offset);
-    vkCmdBindIndexBuffer(cmd, indexBuffer_->handle(), 0, VK_INDEX_TYPE_UINT32);
+    vertexBuffers_[frameIndex].bindVertex(cmd);
+    indexBuffer_->bindIndex(cmd);
 
     uint32_t start = 0;
     while (start < quadCount_) {
@@ -107,10 +108,8 @@ void SpriteBatch::flush(VkCommandBuffer cmd, uint32_t frameIndex, const glm::mat
         uint32_t end = start;
         while (end < quadCount_ && quadTexture_[end] == texture) end++;
 
-        const VkDescriptorSet set = assets_.get(texture).descriptorSet();
-        vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline_.layout(),
-                                0, 1, &set, 0, nullptr);
-        vkCmdDrawIndexed(cmd, (end - start) * 6, 1, start * 6, 0, 0);
+        pipeline_.bindTexture(cmd, assets_.get(texture).binding());
+        cinder::gfx::rhi::drawIndexed(cmd, (end - start) * 6, start * 6);
         start = end;
     }
 }
