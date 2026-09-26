@@ -70,8 +70,8 @@ DYLD_LIBRARY_PATH=/opt/homebrew/lib ./build/editor samples/sandbox2d
 
 `editor` is the **dev build** — the same engine plus the editor UI, which is our own (see *The UI
 framework*): one window of docked tabs, the Explorer on the left, the Scene view in the middle with
-the console under it and Properties on the right, over a toolbar carrying the File, Edit, Window and
-Play menus. Drag a tab to another stack's middle or edge to re-dock it, close it, and reopen it from
+the console under it and Properties on the right, over a toolbar carrying the File, Edit, Window, Play and
+Platforms menus. Drag a tab to another stack's middle or edge to re-dock it, close it, and reopen it from
 the Window menu. It opens a project in **Edit mode**: the scene is loaded and drawn, and no game code
 runs. Play/Pause/Step/Stop are on the toolbar and on ⌘P, ⌘⇧P and ⌘⌥P; ⌘S saves the scene, and ⌘Z and
 ⌘⇧Z undo and redo edits. In the Scene view 1, 2 and 3 pick the move, rotate and scale gizmos. It takes
@@ -1356,10 +1356,22 @@ holding the `.cinder` file, `Config/`, `Content/` and `Source/` — never `Saved
 the folder. `<name>` is the `.cinder` file's stem. The cache variable `CINDER_PACKAGE_PROJECT` picks
 the project, defaulting to `samples/sandbox2d`.
 
+**The editor packages too.** Its **Platforms** menu lists every platform in `dev/Packager` —
+macOS, Linux, Windows, iOS and Android — and packages the open project for the one picked into
+`<project>/Saved/Builds/<Platform>/<name>/`. `Packager` runs `cmake --build <build> --target player`
+and then `PackageGame.cmake` with `HOST_PLATFORM` set to the target, through `popen` on a worker
+thread; its output is queued and logged as `[package]` lines from `Toolbar::update`, on the main
+thread, so the console sink is never called off it. The build directory, the `cmake` it was
+configured with, the player's path and the script are baked into `engine_dev` at configure time.
+Only the host's own desktop platform is enabled today; the others are listed, disabled, with a
+tooltip saying why, and a project whose `targetPlatforms` leaves a platform out disables it too.
+Adding a platform means making `platformSupported` true for it and teaching `PackageGame.cmake`
+its layout.
+
 It reads the descriptor with CMake's own `string(JSON)`. Before staging it refuses a project whose
 `targetPlatforms` does not list the host and runs the host's `preBuildSteps`; after staging it runs
 `postBuildSteps`. **`targetPlatforms` also picks which shader formats are staged** — macOS takes
-`*.spv` and `*.metallib`, Linux `*.spv`, Windows `*.dxil`, and a descriptor that names no platform
+`*.spv` and `*.metallib`, iOS `*.metallib`, Linux and Android `*.spv`, Windows `*.dxil`, and a descriptor that names no platform
 takes all three; a format the build did not produce is a warning naming the missing pattern. Each step runs through `sh -c` — `cmd /c` on Windows — in the project folder, with
 `$(ProjectDir)`, `$(EngineDir)` and `$(StageDir)` expanded, and a step that fails stops the package.
 

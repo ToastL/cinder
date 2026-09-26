@@ -4,6 +4,7 @@
 #include "core/GameLoop.hpp"
 #include "dev/History.hpp"
 #include "dev/Manipulator.hpp"
+#include "dev/Packager.hpp"
 #include "dev/PlaySession.hpp"
 #include "dev/Selection.hpp"
 #include "dev/panels/Console.hpp"
@@ -127,10 +128,11 @@ void exercise() {
     PlaySession session(engine);
     Selection selection;
     History history(scene);
+    cinder::dev::Packager packager(cinder::platform::projectRoot(), {});
     const cinder::text::FontSet fonts = cinder::text::FontSet::engineDefault();
     cinder::ui::WindowPlatform platform(engine.window());
     cinder::ui::Application app(platform, fonts, panels::editorTheme());
-    panels::Toolbar toolbar(session, history, selection, output / "saved.scene", app);
+    panels::Toolbar toolbar(session, history, selection, packager, output / "saved.scene", app);
     panels::SceneView view(session, selection, history, engine, app);
     panels::Explorer explorer(selection, history, scene, app);
     panels::Properties properties(selection, history, scene, app);

@@ -5,6 +5,7 @@
 #include "core/LaunchOptions.hpp"
 #include "core/ProjectConfig.hpp"
 #include "dev/History.hpp"
+#include "dev/Packager.hpp"
 #include "dev/PlaySession.hpp"
 #include "dev/Selection.hpp"
 #include "dev/panels/Console.hpp"
@@ -39,11 +40,12 @@ void runEditor(const core::ProjectConfig& config, const core::LaunchOptions& opt
     PlaySession session(engine);
     Selection selection;
     History history(engine.scene());
+    Packager packager(cinder::platform::projectRoot(), config.descriptor.targetPlatforms);
 
     const cinder::text::FontSet fonts = cinder::text::FontSet::engineDefault();
     cinder::ui::WindowPlatform platform(engine.window());
     cinder::ui::Application app(platform, fonts, cinder::dev::panels::editorTheme());
-    cinder::dev::panels::Toolbar toolbar(session, history, selection, scenePath, app);
+    cinder::dev::panels::Toolbar toolbar(session, history, selection, packager, scenePath, app);
     cinder::dev::panels::SceneView view(session, selection, history, engine, app);
     cinder::dev::panels::Explorer explorer(selection, history, engine.scene(), app);
     cinder::dev::panels::Properties properties(selection, history, engine.scene(), app);
