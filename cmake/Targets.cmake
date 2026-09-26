@@ -57,6 +57,14 @@ target_link_libraries(editor PRIVATE engine_dev)
 add_executable(player EXCLUDE_FROM_ALL src/player/main.cpp)
 target_link_libraries(player PRIVATE engine)
 
+target_compile_definitions(engine_dev PRIVATE
+    CINDER_CMAKE_COMMAND="${CMAKE_COMMAND}"
+    CINDER_BUILD_DIR="${CMAKE_BINARY_DIR}"
+    CINDER_PLAYER_PATH="$<TARGET_FILE:player>"
+    CINDER_PACKAGE_SCRIPT="${CMAKE_CURRENT_SOURCE_DIR}/cmake/PackageGame.cmake"
+    CINDER_ENGINE_DIR="${CINDER_ENGINE_DIR}"
+    CINDER_SHADER_DIR="${CMAKE_BINARY_DIR}/shaders")
+
 add_executable(ui_gallery tests/gallery/main.cpp)
 target_link_libraries(ui_gallery PRIVATE engine)
 

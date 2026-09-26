@@ -14,6 +14,7 @@ class MenuBuilder;
 
 namespace cinder::dev {
 class History;
+class Packager;
 class PlaySession;
 class Selection;
 }
@@ -22,8 +23,8 @@ namespace cinder::dev::panels {
 
 class Toolbar {
 public:
-    Toolbar(PlaySession& session, History& history, Selection& selection, std::filesystem::path scene,
-            cinder::ui::Application& app);
+    Toolbar(PlaySession& session, History& history, Selection& selection, Packager& packager,
+            std::filesystem::path scene, cinder::ui::Application& app);
 
     Toolbar(const Toolbar&) = delete;
     Toolbar& operator=(const Toolbar&) = delete;
@@ -54,6 +55,7 @@ private:
     PlaySession& session_;
     History& history_;
     Selection& selection_;
+    Packager& packager_;
     std::filesystem::path scene_;
     cinder::ui::Application& app_;
     std::shared_ptr<cinder::ui::CommandList> commands_;

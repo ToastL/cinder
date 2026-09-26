@@ -243,7 +243,9 @@ includes `scene`, `reflect` or `gfx` — the reflection-driven Properties panel 
 
 - [x] Build target — `player` is `EXCLUDE_FROM_ALL`, and `package_game` stages it with the engine
       data and one project into `build/dist/<project>/`, runnable from any working directory
-- [ ] "Build Game" in the editor — run `package_game` for the open project
+- [x] "Build Game" in the editor — the **Platforms** menu lists macOS, Linux, Windows, iOS and
+      Android; the host desktop packages the open project into `Saved/Builds/<Platform>/`, the rest
+      are listed as unavailable until their hosts exist
 - [ ] Asset bundling into an archive, not loose files
 - [ ] Settings/save-data location per OS
 - [ ] Crash handler + log file

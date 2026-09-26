@@ -1,6 +1,7 @@
 #include "dev/panels/Toolbar.hpp"
 
 #include "dev/History.hpp"
+#include "dev/Packager.hpp"
 #include "dev/PlaySession.hpp"
 #include "dev/panels/Dialog.hpp"
 #include "platform/Log.hpp"
@@ -58,9 +59,10 @@ const Command& Toolbar::save() { return *SAVE; }
 const Command& Toolbar::undo() { return *UNDO; }
 const Command& Toolbar::redo() { return *REDO; }
 
-Toolbar::Toolbar(PlaySession& session, History& history, Selection& selection, std::filesystem::path scene,
-                 Application& app)
-    : session_(session), history_(history), selection_(selection), scene_(std::move(scene)), app_(app),
+Toolbar::Toolbar(PlaySession& session, History& history, Selection& selection, Packager& packager,
+                 std::filesystem::path scene, Application& app)
+    : session_(session), history_(history), selection_(selection), packager_(packager), scene_(std::move(scene)),
+      app_(app),
       commands_(std::make_shared<CommandList>()) {
     bind();
     build();
@@ -112,6 +114,19 @@ void Toolbar::build() {
                                [list] { list->execute(*PAUSE); }, PAUSE->shortcut.label())
                         .enabledIf([this] { return !editing(); })
                         .command(list, *STEP);
+            })
+            .menu("Platforms", [this](MenuBuilder& menu) {
+                menu.heading("Package Project");
+                for (const Platform platform : platforms()) {
+                    const std::string name(platformName(platform));
+                    menu.entry([this, platform, name] {
+                        if (packager_.current() == platform) return name + " (packaging...)";
+                        return packager_.canPackage(platform) ? name : name + " (unavailable)";
+                    }, [this, platform] { packager_.start(platform); })
+                            .enabledIf([this, platform] { return packager_.canPackage(platform) && !packager_.busy(); });
+                    const std::string reason = packager_.unavailableReason(platform);
+                    menu.toolTip(reason.empty() ? "Package into " + packager_.outputDir(platform).string() : reason);
+                }
             });
 
     widget_ = make<Border>()
@@ -171,6 +186,7 @@ void Toolbar::build() {
 }
 
 void Toolbar::update() {
+    packager_.update();
     history_.setEnabled(editing());
     history_.settle(app_.isInteracting());
     if (focusPrompt_) {
