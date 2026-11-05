@@ -1,0 +1,18 @@
+filters:
+  and:
+    - file.folder == "Systems"
+    - file.ext == "md"
+    - type != "hub"
+views:
+  - type: table
+    name: All systems
+    order:
+      - file.name
+      - status
+      - layer
+      - source
+      - started
+      - last-update
+    sort:
+      - property: last-update
+        direction: DESC

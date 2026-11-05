@@ -62,3 +62,7 @@ Saved/
 *.metal
 *.air
 *.metallib
+
+### Obsidian
+notes/.obsidian/workspace*.json
+notes/.obsidian/cache
