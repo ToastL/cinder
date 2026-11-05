@@ -1359,14 +1359,17 @@ the project, defaulting to `samples/sandbox2d`.
 **The editor packages too.** Its **Platforms** menu lists every platform in `dev/Packager` —
 macOS, Linux, Windows, iOS and Android — and packages the open project for the one picked into
 `<project>/Saved/Builds/<Platform>/<name>/`. `Packager` runs `cmake --build <build> --target player`
-and then `PackageGame.cmake` with `HOST_PLATFORM` set to the target, through `popen` on a worker
-thread; its output is queued and logged as `[package]` lines from `Toolbar::update`, on the main
+and then `PackageGame.cmake` with `HOST_PLATFORM` set to the target, through `sh -c` in a process
+group of its own, read on a worker thread; its output is queued and logged as `[package]` lines from `Toolbar::update`, on the main
 thread, so the console sink is never called off it. The build directory, the `cmake` it was
 configured with, the player's path and the script are baked into `engine_dev` at configure time.
 Only the host's own desktop platform is enabled today; the others are listed, disabled, with a
 tooltip saying why, and a project whose `targetPlatforms` leaves a platform out disables it too.
 Adding a platform means making `platformSupported` true for it and teaching `PackageGame.cmake`
-its layout.
+its layout. Packaging is an Edit-mode action and packages what is on disk, so a dirty scene first gets
+the Save / Don't Save / Cancel dialog, worded for packaging. `Packager::cancel` sends `SIGTERM` to the
+whole group — cmake, ninja and the compilers under it — and the destructor cancels rather than waits;
+closing the editor mid-package asks to Stop and Close or Keep Packaging.
 
 It reads the descriptor with CMake's own `string(JSON)`. Before staging it refuses a project whose
 `targetPlatforms` does not list the host and runs the host's `preBuildSteps`; after staging it runs

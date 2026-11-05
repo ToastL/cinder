@@ -2,8 +2,11 @@
 
 #include "dev/Packager.hpp"
 
+#include <chrono>
 #include <filesystem>
+#include <fstream>
 #include <string>
+#include <thread>
 
 using cinder::dev::PackageTools;
 using cinder::dev::Packager;
@@ -56,4 +59,44 @@ TEST_CASE("starting an unavailable platform does nothing") {
     CHECK_FALSE(packager.start(Platform::IOS));
     CHECK_FALSE(packager.busy());
     packager.update();
+}
+
+TEST_CASE("cancelling stops the build's whole process group, and so does destroying the packager") {
+    const Platform host = cinder::dev::hostPlatform();
+    if (!cinder::dev::platformSupported(host)) return;
+
+    const std::filesystem::path dir = std::filesystem::temp_directory_path() / "cinder_packager_test";
+    std::filesystem::create_directories(dir);
+    const std::filesystem::path slow = dir / "cmake";
+    {
+        std::ofstream out(slow);
+        out << "#!/bin/sh\nsleep 30 &\nwait\n";
+    }
+    std::filesystem::permissions(slow, std::filesystem::perms::owner_all);
+
+    PackageTools slowTools = tools();
+    slowTools.cmake = slow;
+    const auto settle = [](const Packager& packager) {
+        const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(5);
+        while (packager.busy() && std::chrono::steady_clock::now() < deadline) {
+            std::this_thread::sleep_for(std::chrono::milliseconds(10));
+        }
+    };
+
+    Packager packager(dir / "Game", {}, slowTools);
+    REQUIRE(packager.start(host));
+    CHECK(packager.busy());
+    CHECK(packager.current() == host);
+    packager.cancel();
+    settle(packager);
+    CHECK_FALSE(packager.busy());
+    packager.update();
+
+    const auto before = std::chrono::steady_clock::now();
+    {
+        Packager doomed(dir / "Game", {}, slowTools);
+        REQUIRE(doomed.start(host));
+    }
+    CHECK(std::chrono::steady_clock::now() - before < std::chrono::seconds(5));
+    std::filesystem::remove_all(dir);
 }

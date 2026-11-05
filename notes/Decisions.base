@@ -1,0 +1,14 @@
+filters:
+  and:
+    - file.folder == "Notes/Decisions"
+    - file.ext == "md"
+views:
+  - type: table
+    name: Decisions
+    order:
+      - file.name
+      - status
+      - date
+    sort:
+      - property: date
+        direction: DESC
