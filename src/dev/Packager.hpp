@@ -53,6 +53,7 @@ public:
     std::optional<Platform> current() const { return busy() ? current_ : std::nullopt; }
 
     bool start(Platform platform);
+    void cancel();
     void update();
 
 private:
@@ -63,6 +64,8 @@ private:
     PackageTools tools_;
     std::string name_;
     std::thread worker_;
+    int pid_ = 0;
+    std::atomic<bool> cancelled_ = false;
     std::atomic<bool> running_ = false;
     std::optional<Platform> current_;
     std::mutex mutex_;

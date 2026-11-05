@@ -4,11 +4,13 @@
 
 #include <algorithm>
 #include <array>
+#include <csignal>
 #include <cstdio>
 #include <system_error>
 #include <utility>
 
 #include <sys/wait.h>
+#include <unistd.h>
 
 namespace cinder::dev {
 
@@ -89,6 +91,7 @@ Packager::Packager(std::filesystem::path project, std::vector<std::string> targe
       name_(projectName(project_)) {}
 
 Packager::~Packager() {
+    cancel();
     if (worker_.joinable()) worker_.join();
 }
 
@@ -129,12 +132,38 @@ bool Packager::start(Platform platform) {
     cinder::platform::logInfo("[package] packaging %s for %s into %s\n", name_.c_str(),
                               std::string(platformName(platform)).c_str(), output.string().c_str());
 
+    int fds[2];
+    if (pipe(fds) != 0) {
+        cinder::platform::logError("[package] could not open a pipe\n");
+        return false;
+    }
+    const pid_t pid = fork();
+    if (pid < 0) {
+        close(fds[0]);
+        close(fds[1]);
+        cinder::platform::logError("[package] could not start the build\n");
+        return false;
+    }
+    if (pid == 0) {
+        setpgid(0, 0);
+        dup2(fds[1], STDOUT_FILENO);
+        dup2(fds[1], STDERR_FILENO);
+        close(fds[0]);
+        close(fds[1]);
+        execl("/bin/sh", "sh", "-c", command.c_str(), static_cast<char*>(nullptr));
+        _exit(127);
+    }
+    setpgid(pid, pid);
+    close(fds[1]);
+
     current_ = platform;
     reported_ = false;
+    cancelled_.store(false);
+    pid_ = pid;
     running_.store(true);
-    worker_ = std::thread([this, command] {
+    worker_ = std::thread([this, pid, out = fds[0]] {
         int status = -1;
-        if (FILE* pipe = popen(command.c_str(), "r")) {
+        if (FILE* pipe = fdopen(out, "r")) {
             std::array<char, 512> buffer{};
             std::string line;
             while (std::fgets(buffer.data(), static_cast<int>(buffer.size()), pipe)) {
@@ -149,13 +178,27 @@ bool Packager::start(Platform platform) {
                 const std::lock_guard lock(mutex_);
                 lines_.push_back(std::move(line));
             }
-            const int wait = pclose(pipe);
-            status = WIFEXITED(wait) ? WEXITSTATUS(wait) : -1;
+            std::fclose(pipe);
+        } else {
+            close(out);
         }
+        {
+            const std::lock_guard lock(mutex_);
+            pid_ = 0;
+        }
+        int wait = 0;
+        if (waitpid(pid, &wait, 0) == pid) status = WIFEXITED(wait) ? WEXITSTATUS(wait) : -1;
         status_ = status;
         running_.store(false);
     });
     return true;
+}
+
+void Packager::cancel() {
+    const std::lock_guard lock(mutex_);
+    if (pid_ <= 0) return;
+    cancelled_.store(true);
+    kill(-pid_, SIGTERM);
 }
 
 void Packager::update() {
@@ -173,7 +216,9 @@ void Packager::finish() {
     reported_ = true;
     update();
     const std::string platform(platformName(current_.value_or(hostPlatform())));
-    if (status_ == 0) {
+    if (cancelled_.load()) {
+        cinder::platform::logInfo("[package] %s build cancelled\n", platform.c_str());
+    } else if (status_ == 0) {
         cinder::platform::logInfo("[package] %s build ready in %s\n", platform.c_str(),
                                   outputDir(current_.value_or(hostPlatform())).string().c_str());
     } else {

@@ -122,8 +122,10 @@ void Toolbar::build() {
                     menu.entry([this, platform, name] {
                         if (packager_.current() == platform) return name + " (packaging...)";
                         return packager_.canPackage(platform) ? name : name + " (unavailable)";
-                    }, [this, platform] { packager_.start(platform); })
-                            .enabledIf([this, platform] { return packager_.canPackage(platform) && !packager_.busy(); });
+                    }, [this, platform] { requestPackage(platform); })
+                            .enabledIf([this, platform] {
+                                return editing() && packager_.canPackage(platform) && !packager_.busy();
+                            });
                     const std::string reason = packager_.unavailableReason(platform);
                     menu.toolTip(reason.empty() ? "Package into " + packager_.outputDir(platform).string() : reason);
                 }
@@ -166,23 +168,57 @@ void Toolbar::build() {
                         })
                         .colorAndOpacity(Attribute<Color>([] { return Application::get().theme().color("Color.ForegroundDim"); }))]];
 
-    std::vector<DialogChoice> choices;
-    choices.push_back({"Save", [this] {
-                           prompting_ = false;
-                           closeConfirmed_ = write();
-                       }, true});
-    choices.push_back({"Don't Save", [this] {
-                           prompting_ = false;
-                           closeConfirmed_ = true;
-                       }, false});
-    choices.push_back({"Cancel", [this] { prompting_ = false; }, false});
+    const auto dismiss = [this] {
+        prompting_ = Prompt::None;
+        packageAfterPrompt_.reset();
+    };
 
-    prompt_ = make<Dialog>()
-            .visibility([this] { return prompting_ ? Visibility::Visible : Visibility::Collapsed; })
+    std::vector<DialogChoice> unsaved;
+    unsaved.push_back({"Save", [this] {
+                           prompting_ = Prompt::None;
+                           if (write()) {
+                               proceed();
+                           } else {
+                               packageAfterPrompt_.reset();
+                           }
+                       }, true});
+    unsaved.push_back({"Don't Save", [this] {
+                           prompting_ = Prompt::None;
+                           proceed();
+                       }, false});
+    unsaved.push_back({"Cancel", dismiss, false});
+
+    unsavedPrompt_ = make<Dialog>()
+            .visibility([this] { return prompting_ == Prompt::Unsaved ? Visibility::Visible : Visibility::Collapsed; })
             .title("Unsaved Changes")
-            .message("Save changes to " + scene_.filename().string() + " before closing?")
-            .choices(std::move(choices))
-            .onCancel([this] { prompting_ = false; });
+            .message([this] {
+                return "Save changes to " + scene_.filename().string()
+                        + (packageAfterPrompt_ ? " before packaging?" : " before closing?");
+            })
+            .choices(std::move(unsaved))
+            .onCancel(dismiss);
+
+    std::vector<DialogChoice> packaging;
+    packaging.push_back({"Stop and Close", [this] {
+                             prompting_ = Prompt::None;
+                             packager_.cancel();
+                             confirmClose();
+                         }, false});
+    packaging.push_back({"Keep Packaging", dismiss, true});
+
+    packagingPrompt_ = make<Dialog>()
+            .visibility([this] { return prompting_ == Prompt::Packaging ? Visibility::Visible : Visibility::Collapsed; })
+            .title("Packaging in Progress")
+            .message([this] {
+                const std::optional<Platform> current = packager_.current();
+                const std::string name = current ? std::string(platformName(*current)) : std::string("The project");
+                return name + " packaging is still running. Stop it and close?";
+            })
+            .choices(std::move(packaging))
+            .onCancel(dismiss);
+
+    prompt_ = make<Overlay>().visibility([this] { return prompting() ? Visibility::Visible : Visibility::Collapsed; })
+            + Overlay::slot()[unsavedPrompt_] + Overlay::slot()[packagingPrompt_];
 }
 
 void Toolbar::update() {
@@ -190,18 +226,51 @@ void Toolbar::update() {
     history_.setEnabled(editing());
     history_.settle(app_.isInteracting());
     if (focusPrompt_) {
-        app_.setFocus(prompt_);
+        app_.setFocus(prompting_ == Prompt::Packaging ? packagingPrompt_ : unsavedPrompt_);
         focusPrompt_ = false;
     }
 }
 
 void Toolbar::requestClose() {
+    packageAfterPrompt_.reset();
+    if (packager_.busy()) {
+        open(Prompt::Packaging);
+        return;
+    }
+    confirmClose();
+}
+
+void Toolbar::requestPackage(Platform platform) {
+    if (!editing() || prompting()) return;
+    if (!history_.dirty()) {
+        packager_.start(platform);
+        return;
+    }
+    packageAfterPrompt_ = platform;
+    open(Prompt::Unsaved);
+}
+
+void Toolbar::open(Prompt prompt) {
+    prompting_ = prompt;
+    focusPrompt_ = true;
+}
+
+void Toolbar::proceed() {
+    if (packageAfterPrompt_) {
+        const Platform platform = *packageAfterPrompt_;
+        packageAfterPrompt_.reset();
+        packager_.start(platform);
+        return;
+    }
+    closeConfirmed_ = true;
+}
+
+void Toolbar::confirmClose() {
     if (!history_.dirty()) {
         closeConfirmed_ = true;
         return;
     }
-    prompting_ = true;
-    focusPrompt_ = true;
+    open(Prompt::Unsaved);
 }
 
 bool Toolbar::write() {
