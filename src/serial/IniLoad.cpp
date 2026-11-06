@@ -139,6 +139,10 @@ void IniLoad::vector(std::string_view name, float* values, const float* fallback
     }
 }
 
+cinder::scene::RawFields IniLoad::raw(const cinder::scene::RawFields& values) {
+    unsupported("verbatim fields");
+}
+
 cinder::scene::PropRec IniLoad::bag(std::string_view name, const cinder::scene::PropRec& values) {
     unsupported("attribute bags");
 }

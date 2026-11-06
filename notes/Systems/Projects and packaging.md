@@ -13,14 +13,14 @@ last-update: 2026-09-26
 
 **Play a project:**
 ```sh
-cmake --build build --target player && ./build/player samples/sandbox3d
+./build/editor samples/sandbox3d --frames 2 && ./build/player samples/sandbox3d
 ```
 `player` takes the folder or its `.cinder` file, `--scene`, `--frames`, `--capture`. With no argument it looks for `project/` next to itself (the packaged layout).
 
-**Package:** `cmake --build build --target package_game` → `build/dist/<project>/`. Or the editor's Platforms menu.
+**Package:** `./build/packager samples/sandbox3d --config shipping` → `Saved/Builds/<Platform>/`. Or the editor's Platforms menu.
 
 ## Code
-[[Project folder]], [[Project descriptor]], [[Game.ini]], [[package_game]], [[Editor packager]]
+[[Project folder]], [[Project descriptor]], [[Game.ini]], [[packager]], [[Editor packager]]
 
 ## Tasks
 - [ ] Asset bundling into an archive, not loose files

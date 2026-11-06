@@ -17,6 +17,7 @@ class MenuBuilder;
 namespace cinder::dev {
 enum class Platform : std::uint8_t;
 class History;
+class ModuleHost;
 class Packager;
 class PlaySession;
 class Selection;
@@ -26,7 +27,7 @@ namespace cinder::dev::panels {
 
 class Toolbar {
 public:
-    Toolbar(PlaySession& session, History& history, Selection& selection, Packager& packager,
+    Toolbar(PlaySession& session, History& history, Selection& selection, Packager& packager, ModuleHost& modules,
             std::filesystem::path scene, cinder::ui::Application& app);
 
     Toolbar(const Toolbar&) = delete;
@@ -49,6 +50,7 @@ public:
     static const cinder::ui::Command& save();
     static const cinder::ui::Command& undo();
     static const cinder::ui::Command& redo();
+    static const cinder::ui::Command& compile();
 
 private:
     enum class Prompt : std::uint8_t { None, Unsaved, Packaging };
@@ -65,6 +67,7 @@ private:
     History& history_;
     Selection& selection_;
     Packager& packager_;
+    ModuleHost& modules_;
     std::filesystem::path scene_;
     cinder::ui::Application& app_;
     std::shared_ptr<cinder::ui::CommandList> commands_;

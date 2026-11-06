@@ -6,7 +6,6 @@
 #include "scene/Node.hpp"
 #include "scene/NodeTypes.hpp"
 #include "scene/Scene.hpp"
-#include "script/Script.hpp"
 #include "ui/framework/Application.hpp"
 #include "ui/widgets/Border.hpp"
 #include "ui/widgets/BoxPanel.hpp"
@@ -41,13 +40,7 @@ bool containsIgnoreCase(std::string_view text, std::string_view needle) {
     return false;
 }
 
-std::string detailOf(const Node& node, std::string_view type) {
-    const auto* script = dynamic_cast<const cinder::script::Script*>(&node);
-    if (script != nullptr && !script->file().empty()) {
-        return std::filesystem::path(script->file()).filename().string();
-    }
-    return std::string(type);
-}
+std::string detailOf(const Node& node, std::string_view type) { return std::string(type); }
 
 }
 
@@ -185,6 +178,7 @@ std::shared_ptr<Widget> Explorer::rowFor(ItemId item) {
 
 void Explorer::addInsertEntries(MenuBuilder& menu, std::optional<int> parent) {
     for (const auto& entry : scene_.types().registered()) {
+        if (!entry.factory) continue;
         const std::string name = entry.name;
         menu.entry(name, [this, name, parent] { insert(name, parent); });
     }

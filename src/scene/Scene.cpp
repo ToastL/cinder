@@ -3,6 +3,7 @@
 #include "scene/DrawList.hpp"
 #include "scene/Node.hpp"
 #include "scene/NodeTypes.hpp"
+#include "scene/Placeholder.hpp"
 #include "scene/Transform.hpp"
 
 #include <algorithm>
@@ -59,7 +60,11 @@ Node* Scene::create(std::string_view className, Node* parent) {
 
 Node* Scene::clone(const Node& source, Node* parent) {
     std::unique_ptr<Node> copy = types_.create(types_.nameOf(source));
-    if (copy == nullptr) return nullptr;
+    if (copy == nullptr) {
+        const auto* placeholder = dynamic_cast<const Placeholder*>(&source);
+        if (placeholder == nullptr) return nullptr;
+        copy = std::make_unique<Placeholder>(placeholder->className(), placeholder->fields());
+    }
 
     cinder::reflect::copyProps(source.propList(), source.propTarget(), copy->propTarget());
     if (source.transform() != nullptr && copy->transform() != nullptr) {
@@ -90,6 +95,7 @@ Node* Scene::find(std::string_view name) const {
 
 void Scene::update(float dt) {
     startPending();
+    runTimers(dt);
     for (std::size_t i = 0; i < roots_.size(); ++i) update(*roots_[i], dt);
     flushDestroy();
 }
@@ -149,7 +155,7 @@ void Scene::markDestroyed(Node& node) {
 }
 
 void Scene::teardown(Node& node, bool notify) {
-    if (notify && observer_ != nullptr) observer_->destroying(node);
+    if (notify) emit(node, Signal::Destroying);
 
     const std::vector<Node*> children = node.children_;
     for (std::size_t i = children.size(); i-- > 0;) teardown(*children[i], notify);
@@ -157,6 +163,7 @@ void Scene::teardown(Node& node, bool notify) {
 
     unqueueStart(&node);
     if (node.started_) node.onDestroy();
+    dropHandlers(node.id_);
     nodes_.erase(node.id_);
 }
 
@@ -167,6 +174,9 @@ void Scene::clear() {
     nodes_.clear();
     pendingStart_.clear();
     pendingDestroy_.clear();
+    connections_.clear();
+    timers_.clear();
+    time_ = 0.0;
 }
 
 void Scene::reparent(Node& node, Node* next) {
@@ -183,7 +193,7 @@ void Scene::attach(Node& node, Node* parent) {
     else parent->children_.push_back(&node);
 
     if (Transform* transform = node.transform()) transform->dirty();
-    if (parent != nullptr && observer_ != nullptr) observer_->childAdded(*parent, node);
+    if (parent != nullptr) emit(*parent, Signal::ChildAdded, {&node, {}});
 }
 
 void Scene::detach(Node& node) {
@@ -192,7 +202,7 @@ void Scene::detach(Node& node) {
     siblings.erase(std::remove(siblings.begin(), siblings.end(), &node), siblings.end());
     node.parent_ = nullptr;
 
-    if (parent != nullptr && observer_ != nullptr) observer_->childRemoved(*parent, node);
+    if (parent != nullptr) emit(*parent, Signal::ChildRemoved, {&node, {}});
 }
 
 void Scene::unqueueStart(Node* node) {
@@ -202,7 +212,97 @@ void Scene::unqueueStart(Node* node) {
 }
 
 void Scene::attributeChanged(Node& node, const std::string& name) {
-    if (observer_ != nullptr) observer_->attributeChanged(node, name);
+    emit(node, Signal::AttributeChanged, {nullptr, name});
+}
+
+void Scene::hook(Node& node, Signal signal, const SignalArgs& args) {
+    switch (signal) {
+        case Signal::AttributeChanged: node.onAttributeChanged(args.name); break;
+        case Signal::ChildAdded: node.onChildAdded(*args.other); break;
+        case Signal::ChildRemoved: node.onChildRemoved(*args.other); break;
+        case Signal::Touched: node.onTouched(*args.other); break;
+        case Signal::TouchEnded: node.onTouchEnded(*args.other); break;
+        case Signal::Destroying: break;
+    }
+}
+
+void Scene::emit(Node& source, Signal signal, const SignalArgs& args) {
+    if (source.started_ && !source.destroyed_) hook(source, signal, args);
+
+    std::vector<int> handles;
+    for (const Connection& connection : connections_) {
+        if (connection.source == source.id_ && connection.signal == signal) handles.push_back(connection.id);
+    }
+    for (const int handle : handles) {
+        auto found = std::find_if(connections_.begin(), connections_.end(),
+                                  [handle](const Connection& connection) { return connection.id == handle; });
+        if (found == connections_.end()) continue;
+        const Node* owner = byId(found->owner);
+        if (owner == nullptr || !owner->started_ || owner->destroyed_) continue;
+        const SignalHandler handler = found->handler;
+        handler(args);
+    }
+}
+
+int Scene::connect(Node& source, Signal signal, Node& owner, SignalHandler handler) {
+    const int handle = nextHandle_++;
+    connections_.push_back(Connection{handle, source.id_, signal, owner.id_, std::move(handler)});
+    return handle;
+}
+
+void Scene::disconnect(int connection) {
+    std::erase_if(connections_, [connection](const Connection& entry) { return entry.id == connection; });
+}
+
+int Scene::after(Node& owner, double seconds, TimerHandler handler) {
+    return schedule(owner, seconds, false, std::move(handler));
+}
+
+int Scene::every(Node& owner, double seconds, TimerHandler handler) {
+    return schedule(owner, seconds, true, std::move(handler));
+}
+
+int Scene::schedule(Node& owner, double seconds, bool repeat, TimerHandler handler) {
+    const double interval = std::max(seconds, 0.0);
+    const int handle = nextHandle_++;
+    timers_.push_back(Timer{handle, owner.id_, time_ + interval, interval, repeat, std::move(handler)});
+    return handle;
+}
+
+void Scene::cancel(int timer) {
+    std::erase_if(timers_, [timer](const Timer& entry) { return entry.id == timer; });
+}
+
+void Scene::runTimers(double dt) {
+    time_ += dt;
+
+    std::vector<int> due;
+    for (const Timer& timer : timers_) {
+        if (timer.due <= time_) due.push_back(timer.id);
+    }
+    for (const int handle : due) {
+        auto found = std::find_if(timers_.begin(), timers_.end(),
+                                  [handle](const Timer& timer) { return timer.id == handle; });
+        if (found == timers_.end()) continue;
+        const Node* owner = byId(found->owner);
+        if (owner == nullptr || owner->destroyed_) {
+            timers_.erase(found);
+            continue;
+        }
+
+        const TimerHandler handler = found->handler;
+        if (found->repeat) {
+            found->due = std::max(found->due + found->interval, time_);
+        } else {
+            timers_.erase(found);
+        }
+        handler();
+    }
+}
+
+void Scene::dropHandlers(int node) {
+    std::erase_if(connections_, [node](const Connection& entry) { return entry.source == node || entry.owner == node; });
+    std::erase_if(timers_, [node](const Timer& entry) { return entry.owner == node; });
 }
 
 }

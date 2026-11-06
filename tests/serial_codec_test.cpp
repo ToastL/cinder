@@ -154,7 +154,7 @@ TEST_CASE("ids, names, classes and the hierarchy survive") {
     CHECK(f.scene.roots().size() == 2);
 }
 
-TEST_CASE("an unknown class is skipped with its subtree") {
+TEST_CASE("an unknown class keeps its subtree") {
     Fixture f;
     SceneCodec::load(
         "version 4\n"
@@ -172,8 +172,10 @@ TEST_CASE("an unknown class is skipped with its subtree") {
         "    }\n"
         "}\n", f.scene);
 
-    CHECK(f.scene.byId(4) == nullptr);
-    CHECK(f.scene.byId(5) == nullptr);
+    REQUIRE(f.scene.byId(4) != nullptr);
+    CHECK(f.types.nameOf(*f.scene.byId(4)) == "Nope");
+    REQUIRE(f.scene.byId(5) != nullptr);
+    CHECK(f.scene.byId(5)->parent() == f.scene.byId(4));
     CHECK(f.scene.byId(6) != nullptr);
 }
 
@@ -304,4 +306,48 @@ TEST_CASE("an attribute that is not a value is dropped on load") {
     REQUIRE(box != nullptr);
     CHECK(box->attribute("rate") != nullptr);
     CHECK(box->attribute("nested") == nullptr);
+}
+
+TEST_CASE("a node of an unknown class is kept as a placeholder and saves back unchanged") {
+    const std::string text = R"(version 4
+nodes {
+    Turret {
+        id 4
+        name "Gun \"A\""
+        position 1 2 3
+        enabled false
+        range 12.5
+        mode "burst"
+        attributes {
+            team 2
+        }
+        children {
+            Group {
+                id 5
+                position 0 1 0
+            }
+        }
+    }
+    Group {
+        id 6
+    }
+}
+)";
+
+    Fixture f;
+    SceneCodec::load(text, f.scene);
+
+    Node* turret = f.scene.byId(4);
+    REQUIRE(turret != nullptr);
+    CHECK(f.types.nameOf(*turret) == "Turret");
+    CHECK(turret->name() == "Gun \"A\"");
+    CHECK(turret->transform() == nullptr);
+    REQUIRE(turret->children().size() == 1);
+    CHECK(f.types.nameOf(*turret->children()[0]) == "Group");
+    CHECK(SceneCodec::save(f.scene) == text);
+
+    Node* copy = f.scene.clone(*turret, nullptr);
+    REQUIRE(copy != nullptr);
+    CHECK(f.types.nameOf(*copy) == "Turret");
+    CHECK(copy->children().size() == 1);
 }

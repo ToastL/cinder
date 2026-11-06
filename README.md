@@ -1,8 +1,9 @@
 # Cinder
 
-A C++20 game engine with Vulkan and Metal rendering, Lua scripting, a retained UI
-framework, and a separate editor. Games live in project folders containing a
-`.cinder` descriptor, `Config/`, `Content/`, and `Source/`.
+A C++20 game engine with Vulkan and Metal rendering, C++ game code that the editor
+builds and hot-reloads, a retained UI framework, and a separate editor. Games live in
+project folders containing a `.cinder` descriptor, `Config/`, `Content/`, and
+`Source/`, where the game's C++ lives.
 
 ## Build and run
 
@@ -22,16 +23,19 @@ explicitly with `-DCINDER_BACKEND=mtl` or `-DCINDER_BACKEND=vk`. Metal requires 
 Vulkan needs an installed Vulkan loader and driver. `CINDER_SHADER_FORMATS` controls
 shader outputs independently of the selected backend.
 
-The player is built on demand and never links the editor:
+Building the editor also builds `player` and `packager`. The editor compiles a
+project's C++ when it opens it; the player loads that library and never links the
+editor:
 
 ```sh
-cmake --build build --target player
+./build/editor samples/sandbox3d --frames 2
 ./build/player samples/sandbox3d
-cmake --build build --target package_game
+./build/packager samples/sandbox3d --config shipping
 ```
 
-`package_game` stages the player, engine assets, shaders, and the project selected
-by `CINDER_PACKAGE_PROJECT` under `build/dist/`.
+`packager` stages the player, engine assets, shaders, the project's content and its
+compiled game library under `<project>/Saved/Builds/<Platform>/`. The editor's
+Platforms menu runs the same binary.
 
 ## Source map
 
@@ -40,16 +44,16 @@ by `CINDER_PACKAGE_PROJECT` under `build/dist/`.
 | `platform` | Windows, input, files, asset paths, logging, GLFW lifetime |
 | `reflect`, `scene`, `components` | Property metadata, node trees, transforms, built-in scene nodes |
 | `serial` | Scene, JSON, and INI encoding |
-| `lua`, `script` | Lua primitives, scene bindings, script execution |
 | `physics` | Geometry, collision detection, contact solving, simulation |
 | `text` | Font loading, shaping, text layout, CPU glyph atlases |
 | `ui/core`, `ui/widgets`, `ui/docking` | Widget primitives, controls, dock layouts |
 | `ui/framework` | Application lifecycle, input routing, popups, drag and drop |
 | `gfx/rhi`, `gfx/vk`, `gfx/mtl` | Rendering interface and backend implementations |
 | `gfx/asset`, `gfx/pass`, `gfx` | GPU assets, scene passes, rendering orchestration |
-| `core` | Engine orchestration, game loop, project configuration, launch options |
-| `dev` | Editor application, panels, play sessions, selection, undo, manipulators |
-| `editor`, `player` | Executable entry points |
+| `core` | Engine orchestration, game loop, project configuration, game library loading |
+| `game` | The API game code includes: node classes plus input, time, drawing, physics queries |
+| `dev` | Editor application, panels, play sessions, selection, undo, manipulators, game code builds and hot reload, packaging |
+| `editor`, `player`, `packager` | Executable entry points |
 
 `engine` owns runtime code; `engine_dev` adds editor code. The allowed include graph
 is defined in `cmake/AssertLayers.cmake` and checked for C++, headers, and
@@ -71,7 +75,8 @@ own session so it can also be used independently.
 
 Build configuration is separated into `cmake/Backend.cmake` (selection and generated
 backend header), `Dependencies.cmake`, `Shaders.cmake`, `Targets.cmake`,
-`Packaging.cmake`, and `Testing.cmake`. The root `CMakeLists.txt` assembles them.
+and `Testing.cmake`. `Targets.cmake` also writes `cinder-toolchain.json`, which
+tells the editor how to compile game code. The root `CMakeLists.txt` assembles them.
 
 ## Verification
 
@@ -82,8 +87,8 @@ cmake --build build --target graphics_smoke
 ```
 
 CTest runs the headless unit suite, include-layer checks and their fixtures, shader
-validation, and a check that the shipping player contains no editor code. It builds
-the player as a test fixture. `graphics_smoke` requires a window and GPU; it drives
+validation, a check that the shipping player contains no editor code, and a hot-reload
+test that compiles real game C++. `graphics_smoke` requires a window and GPU; it drives
 editor selection, transforms, undo/redo, play transitions, docking, resizing, and
 captures into the build directory.
 

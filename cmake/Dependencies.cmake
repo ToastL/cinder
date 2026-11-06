@@ -88,4 +88,3 @@ add_library(harfbuzz STATIC ${harfbuzz_SOURCE_DIR}/src/harfbuzz.cc)
 target_include_directories(harfbuzz SYSTEM PUBLIC ${harfbuzz_SOURCE_DIR}/src)
 target_compile_options(harfbuzz PRIVATE -w)
 
-include(${CMAKE_CURRENT_LIST_DIR}/Lua.cmake)

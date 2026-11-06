@@ -6,15 +6,9 @@ nodes {
         rotation -0.3 0 0
         fov 70
         clearColor 0.05 0.06 0.09 1
-        attributes {
-            sensitivity 0.0021
-            speed 8
-            sprint 24
-        }
         children {
-            Script {
+            Flycam {
                 id 2
-                file "flycam.lua"
             }
         }
     }
@@ -233,15 +227,9 @@ nodes {
         id 21
         name "Dropper"
         position 2.5 15 1.5
-        attributes {
-            interval 0.7
-            lifetime 9
-            spread 4
-        }
         children {
-            Script {
+            Dropper {
                 id 22
-                file "dropper.lua"
             }
         }
     }

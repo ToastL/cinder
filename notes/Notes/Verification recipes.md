@@ -18,8 +18,8 @@ A scratch tree configures offline by pointing FetchContent at the already-downlo
 - A scratch project with a camera at `0 0 10`, fov 60 and a node at the origin puts the gizmo pivot at the Scene view's centre (`GIZMO_POINTS` = 100).
 - python3 here has no PIL; a ~40-line zlib PNG decoder reads pixels when a colour needs checking.
 
-## Lua selftest
-In `player` a huge `--frames` is fine (the runner quits). In `editor` quit only becomes Stop, so give a bounded count (600). A frame cap isn't real time — if it stops before `ALL PASS` with no failure, raise the count. See [[Lua selftest]].
+## Selftest
+Open `tests/selftest` in the editor once (it builds the C++), then run `player tests/selftest`: it quits by itself after `ALL PASS`. In the editor the test's quit only becomes Stop. See [[Selftest]].
 
 ## Renderer
 Run with `DYLD_LIBRARY_PATH=/opt/homebrew/lib` so the validation layer loads. See [[Vulkan on Apple Silicon]].

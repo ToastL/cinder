@@ -137,13 +137,9 @@ nodes {
     Group {
         id 24
         name "Spawner"
-        attributes {
-            lifetime 12
-        }
         children {
-            Script {
+            ClickSpawner {
                 id 25
-                file "spawner2d.lua"
             }
         }
     }

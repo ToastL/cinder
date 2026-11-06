@@ -1,5 +1,6 @@
 #include "core/Engine.hpp"
 #include "core/GameLoop.hpp"
+#include "core/GameModule.hpp"
 #include "core/LaunchOptions.hpp"
 #include "core/ProjectConfig.hpp"
 #include "platform/Assets.hpp"
@@ -9,6 +10,8 @@
 #include <cstdio>
 #include <exception>
 #include <filesystem>
+#include <memory>
+#include <string>
 
 using cinder::core::Engine;
 using cinder::core::GameLoop;
@@ -31,6 +34,13 @@ int main(int argc, char** argv) {
         const cinder::platform::GlfwSession glfw;
         {
             Engine engine(config);
+            std::unique_ptr<cinder::core::GameModule> module;
+            if (const auto library = cinder::core::GameModule::locate(root, config.name)) {
+                std::string error;
+                module = cinder::core::GameModule::open(*library, engine.types(), error);
+                if (module == nullptr) cinder::platform::logError("[module] %s\n", error.c_str());
+                else module->enlist();
+            }
             engine.openScene(cinder::platform::contentPath(config.startScene));
             GameLoop loop(config.fixedHz);
 
@@ -41,6 +51,7 @@ int main(int argc, char** argv) {
             }
 
             if (!options.capture.empty()) engine.renderer().capture(options.capture);
+            engine.scene().clear();
         }
         return 0;
     } catch (const std::exception& e) {

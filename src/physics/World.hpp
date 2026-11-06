@@ -3,14 +3,13 @@
 #include "physics/Broadphase.hpp"
 #include "physics/ContactSolver.hpp"
 #include "physics/Geometry.hpp"
+#include "scene/Scene.hpp"
 
 #include <glm/vec3.hpp>
 
 #include <cstdint>
 #include <unordered_set>
 #include <vector>
-
-namespace cinder::lua { class LuaApi; }
 
 namespace cinder::scene {
 class Node;
@@ -21,13 +20,6 @@ namespace cinder::physics {
 
 class Body;
 class Collider;
-
-class ContactObserver {
-public:
-    virtual ~ContactObserver() = default;
-    virtual void touched(cinder::scene::Node& a, cinder::scene::Node& b) = 0;
-    virtual void touchEnded(cinder::scene::Node& a, cinder::scene::Node& b) = 0;
-};
 
 struct RayHit {
     cinder::scene::Node* node = nullptr;
@@ -57,12 +49,9 @@ public:
     const glm::vec3& gravity() const { return gravity_; }
     void setGravity(const glm::vec3& gravity) { gravity_ = gravity; }
 
-    void setObserver(ContactObserver* observer) { observer_ = observer; }
-
     void step(float dt);
     bool raycast(const glm::vec3& origin, const glm::vec3& direction, float maxDistance,
                  RayHit& hit) const;
-    void registerApi(cinder::lua::LuaApi& api);
 
 private:
     struct Proxy {
@@ -82,6 +71,7 @@ private:
     void cast(cinder::scene::Node& node, Body* owner, const glm::vec3& origin,
               const glm::vec3& direction, float maxDistance, RayHit& hit, bool& found) const;
     void notify();
+    void signal(const Touch& touch, cinder::scene::Signal signal);
     void place(BodyState& state, float dt);
     void weigh();
     void accelerate(BodyState& state, float dt);
@@ -108,7 +98,6 @@ private:
     std::vector<Touch> touched_;
     std::unordered_set<std::uint64_t> current_;
     std::unordered_set<std::uint64_t> previous_;
-    ContactObserver* observer_ = nullptr;
 };
 
 }

@@ -18,7 +18,7 @@ last-update: 2026-09-25
 - `gfx/pass` — how you draw it: [[DrawPass]] and its implementations, their pipelines, [[ViewCamera]].
 - `gfx` — orchestration: `Renderer`, `FrameTargets`, `UiRenderer`, `CompositePipeline`, `RendererDrawList`.
 
-**Connections:** the scene reaches it through `DrawList` ([[Scene]]); the editor through `setUiPaint`, `setViewportSize` and `overrideCamera` ([[Scene view]]); Lua through bindings each pass registers ([[Lua bindings]]).
+**Connections:** the scene reaches it through `DrawList` ([[Scene]]); the editor through `setUiPaint`, `setViewportSize` and `overrideCamera` ([[Scene view]]); game code through `game/Game.hpp` ([[Game code]]).
 
 **Run with validation:** `DYLD_LIBRARY_PATH=/opt/homebrew/lib` — see [[Vulkan on Apple Silicon]].
 

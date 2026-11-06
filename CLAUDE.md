@@ -4,7 +4,8 @@ Guidance for Claude Code (claude.ai/code) when working in this repository.
 
 ## What this is
 
-A from-scratch C++20 game engine: Vulkan and Metal renderers, GLFW windowing, Lua 5.4 scripting.
+A from-scratch C++20 game engine: Vulkan and Metal renderers, GLFW windowing, and game code in C++ —
+each project's `Source/` builds into a library the editor hot-reloads.
 The long-term target is a Unity/Unreal-shaped editor workflow — select a node, edit its fields, hit Play, hit
 Stop, land back where you started. `TODO.md` is the authoritative roadmap; read it before proposing
 architectural work, since it records what is deliberately deferred and what is out of scope.
@@ -29,8 +30,10 @@ cmake -S . -B build-mtl -G Ninja -DCINDER_BACKEND=mtl && cmake --build build-mtl
 A Metal build needs no `DYLD_LIBRARY_PATH` and no Vulkan SDK at runtime, and it still compiles the
 SPIR-V, because `CINDER_SHADER_FORMATS` is independent of the backend.
 
-A plain build produces `engine`, `engine_dev`, `editor`, `ui_gallery` and `tests` — **no game**. The
-runtime that plays a project, `player`, is `EXCLUDE_FROM_ALL` and only built on demand.
+A plain build produces `engine`, `engine_dev`, `editor`, `player`, `packager`, `ui_gallery` and
+`tests`. `editor` depends on `player` and `packager`, so building the editor always leaves a matching
+runtime and packager next to it — packaging copies that `player`, the way Godot's export templates
+work, and never compiles the engine. A game's own C++ is not built by CMake at all; see *Game code*.
 
 ```bash
 DYLD_LIBRARY_PATH=/opt/homebrew/lib ./build/ui_gallery --frames 10 --capture-window gallery.png
@@ -46,7 +49,8 @@ judged at 1x on a Retina display, and `--text-gamma` tunes glyph coverage.
 ctest --test-dir build --output-on-failure
 ```
 
-`ctest` builds `player` itself through a fixture, because `shipping_binary_is_clean` inspects it.
+`ctest` still builds `player` through a fixture before `shipping_binary_is_clean` inspects it, so a
+`--target tests` build is enough. The `hot_reload` entry compiles real game C++ and takes seconds.
 It also runs `architecture_layers`, which checks first-party includes against the layer graph, and
 `architecture_checker`, which exercises allowed and forbidden include fixtures.
 
@@ -60,7 +64,7 @@ DYLD_LIBRARY_PATH=/opt/homebrew/lib ./build/graphics_smoke
 
 It runs the editor's own UI and drives it with injected input: it clicks a node in the Explorer, drags
 a move gizmo in the Scene view, undoes and redoes with ⌘Z, saves a scene, plays and stops with ⌘P,
-cycles Play/Pause/Step/Resume/Stop through fresh Lua states, re-docks the console onto the Scene
+cycles Play/Pause/Step/Resume/Stop and a game-side quit, re-docks the console onto the Scene
 stack, resizes the window and scene targets, and captures both the window and the composited view. Its output stays in `build/graphics-smoke/`;
 it never saves over a sample project. On other platforms omit the Apple-specific library path.
 
@@ -82,18 +86,20 @@ the project folder or its `.cinder` file, then `--scene <path>` (relative to `Co
 is a second executable rather than a flag.
 
 ```bash
-cmake --build build --target player && ./build/player samples/sandbox3d
+./build/editor samples/sandbox3d --frames 2 && ./build/player samples/sandbox3d
 ```
 
-`player` is the generic runtime: it opens a project and plays it at once. It takes the same
-`--scene`, `--frames` and `--capture`; with no project argument it looks for `project/` next to its
-own executable, which is the packaged layout.
+`player` is the generic runtime: it loads the project's game library and plays the scene at once. It
+takes the same `--scene`, `--frames` and `--capture`; with no project argument it looks for `project/`
+next to its own executable, which is the packaged layout. It never compiles anything, so a project's
+C++ must have been built — opening it in the editor does that.
 
 ```bash
-cmake --build build --target package_game
+./build/packager samples/sandbox3d --config shipping
 ```
 
-Stages a runnable game in `build/dist/<project>/` — see *Projects and packaging*.
+Stages a runnable game in `samples/sandbox3d/Saved/Builds/macOS/sandbox3d/` — see *Projects and
+packaging*. `--platform` and `--out` pick the target and the folder.
 
 Note that `--capture` reads back the **scene render target**, not the swapchain, so the editor's own
 UI never appears in a capture; `--capture-window` is the one that shows it. That is deliberate: it is the game's picture, not the editor's. In
@@ -102,7 +108,7 @@ the editor camera's — which starts as a copy of a perspective scene camera, so
 --capture` still writes the game's frame. An orthographic scene starts from a perspective view framing
 the same rectangle instead. See *The editor camera*.
 
-The first configure fetches every dependency and needs network — glfw, glm, lua, VMA, stb, volk,
+The first configure fetches every dependency and needs network — glfw, glm, VMA, stb, volk,
 Vulkan-Headers, doctest, FreeType and HarfBuzz, all pinned in `cmake/Dependencies.cmake`.
 Nothing needs installing: FreeType is built with zlib, bzip2, PNG, Brotli and HarfBuzz switched off, so
 it never finds Homebrew's copies, and HarfBuzz is compiled from its single-file `src/harfbuzz.cc`
@@ -175,21 +181,22 @@ caught a missing `TRANSFER_SRC_BIT` that no test would have.
 ```
 cinder/
   CMakeLists.txt
-  cmake/          dependency, Lua, shader-compilation and packaging modules
-  engine/         engine data: shaders/ (HLSL; compiled output goes to the build tree), lua/ (the prelude) and fonts/
+  cmake/          dependency, shader-compilation and packaging modules
+  engine/         engine data: shaders/ (HLSL; compiled output goes to the build tree) and fonts/
                   (Roboto and Roboto Mono, OFL-1.1, licences beside them)
   samples/        sandbox2d/, sandbox3d/ and physics/ — example projects
   src/
-    reflect/ lua/ platform/ text/    leaves
+    reflect/ platform/ text/         leaves
     scene/ serial/ components/       the world model
     physics/                         rigid bodies, collision and the solver
     ui/core/ ui/framework/ ui/widgets/ ui/docking/  the UI framework the editor is built on
     gfx/ gfx/rhi/ gfx/vk/ gfx/mtl/ gfx/asset/ gfx/pass/  the renderer, its seam and two backends
-    script/ core/                    the Lua host and the engine
+    core/ game/                      the engine, module loading, and the API game code calls
     dev/                             editor panels, gizmos, history, play session; NOT part of `engine`
-    player/ editor/                  the two executables
+    player/ editor/ packager/        the three executables
   tests/
-    selftest/                        a project whose scene runs the Lua smoke test
+    selftest/                        a project whose C++ runs the engine smoke test
+    modules/                         a game module CMake builds for the module tests
 ```
 
 `src/` is the only include root, so every include carries its layer: `#include "scene/Node.hpp"`.
@@ -198,16 +205,15 @@ Headers sit next to their sources.
 ## Layering
 
 The layer graph is **acyclic and strictly layered**. Keep it that way — this is what lets the editor
-depend on `scene` + `reflect` without dragging in Vulkan or Lua.
+depend on `scene` + `reflect` without dragging in Vulkan.
 
 ```
 reflect, platform          -> leaves (no engine includes)
-lua                        -> platform
 text                       -> platform
 scene                      -> reflect
 serial                     -> scene, reflect, platform
 components                 -> scene, reflect
-physics                    -> scene, reflect, lua
+physics                    -> scene, reflect
 ui/core                    -> text, platform
 ui/framework               -> ui/core, text, platform
 ui/widgets                 -> ui/framework, ui/core, text, platform
@@ -215,10 +221,10 @@ ui/docking                 -> ui/widgets, ui/framework, ui/core, text, platform
 gfx/rhi                    -> platform
 gfx/vk, gfx/mtl            -> gfx/rhi, platform          (only one compiles per binary)
 gfx/asset                  -> gfx/rhi, scene
-gfx/pass                   -> gfx/asset, gfx/rhi, scene, lua, platform
-gfx                        -> gfx/pass, gfx/asset, gfx/rhi, ui/core, text, scene, platform, lua
-script                     -> scene, reflect, gfx, physics, platform, lua
+gfx/pass                   -> gfx/asset, gfx/rhi, scene, platform
+gfx                        -> gfx/pass, gfx/asset, gfx/rhi, ui/core, text, scene, platform
 core                       -> all of the above
+game                       -> core and all of the above
 dev                        -> core and all of the above (a separate target, see below)
 ```
 
@@ -233,7 +239,7 @@ layers are part of `engine`, because the game will use them too; `ui` never incl
 
 **`platform` is the one leaf everything may reach for**, because `platform/Log.hpp` lives there and
 every layer logs, and `platform/Assets.hpp` is the only thing that turns a name into a path. That is
-the only reason `serial`, `lua` and `gfx` have an edge to it, and neither header includes anything
+the only reason `serial` and `gfx` have an edge to it, and neither header includes anything
 from the engine, so the edges cost nothing and create no cycle.
 
 **`gfx` is split five ways and the seam that matters is `gfx/rhi`.** It is a neutral leaf — formats,
@@ -275,18 +281,19 @@ because it runs before `gfx` exists. `gfx/asset` is what you draw with (`Assets`
 its parent. `cmake/AssertLayers.cmake` enforces these include directions through CTest. `ui` is split
 the same way, and the same rule holds: `ui/core` never includes `ui/widgets`.
 
-Five placements are load-bearing and were each chosen to kill a cycle: `Glfw`/`Window`/`Input` live
+Four placements are load-bearing and were each chosen to kill a cycle: `Glfw`/`Window`/`Input` live
 in `platform`, not next to `Engine`; `DrawList` lives in `scene`, so the scene graph never includes
-`gfx`; `LuaApi` lives in `lua`, so a pass can bind its own functions without including the script
-host; `PropValue` lives in `scene`, not `serial`, so a node's attributes are scene data that the
-serializer, the Lua bindings and Properties each read without an edge to one another;
-and `SceneObserver` is an interface in `scene` with its only implementation in `script`, so the tree
-can announce changes to Lua it cannot name.
+`gfx`; `PropValue` lives in `scene`, not `serial`, so a node's attributes are scene data that the
+serializer and Properties each read without an edge to one another; and `core/Module.hpp` — the
+`Registrar` and the registration macros — lives in `core`, not `game`, so `core/GameModule` can load a
+library without including the layer above it.
 
-`LuaHost` takes `(Scene&, Input&, Renderer&, physics::World&, quit)` — never `Engine&` — for the same reason.
+`game` sits on top of `core` and is the one layer game code includes: `game/Game.hpp` pulls in the node
+classes and declares free functions over the running engine. It forward-declares `Engine` rather than
+including it, so a module needs only `src/` and glm on its include path.
 
-`platform/Files` holds the shared binary-mode text I/O used by project loading, scene files, Lua
-source loading and editor history. Callers still decide whether to create parent directories and
+`platform/Files` holds the shared binary-mode text I/O used by project loading, scene files, module
+builds and editor history. Callers still decide whether to create parent directories and
 whether to verify completion after closing a write. `serial/NumberText` holds locale-independent
 numeric formatting shared by the text and INI writers; their parsing and wire formats are unchanged.
 `reflect::copyProps` copies through each property's existing writer, including clamping and notifications.
@@ -295,18 +302,18 @@ numeric formatting shared by the text and INI writers; their parsing and wire fo
 
 `main` -> `Glfw::acquire()` -> `Engine(config)` -> `engine.openScene(path)` -> a loop.
 
-`Engine`'s constructor boots Lua but **loads nothing and runs nothing**; the host decides what
+`Engine`'s constructor **loads nothing and runs nothing**; the host decides what
 happens next. The player calls `GameLoop::tick` every iteration. The editor calls
 `PlaySession::tick`, which calls one of three `GameLoop` entry points:
 
 - **`tick`** — the simulation:
-  1. `Glfw::pollEvents()`, then `engine.beginFrame()` -> `script->poll()` (script hot reload)
+  1. `Glfw::pollEvents()`, then `engine.beginFrame()`
   2. minimized -> `Glfw::waitEvents()`, reset the clock, skip the frame
   3. `GameLoop::advance()` accumulates real time, clamped at `MAX_FRAME_TIME = 0.25s`
-  4. `engine.update(fixedDt)` N times — fixed timestep; `script->update`, `scene.update`,
-     `physics.step`, then `input.consume()`
-  5. `engine.render(alpha())` once — `renderer.beginFrame()`, `script->render(alpha)`,
-     `scene.render(alpha, draws)`, `renderer.drawFrame()`
+  4. `engine.update(fixedDt)` N times — fixed timestep; `scene.update` (which starts pending nodes,
+     runs due timers, then updates the tree), `physics.step`, then `input.consume()`
+  5. `engine.render(alpha())` once — `renderer.beginFrame()`, `scene.render(alpha, draws)`,
+     `renderer.drawFrame()`
 - **`idle`** — Edit mode and Paused: steps 1–2, then it resets the clock, calls `input.consume()` and
   renders. Consuming on idle frames is load-bearing: without it, the key that pressed Play, or an
   Esc from Edit mode, would fire as `keyPressed` on the first play step.
@@ -316,26 +323,29 @@ happens next. The player calls `GameLoop::tick` every iteration. The editor call
 `Engine`.** `GameLoop::advance()` and `alpha()` are public precisely so the tests can drive them
 without a window; keep new loop logic in that shape.
 
-`ScriptHost::update` calls the Lua global `__step(dt)` with the fixed `dt`, and `render` calls
-`__render(alpha)`. Both live in `engine/lua/task.lua`, which steps the coroutine scheduler and fires
-the `stepped` and `rendered` signals.
+The editor's loop also calls `ModuleHost::update` every frame and, between frames, applies a pending
+hot reload — see *Game code*.
 
 ## The scene: a tree of nodes
 
 The world is **one tree of nodes**, the way Roblox and Godot build it. A node is exactly one class,
-and things are made by nesting: a Box is a `MeshPart` with a couple of `Script`s inside it. There
-are no components. Behaviour is a script, not a node class: a node class exists when the engine has
-to know about it — something to draw, to simulate, to organize — and everything else is Lua.
+and things are made by nesting: a Box is a `MeshPart` with a `Spinner` and a `Bobber` inside it. There
+are no components. Behaviour is a node class too — the engine's classes draw, simulate and organize,
+and a project's C++ adds the rest, registered exactly like them (see *Game code*).
 
 - **`scene/Node`** holds an id, a name, a parent, children, `enabled`, attributes, and the lifecycle
-  hooks `onStart`, `onUpdate`, `onRender` and `onDestroy`. `CINDER_PROPS(Node, void)` declares
+  hooks `onStart`, `onUpdate`, `onRender` and `onDestroy`, plus the event hooks `onAttributeChanged`,
+  `onChildAdded`, `onChildRemoved`, `onTouched` and `onTouchEnded`. `CINDER_PROPS(Node, void)` declares
   `enabled`, so it is the first prop of every class.
 - **`scene/Spatial`** is a `Node` that owns a `Transform`; `Node::transform()` is null on every other
   node. A `Transform` composes with its parent only when the parent is spatial, so a `Folder` breaks
   the chain and its children sit in world space.
 - **`scene/NodeTypes`** is the class registry — a name, a factory, the prop list and a default
   instance per class for delta encoding. Re-binding a name keeps its slot, so iteration order, and
-  the Explorer's insert menu, is stable across a reboot.
+  the Explorer's insert menu, is stable across a reboot; `remove` empties a slot for a library being
+  unloaded. Types are keyed by their **mangled name**, not `std::type_index`: on Apple's libc++ a
+  library's hidden copy of a header-only class's `type_info` hashes by name while the engine's hashes
+  by address, so a `Group` created by game code would otherwise not be found.
 - **`scene/Scene`** owns every node by id. `insert` takes a node and an optional id — the codec's
   path — `create` builds one by class name, and `clone` copies a subtree through the registry, props,
   transform and attributes, with fresh ids. A node inserted without a name takes its class name.
@@ -344,16 +354,20 @@ Lifecycle rules that are easy to lose:
 
 - Every inserted node queues `onStart`, which runs at the top of the next `Scene::update`, disabled
   or not; a node inserted during a start is started in the same pass.
-- A disabled node skips itself **and its subtree** in `update` and `render`. It does not stop the
-  scripts under it: a `Script` stops only when its own `enabled` is written.
+- A disabled node skips itself **and its subtree** in `update` and `render`. Its timers still fire.
 - `destroy` is deferred to the end of `update`. `destroyNow` tears a subtree down at once and exists
   for the editor, which never calls `update` in Edit mode; never call it from inside an update walk.
-- `Scene::clear` does not notify the observer, so loading a scene is not a stream of destroy events.
+- `Scene::clear` emits nothing, so loading a scene is not a stream of destroy events, and it drops
+  every connection and timer.
 
-`SceneObserver`, declared in `scene/Scene.hpp`, is how the tree announces `attributeChanged`,
-`childAdded`, `childRemoved` and `destroying` without naming Lua. `script/SceneApi` implements it and
-`LuaHost::boot` installs it. An attribute notifies only on a real change — `sameAttribute` counts `2`
-and `2.0` as equal — and `loadAttributes` never notifies.
+**Signals.** `Scene::emit(source, Signal, args)` is how the tree announces `AttributeChanged`,
+`ChildAdded`, `ChildRemoved`, `Touched`, `TouchEnded` and `Destroying`. It calls the source's own hook,
+then every handler that `Scene::connect(source, signal, owner, handler)` registered — but only for
+**started** nodes, so nothing reacts in Edit mode. A connection is keyed by both node ids and dies with
+either. `Scene::after` and `every(owner, seconds, fn)` are timers on scene time, run at the top of
+`Scene::update` after the starts, and owned by a node. Neither connections nor timers outlive the
+scene, which is what makes unloading a game library safe. An attribute notifies only on a real change —
+`sameAttribute` counts `2` and `2.0` as equal — and `loadAttributes` never notifies.
 
 | Class | Base | Props | |
 |---|---|---|---|
@@ -364,12 +378,11 @@ and `2.0` as equal — and `loadAttributes` never notifies.
 | `Camera` | Spatial | `projection`, `fov`, clip planes, `zoom`, `clearColor`, `virtualSize` | `projection` is all that makes a scene 2D |
 | `Body` | Spatial | `motion`, `mass`, `gravityScale`, damping, `velocity`, `planar` | physics moves it; lives in `physics` |
 | `Collider` | Spatial | `shape`, `size`, `friction`, `restitution` | a shape of its nearest `Body`; see *Physics* |
-| `Script` | Node | `file` | lives in `script`; see *Scripting* |
 
 A new class derives from `Node` or `Spatial`, declares its props with `CINDER_NODE`, and is
 registered — engine classes in `components::registerBuiltins`, physics ones in
-`physics::registerNodes`. The serializer, Lua and the editor
-need no change.
+`physics::registerNodes`, game classes by `CINDER_REGISTER` in their library. The serializer and the
+editor need no change.
 
 ### The scene file
 
@@ -382,16 +395,10 @@ nodes {
         id 2
         name "Box"
         position -6 0 -6
-        attributes {
-            phase -8
-        }
         children {
-            Script {
+            Spinner {
                 id 3
-                file "spinner.lua"
-                attributes {
-                    speed 0 0.5 0
-                }
+                speed 0 0.5 0
             }
         }
     }
@@ -400,38 +407,39 @@ nodes {
 
 An item's block name is its class. A node writes `id`, `name` (omitted when it is the class name),
 its transform if it is spatial, its class props where they differ from the class default,
-`attributes`, then `children`. An unknown class is logged and skipped along with its subtree, and a
-value an attribute cannot hold is logged and dropped. `VERSION` and `OLDEST` are both 4: the
+`attributes`, then `children`. An unknown class is logged once and loaded as a `scene::Placeholder`:
+a plain node that keeps the class name and its fields verbatim (`Archive::raw`, in file order) and
+writes them back unchanged, so a scene saved while a game module is missing or failed to build loses
+nothing; its children load as ordinary nodes. A value an attribute cannot hold is logged and dropped. `VERSION` and `OLDEST` are both 4: the
 actor/component formats are not read, and the repo's scenes were converted once.
 
 ## Edit mode and Play mode
 
-A game is a `.scene` file — a tree of nodes, some of them `Script`s. There is no entry script.
+A game is a `.scene` file — a tree of nodes, some of them the project's own classes. There is no entry
+point.
 
-Nothing runs a script until something calls `Scene::update`: `onStart` fires from `startPending()`
-at the top of the first update, and that is when a `Script` runs its file. `Scene::render` does
-**not** wait for `start` — it draws every enabled node — so a scene that is never updated is still
-fully drawn. That split *is* Edit mode: meshes, sprites and cameras draw, and scripts never run. The one thing the editor draws differently is the view: Edit mode looks
+No game code runs until something calls `Scene::update`: `onStart` fires from `startPending()` at the
+top of the first update, and hooks, connections and timers reach only started nodes. `Scene::render`
+does **not** wait for `start` — it draws every enabled node — so a scene that is never updated is still
+fully drawn. That split *is* Edit mode: meshes, sprites and cameras draw, game classes' `onRender`
+draws too, and nothing else of the game runs. The one thing the editor draws differently is the view: Edit mode looks
 through its own camera and shows the scene's cameras as gizmos — see *The editor camera*.
 
 `dev/PlaySession` owns the editor's state, `Edit | Playing | Paused`:
 
 - **Play** saves the scene to text with `SceneCodec::save` and hands it to `Engine::loadScene`, which
-  is `scene.clear()`, then `LuaHost::boot()` — a fresh `lua_State` — then `SceneCodec::load`. Play
-  therefore takes exactly the path the player takes from disk. Every session starts with fresh
-  script sources and no leftover coroutines, and a serialization bug shows up on Play rather than on
-  Stop.
+  is `scene.clear()`, then `SceneCodec::load`. Play therefore takes exactly the path the player takes
+  from disk: every node is rebuilt from text, connections and timers start empty, and a serialization
+  bug shows up on Play rather than on Stop. Statics inside a game library are **not** reset by Play;
+  they reset only when the library is reloaded.
 - **Stop** hands the same text to `loadScene` and releases a locked cursor. Play and Stop are one
   operation; only whether the loop simulates afterwards differs.
 - **Pause** switches to `GameLoop::idle`; **Step** runs one `GameLoop::step`.
 
-The order inside `loadScene` is load-bearing: every `Script` holds the `lua_State*` it was created
-with, so the scene must be cleared before `boot()` closes that state.
-
 Toolbar buttons and shortcuts only set a request, and `PlaySession::tick` applies it **between
-frames**. The toolbar draws inside `Engine::render`, and `stop()` closes the `lua_State`, which must
-never happen inside a Lua call. For the same reason, game code calling `engine.quit()` only sets a
-flag. The player ends on it; `PlaySession` turns it into Stop, the way Unity ignores
+frames**. The toolbar draws inside `Engine::render`, and Stop rebuilds every node, which must never
+happen while a node's own code is on the stack. For the same reason, game code calling `game::quit()`
+only sets a flag. The player ends on it; `PlaySession` turns it into Stop, the way Unity ignores
 `Application.Quit` in the editor.
 
 Save is disabled during Play: the scene on screen is the running game, not the document.
@@ -462,10 +470,11 @@ The scene pass carries a second subpass dependency (`0 -> EXTERNAL`, color-write
 that orders the composite's sample after the scene's writes. Any new pass that reads a previous
 pass's output needs the same treatment.
 
-`DrawPass` (`beginFrame` / `record` / `registerApi`) is the extension point. It is named `DrawPass`,
-not `RenderPass`, so that `renderPass` unambiguously means a `VkRenderPass`. A new pass means:
-implement the interface, add it to `passes_` in the `Renderer` constructor in draw order, and let it
-register its own Lua functions. A pass owns no camera: `record` is handed the frame's view-projection.
+`DrawPass` (`beginFrame` / `record`) is the extension point. It is named `DrawPass`, not `RenderPass`,
+so that `renderPass` unambiguously means a `VkRenderPass`. A new pass means: implement the interface and
+add it to `passes_` in the `Renderer` constructor in draw order; `Renderer::sprites()` and `meshes()`
+hand the two built-in passes to `game/Game` for immediate-mode drawing. A pass owns no camera: `record`
+is handed the frame's view-projection.
 
 **There is one camera, and 2D and 3D differ only in its projection** — Unity's model. `Renderer` owns
 a `gfx/pass/ViewCamera`, and the scene's `Camera` writes it every frame through `DrawList::camera` as a
@@ -538,12 +547,11 @@ per-frame features.
 
 **The physics engine is our own**, like the renderer and the coming UI framework — not Jolt, not Box2D.
 It is `src/physics/`: a layer over `scene` and `reflect` with no Vulkan and no window in it, so all of
-it runs headlessly in `ctest`. Its only other edge is to `lua`, because a pass binds its own script
-functions, exactly as `gfx/pass` does.
+it runs headlessly in `ctest`.
 
 `Engine` owns a `physics::World` and steps it in `Engine::update`, after `Scene::update` and before
 `input.consume()`. Edit mode never calls `Engine::update`, so **physics never runs while you edit** —
-the same split that keeps scripts from running, at no cost in code.
+the same split that keeps game code from running, at no cost in code.
 
 Two node classes, registered by `physics::registerNodes`:
 
@@ -553,8 +561,7 @@ Two node classes, registered by `physics::registerNodes`:
   degrees of freedom removed — the rule the renderer already follows, where `projection` is all that
   makes a scene 2D. Velocity is a prop like any
   other, so a scene file carries a starting velocity, Properties shows it live during Play, and
-  `ball.velocity = vec3(0, 5, 0)` will work from Lua — with no code in the scripting layer or the
-  editor.
+  `ball->setVelocity(0, 5, 0)` works from game code — with no code in the editor.
 - **`Collider`** is a shape: `shape` (`box | sphere | capsule`), `size`, `friction` and `restitution`. The
   material lives on the shape, not the body, because a static floor is a collider with no body and
   still has to be rough or bouncy; a pair combines as `sqrt(fA * fB)` and `max(eA, eB)`. Its own transform
@@ -630,29 +637,24 @@ float noise drops one and the lopsided support tips the box. `FACE_BIAS` makes t
 beat the first's by a margin before it becomes the reference face, because on an exact tie the choice
 flapped from step to step, changing every feature id and throwing the warm start away.
 
-**Scripts reach physics through `engine` and through node signals.** `World::registerApi` delegates to
-`physics/PhysicsApi`, which binds
-`applyImpulse`, `applyForce`, `applyTorque`, `raycast`, `gravity` and `setGravity`; the prelude wraps
-the last three so a raycast takes vectors and hands back `{ node, position, normal, distance }` or
-`nil`, and puts `applyImpulse(impulse, point?)` on every node proxy. Impulses and forces are
-**accumulators**, applied at the next step and cleared there, so the order a script calls them in never
-matters. A node that is not a `Body` raises a Lua error rather than doing nothing quietly.
+**Game code reaches physics directly.** `Body::applyImpulse`, `applyForce` and `applyTorque` are
+**accumulators**, applied at the next step and cleared there, so the order they are called in never
+matters; `game::raycast` returns an optional `RayHit`, and `game::world()` reads and writes gravity.
 
-Contacts reach scripts the way scene changes do. `physics::ContactObserver` is an interface in
-`physics`, `script/SceneObservers` implements it, and `LuaHost::boot` installs it — so the simulation
-never calls Lua directly, just as `scene` never does. `World` tracks which collider pairs touch, compares that with the last
-step's, and fires `touched` and `touchEnded` on both nodes, Roblox's names. The node handed over is the
+Contacts reach game code the way scene changes do: `World` tracks which collider pairs touch, compares
+that with the last step's, and emits `Signal::Touched` and `TouchEnded` through `Scene::emit` on both
+nodes — so a node's `onTouched` hook runs, and any connection on it fires. The node handed over is the
 `Body` when there is one and the `Collider` when there is not, so a floor with no body still answers.
 
 `Config/Game.ini` carries `[Physics] gravity` as three numbers, read by `ProjectConfig` and pushed into
 the world by `Engine`; a project that says nothing falls at 9.81 units a second squared.
 
 A raycast does **not** use the tree: it walks the scene and tests every collider, because the tree
-belongs to the last step and a script can cast a ray at any time, after anything has moved. One ray
+belongs to the last step and game code can cast a ray at any time, after anything has moved. One ray
 costs the walk either way; many rays per frame are what would justify keeping the tree valid.
 
 `samples/physics` is the sample: a floor, a ramp and a step as static colliders, balls, capsules, a
-stack of crates, and a `Script` that drops more balls onto it. `--scene Scenes/planar.scene` opens the 2D half —
+stack of crates, and a `Dropper` that drops more balls onto it. `--scene Scenes/planar.scene` opens the 2D half —
 an orthographic camera over sprites with `planar` bodies, where a click drops another box. `MeshPass` carries three primitives — `cube`, `sphere` and `capsule`, the last two matching what a
 sphere and a `1 2 1` capsule collider cover; `Picking` still treats every `MeshPart` as a cube.
 
@@ -952,7 +954,7 @@ spawned during Play drops out of the selection on Stop.
 
 `dev/panels/Explorer` is a `TreeView` over node **ids**, so it builds only the rows in view and
 nothing it holds can dangle: every row reads its node back out of the scene each frame. A row is the
-node's name followed, dimmed, by its class — or its file name, for a `Script` — and a node disabled
+node's name followed, dimmed, by its class — and a node disabled
 itself or through a parent is dimmed unless it is selected. Selection is bound straight to
 `dev/Selection` through `isItemSelected`, so picking in the Scene view and clicking a row are the same
 state with nothing to keep in sync. A click selects and a click on empty space clears. **"+"** lists
@@ -972,10 +974,10 @@ attributes, each section an `ExpandableArea` of name | value rows. The widget co
 `PropType` and the `PropHint`: a `SpinBox` for numbers, a `VectorInputBox` for vectors, a `CheckBox`,
 a `TextBox`, a `ComboBox` filled from `PropDef::options()` for enums, and a `ColorBlock` that opens a
 picker for `CINDER_PROP_COLOR`. Every write goes through `PropDef`, so clamping, in-place vector
-writes and `propChanged` behave exactly as they do from Lua and from the serializer. `step` is the
+writes and `propChanged` behave exactly as they do from the serializer. `step` is the
 drag speed; bounds are applied only when the prop declares them, and a spin box never rounds a value
 to the three decimals it shows. `CINDER_PROP_ANGLE` — `Transform.rotation` — is dragged in degrees and
-written back in radians, so Lua and scene files never see degrees. Text commits on Enter or focus
+written back in radians, so game code and scene files never see degrees. Text commits on Enter or focus
 loss, not per keystroke, so a texture path does not try to load every prefix of itself.
 
 The panel holds the selected node's **id** and nothing else, and rebuilds its rows only when the
@@ -1005,9 +1007,8 @@ nothing holds the mouse capture, no text is being edited and no drag-and-drop is
 writes on forty frames is therefore one step, carrying the label and selection of its first frame, and
 an edit that saves to the same text as before records nothing. `MAX_STEPS` is 100.
 
-Undo calls the codec directly, not `Engine::loadScene`, so it does not reboot Lua and the console's
-globals survive. That is only safe because history is enabled in Edit mode alone, where no script has
-started: during Play, `touch`, `settle` and the buttons do nothing, and Stop discards Play's edits anyway.
+Undo calls the codec directly, not `Engine::loadScene`. History is enabled in Edit mode alone, where no
+game code has started: during Play, `touch`, `settle` and the buttons do nothing, and Stop discards Play's edits anyway.
 Ids round-trip through the codec, so the selection stored with the step, and the Explorer's open rows,
 which the tree keys by id, come back with it.
 
@@ -1023,185 +1024,136 @@ the other shortcuts, but an active text field claims ⌘Z for its own undo first
 
 Everything prints through `platform/Log.hpp` — `logInfo` / `logError`, printf-style and
 `__attribute__((format))`-checked. Both always write to stdout/stderr, and additionally to a
-`LogSink` if one is installed. `dev/panels/Console` installs that sink in its constructor and clears it in its destructor, which is how `[lua]`/`[vk]`/`[serial]` output reaches the panel. The sink receives
+`LogSink` if one is installed. `dev/panels/Console` installs that sink in its constructor and clears it in its destructor, which is how `[build]`/`[module]`/`[vk]`/`[serial]` output reaches the panel. The sink receives
 the line **without its trailing newline**. `Log` itself stays in `engine`: the sink is the seam a
 shipping build will use for a crash log file, so it is not a dev-only facility.
 
-The console's input line runs `LuaHost::eval` against the live `lua_State`. It tries `return <text>`
-first and falls back to the raw text, so `1 + 1` prints `2` and a multi-statement chunk still runs.
-Results and errors both go back through `logInfo`/`logError`, so they land in the panel like anything
-else, with `[console]` as the chunk name. In Edit mode that state holds the prelude and nothing else,
-so the console can build a scene — `scene:create`, `node:setAttribute`, `node:add("Script")` — without starting
-any of it, and Save writes the result.
+The console is a log view: a Clear button, a line count, and up to
+`MAX_LINES` lines, errors in `Color.ConsoleError`. Console commands registered by game code are a
+follow-up in `TODO.md`.
 
-Typing in the console does not also drive the game, because the console has focus and the Scene view
-does not — see *The Scene view*.
-
-## Scripting
+## Game code
 
 A project's settings are data, not code: `ProjectConfig::load` reads `Config/Game.ini` — `[Game]`
-`title`, `startScene`, `fixedHz` and `[Window]` `width`, `height` — without touching Lua, so opening a
-project runs nothing. `startScene` is the scene both executables open; `--scene` overrides it.
+`title`, `startScene`, `fixedHz` and `[Window]` `width`, `height` — and runs nothing. `startScene` is
+the scene both executables open; `--scene` overrides it. `ProjectConfig::name` is the `.cinder` stem,
+and it names the project's library.
 
-There is **no entry script**. Game code lives in `Script` nodes, in Roblox's shape: a `Script` names a
-file in `Source/`, and that file runs top to bottom, once, when the node starts, with `script.parent` the
-node it sits in. Per-frame work is a `stepped:connect(fn)` handler, and the top level may `task.wait`,
-because it runs as a thread. Per-node settings are attributes, not script fields. Lua errors are
-caught and printed, not propagated.
+**Game code is C++**, in the project's `Source/`, compiled into one shared library per project — Godot's
+GDExtension and Unreal's game modules, built the way UnrealBuildTool builds them: the editor drives the
+compiler itself, with no per-project build files. There is no entry point. A project defines **node
+classes**, and the scene places them; a behaviour is a child node that acts on its parent.
 
-```lua
-local box = script.parent
+```cpp
+#include "game/Game.hpp"
 
-stepped:connect(function()
-    local h = 1 + math.sin(engine.time() * box:getAttribute("rate") + box:getAttribute("phase"))
-    box.scale = vec3(1, h, 1)
-end)
+class Spinner final : public cinder::scene::Node {
+public:
+    CINDER_NODE(Spinner, cinder::scene::Node) { CINDER_PROP(speed_); }
+
+    void onUpdate(float dt) override {
+        cinder::scene::Transform* box = parent() != nullptr ? parent()->transform() : nullptr;
+        if (box == nullptr) return;
+        const glm::vec3 rotation = box->rotation() + speed_ * dt;
+        box->setRotation(rotation.x, rotation.y, rotation.z);
+    }
+
+private:
+    glm::vec3 speed_{0.0f, 1.0f, 0.0f};
+};
+
+CINDER_REGISTER(Spinner);
 ```
 
-### The prelude
+A game class is registered exactly like `MeshPart`, so the serializer saves its props by delta against
+its default, Properties edits them, undo covers them and the Explorer's "+" inserts it — with no code
+outside the class. Settings are typed props; attributes stay as free-form data on any node.
 
-`LuaHost` loads three files from `engine/lua/` after `registerApi()` — order matters, since
-`scene.lua` and `task.lua` both need the `engine` table to exist:
+### What game code calls
 
-- **`types.lua`** — `vec2`/`vec3`/`vec4`/`rgba` built by one `vectype(keys)` factory, with
-  `+ - * / unary-minus == tostring`, plus `:length()`, `:dot()`, `:normalized()`, `:unpack()` and
-  `vec3:cross()`. `rgba` is a `vec4` whose `r/g/b/a` alias `x/y/z/w`. `vecSize(v)` returns the
-  component count or nil, and is how the proxy layer tells a vector from a scalar.
-- **`scene.lua`** — the `scene` global, node proxies, the attribute API and the node signals.
-- **`task.lua`** — `task.wait`/`spawn`/`delay`, the `signal()` constructor, the `stepped` and
-  `rendered` signals, and the owners that let a stopped script take its threads and connections with
-  it.
+- **The scene** is plain C++: `Scene::create<T>(parent)` and `create("Class", parent)`, `clone`, `find`,
+  `byId`, `destroy`, `Node::setParent`, `findFirstChild`, attributes, and each class's own setters.
+- **`game/Game.hpp`** declares free functions over the running engine, found through
+  `Engine::current()`: `time`, `quit`, `keyDown`/`keyPressed`/`keyReleased`, `mouseDown`/`Pressed`/
+  `Released`, `mousePosition`, `mouseDelta`, `scroll`, `setCursorLocked`, `loadTexture`, `textureSize`,
+  `screenSize`, `screenToWorld`, `drawSprite`, `drawSpriteRegion`, `drawRect`, `newCube`, `drawMesh`,
+  `raycast`, `world()` for gravity, and `random`. `game::quit()` only sets a flag: the player ends on
+  it and the editor turns it into Stop. `screenToWorld` takes window points relative to the view and
+  returns the point on the `z = 0` plane, through the scene's camera, never the editor's.
+- **Events** are `Node` hooks — `onStart`, `onUpdate(dt)`, `onRender(alpha, draws)`, `onDestroy`,
+  `onAttributeChanged`, `onChildAdded`, `onChildRemoved`, `onTouched`, `onTouchEnded` — plus
+  `Scene::connect` to hear another node and `Scene::after`/`every` for timers; see *The scene*. A
+  connection or timer belongs to the scene, never to the library, which is what makes unloading safe.
 
-### Node proxies
+### Modules
 
-**The proxy layer is pure Lua over the `engine.*` bindings**, which all take node ids. There is one
-proxy type for every node, cached in a weak-valued table so `scene:find(n) == node` holds. Reading a
-key looks, in order, at:
+- **`core/Module.hpp`.** `CINDER_REGISTER(T)` appends to a list behind a hidden-visibility inline
+  function, so each library has its own. `CINDER_MODULE_ENTRY()` defines the two exports,
+  `cinder_module_abi` and `cinder_module_register`; the builder generates the one file that expands it.
+  Registration goes through a `Registrar`, which refuses a name the engine or another class already owns.
+- **`core/GameModule`** `dlopen`s a library and refuses it unless its ABI string matches `CINDER_ABI`
+  (version, backend, compiler and configuration, baked in by CMake). `enlist` registers its classes;
+  the destructor calls `NodeTypes::remove` for each — dropping cached default instances, which live in
+  the library's code — and only then `dlclose`s. `locate` finds `Binaries/<Platform>/<name>.dylib`
+  (packaged) or `Saved/Binaries/<name>.dylib` (the editor's build); `.so` on Linux.
+- **The engine is exported to libraries.** `editor`, `player` and `tests` set `ENABLE_EXPORTS` and
+  force-load `engine` whole (`cinder_export_engine` in `cmake/Targets.cmake`), so any engine symbol a
+  library calls exists; libraries link with `-undefined dynamic_lookup`. That grows `player` — 13.4 MB
+  to 18.1 MB in a Debug build. A library built against older engine headers fails `dlopen` with the
+  missing symbol, and the scene loads with placeholders instead.
+- **`player`** loads the library before it opens the scene, and clears the scene before unloading it.
 
-1. fixed getters — `name`, `className`, `parent`, `position`, `rotation`, `scale`, `worldPosition`,
-   `forward`, `right`, `up`, and the signals `childAdded`, `childRemoved`, `destroying` and
-   `attributeChanged`;
-2. methods — `getChildren`, `findFirstChild`, `add(className)`, `clone`, `destroy`, `valid`,
-   `translate` and the attribute methods;
-3. the node's own props, through `engine.getProp`, which returns 1-4 values by arity — so a vector
-   comes back as `vec2`/`vec3`/`vec4`, and adding a prop needs no scripting-layer change;
-4. a child with that name.
+### Building and hot reload
 
-A prop therefore wins over a child with the same name. Writing a key that is neither a setter nor a
-prop **errors**, and so does writing a transform on a node that is not spatial, whose transform getters
-return nil. `scene:create(className, parent)` and `node:add(className)` make nodes, and
-`box:add("Script").file = "riser.lua"` is how a script attaches another.
+- **`cinder-toolchain.json`** is written next to the executables by `file(GENERATE)`: the compiler, the
+  ABI string, the engine's configuration flags plus `-std=c++20 -fPIC -fvisibility=hidden`, the include
+  directories (`src/` and glm) and `engine`'s compile definitions. `dev/Toolchain` reads it from
+  `executableDir()`; it is the only thing CMake contributes to building game code.
+- **`dev/ModuleBuilder`** compiles `Source/**/*.cpp` and the generated `ModuleEntry.cpp` into
+  `Saved/Intermediate/<name>/`, in parallel, with `-MMD` depfiles. An object is rebuilt when its
+  source, a header it depends on, or the toolchain's fingerprint changed; the library is linked to a
+  temporary file and renamed into `Saved/Binaries/<name>.dylib`, so a half-written file is never loaded.
+  It writes `compile_commands.json` at the project root for clangd, and streams compiler output as
+  `[build]` lines.
+- **`dev/Process`** runs a child through `posix_spawn` in its own process group with default signal
+  handlers, reads its output by line, and can terminate the whole group. The builder and the packager
+  both use it.
+- **`dev/ModuleHost`** is the editor's owner of all this. The editor builds and loads synchronously
+  **before the scene opens**, so the scene's classes exist when it loads. **Build** on the toolbar and
+  **⌘B** build in the background; `update` relays the output on the main thread and marks a reload
+  pending when the library was relinked. The editor applies it between frames, in Edit mode only and
+  never mid-interaction — during Play it waits for Stop:
+  1. copy the library to `Saved/Binaries/Loaded/<name>-<n>.dylib`, because `dlopen` caches by path;
+  2. `dlopen` the copy and check its ABI;
+  3. save the scene to text and `Scene::clear()` it, running the old classes' destructors while their
+     code is still loaded;
+  4. destroy the old `GameModule`, then enlist the new one and load the text back.
 
-These contracts are load-bearing and must not drift:
-
-- `getProp` returns **1-4 values by arity**, and **zero** values when the node or prop is missing;
-  `setProp` returns whether the prop exists.
-- `find` / `parent` / `findFirstChild` return **`nil`**, never `0` or `-1`.
-- Node ids and the handles `loadTexture`/`newCube` return push as **integers**; numeric prop values
-  push as **floats**, string and enum props as strings.
-- Edge-triggered input clears in `consume()` **per fixed step**, not per frame.
-- `screenToWorld` takes **window points**, matching `mousePosition`, and returns the point on the
-  **`z = 0` plane** under them, through the scene's camera.
-- `getAttribute` returns **`nil`** for a missing attribute, and a 2–4-number attribute as a vector.
-
-`script/LuaProps` converts between Lua values and `PropValue` — scalars, arrays of scalars,
-string-keyed records, and vectors (detected by their metatable's `__vec`) as sequences of numbers.
-Functions and anything else with a metatable are skipped.
-
-`tests/selftest` is a project whose scene runs a 60-check smoke test for this whole layer from a
-script's top level. `./build/editor tests/selftest --play --frames 120` or `./build/player
-tests/selftest` prints `ALL PASS`. It needs a window, so it is not part of `ctest`.
-
-**Where to add a Lua function:** `LuaHost::registerApi()` builds the global `engine` table and delegates
-the engine-wide calls (time, quit, log, input, textures) to `script/RuntimeApi`, then hands the `LuaApi`
-to `registerSceneApi`, `renderer.registerApi()` and `physics.registerApi()`. The renderer forwards it
-to every pass. `RuntimeContext` is a member of each host; closures retain that host's context address
-until its Lua state closes, with no process-global binding context. Bind a function
-in the class that owns the state it touches — draw calls belong in `SpritePass`/`MeshPass` and camera
-calls in `Renderer`, not in `LuaHost`.
-
-`lua_CFunction` cannot capture, so each binding carries its receiver as a light-userdata upvalue:
-`api.bind("name", fn, &receiver)`, read back with `LuaApi::context<T>(state)`. Use
-`LuaApi::optFloat`/`optInt` for optional numeric arguments.
-
-`lua/LuaCalls` supplies `StackRestore`, `pushFunction` and `protectedCall` for host-to-Lua calls.
-`protectedCall` leaves successful results on the stack and logs and removes an error on failure;
-`StackRestore` restores the caller's original top on scope exit. `runChunk` deliberately retains its
-older contract: failures leave the error on the stack for the caller to report. Use stack restoration
-only on protected host-call paths, never to rely on C++ destructors across a `lua_error` long jump.
-The scene/contact observer adapters use these same helpers.
-
-### Scripts
-
-`Script::BOOTSTRAP` caches each file's source by path and compiles it per instance with
-`load(source, "@" .. file, "t", env)`, where `env` is `setmetatable({ script = __node(id) }, { __index
-= _G })`: `script` is the Script node's own proxy, so `script.parent` is its object and `script.file`
-its path. A global a script assigns stays in its own environment, and `_G.x` is how two scripts share
-one. `__scriptStart(file, node, previous)` compiles first, so a start that fails to compile leaves
-`previous` running, and only then stops `previous` and spawns the chunk as a thread of a fresh owner.
-
-`Script` is a `PropSink`: writing `enabled` false stops it, and writing it true runs the file again
-from the top. `Scene::startPending` calls `onStart` on a disabled node too, so `Script::onStart` checks
-`isEnabled` itself.
+  Any failure leaves the old library loaded. Selection, history and the Explorer's rows survive,
+  because they are all keyed by id or text; `Properties::rebuild` runs after a swap, because its rows
+  hold `PropDef`s that lived in the old library. Statics in a library reset on reload and nowhere else.
+- **`tests/hot_reload_test`** compiles a real two-version library with the real toolchain and swaps
+  it; `ctest` runs it as its own `hot_reload` entry because it takes seconds.
 
 ### Attributes
 
-Per-node settings are **attributes**: a `PropRec` on `Node`, saved as an `attributes { ... }` block,
-edited in Properties, and read by scripts. `scene/Attributes` decides what one may hold — a number,
-string, bool, or a sequence of 2–4 numbers — and what a name may be: letters, digits and `_`, which the
-text format needs anyway. The Lua API is Roblox's in camelCase: `node:getAttribute(name)`,
-`setAttribute(name, value)` (nil removes), `getAttributes()`, `getAttributeChangedSignal(name)`, and
-`node.attributeChanged`, which fires with the name. An invalid name or value raises a Lua error.
-Because attributes are data on the node, nothing has to run for Properties to list them, and they
-survive a hot reload.
+Per-node free-form data: a `PropRec` on `Node`, saved as an `attributes { ... }` block and edited in
+Properties. `scene/Attributes` decides what one may hold — a number, string, bool, or a sequence of 2–4
+numbers — and what a name may be: letters, digits and `_`. A change emits `Signal::AttributeChanged`
+only when the value really changes, and `loadAttributes` never notifies.
 
-`LuaHost::boot` installs the `SceneObserver` from `script/SceneObservers`, which calls `__attributeChanged`,
-`__childAdded`, `__childRemoved` and `__destroying`; that is how an edit in Properties during Play
-reaches the game's signals. `__destroying` also drops the node's cached signals, and `LuaHost::close`
-removes the observer before the state closes.
+### The selftest
 
-Lua is built as C, so `luaL_error` longjmps past C++ destructors. A binding finishes its C++ work
-before it raises: `setAttribute` validates in a helper that returns a status, and errors only after
-that helper's `std::optional` is gone. No C++ exception may cross Lua either, which is why `setParent`
-checks for a cycle before it calls `Node::setParent`, and why `loadTexture` catches a failed load and
-calls `lua_error` only once the `catch` has ended.
-
-### Ownership
-
-`task.lua` keeps a module-local `current` owner. A thread records the owner that was current when it
-was spawned, a connection records it when it connects, and resuming a thread or firing a handler puts
-that owner back in `current` — so everything a script starts, and everything that starts, belongs to
-the script. `__taskStop(owner)` disconnects the owner's connections and closes its suspended threads.
-A thread that is running when its owner stops is only marked; the scheduler drops it when it next
-yields. `__taskStop` never removes from the thread list, which is what makes it safe to call from
-inside a resume — a script disabling itself, say. The console and the prelude run with no owner, and
-what they start lives until Stop discards the state.
-
-### Hot reload
-
-Only scripts hot-reload, and editing one reloads only that file. `LuaHost::reloadScript` calls
-`__scriptForget(path)` to drop the cached source, then `__scriptCheck(path)` to compile it once. A
-file that fails to compile logs one error and changes nothing: every script running the old code
-keeps running. Otherwise every `Script` on that file that is started and enabled runs again — its old
-owner stops, taking the old code's threads and connections with it, and the file runs from the top.
-
-That is Roblox's trade: what a script keeps in locals starts over, and what it keeps in attributes
-survives, because attributes live on the node. The scene, the `lua_State` and every other script are
-untouched.
-
-`__scriptRead` is the single funnel every script file is read through, so it is also where `LuaHost`
-records the path to watch. Nothing walks a directory; a script is watched because it was read.
-`poll()` stats each read script every frame. In Edit mode nothing has been read, so nothing is
-watched — and Play reads every script from disk anyway, so edits made while editing are picked up by
-the next Play. A script that failed to compile when it first started is still watched, so fixing the
-file starts it.
-
-The prelude is not watched; editing `types.lua`, `scene.lua` or `task.lua` needs a restart.
+`tests/selftest` is a project whose `SelfTest` node checks, from inside a game library, the engine
+behaviour game code relies on — scene editing, reflection, attributes, signals, timers, classes created
+by name at runtime, and physics — and prints `ALL PASS`. The editor builds it: `./build/editor
+tests/selftest --frames 2`, then `./build/player tests/selftest`. It needs a window, so it is not part
+of `ctest`.
 
 ## Reflection
 
 There is no runtime reflection in C++, so props are declared with a macro that stringises the field
-name — the identifier *is* the serialization and Lua key:
+name — the identifier *is* the serialization key:
 
 ```cpp
 CINDER_NODE(Camera, cinder::scene::Spatial) {
@@ -1235,8 +1187,8 @@ Four behaviours are easy to lose, and each has a test pinning it:
 `NodeTypes` is an instance owned by `Engine`, threaded to `Scene` -> `SceneCodec` / `SceneApi`. It
 keeps insertion-ordered iteration (a vector plus two indices) and caches a class-default instance per
 type for delta encoding. Re-binding a name keeps its slot — so iteration order is stable across a
-reboot — and drops its cached default, so a `Script` default cannot outlive the `lua_State` it
-closed over.
+reboot — and drops its cached default, so a default instance never outlives the library whose code
+it runs.
 
 `SceneCodec::VERSION` and `OLDEST` are both 4 — see *The scene file*. `tests/scene_files_test` loads
 and re-saves every `.scene` and every project's `Config/Game.ini` under `samples/` and
@@ -1252,7 +1204,7 @@ MyGame/
   MyGame.cinder      the project descriptor, Unreal's .uproject — marks the folder as a project
   Config/Game.ini    settings
   Content/           scenes, textures, meshes — Scenes/ and Textures/ by convention, not by rule
-  Source/            scripts
+  Source/            the game's C++, built into one library
   Saved/             per-user and generated; gitignored, never packaged
 ```
 
@@ -1309,7 +1261,7 @@ yet:
   logs a warning. Empty means the project lives in the engine's tree, which is Unreal's convention
   and what the samples do.
 - **`targetPlatforms`** (`macOS`, `Linux`, `Windows`; empty means all) and **`preBuildSteps`** /
-  **`postBuildSteps`**, a platform name to command lines, are read by `package_game`, below.
+  **`postBuildSteps`**, a platform name to command lines, are read by the packager, below.
 - **`category`** and **`description`** are for the project picker.
 - **`modules`**, **`plugins`**, **`additionalRootDirectories`**, **`additionalPluginDirectories`** and
   **`disableEnginePluginsByDefault`** are parsed, type-checked and saved, and nothing reads them: they
@@ -1329,7 +1281,7 @@ one throws `std::logic_error`.
 
 `platform/Assets` is the only thing that turns a name into a path, and it has four roots:
 
-- **`enginePath`** — the prelude and the fonts. `CINDER_ENGINE` if set; else `engine/` next to the
+- **`enginePath`** — the fonts. `CINDER_ENGINE` if set; else `engine/` next to the
   executable, if it exists, which is the packaged layout; else the source tree's `engine/`, baked in
   at configure time as `CINDER_ENGINE_DEFAULT`.
 - **`shaderPath`** — the compiled shaders, which are built into the build tree rather than beside
@@ -1338,45 +1290,53 @@ one throws `std::logic_error`.
   `CINDER_SHADERS_DEFAULT`; else `engineRoot() / "shaders"`. The packaged layout deliberately beats
   the baked build directory, so a packaged game run on the dev machine never reads the build tree.
 - **`contentPath`** — `Content/`: the scene to open, `Sprite.texture`, `MeshPart.texture` and
-  `engine.loadTexture`.
-- **`sourcePath`** — `Source/`: a `Script`'s `file`, through `__scriptRead`.
+  `game::loadTexture`.
+- **`sourcePath`** — `Source/`: the game's C++, which `ModuleBuilder` walks.
 
-The loader picks the root, so a path never names it — a scene says `file "bobber.lua"` and `texture
-"Textures/box.png"`. Both roots sit under the project root, which is made absolute, so a project
+The loader picks the root, so a path never names it — a scene says `texture "Textures/box.png"`. Both roots sit under the project root, which is made absolute, so a project
 folder can live anywhere and runs from any working directory; the player falls back to `project/`
 next to itself. A path that is absolute or climbs out of its root with `..` throws: a texture logs
-and draws white, a script or `loadTexture` raises a Lua error. It would work in the editor and break
+and draws white, and `game::loadTexture` throws. It would work in the editor and break
 once packaged. A path that exists but differs in case from the disk logs `[assets] ... differs in
 case`: macOS is case-insensitive by default, and the same project would not find the file on a
 case-sensitive system.
 
-`cmake --build build --target package_game` builds `player` and runs `cmake/PackageGame.cmake`, which
-stages `build/dist/<name>/` as `player`, the compiled shaders, `engine/lua/*.lua`, `engine/fonts/` and `project/`
-holding the `.cinder` file, `Config/`, `Content/` and `Source/` — never `Saved/` or anything else in
-the folder. `<name>` is the `.cinder` file's stem. The cache variable `CINDER_PACKAGE_PROJECT` picks
-the project, defaulting to `samples/sandbox2d`.
+**Packaging is C++, not CMake.** `dev/Staging` does it, and two things call it: the `packager`
+executable, and the editor's **Platforms** menu, which runs that executable as a child process.
+`stage(request)`:
 
-**The editor packages too.** Its **Platforms** menu lists every platform in `dev/Packager` —
-macOS, Linux, Windows, iOS and Android — and packages the open project for the one picked into
-`<project>/Saved/Builds/<Platform>/<name>/`. `Packager` runs `cmake --build <build> --target player`
-and then `PackageGame.cmake` with `HOST_PLATFORM` set to the target, through `sh -c` in a process
-group of its own, read on a worker thread; its output is queued and logged as `[package]` lines from `Toolbar::update`, on the main
-thread, so the console sink is never called off it. The build directory, the `cmake` it was
-configured with, the player's path and the script are baked into `engine_dev` at configure time.
-Only the host's own desktop platform is enabled today; the others are listed, disabled, with a
-tooltip saying why, and a project whose `targetPlatforms` leaves a platform out disables it too.
-Adding a platform means making `platformSupported` true for it and teaching `PackageGame.cmake`
-its layout. Packaging is an Edit-mode action and packages what is on disk, so a dirty scene first gets
-the Save / Don't Save / Cancel dialog, worded for packaging. `Packager::cancel` sends `SIGTERM` to the
-whole group — cmake, ninja and the compilers under it — and the destructor cancels rather than waits;
+1. loads the project through `ProjectConfig` — the descriptor's `targetPlatforms`, `preBuildSteps` and
+   `postBuildSteps` — and refuses a platform the project does not target;
+2. runs `preBuildSteps` for the platform, each through `sh -c` in the project folder with
+   `$(ProjectDir)`, `$(EngineDir)` and `$(StageDir)` expanded; a step that fails stops the package;
+3. builds the project's C++ with `ModuleBuilder` into `Saved/Binaries/Package-<Config>/`, from its own
+   `Saved/Intermediate/Package-<Config>/` so it never fights the editor's objects, adding `-O2`;
+4. wipes the output and copies `player`, keeping its permissions; the compiled shaders the targets
+   need — macOS `.spv` and `.metallib`, iOS `.metallib`, Linux and Android `.spv`, Windows `.dxil`, all
+   three when no platform is named, a missing one a warning; `engine/fonts/`; and `project/`, holding
+   the `.cinder` file, `Config/`, `Content/` and the library in `Binaries/<Platform>/` — **never
+   `Source/` or `Saved/`**: a package ships compiled code only;
+5. for **Shipping**, copies the unstripped library to `Saved/Symbols/<Platform>/` and `strip`s the
+   shipped one — Unreal's split, where the symbols stay with the developer; **Development** ships it as
+   built;
+6. runs `postBuildSteps`.
+
+`packager <project> [--platform macOS] [--config development|shipping] [--out dir]` defaults to the
+host, Development and `<project>/Saved/Builds/<Platform>/<name>/`. It finds `player`, `engine/` and the
+shaders the way every executable does — next to itself, then the baked defaults — and the toolchain
+manifest next to itself, so nothing about the build tree is baked into it.
+
+**The editor's Platforms menu** has a Development/Shipping check and one entry per platform in
+`dev/Staging` — macOS, Linux, Windows, iOS and Android. `dev/Packager` runs `packager` through
+`dev/Process`, in a process group of its own, and reads its output on a worker thread; the lines are
+queued and logged as `[package]` from `Toolbar::update`, on the main thread, so the console sink is
+never called off it. Only the host's own desktop platform is enabled; the others are listed, disabled,
+with a tooltip saying why, and a project whose `targetPlatforms` leaves a platform out disables it too.
+Adding a platform means making `platformSupported` true for it and teaching `stage` its layout.
+Packaging is an Edit-mode action and packages what is on disk, so a dirty scene first gets the Save /
+Don't Save / Cancel dialog, worded for packaging. `Packager::cancel` sends `SIGTERM` to the whole group
+— the packager, its compilers and its build steps — and the destructor cancels rather than waits;
 closing the editor mid-package asks to Stop and Close or Keep Packaging.
-
-It reads the descriptor with CMake's own `string(JSON)`. Before staging it refuses a project whose
-`targetPlatforms` does not list the host and runs the host's `preBuildSteps`; after staging it runs
-`postBuildSteps`. **`targetPlatforms` also picks which shader formats are staged** — macOS takes
-`*.spv` and `*.metallib`, iOS `*.metallib`, Linux and Android `*.spv`, Windows `*.dxil`, and a descriptor that names no platform
-takes all three; a format the build did not produce is a warning naming the missing pattern. Each step runs through `sh -c` — `cmd /c` on Windows — in the project folder, with
-`$(ProjectDir)`, `$(EngineDir)` and `$(StageDir)` expanded, and a step that fails stops the package.
 
 ## Conventions
 

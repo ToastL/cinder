@@ -8,7 +8,7 @@ The `.cinder` file: JSON with Unreal's `.uproject` fields in camelCase. Says wha
 
 - **`fileVersion`** — must be `ProjectDescriptor::FILE_VERSION` (1).
 - **`engineAssociation`** — the cinder version it was made with; a mismatch with `CINDER_VERSION` (CMake's `PROJECT_VERSION`) warns. Empty = lives in the engine tree (the samples).
-- **`targetPlatforms`** (`macOS`, `Linux`, `Windows`; empty = all) and **`preBuildSteps`** / **`postBuildSteps`** (platform → command lines) — read by [[package_game]].
+- **`targetPlatforms`** (`macOS`, `Linux`, `Windows`; empty = all) and **`preBuildSteps`** / **`postBuildSteps`** (platform → command lines) — read by [[packager]].
 - **`category`**, **`description`** — for a project picker.
 - **`modules`**, **`plugins`**, **`additionalRootDirectories`**, **`additionalPluginDirectories`**, **`disableEnginePluginsByDefault`** — parsed, type-checked, saved, read by nothing yet.
 

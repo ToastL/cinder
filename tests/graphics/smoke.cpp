@@ -4,6 +4,7 @@
 #include "core/GameLoop.hpp"
 #include "dev/History.hpp"
 #include "dev/Manipulator.hpp"
+#include "dev/ModuleHost.hpp"
 #include "dev/Packager.hpp"
 #include "dev/PlaySession.hpp"
 #include "dev/Selection.hpp"
@@ -132,11 +133,12 @@ void exercise() {
     const cinder::text::FontSet fonts = cinder::text::FontSet::engineDefault();
     cinder::ui::WindowPlatform platform(engine.window());
     cinder::ui::Application app(platform, fonts, panels::editorTheme());
-    panels::Toolbar toolbar(session, history, selection, packager, output / "saved.scene", app);
+    cinder::dev::ModuleHost modules(scene, cinder::platform::projectRoot(), "Smoke", std::nullopt);
+    panels::Toolbar toolbar(session, history, selection, packager, modules, output / "saved.scene", app);
     panels::SceneView view(session, selection, history, engine, app);
     panels::Explorer explorer(selection, history, scene, app);
     panels::Properties properties(selection, history, scene, app);
-    panels::Console console(engine.script(), history, selection, app);
+    panels::Console console(app);
     cinder::ui::TabManager tabs;
     app.setRoot(panels::editorLayout(toolbar, view, explorer, properties, console, tabs));
 
@@ -230,8 +232,7 @@ void exercise() {
         session.togglePause();
         frames(1);
         require(session.state() == PlaySession::State::Playing, "Resume did not start simulation");
-        engine.script().eval("engine.quit()");
-        require(engine.quitRequested(), "Rebooted Lua host lost its runtime context");
+        engine.quit();
         frames(1);
         require(session.state() == PlaySession::State::Edit, "Game quit did not stop Play");
         require(SceneCodec::save(scene) == edited, "Stop did not restore the edited scene");

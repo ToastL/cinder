@@ -12,6 +12,7 @@ namespace cinder::serial { class Archive; }
 namespace cinder::core {
 
 struct ProjectConfig {
+    std::string name;
     std::string title = "Cinder";
     int width = 1280;
     int height = 720;

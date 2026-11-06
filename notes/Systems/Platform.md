@@ -23,4 +23,4 @@ last-update: 2026-09-25
 - [ ] Settings/save-data location per OS
 
 ## Notes
-- `platform/Files` is the shared binary-mode text I/O for project loading, scenes, Lua sources and history.
+- `platform/Files` is the shared binary-mode text I/O for project loading, scenes, game-code builds and history.

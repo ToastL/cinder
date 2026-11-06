@@ -59,6 +59,11 @@ public:
     virtual void onUpdate(float dt) {}
     virtual void onRender(float alpha, DrawList& draws) {}
     virtual void onDestroy() {}
+    virtual void onAttributeChanged(std::string_view name) {}
+    virtual void onChildAdded(Node& child) {}
+    virtual void onChildRemoved(Node& child) {}
+    virtual void onTouched(Node& other) {}
+    virtual void onTouchEnded(Node& other) {}
 
     CINDER_PROPS(Node, void) { CINDER_PROP(enabled_); }
 

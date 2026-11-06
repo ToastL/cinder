@@ -12,11 +12,23 @@ add_test(NAME shaders_are_valid COMMAND ${CMAKE_COMMAND}
     "-DFORMATS=${SHADER_FORMATS}"
     -P ${CMAKE_CURRENT_SOURCE_DIR}/cmake/AssertShaders.cmake)
 
+add_library(test_module MODULE tests/modules/TestModule.cpp)
+cinder_game_module(test_module)
+add_library(test_module_stale MODULE tests/modules/TestModule.cpp)
+cinder_game_module(test_module_stale "0.0.0-stale")
+
 file(GLOB TEST_SOURCES CONFIGURE_DEPENDS tests/*.cpp)
 add_executable(tests ${TEST_SOURCES})
 target_link_libraries(tests PRIVATE engine_dev doctest::doctest)
-target_compile_definitions(tests PRIVATE CINDER_SOURCE_DIR="${CMAKE_CURRENT_SOURCE_DIR}")
-add_test(NAME unit COMMAND tests)
+cinder_export_engine(tests)
+add_dependencies(tests test_module test_module_stale)
+target_compile_definitions(tests PRIVATE
+    CINDER_SOURCE_DIR="${CMAKE_CURRENT_SOURCE_DIR}"
+    CINDER_TEST_MODULE="$<TARGET_FILE:test_module>"
+    CINDER_STALE_MODULE="$<TARGET_FILE:test_module_stale>"
+    CINDER_TOOLCHAIN="$<TARGET_FILE_DIR:editor>/cinder-toolchain.json")
+add_test(NAME unit COMMAND tests "--test-case-exclude=hot reload*")
+add_test(NAME hot_reload COMMAND tests "--test-case=hot reload*")
 
 add_executable(graphics_smoke EXCLUDE_FROM_ALL tests/graphics/smoke.cpp)
 target_link_libraries(graphics_smoke PRIVATE engine_dev)

@@ -3,6 +3,8 @@
 #include "scene/Transform.hpp"
 
 #include <filesystem>
+#include <memory>
+#include <set>
 #include <string>
 #include <string_view>
 #include <vector>
@@ -36,7 +38,7 @@ private:
     void nodes(Archive& ar, const std::vector<cinder::scene::Node*>& list, cinder::scene::Node* parent);
     void node(Archive& ar, cinder::scene::Node* existing, std::string_view type,
               cinder::scene::Node* parent);
-    cinder::scene::Node* insert(std::string_view type, int id, cinder::scene::Node* parent);
+    cinder::scene::Node* insert(std::unique_ptr<cinder::scene::Node> node, int id, cinder::scene::Node* parent);
     void emit(Archive& ar, const std::vector<cinder::reflect::PropDef>& defs,
               void* target, const void* base);
 
@@ -45,6 +47,7 @@ private:
     cinder::scene::Transform blank_{nullptr};
     float values_[4]{};
     float fallback_[4]{};
+    std::set<std::string, std::less<>> reported_;
 };
 
 }

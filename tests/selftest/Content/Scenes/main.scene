@@ -4,9 +4,8 @@ nodes {
         id 1
         name "SelfTest"
         children {
-            Script {
+            SelfTest {
                 id 3
-                file "runner.lua"
             }
         }
     }
@@ -17,9 +16,8 @@ nodes {
             mark 42
         }
         children {
-            Script {
+            Marker {
                 id 4
-                file "marker.lua"
             }
         }
     }

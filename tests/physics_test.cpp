@@ -641,37 +641,6 @@ TEST_CASE("a ray reports the nearest shape it meets") {
     CHECK(hit.distance == doctest::Approx(10.0f));
 }
 
-TEST_CASE("touches are announced when they begin and when they end") {
-    struct Listener final : cinder::physics::ContactObserver {
-        std::vector<std::pair<int, int>> began;
-        std::vector<std::pair<int, int>> ended;
-
-        void touched(Node& a, Node& b) override { began.push_back({a.id(), b.id()}); }
-        void touchEnded(Node& a, Node& b) override { ended.push_back({a.id(), b.id()}); }
-    };
-
-    Fixture f;
-    Listener listener;
-    f.world.setObserver(&listener);
-
-    Collider* floor = f.floor();
-    Body* ball = f.ball(0.0f, 3.0f, 0.0f);
-
-    f.run(120);
-    REQUIRE(listener.began.size() == 1);
-    CHECK(listener.began[0].first == floor->id());
-    CHECK(listener.began[0].second == ball->id());
-    CHECK(listener.ended.empty());
-
-    ball->transform()->setPosition(0.0f, 8.0f, 0.0f);
-    f.run(1);
-    REQUIRE(listener.ended.size() == 1);
-    CHECK(listener.ended[0].second == ball->id());
-
-    f.run(150);
-    CHECK(listener.began.size() == 2);
-}
-
 TEST_CASE("a capsule is a segment of its size with round ends") {
     const Geometry capsule =
         cinder::physics::geometryOf(Shape::Capsule, glm::vec3(1.0f, 3.0f, 1.0f), glm::mat4(1.0f));
@@ -905,4 +874,29 @@ TEST_CASE("a sleeping body wakes when the floor under it goes away") {
     f.run(30);
     CHECK_FALSE(crate->asleep());
     CHECK(worldOf(crate).y < 0.4f);
+}
+
+TEST_CASE("touches reach both nodes' hooks and any connected listener") {
+    Fixture f;
+    Collider* floor = f.floor();
+    Body* ball = f.ball(0.0f, 3.0f, 0.0f);
+    Node* watcher = f.scene.create<cinder::components::Group>(nullptr);
+
+    std::vector<int> touched;
+    std::vector<int> ended;
+    f.scene.connect(*ball, cinder::scene::Signal::Touched, *watcher,
+                    [&touched](const cinder::scene::SignalArgs& args) { touched.push_back(args.other->id()); });
+    f.scene.connect(*ball, cinder::scene::Signal::TouchEnded, *watcher,
+                    [&ended](const cinder::scene::SignalArgs& args) { ended.push_back(args.other->id()); });
+
+    f.run(120);
+    CHECK(touched == std::vector<int>{floor->id()});
+    CHECK(ended.empty());
+
+    ball->transform()->setPosition(0.0f, 8.0f, 0.0f);
+    f.run(1);
+    CHECK(ended == std::vector<int>{floor->id()});
+
+    f.run(150);
+    CHECK(touched.size() == 2);
 }

@@ -6,7 +6,6 @@
 #include "gfx/RendererDrawList.hpp"
 #include "gfx/pass/MeshPass.hpp"
 #include "gfx/pass/SpritePass.hpp"
-#include "lua/LuaApi.hpp"
 #include "platform/Log.hpp"
 #include "platform/Window.hpp"
 #include "scene/DrawList.hpp"
@@ -19,27 +18,6 @@ namespace cinder::gfx {
 using cinder::gfx::asset::Assets;
 using cinder::gfx::pass::DrawPass;
 using cinder::gfx::rhi::Ctx;
-
-namespace {
-
-Renderer& self(lua_State* state) { return *cinder::lua::LuaApi::context<Renderer>(state); }
-
-int screenSize(lua_State* state) {
-    const glm::vec2 size = self(state).camera().size();
-    lua_pushnumber(state, size.x);
-    lua_pushnumber(state, size.y);
-    return 2;
-}
-
-int screenToWorld(lua_State* state) {
-    const glm::vec3 world = self(state).camera().screenToWorld(static_cast<float>(lua_tonumber(state, 1)),
-                                                              static_cast<float>(lua_tonumber(state, 2)));
-    lua_pushnumber(state, world.x);
-    lua_pushnumber(state, world.y);
-    return 2;
-}
-
-}
 
 Renderer::Renderer(const Ctx& ctx, cinder::platform::Window& window) : ctx_(ctx), window_(window) {
     presenter_ = std::make_unique<cinder::gfx::rhi::Presenter>(ctx, window, FRAMES_IN_FLIGHT);
@@ -61,6 +39,8 @@ Renderer::Renderer(const Ctx& ctx, cinder::platform::Window& window) : ctx_(ctx)
             ctx, *assets_, *spritePipeline_, FRAMES_IN_FLIGHT);
 
     draws_ = std::make_unique<RendererDrawList>(*this, *meshPass, *spritePass);
+    sprites_ = spritePass.get();
+    meshes_ = meshPass.get();
 
     passes_.push_back(std::move(meshPass));
     passes_.push_back(std::move(spritePass));
@@ -121,12 +101,6 @@ void Renderer::beginFrame() {
 
     uiElements_.reset(glm::vec2(window_.logicalWidth(), window_.logicalHeight()), pixelsPerPoint());
     if (uiPaint_) uiPaint_(uiElements_);
-}
-
-void Renderer::registerApi(cinder::lua::LuaApi& api) {
-    api.bind("screenSize", screenSize, this);
-    api.bind("screenToWorld", screenToWorld, this);
-    for (const std::unique_ptr<DrawPass>& pass : passes_) pass->registerApi(api);
 }
 
 void Renderer::drawFrame() {

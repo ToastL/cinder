@@ -52,7 +52,7 @@ TEST_CASE("content and source paths resolve under their own folders") {
     CHECK(contentPath("Textures/Box.png") == box);
     CHECK(contentPath("./Textures/Box.png") == box);
     CHECK(contentPath("Scenes/../Textures/Box.png") == box);
-    CHECK(sourcePath("bobber.lua") == project.root / "Source" / "bobber.lua");
+    CHECK(sourcePath("Bobber.cpp") == project.root / "Source" / "Bobber.cpp");
 }
 
 TEST_CASE("paths that leave their folder are rejected") {

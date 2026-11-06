@@ -29,6 +29,7 @@ public:
     virtual void vector(std::string_view name, float* values, const float* fallback, int arity) = 0;
 
     virtual cinder::scene::PropRec bag(std::string_view name, const cinder::scene::PropRec& values) = 0;
+    virtual cinder::scene::RawFields raw(const cinder::scene::RawFields& values) = 0;
 };
 
 }

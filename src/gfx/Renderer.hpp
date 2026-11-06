@@ -21,6 +21,10 @@
 #include <vector>
 
 namespace cinder::platform { class Window; }
+namespace cinder::gfx::pass {
+class MeshPass;
+class SpritePass;
+}
 namespace cinder::scene { class DrawList; }
 
 namespace cinder::gfx {
@@ -47,13 +51,14 @@ public:
 
     cinder::gfx::asset::Assets& assets() { return *assets_; }
     cinder::gfx::pass::ViewCamera& camera() { return camera_; }
+    cinder::gfx::pass::SpritePass& sprites() { return *sprites_; }
+    cinder::gfx::pass::MeshPass& meshes() { return *meshes_; }
     UiRenderer& ui() { return *ui_; }
     float pixelsPerPoint() const;
     cinder::scene::DrawList& draws();
 
     void setUiPaint(std::function<void(cinder::ui::ElementList&)> paint) { uiPaint_ = std::move(paint); }
 
-    void registerApi(cinder::lua::LuaApi& api);
 
 private:
     bool embedded() const { return viewportWidth_ > 0; }
@@ -74,6 +79,8 @@ private:
     std::unique_ptr<CompositePipeline> compositePipeline_;
     std::unique_ptr<UiRenderer> ui_;
     std::vector<std::unique_ptr<cinder::gfx::pass::DrawPass>> passes_;
+    cinder::gfx::pass::SpritePass* sprites_ = nullptr;
+    cinder::gfx::pass::MeshPass* meshes_ = nullptr;
     std::unique_ptr<cinder::scene::DrawList> draws_;
     std::function<void(cinder::ui::ElementList&)> uiPaint_;
     cinder::ui::ElementList uiElements_;

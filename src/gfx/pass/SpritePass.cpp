@@ -1,7 +1,5 @@
 #include "gfx/pass/SpritePass.hpp"
 
-#include "gfx/pass/SpriteApi.hpp"
-
 namespace cinder::gfx::pass {
 
 SpritePass::SpritePass(const cinder::gfx::rhi::Ctx& ctx, cinder::gfx::asset::Assets& assets,
@@ -14,8 +12,6 @@ void SpritePass::record(cinder::gfx::rhi::Commands cmd, uint32_t frameInFlight,
                         const glm::mat4& viewProjection) {
     batch_.flush(cmd, frameInFlight, viewProjection);
 }
-
-void SpritePass::registerApi(cinder::lua::LuaApi& api) { registerSpriteApi(api, *this); }
 
 void SpritePass::draw(int texture, const glm::mat4& model, glm::vec2 size, const glm::vec4& color) {
     batch_.draw(texture, model, size, color);

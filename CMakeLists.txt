@@ -21,7 +21,6 @@ cinder_compile_shaders(shaders)
 
 include(cmake/Targets.cmake)
 
-include(cmake/Packaging.cmake)
 
 enable_testing()
 include(cmake/Testing.cmake)

@@ -5,10 +5,8 @@
 #include "physics/Nodes.hpp"
 #include "scene/NodeTypes.hpp"
 #include "scene/Scene.hpp"
-#include "script/Script.hpp"
 #include "serial/SceneCodec.hpp"
 
-#include <lua.hpp>
 
 #include <filesystem>
 #include <fstream>
@@ -21,7 +19,6 @@ using cinder::core::ProjectConfig;
 using cinder::core::ProjectDescriptor;
 using cinder::scene::NodeTypes;
 using cinder::scene::Scene;
-using cinder::script::Script;
 using cinder::serial::SceneCodec;
 
 namespace {
@@ -73,24 +70,19 @@ TEST_CASE("every shipped project descriptor and config is canonical") {
 }
 
 TEST_CASE("every shipped scene is canonical") {
-    lua_State* state = luaL_newstate();
-    {
-        NodeTypes types;
-        cinder::components::registerBuiltins(types);
-        cinder::physics::registerNodes(types);
-        types.add<Script>("Script", [state] { return std::make_unique<Script>(state); });
-        Scene scene{types};
+    NodeTypes types;
+    cinder::components::registerBuiltins(types);
+    cinder::physics::registerNodes(types);
+    Scene scene{types};
 
-        const std::vector<std::filesystem::path> scenes = shippedScenes();
-        CHECK(scenes.size() >= 3);
+    const std::vector<std::filesystem::path> scenes = shippedScenes();
+    CHECK(scenes.size() >= 3);
 
-        for (const std::filesystem::path& path : scenes) {
-            const std::string name = path.lexically_relative(SOURCE).string();
-            CAPTURE(name);
-            const std::string text = read(path);
-            SceneCodec::load(text, scene);
-            CHECK(SceneCodec::save(scene) == text);
-        }
+    for (const std::filesystem::path& path : scenes) {
+        const std::string name = path.lexically_relative(SOURCE).string();
+        CAPTURE(name);
+        const std::string text = read(path);
+        SceneCodec::load(text, scene);
+        CHECK(SceneCodec::save(scene) == text);
     }
-    lua_close(state);
 }

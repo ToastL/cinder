@@ -1,5 +1,7 @@
 #include "serial/TextLoad.hpp"
 
+#include "serial/TextSave.hpp"
+
 #include <cctype>
 #include <cstdlib>
 
@@ -141,6 +143,7 @@ void TextLoad::body(Node& into, const std::vector<std::string>& lines, std::size
             Field field;
             field.tokens.assign(tokens.begin() + 1, tokens.end());
             field.quoted = quoted;
+            if (into.fields.count(tokens.front()) == 0) into.order.push_back(tokens.front());
             into.fields[tokens.front()] = std::move(field);
         }
     }
@@ -206,6 +209,21 @@ void TextLoad::vector(std::string_view name, float* values, const float* fallbac
 cinder::scene::PropRec TextLoad::bag(std::string_view name, const cinder::scene::PropRec& values) {
     const Node* node = stack_.back()->block(name);
     return node == nullptr ? cinder::scene::PropRec{} : rec(*node);
+}
+
+cinder::scene::RawFields TextLoad::raw(const cinder::scene::RawFields& values) {
+    cinder::scene::RawFields out;
+    const Node& node = *stack_.back();
+    for (const std::string& key : node.order) {
+        const Field& found = node.fields.at(key);
+        std::string text;
+        for (std::size_t i = 0; i < found.tokens.size(); ++i) {
+            if (i > 0) text.push_back(' ');
+            text += i == 0 && found.quoted ? TextSave::quoted(found.tokens[i]) : found.tokens[i];
+        }
+        out.emplace_back(key, std::move(text));
+    }
+    return out;
 }
 
 cinder::scene::PropRec TextLoad::rec(const Node& node) {

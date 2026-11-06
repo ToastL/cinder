@@ -11,7 +11,6 @@ Code conventions that every change follows. The repo's `CLAUDE.md` *Conventions*
 - **Locale-independent numbers.** `std::to_chars`/`from_chars` in `serial`, never `printf` or streams. See [[Locale-independent numbers]].
 - **Points vs pixels.** Swapchain and render targets are framebuffer pixels; `ViewCamera`, `screenToWorld` and GLFW cursor positions are window points. 2x apart on Retina.
 - **Vulkan code:** every call through `vk(result, "vkFn")`, zero-initialized structs with every count set by hand, VMA for memory, move-only owners with destructors and no `destroy()`. Declaration order is the destruction contract. See [[Vulkan backend]].
-- **No exceptions or C++ destructors across Lua.** See [[Lua error safety]].
 - **`Glfw` is refcounted** `acquire`/`release`; `Engine` declares `input_` before `renderer_`.
 - **Edge-triggered input** clears in `input.consume()` per fixed step and on every idle frame. See [[Input]].
 - **`player/main.cpp` and `editor/main.cpp` duplicate arg parsing on purpose.** Don't factor it into `core`.

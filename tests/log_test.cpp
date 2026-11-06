@@ -33,19 +33,19 @@ struct Sink {
 
 TEST_CASE("the sink receives formatted lines without the trailing newline") {
     Sink sink;
-    cinder::platform::logInfo("[lua] loaded %s\n", "main.lua");
+    cinder::platform::logInfo("[module] loaded %s\n", "game.dylib");
 
     REQUIRE(sink.lines.size() == 1);
-    CHECK(sink.lines[0].text == "[lua] loaded main.lua");
+    CHECK(sink.lines[0].text == "[module] loaded game.dylib");
     CHECK(sink.lines[0].level == LogLevel::Info);
 }
 
 TEST_CASE("errors carry their level") {
     Sink sink;
-    cinder::platform::logError("[lua] %s:%d: %s\n", "riser.lua", 4, "bad");
+    cinder::platform::logError("[build] %s:%d: %s\n", "Riser.cpp", 4, "bad");
 
     REQUIRE(sink.lines.size() == 1);
-    CHECK(sink.lines[0].text == "[lua] riser.lua:4: bad");
+    CHECK(sink.lines[0].text == "[build] Riser.cpp:4: bad");
     CHECK(sink.lines[0].level == LogLevel::Error);
 }
 

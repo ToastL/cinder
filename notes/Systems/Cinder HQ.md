@@ -2,7 +2,7 @@
 type: hub
 ---
 
-A from-scratch C++20 game engine: Vulkan and Metal renderers, Lua 5.4 scripting, its own UI, physics and editor. The target is a Unity/Unreal-shaped workflow — select a node, edit its fields, hit Play, hit Stop, land back where you started. Repo: `ToastL/cinder` on GitHub, main branch `main`.
+A from-scratch C++20 game engine: Vulkan and Metal renderers, C++ game code, its own UI, physics and editor. The target is a Unity/Unreal-shaped workflow — select a node, edit its fields, hit Play, hit Stop, land back where you started. Repo: `ToastL/cinder` on GitHub, main branch `main`.
 
 ## Engine (`engine` library)
 - [[Build and shaders]] — CMake, pinned dependencies, DXC shader pipeline, the layer graph
@@ -13,13 +13,13 @@ A from-scratch C++20 game engine: Vulkan and Metal renderers, Lua 5.4 scripting,
 - [[Renderer]] — `gfx`: the RHI seam, Vulkan and Metal backends, passes, the UI renderer
 - [[Physics]] — our own rigid-body engine
 - [[UI framework]] — `text` + `ui`: a retained, Slate-shaped UI
-- [[Scripting]] — Lua host, prelude, `Script` nodes, hot reload
+- [[Game code]] — C++ node classes in a hot-reloaded library
 - [[Core and game loop]] — `Engine`, `GameLoop`, project config
 
 ## Tools and shipping
 - [[Editor]] — `engine_dev`: panels, Scene view, gizmos, undo, Play/Stop
-- [[Projects and packaging]] — project folders, the `.cinder` descriptor, `package_game`
-- [[Testing]] — `ctest`, the Lua selftest, `graphics_smoke`
+- [[Projects and packaging]] — project folders, the `.cinder` descriptor, the `packager`
+- [[Testing]] — `ctest`, the selftest, `graphics_smoke`
 
 ## In flight
 - [[Platform hosts]] — GLFW → `platform::Host` adapters (branch `platform-hosts`)

@@ -332,7 +332,7 @@ struct Gallery {
         auto rows = make<ScrollBox>().assign(log);
         for (int i = 0; i < 40; ++i) {
             rows + ScrollBox::slot().padding(Margin(4.0f, 1.0f))
-                           [make<Label>().text("[lua] row " + std::to_string(i) + "  print(engine.time())").textStyle("Label.Mono")];
+                           [make<Label>().text("[game] row " + std::to_string(i) + "  spawned a crate").textStyle("Label.Mono")];
         }
 
         auto widgets = make<VerticalBox>()

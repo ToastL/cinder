@@ -64,13 +64,21 @@ struct Spawner : Node {
     CINDER_NODE(Spawner, Node) {}
 };
 
-struct Recorder : cinder::scene::SceneObserver {
+struct Recorder {
     std::vector<std::string> events;
 
-    void attributeChanged(Node& node, const std::string& name) override { events.push_back("attribute " + name); }
-    void childAdded(Node& parent, Node& child) override { events.push_back("added " + child.name()); }
-    void childRemoved(Node& parent, Node& child) override { events.push_back("removed " + child.name()); }
-    void destroying(Node& node) override { events.push_back("destroying " + node.name()); }
+    void watch(Scene& scene, Node& source, Node& owner) {
+        using cinder::scene::Signal;
+        using cinder::scene::SignalArgs;
+        scene.connect(source, Signal::AttributeChanged, owner,
+                      [this](const SignalArgs& args) { events.push_back("attribute " + std::string(args.name)); });
+        scene.connect(source, Signal::ChildAdded, owner,
+                      [this](const SignalArgs& args) { events.push_back("added " + args.other->name()); });
+        scene.connect(source, Signal::ChildRemoved, owner,
+                      [this](const SignalArgs& args) { events.push_back("removed " + args.other->name()); });
+        scene.connect(source, Signal::Destroying, owner,
+                      [this, name = source.name()](const SignalArgs&) { events.push_back("destroying " + name); });
+    }
 };
 
 struct Fixture {
@@ -270,19 +278,21 @@ TEST_CASE("clone copies props, transform, attributes and children with fresh ids
     CHECK(sprite->size().y == doctest::Approx(7));
 }
 
-TEST_CASE("the observer hears structure, attribute and destroy events in order") {
+TEST_CASE("signals report structure, attribute and destroy events in order") {
     Fixture f;
     Recorder recorder;
     Counter* parent = named(f.scene, "parent");
-    f.scene.setObserver(&recorder);
+    Counter* ear = named(f.scene, "ear");
+    f.scene.update(0.0f);
+    recorder.watch(f.scene, *parent, *ear);
 
     Counter* child = named(f.scene, "child", parent);
+    recorder.watch(f.scene, *child, *ear);
     child->setAttribute("hp", PropValue::integer(1));
     child->setParent(nullptr);
     child->setParent(parent);
     f.scene.destroy(child);
     f.scene.update(0.1f);
-    f.scene.setObserver(nullptr);
 
     const std::vector<std::string> expected{"added child", "attribute hp", "removed child",
                                             "added child", "removed child", "destroying child"};
@@ -293,14 +303,14 @@ TEST_CASE("an attribute notifies once per real change") {
     Fixture f;
     Recorder recorder;
     Node* a = f.scene.create<Counter>(nullptr);
-    f.scene.setObserver(&recorder);
+    f.scene.update(0.0f);
+    recorder.watch(f.scene, *a, *a);
 
     a->setAttribute("hp", PropValue::integer(3));
     a->setAttribute("hp", PropValue::number(3.0));
     a->setAttribute("hp", PropValue::integer(4));
     a->removeAttribute("hp");
     a->removeAttribute("hp");
-    f.scene.setObserver(nullptr);
 
     CHECK(recorder.events == std::vector<std::string>{"attribute hp", "attribute hp", "attribute hp"});
     CHECK(a->attribute("hp") == nullptr);
@@ -310,10 +320,10 @@ TEST_CASE("loaded attributes do not notify") {
     Fixture f;
     Recorder recorder;
     Node* a = f.scene.create<Counter>(nullptr);
-    f.scene.setObserver(&recorder);
+    f.scene.update(0.0f);
+    recorder.watch(f.scene, *a, *a);
 
     a->loadAttributes({{"rate", PropValue::number(2.0)}});
-    f.scene.setObserver(nullptr);
 
     CHECK(recorder.events.empty());
     CHECK(a->attribute("rate")->as<double>() == doctest::Approx(2.0));
@@ -334,4 +344,131 @@ TEST_CASE("attributes hold numbers, strings, bools and small vectors") {
     CHECK_FALSE(isAttributeValue(PropValue::seq({PropValue::number(1)})));
     CHECK_FALSE(isAttributeValue(PropValue::seq({PropValue::text("x"), PropValue::number(1)})));
     CHECK_FALSE(isAttributeValue(PropValue::rec({})));
+}
+
+namespace {
+
+struct Listener : Node {
+    std::vector<std::string> attributes;
+    std::vector<int> added;
+    std::vector<int> removed;
+
+    void onAttributeChanged(std::string_view name) override { attributes.emplace_back(name); }
+    void onChildAdded(Node& child) override { added.push_back(child.id()); }
+    void onChildRemoved(Node& child) override { removed.push_back(child.id()); }
+
+    CINDER_NODE(Listener, Node) {}
+};
+
+}
+
+TEST_CASE("event hooks reach only started nodes, so nothing runs in Edit mode") {
+    NodeTypes types;
+    Scene scene(types);
+    auto* listener = scene.create<Listener>(nullptr);
+
+    listener->setAttribute("hp", PropValue::integer(3));
+    scene.create<Counter>(listener);
+    CHECK(listener->attributes.empty());
+    CHECK(listener->added.empty());
+
+    scene.update(0.0f);
+    listener->setAttribute("hp", PropValue::integer(4));
+    const int child = scene.create<Counter>(listener)->id();
+    scene.destroyNow(scene.byId(child));
+
+    CHECK(listener->attributes == std::vector<std::string>{"hp"});
+    CHECK(listener->added == std::vector<int>{child});
+    CHECK(listener->removed == std::vector<int>{child});
+}
+
+TEST_CASE("a connection hears another node's signal and dies with either node") {
+    NodeTypes types;
+    Scene scene(types);
+    auto* source = scene.create<Counter>(nullptr);
+    auto* owner = scene.create<Counter>(source);
+    std::vector<std::string> heard;
+    scene.connect(*source, cinder::scene::Signal::AttributeChanged, *owner,
+                  [&heard](const cinder::scene::SignalArgs& args) { heard.emplace_back(args.name); });
+
+    source->setAttribute("before", PropValue::integer(1));
+    scene.update(0.0f);
+    source->setAttribute("speed", PropValue::integer(2));
+    CHECK(heard == std::vector<std::string>{"speed"});
+
+    scene.destroyNow(owner);
+    source->setAttribute("after", PropValue::integer(3));
+    CHECK(heard.size() == 1);
+
+    auto* other = scene.create<Counter>(nullptr);
+    scene.update(0.0f);
+    int destroying = 0;
+    scene.connect(*source, cinder::scene::Signal::Destroying, *other,
+                  [&destroying](const cinder::scene::SignalArgs&) { destroying++; });
+    const int handle = scene.connect(*source, cinder::scene::Signal::AttributeChanged, *other,
+                                     [&heard](const cinder::scene::SignalArgs&) { heard.emplace_back("x"); });
+    scene.disconnect(handle);
+    source->setAttribute("quiet", PropValue::integer(4));
+    CHECK(heard.size() == 1);
+    scene.destroyNow(source);
+    CHECK(destroying == 1);
+}
+
+TEST_CASE("timers fire on scene time, repeat, and are owned by a node") {
+    NodeTypes types;
+    Scene scene(types);
+    auto* owner = scene.create<Counter>(nullptr);
+    int once = 0;
+    int repeated = 0;
+    scene.after(*owner, 0.5, [&once] { once++; });
+    const int every = scene.every(*owner, 0.25, [&repeated] { repeated++; });
+
+    for (int i = 0; i < 4; ++i) scene.update(0.125f);
+    CHECK(once == 1);
+    CHECK(repeated == 2);
+    CHECK(scene.time() == doctest::Approx(0.5));
+
+    scene.cancel(every);
+    for (int i = 0; i < 4; ++i) scene.update(0.125f);
+    CHECK(repeated == 2);
+
+    int orphaned = 0;
+    scene.after(*owner, 0.1, [&orphaned] { orphaned++; });
+    scene.destroy(owner);
+    for (int i = 0; i < 4; ++i) scene.update(0.125f);
+    CHECK(orphaned == 0);
+
+    auto* survivor = scene.create<Counter>(nullptr);
+    scene.after(*survivor, 1.0, [&orphaned] { orphaned++; });
+    scene.clear();
+    CHECK(scene.time() == 0.0);
+}
+
+namespace {
+
+struct First final : Node {
+    CINDER_NODE(First, Node) {}
+};
+
+struct Second final : Node {
+    CINDER_NODE(Second, Node) {}
+};
+
+}
+
+TEST_CASE("a removed class keeps its slot and takes a different type when added again") {
+    NodeTypes types;
+    types.add<Counter>("Before");
+    types.add<First>("Swapped");
+    types.add<Counter>("After");
+    types.remove("Swapped");
+    CHECK(types.create("Swapped") == nullptr);
+    CHECK(types.fallback("Swapped") == nullptr);
+    CHECK(types.nameOf(First{}).empty());
+
+    types.add<Second>("Swapped");
+    CHECK(types.nameOf(*types.create("Swapped")) == "Swapped");
+    CHECK(types.nameOf(Second{}) == "Swapped");
+    REQUIRE(types.registered().size() == 3);
+    CHECK(types.registered()[1].name == "Swapped");
 }

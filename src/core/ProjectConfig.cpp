@@ -62,6 +62,7 @@ ProjectConfig ProjectConfig::load(const std::filesystem::path& folder) {
     const std::string json = cinder::platform::readTextFile(file);
 
     ProjectConfig config;
+    config.name = file.stem().string();
     try {
         config.descriptor = ProjectDescriptor::parse(json);
     } catch (const std::runtime_error& e) {

@@ -1,6 +1,7 @@
 #include "dev/panels/Toolbar.hpp"
 
 #include "dev/History.hpp"
+#include "dev/ModuleHost.hpp"
 #include "dev/Packager.hpp"
 #include "dev/PlaySession.hpp"
 #include "dev/panels/Dialog.hpp"
@@ -38,6 +39,8 @@ const std::shared_ptr<const Command> SAVE = command("Save", "Save the scene", Sh
 const std::shared_ptr<const Command> UNDO = command("Undo", "Undo the last edit", Shortcut::primary(keys::letter('z')));
 const std::shared_ptr<const Command> REDO =
         command("Redo", "Redo the last undone edit", Shortcut::primary(keys::letter('z'), modifiers::SHIFT));
+const std::shared_ptr<const Command> BUILD =
+        command("Build", "Compile the project's C++ and reload it", Shortcut::primary(keys::letter('b')));
 
 const char* label(PlaySession::State state) {
     switch (state) {
@@ -58,10 +61,12 @@ const Command& Toolbar::step() { return *STEP; }
 const Command& Toolbar::save() { return *SAVE; }
 const Command& Toolbar::undo() { return *UNDO; }
 const Command& Toolbar::redo() { return *REDO; }
+const Command& Toolbar::compile() { return *BUILD; }
 
 Toolbar::Toolbar(PlaySession& session, History& history, Selection& selection, Packager& packager,
-                 std::filesystem::path scene, Application& app)
-    : session_(session), history_(history), selection_(selection), packager_(packager), scene_(std::move(scene)),
+                 ModuleHost& modules, std::filesystem::path scene, Application& app)
+    : session_(session), history_(history), selection_(selection), packager_(packager), modules_(modules),
+      scene_(std::move(scene)),
       app_(app),
       commands_(std::make_shared<CommandList>()) {
     bind();
@@ -78,6 +83,8 @@ void Toolbar::bind() {
     commands_->map(SAVE, CommandAction{[this] { write(); }, [this] { return editing(); }, {}});
     commands_->map(UNDO, CommandAction{[this] { history_.undo(selection_); },
                                        [this] { return editing() && !app_.isInteracting(); }, {}});
+    commands_->map(BUILD, CommandAction{[this] { modules_.requestBuild(); },
+                                        [this] { return modules_.available() && !modules_.building(); }, {}});
     commands_->map(REDO, CommandAction{[this] { history_.redo(selection_); },
                                        [this] { return editing() && !app_.isInteracting(); }, {}});
 }
@@ -102,7 +109,7 @@ void Toolbar::build() {
 
     const std::shared_ptr<const CommandList> list = commands_;
     std::shared_ptr<Widget> menus = make<MenuBar>()
-            .menu("File", [list](MenuBuilder& menu) { menu.command(list, *SAVE); })
+            .menu("File", [list](MenuBuilder& menu) { menu.command(list, *SAVE).command(list, *BUILD); })
             .menu("Edit", [list](MenuBuilder& menu) { menu.command(list, *UNDO).command(list, *REDO); })
             .menu("Window", [this](MenuBuilder& menu) {
                 if (windowMenu_) windowMenu_(menu);
@@ -116,6 +123,13 @@ void Toolbar::build() {
                         .command(list, *STEP);
             })
             .menu("Platforms", [this](MenuBuilder& menu) {
+                menu.heading("Configuration");
+                for (const Configuration configuration : {Configuration::Development, Configuration::Shipping}) {
+                    menu.check(std::string(configurationName(configuration)),
+                               [this, configuration] { packager_.setConfiguration(configuration); },
+                               [this, configuration] { return packager_.configuration() == configuration; });
+                }
+                menu.separator();
                 menu.heading("Package Project");
                 for (const Platform platform : platforms()) {
                     const std::string name(platformName(platform));
@@ -159,6 +173,19 @@ void Toolbar::build() {
          + HorizontalBox::slot().autoWidth()[button(REDO, "Redo", [this] { return editing() && history_.canRedo(); }, [this] {
                return history_.canRedo() ? "Redo " + history_.redoLabel() : std::string("Nothing to redo");
            })]
+         + gap(16.0f)
+         + HorizontalBox::slot().autoWidth()[button(BUILD, "Build", [this] {
+               return modules_.available() && !modules_.building();
+           }, [this, shortcut] {
+               return modules_.available() ? shortcut(BUILD) : std::string("No toolchain manifest next to the editor");
+           })]
+         + HorizontalBox::slot().autoWidth().vAlign(VAlign::Center).padding(Margin(6.0f, 0.0f, 0.0f, 0.0f))
+               [make<Label>()
+                        .text([this] { return modules_.status(); })
+                        .colorAndOpacity(Attribute<Color>([this] {
+                            return Application::get().theme().color(
+                                    modules_.lastResult().errors > 0 ? "Color.Error" : "Color.ForegroundDim");
+                        }))]
          + HorizontalBox::slot().fill(1.0f)[make<Spacer>()]
          + HorizontalBox::slot().autoWidth().vAlign(VAlign::Center)
                [make<Label>()

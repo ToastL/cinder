@@ -4,7 +4,7 @@ system: "[[Projects and packaging]]"
 source: "src/core/ProjectConfig.cpp"
 ---
 
-`Config/Game.ini`, read through `IniLoad` without touching Lua — opening a project runs nothing.
+`Config/Game.ini`, read through `IniLoad` — opening a project runs nothing.
 
 Every key, as an example (a real file holds only non-defaults — `samples/sandbox2d`'s is just `title=Sandbox 2D`):
 

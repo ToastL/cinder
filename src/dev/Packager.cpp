@@ -1,5 +1,8 @@
 #include "dev/Packager.hpp"
 
+#include "dev/Process.hpp"
+
+#include "platform/Assets.hpp"
 #include "platform/Log.hpp"
 
 #include <algorithm>
@@ -16,25 +19,6 @@ namespace cinder::dev {
 
 namespace {
 
-constexpr std::array<Platform, 5> PLATFORMS{Platform::MacOS, Platform::Linux, Platform::Windows, Platform::IOS,
-                                            Platform::Android};
-
-std::string quote(const std::filesystem::path& path) {
-    std::string out = "'";
-    for (const char c : path.string()) {
-        if (c == '\'') {
-            out += "'\\''";
-        } else {
-            out += c;
-        }
-    }
-    return out + "'";
-}
-
-std::string define(std::string_view name, const std::filesystem::path& value) {
-    return " " + quote("-D" + std::string(name) + "=" + value.string());
-}
-
 std::string projectName(const std::filesystem::path& project) {
     std::error_code error;
     for (const auto& entry : std::filesystem::directory_iterator(project, error)) {
@@ -45,45 +29,12 @@ std::string projectName(const std::filesystem::path& project) {
 
 }
 
-std::span<const Platform> platforms() { return PLATFORMS; }
+PackageTools PackageTools::fromBuild() { return PackageTools{cinder::platform::executableDir() / "packager"}; }
 
-std::string_view platformName(Platform platform) {
-    switch (platform) {
-        case Platform::MacOS: return "macOS";
-        case Platform::Linux: return "Linux";
-        case Platform::Windows: return "Windows";
-        case Platform::IOS: return "iOS";
-        case Platform::Android: return "Android";
-    }
-    return "";
-}
-
-Platform hostPlatform() {
-#if defined(__APPLE__)
-    return Platform::MacOS;
-#elif defined(_WIN32)
-    return Platform::Windows;
-#else
-    return Platform::Linux;
-#endif
-}
-
-bool platformSupported(Platform platform) {
-    return platform == hostPlatform() && (platform == Platform::MacOS || platform == Platform::Linux);
-}
-
-PackageTools PackageTools::fromBuild() {
-    return PackageTools{CINDER_CMAKE_COMMAND, CINDER_BUILD_DIR, CINDER_PLAYER_PATH, CINDER_PACKAGE_SCRIPT,
-                        CINDER_ENGINE_DIR,    CINDER_SHADER_DIR};
-}
-
-std::string packageCommand(const PackageTools& tools, Platform platform, const std::filesystem::path& project,
-                           const std::filesystem::path& output) {
-    const std::string cmake = quote(tools.cmake);
-    return "(" + cmake + " --build " + quote(tools.buildDir) + " --target player && " + cmake
-            + define("PLAYER", tools.player) + define("HOST_PLATFORM", std::string(platformName(platform)))
-            + define("ENGINE_DIR", tools.engineDir) + define("SHADER_DIR", tools.shaderDir)
-            + define("PROJECT_DIR", project) + define("OUT_DIR", output) + " -P " + quote(tools.script) + ") 2>&1";
+std::string packageCommand(const PackageTools& tools, Platform platform, Configuration configuration,
+                           const std::filesystem::path& project, const std::filesystem::path& output) {
+    return quote(tools.packager) + " " + quote(project) + " --platform " + std::string(platformName(platform))
+            + " --config " + std::string(configurationName(configuration)) + " --out " + quote(output) + " 2>&1";
 }
 
 Packager::Packager(std::filesystem::path project, std::vector<std::string> targetPlatforms, PackageTools tools)
@@ -128,67 +79,34 @@ bool Packager::start(Platform platform) {
     if (worker_.joinable()) worker_.join();
 
     const std::filesystem::path output = outputDir(platform);
-    const std::string command = packageCommand(tools_, platform, project_, output);
-    cinder::platform::logInfo("[package] packaging %s for %s into %s\n", name_.c_str(),
-                              std::string(platformName(platform)).c_str(), output.string().c_str());
+    const std::string command = packageCommand(tools_, platform, configuration_, project_, output);
+    cinder::platform::logInfo("[package] packaging %s for %s (%s) into %s\n", name_.c_str(),
+                              std::string(platformName(platform)).c_str(),
+                              std::string(configurationName(configuration_)).c_str(), output.string().c_str());
 
-    int fds[2];
-    if (pipe(fds) != 0) {
-        cinder::platform::logError("[package] could not open a pipe\n");
+    std::string error;
+    std::unique_ptr<Process> process = Process::shell(command, error);
+    if (process == nullptr) {
+        cinder::platform::logError("[package] %s\n", error.c_str());
         return false;
     }
-    const pid_t pid = fork();
-    if (pid < 0) {
-        close(fds[0]);
-        close(fds[1]);
-        cinder::platform::logError("[package] could not start the build\n");
-        return false;
-    }
-    if (pid == 0) {
-        setpgid(0, 0);
-        dup2(fds[1], STDOUT_FILENO);
-        dup2(fds[1], STDERR_FILENO);
-        close(fds[0]);
-        close(fds[1]);
-        execl("/bin/sh", "sh", "-c", command.c_str(), static_cast<char*>(nullptr));
-        _exit(127);
-    }
-    setpgid(pid, pid);
-    close(fds[1]);
 
     current_ = platform;
     reported_ = false;
     cancelled_.store(false);
-    pid_ = pid;
+    pid_ = process->pid();
     running_.store(true);
-    worker_ = std::thread([this, pid, out = fds[0]] {
-        int status = -1;
-        if (FILE* pipe = fdopen(out, "r")) {
-            std::array<char, 512> buffer{};
-            std::string line;
-            while (std::fgets(buffer.data(), static_cast<int>(buffer.size()), pipe)) {
-                line += buffer.data();
-                if (line.empty() || line.back() != '\n') continue;
-                line.pop_back();
-                const std::lock_guard lock(mutex_);
-                lines_.push_back(std::move(line));
-                line.clear();
-            }
-            if (!line.empty()) {
-                const std::lock_guard lock(mutex_);
-                lines_.push_back(std::move(line));
-            }
-            std::fclose(pipe);
-        } else {
-            close(out);
+    worker_ = std::thread([this, process = std::move(process)]() mutable {
+        std::string line;
+        while (process->readLine(line)) {
+            const std::lock_guard lock(mutex_);
+            lines_.push_back(line);
         }
         {
             const std::lock_guard lock(mutex_);
             pid_ = 0;
         }
-        int wait = 0;
-        if (waitpid(pid, &wait, 0) == pid) status = WIFEXITED(wait) ? WEXITSTATUS(wait) : -1;
-        status_ = status;
+        status_ = process->wait();
         running_.store(false);
     });
     return true;

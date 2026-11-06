@@ -4,6 +4,7 @@
 #include <map>
 #include <memory>
 #include <string>
+#include <utility>
 #include <variant>
 #include <vector>
 
@@ -13,6 +14,7 @@ class PropValue;
 
 using PropSeq = std::vector<PropValue>;
 using PropRec = std::map<std::string, PropValue>;
+using RawFields = std::vector<std::pair<std::string, std::string>>;
 
 class PropValue {
 public:

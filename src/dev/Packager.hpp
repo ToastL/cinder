@@ -1,5 +1,7 @@
 #pragma once
 
+#include "dev/Staging.hpp"
+
 #include <atomic>
 #include <cstdint>
 #include <deque>
@@ -14,26 +16,14 @@
 
 namespace cinder::dev {
 
-enum class Platform : std::uint8_t { MacOS, Linux, Windows, IOS, Android };
-
-std::span<const Platform> platforms();
-std::string_view platformName(Platform platform);
-Platform hostPlatform();
-bool platformSupported(Platform platform);
-
 struct PackageTools {
-    std::filesystem::path cmake;
-    std::filesystem::path buildDir;
-    std::filesystem::path player;
-    std::filesystem::path script;
-    std::filesystem::path engineDir;
-    std::filesystem::path shaderDir;
+    std::filesystem::path packager;
 
     static PackageTools fromBuild();
 };
 
-std::string packageCommand(const PackageTools& tools, Platform platform, const std::filesystem::path& project,
-                           const std::filesystem::path& output);
+std::string packageCommand(const PackageTools& tools, Platform platform, Configuration configuration,
+                           const std::filesystem::path& project, const std::filesystem::path& output);
 
 class Packager {
 public:
@@ -49,6 +39,9 @@ public:
     std::string unavailableReason(Platform platform) const;
     std::filesystem::path outputDir(Platform platform) const;
 
+    Configuration configuration() const { return configuration_; }
+    void setConfiguration(Configuration configuration) { configuration_ = configuration; }
+
     bool busy() const { return running_.load(); }
     std::optional<Platform> current() const { return busy() ? current_ : std::nullopt; }
 
@@ -63,6 +56,7 @@ private:
     std::vector<std::string> targetPlatforms_;
     PackageTools tools_;
     std::string name_;
+    Configuration configuration_ = Configuration::Development;
     std::thread worker_;
     int pid_ = 0;
     std::atomic<bool> cancelled_ = false;

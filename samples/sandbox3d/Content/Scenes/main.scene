@@ -6,15 +6,9 @@ nodes {
         rotation -0.17 0 0
         fov 70
         clearColor 0.05 0.06 0.09 1
-        attributes {
-            sensitivity 0.0021
-            speed 8
-            sprint 24
-        }
         children {
-            Script {
+            Flycam {
                 id 83
-                file "flycam.lua"
             }
         }
     }
@@ -22,22 +16,15 @@ nodes {
         id 2
         name "Box"
         position -6 0 -6
-        attributes {
-            phase -8
-            rate 2
-        }
         children {
-            Script {
+            Spinner {
                 id 84
-                file "spinner.lua"
-                attributes {
-                    speed 0 0.5 0
-                }
+                speed 0 0.5 0
             }
-            Script {
+            Bobber {
                 id 85
                 enabled false
-                file "bobber.lua"
+                phase -8
             }
         }
     }
@@ -45,21 +32,14 @@ nodes {
         id 3
         name "Box"
         position -6 0 -4.5
-        attributes {
-            phase -7
-            rate 2
-        }
         children {
-            Script {
+            Spinner {
                 id 86
-                file "spinner.lua"
-                attributes {
-                    speed 0 0.5 0
-                }
+                speed 0 0.5 0
             }
-            Script {
+            Bobber {
                 id 87
-                file "bobber.lua"
+                phase -7
             }
         }
     }
@@ -67,21 +47,14 @@ nodes {
         id 4
         name "Box"
         position -6 0 -3
-        attributes {
-            phase -6
-            rate 2
-        }
         children {
-            Script {
+            Spinner {
                 id 88
-                file "spinner.lua"
-                attributes {
-                    speed 0 0.5 0
-                }
+                speed 0 0.5 0
             }
-            Script {
+            Bobber {
                 id 89
-                file "bobber.lua"
+                phase -6
             }
         }
     }
@@ -89,21 +62,14 @@ nodes {
         id 5
         name "Box"
         position -6 0 -1.5
-        attributes {
-            phase -5
-            rate 2
-        }
         children {
-            Script {
+            Spinner {
                 id 90
-                file "spinner.lua"
-                attributes {
-                    speed 0 0.5 0
-                }
+                speed 0 0.5 0
             }
-            Script {
+            Bobber {
                 id 91
-                file "bobber.lua"
+                phase -5
             }
         }
     }
@@ -111,21 +77,14 @@ nodes {
         id 6
         name "Box"
         position -6 0 0
-        attributes {
-            phase -4
-            rate 2
-        }
         children {
-            Script {
+            Spinner {
                 id 92
-                file "spinner.lua"
-                attributes {
-                    speed 0 0.5 0
-                }
+                speed 0 0.5 0
             }
-            Script {
+            Bobber {
                 id 93
-                file "bobber.lua"
+                phase -4
             }
         }
     }
@@ -133,21 +92,14 @@ nodes {
         id 7
         name "Box"
         position -6 0 1.5
-        attributes {
-            phase -3
-            rate 2
-        }
         children {
-            Script {
+            Spinner {
                 id 94
-                file "spinner.lua"
-                attributes {
-                    speed 0 0.5 0
-                }
+                speed 0 0.5 0
             }
-            Script {
+            Bobber {
                 id 95
-                file "bobber.lua"
+                phase -3
             }
         }
     }
@@ -155,21 +107,14 @@ nodes {
         id 8
         name "Box"
         position -6 0 3
-        attributes {
-            phase -2
-            rate 2
-        }
         children {
-            Script {
+            Spinner {
                 id 96
-                file "spinner.lua"
-                attributes {
-                    speed 0 0.5 0
-                }
+                speed 0 0.5 0
             }
-            Script {
+            Bobber {
                 id 97
-                file "bobber.lua"
+                phase -2
             }
         }
     }
@@ -177,21 +122,14 @@ nodes {
         id 9
         name "Box"
         position -6 0 4.5
-        attributes {
-            phase -1
-            rate 2
-        }
         children {
-            Script {
+            Spinner {
                 id 98
-                file "spinner.lua"
-                attributes {
-                    speed 0 0.5 0
-                }
+                speed 0 0.5 0
             }
-            Script {
+            Bobber {
                 id 99
-                file "bobber.lua"
+                phase -1
             }
         }
     }
@@ -199,21 +137,13 @@ nodes {
         id 10
         name "Box"
         position -6 0 6
-        attributes {
-            phase 0
-            rate 2
-        }
         children {
-            Script {
+            Spinner {
                 id 100
-                file "spinner.lua"
-                attributes {
-                    speed 0 0.5 0
-                }
+                speed 0 0.5 0
             }
-            Script {
+            Bobber {
                 id 101
-                file "bobber.lua"
             }
         }
     }
@@ -221,21 +151,14 @@ nodes {
         id 11
         name "Box"
         position -4.5 0 -6
-        attributes {
-            phase -7
-            rate 2
-        }
         children {
-            Script {
+            Spinner {
                 id 102
-                file "spinner.lua"
-                attributes {
-                    speed 0 0.5 0
-                }
+                speed 0 0.5 0
             }
-            Script {
+            Bobber {
                 id 103
-                file "bobber.lua"
+                phase -7
             }
         }
     }
@@ -243,21 +166,14 @@ nodes {
         id 12
         name "Box"
         position -4.5 0 -4.5
-        attributes {
-            phase -6
-            rate 2
-        }
         children {
-            Script {
+            Spinner {
                 id 104
-                file "spinner.lua"
-                attributes {
-                    speed 0 0.5 0
-                }
+                speed 0 0.5 0
             }
-            Script {
+            Bobber {
                 id 105
-                file "bobber.lua"
+                phase -6
             }
         }
     }
@@ -265,21 +181,14 @@ nodes {
         id 13
         name "Box"
         position -4.5 0 -3
-        attributes {
-            phase -5
-            rate 2
-        }
         children {
-            Script {
+            Spinner {
                 id 106
-                file "spinner.lua"
-                attributes {
-                    speed 0 0.5 0
-                }
+                speed 0 0.5 0
             }
-            Script {
+            Bobber {
                 id 107
-                file "bobber.lua"
+                phase -5
             }
         }
     }
@@ -287,21 +196,14 @@ nodes {
         id 14
         name "Box"
         position -4.5 0 -1.5
-        attributes {
-            phase -4
-            rate 2
-        }
         children {
-            Script {
+            Spinner {
                 id 108
-                file "spinner.lua"
-                attributes {
-                    speed 0 0.5 0
-                }
+                speed 0 0.5 0
             }
-            Script {
+            Bobber {
                 id 109
-                file "bobber.lua"
+                phase -4
             }
         }
     }
@@ -309,21 +211,14 @@ nodes {
         id 15
         name "Box"
         position -4.5 0 0
-        attributes {
-            phase -3
-            rate 2
-        }
         children {
-            Script {
+            Spinner {
                 id 110
-                file "spinner.lua"
-                attributes {
-                    speed 0 0.5 0
-                }
+                speed 0 0.5 0
             }
-            Script {
+            Bobber {
                 id 111
-                file "bobber.lua"
+                phase -3
             }
         }
     }
@@ -331,21 +226,14 @@ nodes {
         id 16
         name "Box"
         position -4.5 0 1.5
-        attributes {
-            phase -2
-            rate 2
-        }
         children {
-            Script {
+            Spinner {
                 id 112
-                file "spinner.lua"
-                attributes {
-                    speed 0 0.5 0
-                }
+                speed 0 0.5 0
             }
-            Script {
+            Bobber {
                 id 113
-                file "bobber.lua"
+                phase -2
             }
         }
     }
@@ -353,21 +241,14 @@ nodes {
         id 17
         name "Box"
         position -4.5 0 3
-        attributes {
-            phase -1
-            rate 2
-        }
         children {
-            Script {
+            Spinner {
                 id 114
-                file "spinner.lua"
-                attributes {
-                    speed 0 0.5 0
-                }
+                speed 0 0.5 0
             }
-            Script {
+            Bobber {
                 id 115
-                file "bobber.lua"
+                phase -1
             }
         }
     }
@@ -375,21 +256,13 @@ nodes {
         id 18
         name "Box"
         position -4.5 0 4.5
-        attributes {
-            phase 0
-            rate 2
-        }
         children {
-            Script {
+            Spinner {
                 id 116
-                file "spinner.lua"
-                attributes {
-                    speed 0 0.5 0
-                }
+                speed 0 0.5 0
             }
-            Script {
+            Bobber {
                 id 117
-                file "bobber.lua"
             }
         }
     }
@@ -397,21 +270,14 @@ nodes {
         id 19
         name "Box"
         position -4.5 0 6
-        attributes {
-            phase 1
-            rate 2
-        }
         children {
-            Script {
+            Spinner {
                 id 118
-                file "spinner.lua"
-                attributes {
-                    speed 0 0.5 0
-                }
+                speed 0 0.5 0
             }
-            Script {
+            Bobber {
                 id 119
-                file "bobber.lua"
+                phase 1
             }
         }
     }
@@ -419,21 +285,14 @@ nodes {
         id 20
         name "Box"
         position -3 0 -6
-        attributes {
-            phase -6
-            rate 2
-        }
         children {
-            Script {
+            Spinner {
                 id 120
-                file "spinner.lua"
-                attributes {
-                    speed 0 0.5 0
-                }
+                speed 0 0.5 0
             }
-            Script {
+            Bobber {
                 id 121
-                file "bobber.lua"
+                phase -6
             }
         }
     }
@@ -441,21 +300,14 @@ nodes {
         id 21
         name "Box"
         position -3 0 -4.5
-        attributes {
-            phase -5
-            rate 2
-        }
         children {
-            Script {
+            Spinner {
                 id 122
-                file "spinner.lua"
-                attributes {
-                    speed 0 0.5 0
-                }
+                speed 0 0.5 0
             }
-            Script {
+            Bobber {
                 id 123
-                file "bobber.lua"
+                phase -5
             }
         }
     }
@@ -463,21 +315,14 @@ nodes {
         id 22
         name "Box"
         position -3 0 -3
-        attributes {
-            phase -4
-            rate 2
-        }
         children {
-            Script {
+            Spinner {
                 id 124
-                file "spinner.lua"
-                attributes {
-                    speed 0 0.5 0
-                }
+                speed 0 0.5 0
             }
-            Script {
+            Bobber {
                 id 125
-                file "bobber.lua"
+                phase -4
             }
         }
     }
@@ -485,21 +330,14 @@ nodes {
         id 23
         name "Box"
         position -3 0 -1.5
-        attributes {
-            phase -3
-            rate 2
-        }
         children {
-            Script {
+            Spinner {
                 id 126
-                file "spinner.lua"
-                attributes {
-                    speed 0 0.5 0
-                }
+                speed 0 0.5 0
             }
-            Script {
+            Bobber {
                 id 127
-                file "bobber.lua"
+                phase -3
             }
         }
     }
@@ -507,21 +345,14 @@ nodes {
         id 24
         name "Box"
         position -3 0 0
-        attributes {
-            phase -2
-            rate 2
-        }
         children {
-            Script {
+            Spinner {
                 id 128
-                file "spinner.lua"
-                attributes {
-                    speed 0 0.5 0
-                }
+                speed 0 0.5 0
             }
-            Script {
+            Bobber {
                 id 129
-                file "bobber.lua"
+                phase -2
             }
         }
     }
@@ -529,21 +360,14 @@ nodes {
         id 25
         name "Box"
         position -3 0 1.5
-        attributes {
-            phase -1
-            rate 2
-        }
         children {
-            Script {
+            Spinner {
                 id 130
-                file "spinner.lua"
-                attributes {
-                    speed 0 0.5 0
-                }
+                speed 0 0.5 0
             }
-            Script {
+            Bobber {
                 id 131
-                file "bobber.lua"
+                phase -1
             }
         }
     }
@@ -551,21 +375,13 @@ nodes {
         id 26
         name "Box"
         position -3 0 3
-        attributes {
-            phase 0
-            rate 2
-        }
         children {
-            Script {
+            Spinner {
                 id 132
-                file "spinner.lua"
-                attributes {
-                    speed 0 0.5 0
-                }
+                speed 0 0.5 0
             }
-            Script {
+            Bobber {
                 id 133
-                file "bobber.lua"
             }
         }
     }
@@ -573,21 +389,14 @@ nodes {
         id 27
         name "Box"
         position -3 0 4.5
-        attributes {
-            phase 1
-            rate 2
-        }
         children {
-            Script {
+            Spinner {
                 id 134
-                file "spinner.lua"
-                attributes {
-                    speed 0 0.5 0
-                }
+                speed 0 0.5 0
             }
-            Script {
+            Bobber {
                 id 135
-                file "bobber.lua"
+                phase 1
             }
         }
     }
@@ -595,21 +404,14 @@ nodes {
         id 28
         name "Box"
         position -3 0 6
-        attributes {
-            phase 2
-            rate 2
-        }
         children {
-            Script {
+            Spinner {
                 id 136
-                file "spinner.lua"
-                attributes {
-                    speed 0 0.5 0
-                }
+                speed 0 0.5 0
             }
-            Script {
+            Bobber {
                 id 137
-                file "bobber.lua"
+                phase 2
             }
         }
     }
@@ -617,21 +419,14 @@ nodes {
         id 29
         name "Box"
         position -1.5 0 -6
-        attributes {
-            phase -5
-            rate 2
-        }
         children {
-            Script {
+            Spinner {
                 id 138
-                file "spinner.lua"
-                attributes {
-                    speed 0 0.5 0
-                }
+                speed 0 0.5 0
             }
-            Script {
+            Bobber {
                 id 139
-                file "bobber.lua"
+                phase -5
             }
         }
     }
@@ -639,21 +434,14 @@ nodes {
         id 30
         name "Box"
         position -1.5 0 -4.5
-        attributes {
-            phase -4
-            rate 2
-        }
         children {
-            Script {
+            Spinner {
                 id 140
-                file "spinner.lua"
-                attributes {
-                    speed 0 0.5 0
-                }
+                speed 0 0.5 0
             }
-            Script {
+            Bobber {
                 id 141
-                file "bobber.lua"
+                phase -4
             }
         }
     }
@@ -661,21 +449,14 @@ nodes {
         id 31
         name "Box"
         position -1.5 0 -3
-        attributes {
-            phase -3
-            rate 2
-        }
         children {
-            Script {
+            Spinner {
                 id 142
-                file "spinner.lua"
-                attributes {
-                    speed 0 0.5 0
-                }
+                speed 0 0.5 0
             }
-            Script {
+            Bobber {
                 id 143
-                file "bobber.lua"
+                phase -3
             }
         }
     }
@@ -683,21 +464,14 @@ nodes {
         id 32
         name "Box"
         position -1.5 0 -1.5
-        attributes {
-            phase -2
-            rate 2
-        }
         children {
-            Script {
+            Spinner {
                 id 144
-                file "spinner.lua"
-                attributes {
-                    speed 0 0.5 0
-                }
+                speed 0 0.5 0
             }
-            Script {
+            Bobber {
                 id 145
-                file "bobber.lua"
+                phase -2
             }
         }
     }
@@ -705,21 +479,14 @@ nodes {
         id 33
         name "Box"
         position -1.5 0 0
-        attributes {
-            phase -1
-            rate 2
-        }
         children {
-            Script {
+            Spinner {
                 id 146
-                file "spinner.lua"
-                attributes {
-                    speed 0 0.5 0
-                }
+                speed 0 0.5 0
             }
-            Script {
+            Bobber {
                 id 147
-                file "bobber.lua"
+                phase -1
             }
         }
     }
@@ -727,21 +494,13 @@ nodes {
         id 34
         name "Box"
         position -1.5 0 1.5
-        attributes {
-            phase 0
-            rate 2
-        }
         children {
-            Script {
+            Spinner {
                 id 148
-                file "spinner.lua"
-                attributes {
-                    speed 0 0.5 0
-                }
+                speed 0 0.5 0
             }
-            Script {
+            Bobber {
                 id 149
-                file "bobber.lua"
             }
         }
     }
@@ -749,21 +508,14 @@ nodes {
         id 35
         name "Box"
         position -1.5 0 3
-        attributes {
-            phase 1
-            rate 2
-        }
         children {
-            Script {
+            Spinner {
                 id 150
-                file "spinner.lua"
-                attributes {
-                    speed 0 0.5 0
-                }
+                speed 0 0.5 0
             }
-            Script {
+            Bobber {
                 id 151
-                file "bobber.lua"
+                phase 1
             }
         }
     }
@@ -771,21 +523,14 @@ nodes {
         id 36
         name "Box"
         position -1.5 0 4.5
-        attributes {
-            phase 2
-            rate 2
-        }
         children {
-            Script {
+            Spinner {
                 id 152
-                file "spinner.lua"
-                attributes {
-                    speed 0 0.5 0
-                }
+                speed 0 0.5 0
             }
-            Script {
+            Bobber {
                 id 153
-                file "bobber.lua"
+                phase 2
             }
         }
     }
@@ -793,21 +538,14 @@ nodes {
         id 37
         name "Box"
         position -1.5 0 6
-        attributes {
-            phase 3
-            rate 2
-        }
         children {
-            Script {
+            Spinner {
                 id 154
-                file "spinner.lua"
-                attributes {
-                    speed 0 0.5 0
-                }
+                speed 0 0.5 0
             }
-            Script {
+            Bobber {
                 id 155
-                file "bobber.lua"
+                phase 3
             }
         }
     }
@@ -815,21 +553,14 @@ nodes {
         id 38
         name "Box"
         position 0 0 -6
-        attributes {
-            phase -4
-            rate 2
-        }
         children {
-            Script {
+            Spinner {
                 id 156
-                file "spinner.lua"
-                attributes {
-                    speed 0 0.5 0
-                }
+                speed 0 0.5 0
             }
-            Script {
+            Bobber {
                 id 157
-                file "bobber.lua"
+                phase -4
             }
         }
     }
@@ -837,21 +568,14 @@ nodes {
         id 39
         name "Box"
         position 0 0 -4.5
-        attributes {
-            phase -3
-            rate 2
-        }
         children {
-            Script {
+            Spinner {
                 id 158
-                file "spinner.lua"
-                attributes {
-                    speed 0 0.5 0
-                }
+                speed 0 0.5 0
             }
-            Script {
+            Bobber {
                 id 159
-                file "bobber.lua"
+                phase -3
             }
         }
     }
@@ -859,21 +583,14 @@ nodes {
         id 40
         name "Box"
         position 0 0 -3
-        attributes {
-            phase -2
-            rate 2
-        }
         children {
-            Script {
+            Spinner {
                 id 160
-                file "spinner.lua"
-                attributes {
-                    speed 0 0.5 0
-                }
+                speed 0 0.5 0
             }
-            Script {
+            Bobber {
                 id 161
-                file "bobber.lua"
+                phase -2
             }
         }
     }
@@ -881,42 +598,27 @@ nodes {
         id 41
         name "Box"
         position 0 0 -1.5
-        attributes {
-            phase -1
-            rate 2
-        }
         children {
-            Script {
+            Spinner {
                 id 162
-                file "spinner.lua"
-                attributes {
-                    speed 0 0.5 0
-                }
+                speed 0 0.5 0
             }
-            Script {
+            Bobber {
                 id 163
-                file "bobber.lua"
+                phase -1
             }
         }
     }
     MeshPart {
         id 42
         name "Box"
-        attributes {
-            phase 0
-            rate 2
-        }
         children {
-            Script {
+            Spinner {
                 id 164
-                file "spinner.lua"
-                attributes {
-                    speed 0 0.5 0
-                }
+                speed 0 0.5 0
             }
-            Script {
+            Bobber {
                 id 165
-                file "bobber.lua"
             }
         }
     }
@@ -924,21 +626,14 @@ nodes {
         id 43
         name "Box"
         position 0 0 1.5
-        attributes {
-            phase 1
-            rate 2
-        }
         children {
-            Script {
+            Spinner {
                 id 166
-                file "spinner.lua"
-                attributes {
-                    speed 0 0.5 0
-                }
+                speed 0 0.5 0
             }
-            Script {
+            Bobber {
                 id 167
-                file "bobber.lua"
+                phase 1
             }
         }
     }
@@ -946,21 +641,14 @@ nodes {
         id 44
         name "Box"
         position 0 0 3
-        attributes {
-            phase 2
-            rate 2
-        }
         children {
-            Script {
+            Spinner {
                 id 168
-                file "spinner.lua"
-                attributes {
-                    speed 0 0.5 0
-                }
+                speed 0 0.5 0
             }
-            Script {
+            Bobber {
                 id 169
-                file "bobber.lua"
+                phase 2
             }
         }
     }
@@ -968,21 +656,14 @@ nodes {
         id 45
         name "Box"
         position 0 0 4.5
-        attributes {
-            phase 3
-            rate 2
-        }
         children {
-            Script {
+            Spinner {
                 id 170
-                file "spinner.lua"
-                attributes {
-                    speed 0 0.5 0
-                }
+                speed 0 0.5 0
             }
-            Script {
+            Bobber {
                 id 171
-                file "bobber.lua"
+                phase 3
             }
         }
     }
@@ -990,21 +671,14 @@ nodes {
         id 46
         name "Box"
         position 0 0 6
-        attributes {
-            phase 4
-            rate 2
-        }
         children {
-            Script {
+            Spinner {
                 id 172
-                file "spinner.lua"
-                attributes {
-                    speed 0 0.5 0
-                }
+                speed 0 0.5 0
             }
-            Script {
+            Bobber {
                 id 173
-                file "bobber.lua"
+                phase 4
             }
         }
     }
@@ -1012,21 +686,14 @@ nodes {
         id 47
         name "Box"
         position 1.5 0 -6
-        attributes {
-            phase -3
-            rate 2
-        }
         children {
-            Script {
+            Spinner {
                 id 174
-                file "spinner.lua"
-                attributes {
-                    speed 0 0.5 0
-                }
+                speed 0 0.5 0
             }
-            Script {
+            Bobber {
                 id 175
-                file "bobber.lua"
+                phase -3
             }
         }
     }
@@ -1034,21 +701,14 @@ nodes {
         id 48
         name "Box"
         position 1.5 0 -4.5
-        attributes {
-            phase -2
-            rate 2
-        }
         children {
-            Script {
+            Spinner {
                 id 176
-                file "spinner.lua"
-                attributes {
-                    speed 0 0.5 0
-                }
+                speed 0 0.5 0
             }
-            Script {
+            Bobber {
                 id 177
-                file "bobber.lua"
+                phase -2
             }
         }
     }
@@ -1056,21 +716,14 @@ nodes {
         id 49
         name "Box"
         position 1.5 0 -3
-        attributes {
-            phase -1
-            rate 2
-        }
         children {
-            Script {
+            Spinner {
                 id 178
-                file "spinner.lua"
-                attributes {
-                    speed 0 0.5 0
-                }
+                speed 0 0.5 0
             }
-            Script {
+            Bobber {
                 id 179
-                file "bobber.lua"
+                phase -1
             }
         }
     }
@@ -1078,21 +731,13 @@ nodes {
         id 50
         name "Box"
         position 1.5 0 -1.5
-        attributes {
-            phase 0
-            rate 2
-        }
         children {
-            Script {
+            Spinner {
                 id 180
-                file "spinner.lua"
-                attributes {
-                    speed 0 0.5 0
-                }
+                speed 0 0.5 0
             }
-            Script {
+            Bobber {
                 id 181
-                file "bobber.lua"
             }
         }
     }
@@ -1100,21 +745,14 @@ nodes {
         id 51
         name "Box"
         position 1.5 0 0
-        attributes {
-            phase 1
-            rate 2
-        }
         children {
-            Script {
+            Spinner {
                 id 182
-                file "spinner.lua"
-                attributes {
-                    speed 0 0.5 0
-                }
+                speed 0 0.5 0
             }
-            Script {
+            Bobber {
                 id 183
-                file "bobber.lua"
+                phase 1
             }
         }
     }
@@ -1122,21 +760,14 @@ nodes {
         id 52
         name "Box"
         position 1.5 0 1.5
-        attributes {
-            phase 2
-            rate 2
-        }
         children {
-            Script {
+            Spinner {
                 id 184
-                file "spinner.lua"
-                attributes {
-                    speed 0 0.5 0
-                }
+                speed 0 0.5 0
             }
-            Script {
+            Bobber {
                 id 185
-                file "bobber.lua"
+                phase 2
             }
         }
     }
@@ -1144,21 +775,14 @@ nodes {
         id 53
         name "Box"
         position 1.5 0 3
-        attributes {
-            phase 3
-            rate 2
-        }
         children {
-            Script {
+            Spinner {
                 id 186
-                file "spinner.lua"
-                attributes {
-                    speed 0 0.5 0
-                }
+                speed 0 0.5 0
             }
-            Script {
+            Bobber {
                 id 187
-                file "bobber.lua"
+                phase 3
             }
         }
     }
@@ -1166,21 +790,14 @@ nodes {
         id 54
         name "Box"
         position 1.5 0 4.5
-        attributes {
-            phase 4
-            rate 2
-        }
         children {
-            Script {
+            Spinner {
                 id 188
-                file "spinner.lua"
-                attributes {
-                    speed 0 0.5 0
-                }
+                speed 0 0.5 0
             }
-            Script {
+            Bobber {
                 id 189
-                file "bobber.lua"
+                phase 4
             }
         }
     }
@@ -1188,21 +805,14 @@ nodes {
         id 55
         name "Box"
         position 1.5 0 6
-        attributes {
-            phase 5
-            rate 2
-        }
         children {
-            Script {
+            Spinner {
                 id 190
-                file "spinner.lua"
-                attributes {
-                    speed 0 0.5 0
-                }
+                speed 0 0.5 0
             }
-            Script {
+            Bobber {
                 id 191
-                file "bobber.lua"
+                phase 5
             }
         }
     }
@@ -1210,21 +820,14 @@ nodes {
         id 56
         name "Box"
         position 3 0 -6
-        attributes {
-            phase -2
-            rate 2
-        }
         children {
-            Script {
+            Spinner {
                 id 192
-                file "spinner.lua"
-                attributes {
-                    speed 0 0.5 0
-                }
+                speed 0 0.5 0
             }
-            Script {
+            Bobber {
                 id 193
-                file "bobber.lua"
+                phase -2
             }
         }
     }
@@ -1232,21 +835,14 @@ nodes {
         id 57
         name "Box"
         position 3 0 -4.5
-        attributes {
-            phase -1
-            rate 2
-        }
         children {
-            Script {
+            Spinner {
                 id 194
-                file "spinner.lua"
-                attributes {
-                    speed 0 0.5 0
-                }
+                speed 0 0.5 0
             }
-            Script {
+            Bobber {
                 id 195
-                file "bobber.lua"
+                phase -1
             }
         }
     }
@@ -1254,21 +850,13 @@ nodes {
         id 58
         name "Box"
         position 3 0 -3
-        attributes {
-            phase 0
-            rate 2
-        }
         children {
-            Script {
+            Spinner {
                 id 196
-                file "spinner.lua"
-                attributes {
-                    speed 0 0.5 0
-                }
+                speed 0 0.5 0
             }
-            Script {
+            Bobber {
                 id 197
-                file "bobber.lua"
             }
         }
     }
@@ -1276,21 +864,14 @@ nodes {
         id 59
         name "Box"
         position 3 0 -1.5
-        attributes {
-            phase 1
-            rate 2
-        }
         children {
-            Script {
+            Spinner {
                 id 198
-                file "spinner.lua"
-                attributes {
-                    speed 0 0.5 0
-                }
+                speed 0 0.5 0
             }
-            Script {
+            Bobber {
                 id 199
-                file "bobber.lua"
+                phase 1
             }
         }
     }
@@ -1298,21 +879,14 @@ nodes {
         id 60
         name "Box"
         position 3 0 0
-        attributes {
-            phase 2
-            rate 2
-        }
         children {
-            Script {
+            Spinner {
                 id 200
-                file "spinner.lua"
-                attributes {
-                    speed 0 0.5 0
-                }
+                speed 0 0.5 0
             }
-            Script {
+            Bobber {
                 id 201
-                file "bobber.lua"
+                phase 2
             }
         }
     }
@@ -1320,21 +894,14 @@ nodes {
         id 61
         name "Box"
         position 3 0 1.5
-        attributes {
-            phase 3
-            rate 2
-        }
         children {
-            Script {
+            Spinner {
                 id 202
-                file "spinner.lua"
-                attributes {
-                    speed 0 0.5 0
-                }
+                speed 0 0.5 0
             }
-            Script {
+            Bobber {
                 id 203
-                file "bobber.lua"
+                phase 3
             }
         }
     }
@@ -1342,21 +909,14 @@ nodes {
         id 62
         name "Box"
         position 3 0 3
-        attributes {
-            phase 4
-            rate 2
-        }
         children {
-            Script {
+            Spinner {
                 id 204
-                file "spinner.lua"
-                attributes {
-                    speed 0 0.5 0
-                }
+                speed 0 0.5 0
             }
-            Script {
+            Bobber {
                 id 205
-                file "bobber.lua"
+                phase 4
             }
         }
     }
@@ -1364,21 +924,14 @@ nodes {
         id 63
         name "Box"
         position 3 0 4.5
-        attributes {
-            phase 5
-            rate 2
-        }
         children {
-            Script {
+            Spinner {
                 id 206
-                file "spinner.lua"
-                attributes {
-                    speed 0 0.5 0
-                }
+                speed 0 0.5 0
             }
-            Script {
+            Bobber {
                 id 207
-                file "bobber.lua"
+                phase 5
             }
         }
     }
@@ -1386,21 +939,14 @@ nodes {
         id 64
         name "Box"
         position 3 0 6
-        attributes {
-            phase 6
-            rate 2
-        }
         children {
-            Script {
+            Spinner {
                 id 208
-                file "spinner.lua"
-                attributes {
-                    speed 0 0.5 0
-                }
+                speed 0 0.5 0
             }
-            Script {
+            Bobber {
                 id 209
-                file "bobber.lua"
+                phase 6
             }
         }
     }
@@ -1408,21 +954,14 @@ nodes {
         id 65
         name "Box"
         position 4.5 0 -6
-        attributes {
-            phase -1
-            rate 2
-        }
         children {
-            Script {
+            Spinner {
                 id 210
-                file "spinner.lua"
-                attributes {
-                    speed 0 0.5 0
-                }
+                speed 0 0.5 0
             }
-            Script {
+            Bobber {
                 id 211
-                file "bobber.lua"
+                phase -1
             }
         }
     }
@@ -1430,21 +969,13 @@ nodes {
         id 66
         name "Box"
         position 4.5 0 -4.5
-        attributes {
-            phase 0
-            rate 2
-        }
         children {
-            Script {
+            Spinner {
                 id 212
-                file "spinner.lua"
-                attributes {
-                    speed 0 0.5 0
-                }
+                speed 0 0.5 0
             }
-            Script {
+            Bobber {
                 id 213
-                file "bobber.lua"
             }
         }
     }
@@ -1452,21 +983,14 @@ nodes {
         id 67
         name "Box"
         position 4.5 0 -3
-        attributes {
-            phase 1
-            rate 2
-        }
         children {
-            Script {
+            Spinner {
                 id 214
-                file "spinner.lua"
-                attributes {
-                    speed 0 0.5 0
-                }
+                speed 0 0.5 0
             }
-            Script {
+            Bobber {
                 id 215
-                file "bobber.lua"
+                phase 1
             }
         }
     }
@@ -1474,21 +998,14 @@ nodes {
         id 68
         name "Box"
         position 4.5 0 -1.5
-        attributes {
-            phase 2
-            rate 2
-        }
         children {
-            Script {
+            Spinner {
                 id 216
-                file "spinner.lua"
-                attributes {
-                    speed 0 0.5 0
-                }
+                speed 0 0.5 0
             }
-            Script {
+            Bobber {
                 id 217
-                file "bobber.lua"
+                phase 2
             }
         }
     }
@@ -1496,21 +1013,14 @@ nodes {
         id 69
         name "Box"
         position 4.5 0 0
-        attributes {
-            phase 3
-            rate 2
-        }
         children {
-            Script {
+            Spinner {
                 id 218
-                file "spinner.lua"
-                attributes {
-                    speed 0 0.5 0
-                }
+                speed 0 0.5 0
             }
-            Script {
+            Bobber {
                 id 219
-                file "bobber.lua"
+                phase 3
             }
         }
     }
@@ -1518,21 +1028,14 @@ nodes {
         id 70
         name "Box"
         position 4.5 0 1.5
-        attributes {
-            phase 4
-            rate 2
-        }
         children {
-            Script {
+            Spinner {
                 id 220
-                file "spinner.lua"
-                attributes {
-                    speed 0 0.5 0
-                }
+                speed 0 0.5 0
             }
-            Script {
+            Bobber {
                 id 221
-                file "bobber.lua"
+                phase 4
             }
         }
     }
@@ -1540,21 +1043,14 @@ nodes {
         id 71
         name "Box"
         position 4.5 0 3
-        attributes {
-            phase 5
-            rate 2
-        }
         children {
-            Script {
+            Spinner {
                 id 222
-                file "spinner.lua"
-                attributes {
-                    speed 0 0.5 0
-                }
+                speed 0 0.5 0
             }
-            Script {
+            Bobber {
                 id 223
-                file "bobber.lua"
+                phase 5
             }
         }
     }
@@ -1562,21 +1058,14 @@ nodes {
         id 72
         name "Box"
         position 4.5 0 4.5
-        attributes {
-            phase 6
-            rate 2
-        }
         children {
-            Script {
+            Spinner {
                 id 224
-                file "spinner.lua"
-                attributes {
-                    speed 0 0.5 0
-                }
+                speed 0 0.5 0
             }
-            Script {
+            Bobber {
                 id 225
-                file "bobber.lua"
+                phase 6
             }
         }
     }
@@ -1584,21 +1073,14 @@ nodes {
         id 73
         name "Box"
         position 4.5 0 6
-        attributes {
-            phase 7
-            rate 2
-        }
         children {
-            Script {
+            Spinner {
                 id 226
-                file "spinner.lua"
-                attributes {
-                    speed 0 0.5 0
-                }
+                speed 0 0.5 0
             }
-            Script {
+            Bobber {
                 id 227
-                file "bobber.lua"
+                phase 7
             }
         }
     }
@@ -1606,21 +1088,13 @@ nodes {
         id 74
         name "Box"
         position 6 0 -6
-        attributes {
-            phase 0
-            rate 2
-        }
         children {
-            Script {
+            Spinner {
                 id 228
-                file "spinner.lua"
-                attributes {
-                    speed 0 0.5 0
-                }
+                speed 0 0.5 0
             }
-            Script {
+            Bobber {
                 id 229
-                file "bobber.lua"
             }
         }
     }
@@ -1628,21 +1102,14 @@ nodes {
         id 75
         name "Box"
         position 6 0 -4.5
-        attributes {
-            phase 1
-            rate 2
-        }
         children {
-            Script {
+            Spinner {
                 id 230
-                file "spinner.lua"
-                attributes {
-                    speed 0 0.5 0
-                }
+                speed 0 0.5 0
             }
-            Script {
+            Bobber {
                 id 231
-                file "bobber.lua"
+                phase 1
             }
         }
     }
@@ -1650,21 +1117,14 @@ nodes {
         id 76
         name "Box"
         position 6 0 -3
-        attributes {
-            phase 2
-            rate 2
-        }
         children {
-            Script {
+            Spinner {
                 id 232
-                file "spinner.lua"
-                attributes {
-                    speed 0 0.5 0
-                }
+                speed 0 0.5 0
             }
-            Script {
+            Bobber {
                 id 233
-                file "bobber.lua"
+                phase 2
             }
         }
     }
@@ -1672,21 +1132,14 @@ nodes {
         id 77
         name "Box"
         position 6 0 -1.5
-        attributes {
-            phase 3
-            rate 2
-        }
         children {
-            Script {
+            Spinner {
                 id 234
-                file "spinner.lua"
-                attributes {
-                    speed 0 0.5 0
-                }
+                speed 0 0.5 0
             }
-            Script {
+            Bobber {
                 id 235
-                file "bobber.lua"
+                phase 3
             }
         }
     }
@@ -1694,21 +1147,14 @@ nodes {
         id 78
         name "Box"
         position 6 0 0
-        attributes {
-            phase 4
-            rate 2
-        }
         children {
-            Script {
+            Spinner {
                 id 236
-                file "spinner.lua"
-                attributes {
-                    speed 0 0.5 0
-                }
+                speed 0 0.5 0
             }
-            Script {
+            Bobber {
                 id 237
-                file "bobber.lua"
+                phase 4
             }
         }
     }
@@ -1716,21 +1162,14 @@ nodes {
         id 79
         name "Box"
         position 6 0 1.5
-        attributes {
-            phase 5
-            rate 2
-        }
         children {
-            Script {
+            Spinner {
                 id 238
-                file "spinner.lua"
-                attributes {
-                    speed 0 0.5 0
-                }
+                speed 0 0.5 0
             }
-            Script {
+            Bobber {
                 id 239
-                file "bobber.lua"
+                phase 5
             }
         }
     }
@@ -1738,21 +1177,14 @@ nodes {
         id 80
         name "Box"
         position 6 0 3
-        attributes {
-            phase 6
-            rate 2
-        }
         children {
-            Script {
+            Spinner {
                 id 240
-                file "spinner.lua"
-                attributes {
-                    speed 0 0.5 0
-                }
+                speed 0 0.5 0
             }
-            Script {
+            Bobber {
                 id 241
-                file "bobber.lua"
+                phase 6
             }
         }
     }
@@ -1760,21 +1192,14 @@ nodes {
         id 81
         name "Box"
         position 6 0 4.5
-        attributes {
-            phase 7
-            rate 2
-        }
         children {
-            Script {
+            Spinner {
                 id 242
-                file "spinner.lua"
-                attributes {
-                    speed 0 0.5 0
-                }
+                speed 0 0.5 0
             }
-            Script {
+            Bobber {
                 id 243
-                file "bobber.lua"
+                phase 7
             }
         }
     }
@@ -1782,21 +1207,14 @@ nodes {
         id 82
         name "Box"
         position 6 0 6
-        attributes {
-            phase 8
-            rate 2
-        }
         children {
-            Script {
+            Spinner {
                 id 244
-                file "spinner.lua"
-                attributes {
-                    speed 0 0.5 0
-                }
+                speed 0 0.5 0
             }
-            Script {
+            Bobber {
                 id 245
-                file "bobber.lua"
+                phase 8
             }
         }
     }

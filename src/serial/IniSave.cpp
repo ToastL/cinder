@@ -63,6 +63,10 @@ void IniSave::vector(std::string_view name, float* values, const float* fallback
     field(name, vectorText({values, static_cast<std::size_t>(arity)}));
 }
 
+cinder::scene::RawFields IniSave::raw(const cinder::scene::RawFields& values) {
+    unsupported("verbatim fields");
+}
+
 cinder::scene::PropRec IniSave::bag(std::string_view name, const cinder::scene::PropRec& values) {
     unsupported("attribute bags");
 }

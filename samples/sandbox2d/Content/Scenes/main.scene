@@ -6,29 +6,18 @@ nodes {
         projection "orthographic"
         clearColor 0.05 0.05 0.08 1
         virtualSize 640 360
-        attributes {
-            speed 200
-        }
         children {
-            Script {
+            PanCamera {
                 id 4
-                file "camera2d.lua"
             }
         }
     }
     Group {
         id 2
         name "Spawner"
-        attributes {
-            boxScript "riser.lua"
-            lifetime 6
-            maxSize 18
-            minSize 4
-        }
         children {
-            Script {
+            Spawner {
                 id 5
-                file "spawner.lua"
             }
         }
     }
@@ -37,9 +26,8 @@ nodes {
         name "Cursor"
         size 6 6
         children {
-            Script {
+            FollowMouse {
                 id 6
-                file "cursor.lua"
             }
         }
     }

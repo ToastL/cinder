@@ -7,6 +7,7 @@
 #include "scene/Attributes.hpp"
 #include "scene/Node.hpp"
 #include "scene/NodeTypes.hpp"
+#include "scene/Placeholder.hpp"
 #include "scene/PropValue.hpp"
 #include "scene/Scene.hpp"
 #include "serial/TextLoad.hpp"
@@ -99,25 +100,39 @@ void SceneCodec::nodes(Archive& ar, const std::vector<Node*>& list, Node* parent
 }
 
 void SceneCodec::node(Archive& ar, Node* existing, std::string_view type, Node* parent) {
+    using cinder::scene::Placeholder;
+
     const Node* base = types_.fallback(type);
-    if (base == nullptr) {
-        cinder::platform::logError("[serial] unknown node class: %.*s\n",
+    auto* held = dynamic_cast<Placeholder*>(existing);
+    const bool kept = ar.loading() ? base == nullptr : held != nullptr;
+    if (kept && ar.loading() && reported_.insert(std::string(type)).second) {
+        cinder::platform::logError("[serial] unknown node class %.*s, kept as a placeholder\n",
                                    static_cast<int>(type.size()), type.data());
-        return;
     }
 
     const int id = ar.integer("id", existing == nullptr ? 0 : existing->id(), NO_ID);
     const std::string name = ar.text(
             "name", existing == nullptr ? type : std::string_view(existing->name()), type);
 
-    Node* target = ar.loading() ? insert(type, id, parent) : existing;
+    Node* target = existing;
+    if (kept) {
+        cinder::scene::RawFields fields = ar.raw(held == nullptr ? cinder::scene::RawFields{} : held->fields());
+        if (ar.loading()) {
+            std::erase_if(fields, [](const auto& field) { return field.first == "id" || field.first == "name"; });
+            target = insert(std::make_unique<Placeholder>(std::string(type), std::move(fields)), id, parent);
+        }
+    } else if (ar.loading()) {
+        target = insert(types_.create(type), id, parent);
+    }
     if (target == nullptr) return;
     if (ar.loading()) target->setName(name);
 
-    if (cinder::scene::Transform* transform = target->transform()) {
-        emit(ar, cinder::reflect::props<cinder::scene::Transform>(), transform, &blank_);
+    if (!kept) {
+        if (cinder::scene::Transform* transform = target->transform()) {
+            emit(ar, cinder::reflect::props<cinder::scene::Transform>(), transform, &blank_);
+        }
+        emit(ar, target->propList(), target->propTarget(), base->propTarget());
     }
-    emit(ar, target->propList(), target->propTarget(), base->propTarget());
 
     const PropRec attributes = ar.bag("attributes", ar.loading() ? PropRec{} : target->attributes());
     if (ar.loading()) target->loadAttributes(accepted(attributes, target->id()));
@@ -125,11 +140,11 @@ void SceneCodec::node(Archive& ar, Node* existing, std::string_view type, Node* 
     nodes(ar, target->children(), target);
 }
 
-Node* SceneCodec::insert(std::string_view type, int id, Node* parent) {
+Node* SceneCodec::insert(std::unique_ptr<Node> node, int id, Node* parent) {
     std::optional<int> wanted;
     if (id != NO_ID && scene_.byId(id) == nullptr) wanted = id;
     else if (id != NO_ID) cinder::platform::logError("[serial] duplicate node id %d\n", id);
-    return scene_.insert(types_.create(type), parent, wanted);
+    return scene_.insert(std::move(node), parent, wanted);
 }
 
 void SceneCodec::emit(Archive& ar, const std::vector<cinder::reflect::PropDef>& defs,

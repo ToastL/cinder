@@ -4,7 +4,6 @@
 #include "physics/Collide.hpp"
 #include "physics/Collider.hpp"
 #include "physics/Pose.hpp"
-#include "physics/PhysicsApi.hpp"
 #include "scene/Node.hpp"
 #include "scene/Scene.hpp"
 #include "scene/Transform.hpp"
@@ -60,20 +59,14 @@ void World::notify() {
     current_.clear();
     for (const Touch& touch : touching_) current_.insert(touch.key);
 
-    if (observer_ != nullptr) {
-        for (const Touch& touch : touching_) {
-            if (previous_.find(touch.key) != previous_.end()) continue;
-            Node* a = scene_.byId(touch.a);
-            Node* b = scene_.byId(touch.b);
-            if (a != nullptr && b != nullptr) observer_->touched(*a, *b);
-        }
+    for (const Touch& touch : touching_) {
+        if (previous_.find(touch.key) != previous_.end()) continue;
+        signal(touch, cinder::scene::Signal::Touched);
+    }
 
-        for (const Touch& touch : touched_) {
-            if (current_.find(touch.key) != current_.end()) continue;
-            Node* a = scene_.byId(touch.a);
-            Node* b = scene_.byId(touch.b);
-            if (a != nullptr && b != nullptr) observer_->touchEnded(*a, *b);
-        }
+    for (const Touch& touch : touched_) {
+        if (current_.find(touch.key) != current_.end()) continue;
+        signal(touch, cinder::scene::Signal::TouchEnded);
     }
 
     for (const Touch& touch : touched_) {
@@ -87,7 +80,15 @@ void World::notify() {
     touched_.swap(touching_);
 }
 
-void World::registerApi(cinder::lua::LuaApi& api) { registerPhysicsApi(api, *this); }
+void World::signal(const Touch& touch, cinder::scene::Signal signal) {
+    Node* a = scene_.byId(touch.a);
+    Node* b = scene_.byId(touch.b);
+    if (a == nullptr || b == nullptr) return;
+    scene_.emit(*a, signal, {b, {}});
+    a = scene_.byId(touch.a);
+    b = scene_.byId(touch.b);
+    if (a != nullptr && b != nullptr) scene_.emit(*b, signal, {a, {}});
+}
 
 bool World::raycast(const glm::vec3& origin, const glm::vec3& direction, float maxDistance,
                     RayHit& hit) const {

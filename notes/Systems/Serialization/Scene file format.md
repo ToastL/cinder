@@ -13,13 +13,10 @@ nodes {
         id 2
         name "Box"
         position -6 0 -6
-        attributes {
-            phase -8
-        }
         children {
-            Script {
+            Spinner {
                 id 3
-                file "spinner.lua"
+                speed 0 0.5 0
             }
         }
     }

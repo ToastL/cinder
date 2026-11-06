@@ -5,9 +5,11 @@
 #include "core/LaunchOptions.hpp"
 #include "core/ProjectConfig.hpp"
 #include "dev/History.hpp"
+#include "dev/ModuleHost.hpp"
 #include "dev/Packager.hpp"
 #include "dev/PlaySession.hpp"
 #include "dev/Selection.hpp"
+#include "dev/Toolchain.hpp"
 #include "dev/panels/Console.hpp"
 #include "dev/panels/EditorStyle.hpp"
 #include "dev/panels/Explorer.hpp"
@@ -41,15 +43,18 @@ void runEditor(const core::ProjectConfig& config, const core::LaunchOptions& opt
     Selection selection;
     History history(engine.scene());
     Packager packager(cinder::platform::projectRoot(), config.descriptor.targetPlatforms);
+    std::string manifestError;
+    std::optional<Toolchain> toolchain = Toolchain::load(Toolchain::defaultPath(), manifestError);
 
     const cinder::text::FontSet fonts = cinder::text::FontSet::engineDefault();
     cinder::ui::WindowPlatform platform(engine.window());
     cinder::ui::Application app(platform, fonts, cinder::dev::panels::editorTheme());
-    cinder::dev::panels::Toolbar toolbar(session, history, selection, packager, scenePath, app);
+    ModuleHost modules(engine.scene(), cinder::platform::projectRoot(), config.name, std::move(toolchain));
+    cinder::dev::panels::Toolbar toolbar(session, history, selection, packager, modules, scenePath, app);
     cinder::dev::panels::SceneView view(session, selection, history, engine, app);
     cinder::dev::panels::Explorer explorer(selection, history, engine.scene(), app);
     cinder::dev::panels::Properties properties(selection, history, engine.scene(), app);
-    cinder::dev::panels::Console console(engine.script(), history, selection, app);
+    cinder::dev::panels::Console console(app);
     cinder::ui::TabManager tabs;
     app.setRoot(cinder::dev::panels::editorLayout(toolbar, view, explorer, properties, console, tabs));
 
@@ -72,6 +77,12 @@ void runEditor(const core::ProjectConfig& config, const core::LaunchOptions& opt
         app.paint(list);
         view.afterPaint();
     });
+
+    if (!modules.available()) {
+        cinder::platform::logError("[build] game C++ is unavailable: %s\n", manifestError.c_str());
+    } else if (modules.hasSources()) {
+        modules.buildNow();
+    }
 
     if (std::filesystem::exists(scenePath)) {
         engine.openScene(scenePath);
@@ -101,6 +112,11 @@ void runEditor(const core::ProjectConfig& config, const core::LaunchOptions& opt
         }
         const bool last = options.frameLimit > 0 && frames + 1 >= options.frameLimit;
         if (last && !options.windowCapture.empty()) engine.renderer().requestWindowCapture(options.windowCapture);
+        modules.update();
+        if (modules.reloadPending() && session.state() == PlaySession::State::Edit && !app.isInteracting()
+            && modules.reload()) {
+            properties.rebuild();
+        }
         session.tick(loop);
         ++frames;
         if (last) break;

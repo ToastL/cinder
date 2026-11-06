@@ -96,6 +96,11 @@ cinder::scene::PropRec TextSave::bag(std::string_view name, const cinder::scene:
     return values;
 }
 
+cinder::scene::RawFields TextSave::raw(const cinder::scene::RawFields& values) {
+    for (const auto& [key, text] : values) field(key, text);
+    return values;
+}
+
 void TextSave::rec(const cinder::scene::PropRec& values) {
     for (const auto& [key, value] : values) {
         if (value.is<cinder::scene::PropRec>()) {

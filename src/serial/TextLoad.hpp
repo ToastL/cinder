@@ -31,6 +31,7 @@ public:
     void vector(std::string_view name, float* values, const float* fallback, int arity) override;
 
     cinder::scene::PropRec bag(std::string_view name, const cinder::scene::PropRec& values) override;
+    cinder::scene::RawFields raw(const cinder::scene::RawFields& values) override;
 
 private:
     struct Field {
@@ -41,6 +42,7 @@ private:
     struct Node {
         std::string name;
         std::unordered_map<std::string, Field> fields;
+        std::vector<std::string> order;
         std::vector<std::unique_ptr<Node>> blocks;
 
         const Node* block(std::string_view key) const;

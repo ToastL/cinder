@@ -2,5 +2,5 @@
 	"fileVersion": 1,
 	"engineAssociation": "",
 	"category": "Tests",
-	"description": "Runs the Lua smoke test from a script and prints ALL PASS."
+	"description": "Runs the engine smoke test from C++ and prints ALL PASS."
 }

@@ -28,6 +28,7 @@ public:
     void vector(std::string_view name, float* values, const float* fallback, int arity) override;
 
     cinder::scene::PropRec bag(std::string_view name, const cinder::scene::PropRec& values) override;
+    cinder::scene::RawFields raw(const cinder::scene::RawFields& values) override;
 
 private:
     void field(std::string_view name, std::string_view value);

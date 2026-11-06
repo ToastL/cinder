@@ -1,5 +1,6 @@
 #pragma once
 
+#include <functional>
 #include <memory>
 #include <optional>
 #include <string>
@@ -14,14 +15,15 @@ class DrawList;
 class Node;
 class NodeTypes;
 
-class SceneObserver {
-public:
-    virtual ~SceneObserver() = default;
-    virtual void attributeChanged(Node& node, const std::string& name) = 0;
-    virtual void childAdded(Node& parent, Node& child) = 0;
-    virtual void childRemoved(Node& parent, Node& child) = 0;
-    virtual void destroying(Node& node) = 0;
+enum class Signal { AttributeChanged, ChildAdded, ChildRemoved, Touched, TouchEnded, Destroying };
+
+struct SignalArgs {
+    Node* other = nullptr;
+    std::string_view name;
 };
+
+using SignalHandler = std::function<void(const SignalArgs&)>;
+using TimerHandler = std::function<void()>;
 
 class Scene {
 public:
@@ -54,9 +56,17 @@ public:
     void destroyNow(Node* node);
     void clear();
 
-    void setObserver(SceneObserver* observer) { observer_ = observer; }
     void reparent(Node& node, Node* next);
     void attributeChanged(Node& node, const std::string& name);
+
+    void emit(Node& source, Signal signal, const SignalArgs& args = {});
+    int connect(Node& source, Signal signal, Node& owner, SignalHandler handler);
+    void disconnect(int connection);
+
+    int after(Node& owner, double seconds, TimerHandler handler);
+    int every(Node& owner, double seconds, TimerHandler handler);
+    void cancel(int timer);
+    double time() const { return time_; }
 
 private:
     void attach(Node& node, Node* parent);
@@ -68,14 +78,38 @@ private:
     void markDestroyed(Node& node);
     void teardown(Node& node, bool notify);
     void unqueueStart(Node* node);
+    void hook(Node& node, Signal signal, const SignalArgs& args);
+    int schedule(Node& owner, double seconds, bool repeat, TimerHandler handler);
+    void runTimers(double dt);
+    void dropHandlers(int node);
+
+    struct Connection {
+        int id;
+        int source;
+        Signal signal;
+        int owner;
+        SignalHandler handler;
+    };
+
+    struct Timer {
+        int id;
+        int owner;
+        double due;
+        double interval;
+        bool repeat;
+        TimerHandler handler;
+    };
 
     NodeTypes& types_;
-    SceneObserver* observer_ = nullptr;
     std::vector<Node*> roots_;
     std::unordered_map<int, std::unique_ptr<Node>> nodes_;
     std::vector<Node*> pendingStart_;
     std::vector<int> pendingDestroy_;
     int nextId_ = 1;
+    std::vector<Connection> connections_;
+    std::vector<Timer> timers_;
+    int nextHandle_ = 1;
+    double time_ = 0.0;
 };
 
 }

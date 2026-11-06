@@ -39,10 +39,10 @@ public:
     const std::shared_ptr<cinder::ui::Widget>& widget() const { return widget_; }
 
     void update();
+    void rebuild();
 
 private:
     cinder::scene::Node* node() const;
-    void rebuild();
     void touched();
     std::shared_ptr<cinder::ui::Widget> body(cinder::scene::Node& node);
     std::shared_ptr<cinder::ui::Widget> rows(const cinder::reflect::PropList& defs, Target target);
