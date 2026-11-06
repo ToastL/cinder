@@ -35,7 +35,7 @@ A from-scratch C++20 game engine: Vulkan and Metal renderers, C++ game code, its
 - `(?)` marks something unverified. Keep it in the note text, never in properties.
 
 ## Open questions
-- [[Platform hosts]] is one commit in on `platform-hosts`; `option-platform` (current) is based on `main`. Which branch carries the hosts work forward?
+- [[Platform hosts]] is one commit on `platform-hosts`, branched before `main`'s current tip and not merged. The current branch is `cpp-gameplay` (`main` + C++ game code + [[cbt]], not pushed). Does the hosts work get rebased onto `cpp-gameplay` once that merges?
 - [[macOS editor]] contradicts `TODO.md`'s "no second UI system" line — not rewritten yet.
-- Branches `edit-play-mode`, `redesign`, `replace-imgui` and `switch-backend` are merged into `main` but still exist locally and on origin. `add-custom-ui` is not merged.
+- Branches `edit-play-mode`, `option-platform`, `redesign`, `replace-imgui` and `switch-backend` are merged into `main` but still exist locally and on origin. `add-custom-ui` and `platform-hosts` are not merged.
 - No CI ([[Decision - No CI for now]]).

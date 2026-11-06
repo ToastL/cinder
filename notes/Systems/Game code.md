@@ -17,9 +17,9 @@ last-update: 2026-11-06
 - `core/GameModule` — dlopen, BuildId check, register, unregister before dlclose.
 - `cbt game <project>` — builds `Source/` (default module `Project.<name>`, or the project's own rules), incremental, `compile_commands.json`. See [[cbt]].
 - `dev/GameBuild` — finds `cbt` next to the binaries and spells its command lines.
-- `dev/ModuleHost` — runs `cbt game` through `dev/Process`; swap = copy, open, save scene, clear, unload, enlist, load.
+- `dev/ModuleHost` — runs `cbt game` through `dev/Process` and swaps the library between frames. See [[Hot reload]].
 - `scene::Placeholder` — unknown classes survive a failed build byte for byte.
-- `Scene::connect`/`after`/`every` + node event hooks: events and timers owned by the scene.
+- `Scene::connect`/`after`/`every` + node event hooks: events and timers owned by the scene. See [[Signals and timers]].
 
 **Tests:** `game_module_test` (cbt-built test modules), the `hot_reload` check in [[cbt test]], the C++ selftest project.
 
