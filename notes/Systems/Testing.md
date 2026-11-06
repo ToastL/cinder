@@ -2,22 +2,23 @@
 type: system
 status: live
 layer: "tests"
-source: "tests/"
+source: "Tests/"
 started: 2026-09-09
-last-update: 2026-09-26
+last-update: 2026-11-06
 ---
 
 ## About
 
-**What it is:** doctest unit tests (all headless), architecture checks, a Lua selftest project, and a graphical smoke test. 222 headless test cases and a 65-check selftest per `TODO.md` (`CLAUDE.md` says 60 checks (?)).
+**What it is:** doctest unit tests (all headless), architecture checks, a C++ selftest project, a hot-reload test that compiles real game C++, and a graphical smoke test.
 
 ```sh
-ctest --test-dir build --output-on-failure
+./Binaries/macOS/cbt test
 ```
 
 ## Code
-[[ctest suite]], [[Lua selftest]], [[graphics_smoke]], [[UI harness]]
+[[cbt test]], [[Selftest]], [[graphics_smoke]], [[UI harness]]
 
 ## Notes
-- Verify in a scratch tree, not `build/` — see [[Verification recipes]].
+- Verify with `--output <scratch>`, not the user's `Binaries/` — see [[Verification recipes]].
+- 2026-11-06: ctest replaced by [[cbt test]].
 - No CI ([[Decision - No CI for now]]).

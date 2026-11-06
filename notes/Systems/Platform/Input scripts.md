@@ -1,7 +1,7 @@
 ---
 type: tool
 system: "[[Platform]]"
-source: "src/platform/InputScript.hpp"
+source: "Source/platform/InputScript.hpp"
 ---
 
 `platform/InputScript` replays a text file of timed input through `Input::inject`, ignoring the OS:

@@ -2,27 +2,27 @@
 type: system
 status: live
 layer: "physics"
-source: "src/physics/"
+source: "Source/physics/"
 started: 2026-09-20
 last-update: 2026-09-21
 ---
 
 ## About
 
-**What it is:** our own rigid-body engine ([[Decision - Own physics engine]]). A layer over `scene` and `reflect` with no GPU or window, so all of it runs headlessly in `ctest`. Its only other edge is `lua`, to bind its own functions.
+**What it is:** our own rigid-body engine ([[Decision - Own physics engine]]). A layer over `scene` and `reflect` with no GPU or window, so all of it runs headlessly in `cbt test`.
 
 **Headers:** `Body`, `BodyState`, `Broadphase`, `Collide`, `Collider`, `ContactSolver`, `Geometry`, `Nodes`, `PhysicsApi`, `Pose`, `World`.
 
-**How it runs:** `Engine` owns a `physics::World` and steps it in `Engine::update`, after `Scene::update`, before `input.consume()`. Edit mode never calls `update`, so **physics never runs while you edit**. `World::step` walks the scene every step instead of keeping a registry, in tree order with no `unordered_map` — so a scene steps identically every run (`tests/physics_test` pins it bit for bit).
+**How it runs:** `Engine` owns a `physics::World` and steps it in `Engine::update`, after `Scene::update`, before `input.consume()`. Edit mode never calls `update`, so **physics never runs while you edit**. `World::step` walks the scene every step instead of keeping a registry, in tree order with no `unordered_map` — so a scene steps identically every run (`Tests/physics_test` pins it bit for bit).
 
 **2D:** `planar` on a body locks z travel and x/y turning. Same rule as the renderer, where `projection` is all that makes a scene 2D.
 
 **Gravity:** `Config/Game.ini` `[Physics] gravity` (three numbers), default 9.81.
 
-**Sample:** `samples/physics` — floor, ramp, step, balls, capsules, a crate stack, a spawner script. `--scene Scenes/planar.scene` opens the 2D half.
+**Sample:** `Samples/physics` — floor, ramp, step, balls, capsules, a crate stack, and a `Dropper` that drops more balls. `--scene Scenes/planar.scene` opens the 2D half.
 
 ## Code
-[[Body]], [[Collider]], [[Physics step]], [[Collision detection]], [[Contact solver]], [[Sleeping and islands]], [[Physics Lua API]]
+[[Body]], [[Collider]], [[Physics step]], [[Collision detection]], [[Contact solver]], [[Sleeping and islands]]. Game code calls `Body::applyImpulse`/`applyForce`/`applyTorque`, `game::raycast` and `game::world()`, and hears touches through `onTouched` or `Scene::connect`.
 
 ## Tasks
 - [ ] Sensors and collision layers

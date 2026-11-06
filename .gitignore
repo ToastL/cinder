@@ -1,20 +1,3 @@
-### CMake build trees ###
-build/
-build-*/
-cmake-build-*/
-out/
-
-### In-source configure (a mistake, but do not commit the wreckage) ###
-CMakeCache.txt
-CMakeFiles/
-CMakeScripts/
-CTestTestfile.cmake
-cmake_install.cmake
-Testing/
-install_manifest.txt
-_deps/
-*.cmake.bak
-
 ### Compilation database and C++ tooling caches ###
 compile_commands.json
 .cache/
@@ -66,3 +49,8 @@ Saved/
 ### Obsidian
 notes/.obsidian/workspace*.json
 notes/.obsidian/cache
+
+### Build tool output
+/Binaries/
+/Intermediate/
+/Cinder.xcodeproj/

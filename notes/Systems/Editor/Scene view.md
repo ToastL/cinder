@@ -1,7 +1,7 @@
 ---
 type: module
 system: "[[Editor]]"
-source: "src/dev/panels/SceneView.hpp"
+source: "Source/dev/panels/SceneView.hpp"
 ---
 
 The "Scene" tab: a `ui::Viewport` whose client it drives (through a small forwarding client, to break the ownership cycle).

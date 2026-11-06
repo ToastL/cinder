@@ -1,12 +1,12 @@
 ---
 type: module
 system: "[[Editor]]"
-source: "src/dev/panels/Explorer.hpp"
+source: "Source/dev/panels/Explorer.hpp"
 ---
 
 A [[TreeView]] over node **ids**: builds only rows in view and nothing can dangle — each row reads its node from the scene every frame.
 
-- A row is the name, then the class dimmed (or the file name for a `Script`). Disabled nodes are dimmed unless selected.
+- A row is the name, then the class dimmed. Disabled nodes are dimmed unless selected.
 - Selection is bound to [[Selection]] through `isItemSelected` — picking in the Scene view and clicking a row are the same state.
 - Click selects, click on empty space clears. **"+"** lists every registered class and inserts under the selection or at the root.
 - Right-click: Insert, Duplicate (`Scene::clone`), Delete. Drag a row onto another to reparent (cycles refused); drop below the rows to make it a root.

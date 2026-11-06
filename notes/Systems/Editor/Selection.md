@@ -1,7 +1,7 @@
 ---
 type: class
 system: "[[Editor]]"
-source: "src/dev/Selection.hpp"
+source: "Source/dev/Selection.hpp"
 ---
 
 Holds the selected node's **id**, never a `Node*`. Play and Stop rebuild every node through `loadScene`, and ids round-trip through the codec, so a selection survives both.

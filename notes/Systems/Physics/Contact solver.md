@@ -1,7 +1,7 @@
 ---
 type: module
 system: "[[Physics]]"
-source: "src/physics/ContactSolver.hpp"
+source: "Source/physics/ContactSolver.hpp"
 ---
 
 Sequential impulses, `ITERATIONS` passes of friction then normal.

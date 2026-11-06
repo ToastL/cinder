@@ -2,7 +2,7 @@
 type: system
 status: live
 layer: "core"
-source: "src/core/"
+source: "Source/core/"
 started: 2026-09-09
 last-update: 2026-09-25
 ---

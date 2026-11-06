@@ -1,7 +1,7 @@
 ---
 type: format
 system: "[[Serialization]]"
-source: "src/serial/SceneCodec.cpp"
+source: "Source/serial/SceneCodec.cpp"
 ---
 
 `SceneCodec` writes version 4 (`VERSION` and `OLDEST` are both 4; the old actor/component formats aren't read).
@@ -13,13 +13,10 @@ nodes {
         id 2
         name "Box"
         position -6 0 -6
-        attributes {
-            phase -8
-        }
         children {
-            Script {
+            Spinner {
                 id 3
-                file "spinner.lua"
+                speed 0 0.5 0
             }
         }
     }

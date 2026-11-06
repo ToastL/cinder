@@ -1,6 +1,0 @@
-{
-	"fileVersion": 1,
-	"engineAssociation": "",
-	"category": "Tests",
-	"description": "Runs the Lua smoke test from a script and prints ALL PASS."
-}

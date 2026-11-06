@@ -1,7 +1,7 @@
 ---
 type: concept
 system: "[[UI framework]]"
-source: "src/ui/framework/Application.hpp, src/ui/widgets/Menu.hpp"
+source: "Source/ui/framework/Application.hpp, Source/ui/widgets/Menu.hpp"
 ---
 
 **Popups belong to the `Application`, not a widget.** `pushPopup(content, anchor, options)` places content below, beside or at a point next to an anchor, flipped and clamped into the window, painted above the whole tree.

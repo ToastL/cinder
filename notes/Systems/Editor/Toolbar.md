@@ -1,7 +1,7 @@
 ---
 type: module
 system: "[[Editor]]"
-source: "src/dev/panels/Toolbar.hpp"
+source: "Source/dev/panels/Toolbar.hpp"
 ---
 
 Play controls, save, undo and redo, the dirty marker, the ⌘ shortcuts as a `CommandList`, the Save / Don't Save / Cancel `Dialog`, and the File, Edit, Window, Play and Platforms menus.

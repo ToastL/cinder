@@ -1,0 +1,34 @@
+version 4
+nodes {
+    Camera {
+        id 1
+        position 0 0 10
+        projection "orthographic"
+        clearColor 0.05 0.05 0.08 1
+        virtualSize 640 360
+        children {
+            PanCamera {
+                id 4
+            }
+        }
+    }
+    Group {
+        id 2
+        name "Spawner"
+        children {
+            Spawner {
+                id 5
+            }
+        }
+    }
+    Sprite {
+        id 3
+        name "Cursor"
+        size 6 6
+        children {
+            FollowMouse {
+                id 6
+            }
+        }
+    }
+}

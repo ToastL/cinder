@@ -2,31 +2,36 @@
 type: system
 status: live
 layer: "—"
-source: "CMakeLists.txt, cmake/"
+source: "Setup.sh, Source/Programs/CinderBuildTool/"
 started: 2026-09-09
-last-update: 2026-09-26
+last-update: 2026-11-06
 ---
 
 ## About
 
-**What it is:** the CMake build: targets, pinned dependencies, the HLSL shader pipeline, and the layer check that keeps `src/` a strict DAG.
+**What it is:** the build. One tool, [[cbt]] (CinderBuildTool), builds the engine, the executables, the shaders and game code, from rules written in C++ next to each module — UnrealBuildTool's model. There is no CMake. See [[Decision - Own build tool]].
 
 **Build:**
 ```sh
-cmake -S . -B build -G Ninja && cmake --build build
-cmake -S . -B build-mtl -G Ninja -DCINDER_BACKEND=mtl && cmake --build build-mtl
-ctest --test-dir build --output-on-failure
+./Setup.sh                                   # bootstraps Binaries/macOS/cbt
+./Binaries/macOS/cbt build                   # editor (+ player, packager), ui_gallery, tests
+./Binaries/macOS/cbt build --backend vk --config Debug
+./Binaries/macOS/cbt test
+./Binaries/macOS/cbt generate xcode          # Cinder.xcodeproj that only calls cbt
 ```
-`CINDER_BACKEND` is `mtl` by default on macOS and `vk` elsewhere. The first configure needs network.
+Output: `Binaries/<Platform>/<Config>/` and `Intermediate/<Platform>/<Config>/`. `--backend` is `mtl` by default on macOS and `vk` elsewhere. Nothing is downloaded.
 
-**Build tools (not fetched):** `dxc` (LunarG Vulkan SDK — not on Homebrew), `spirv-cross` (`brew install spirv-cross`), and the Metal Toolchain (`xcodebuild -downloadComponent MetalToolchain`), invoked through `xcrun`.
+**Build tools (not vendored):** `dxc` (LunarG Vulkan SDK — not on Homebrew), `spirv-cross` (`brew install spirv-cross`), and the Metal Toolchain (`xcodebuild -downloadComponent MetalToolchain`), invoked through `xcrun`.
 
 ## Code
-[[Build targets]], [[Dependencies]], [[Shader pipeline]], [[Layer graph]]
+[[cbt]], [[Build targets]], [[Dependencies]], [[Shader pipeline]], [[Layer graph]]
 
 ## Tasks
 - [ ] Shader hot reload (shaders compile at build time; editing one needs a rebuild)
+- [ ] Remember `--backend` between runs (`Intermediate/BuildSettings.ini`)
+- [ ] Build on Linux — the rules have the X11 cases, nothing has run there
 
 ## Notes
-- The user rebuilds `build/` themselves; verify in a scratch tree. See [[Verification recipes]].
+- The user builds their own `Binaries/`; verify with `--output <scratch>`. See [[Verification recipes]].
 - 2026-09-23: Shaders moved from GLSL to HLSL, one DXC frontend for every target.
+- 2026-11-06: CMake replaced by [[cbt]], all 7 phases; the repo root took a project's shape (`Source/`, `Content/`, `Shaders/`, `Samples/`, `Tests/`). Verified on mtl and vk: `cbt test` 6/6, `graphics_smoke` and selftest ALL PASS, gallery capture byte-identical to CMake's.

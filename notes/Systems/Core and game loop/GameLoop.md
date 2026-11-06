@@ -1,7 +1,7 @@
 ---
 type: class
 system: "[[Core and game loop]]"
-source: "src/core/GameLoop.hpp"
+source: "Source/core/GameLoop.hpp"
 ---
 
 The shared loop. Three entry points:

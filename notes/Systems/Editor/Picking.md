@@ -1,7 +1,7 @@
 ---
 type: module
 system: "[[Editor]]"
-source: "src/dev/Picking.hpp"
+source: "Source/dev/Picking.hpp"
 ---
 
 A CPU raycast that knows nothing about the UI. The click unprojects through the editor camera and hits:

@@ -1,7 +1,7 @@
 ---
 type: module
 system: "[[Editor]]"
-source: "src/dev/Manipulator.hpp, src/dev/GizmoGeometry.hpp"
+source: "Source/dev/Manipulator.hpp, Source/dev/GizmoGeometry.hpp"
 ---
 
 Move, Rotate, Scale on a spatial selection, Edit mode only. Tools on **1/2/3**, World/Local on **X** (not W/E/R — [[Decision - Fly keys always on]]).

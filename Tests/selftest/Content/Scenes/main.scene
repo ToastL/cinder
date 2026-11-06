@@ -1,0 +1,24 @@
+version 4
+nodes {
+    Group {
+        id 1
+        name "SelfTest"
+        children {
+            SelfTest {
+                id 3
+            }
+        }
+    }
+    Group {
+        id 2
+        name "Marked"
+        attributes {
+            mark 42
+        }
+        children {
+            Marker {
+                id 4
+            }
+        }
+    }
+}

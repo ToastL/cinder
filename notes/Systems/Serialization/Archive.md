@@ -1,7 +1,7 @@
 ---
 type: module
 system: "[[Serialization]]"
-source: "src/serial/Archive.hpp"
+source: "Source/serial/Archive.hpp"
 ---
 
 `Archive` is the bidirectional visitor that `SceneCodec::walk` and `ProjectConfig::walk` run in both directions.

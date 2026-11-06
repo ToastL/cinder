@@ -1,0 +1,1221 @@
+version 4
+nodes {
+    Camera {
+        id 1
+        position 0 3 10
+        rotation -0.17 0 0
+        fov 70
+        clearColor 0.05 0.06 0.09 1
+        children {
+            Flycam {
+                id 83
+            }
+        }
+    }
+    MeshPart {
+        id 2
+        name "Box"
+        position -6 0 -6
+        children {
+            Spinner {
+                id 84
+                speed 0 0.5 0
+            }
+            Bobber {
+                id 85
+                enabled false
+                phase -8
+            }
+        }
+    }
+    MeshPart {
+        id 3
+        name "Box"
+        position -6 0 -4.5
+        children {
+            Spinner {
+                id 86
+                speed 0 0.5 0
+            }
+            Bobber {
+                id 87
+                phase -7
+            }
+        }
+    }
+    MeshPart {
+        id 4
+        name "Box"
+        position -6 0 -3
+        children {
+            Spinner {
+                id 88
+                speed 0 0.5 0
+            }
+            Bobber {
+                id 89
+                phase -6
+            }
+        }
+    }
+    MeshPart {
+        id 5
+        name "Box"
+        position -6 0 -1.5
+        children {
+            Spinner {
+                id 90
+                speed 0 0.5 0
+            }
+            Bobber {
+                id 91
+                phase -5
+            }
+        }
+    }
+    MeshPart {
+        id 6
+        name "Box"
+        position -6 0 0
+        children {
+            Spinner {
+                id 92
+                speed 0 0.5 0
+            }
+            Bobber {
+                id 93
+                phase -4
+            }
+        }
+    }
+    MeshPart {
+        id 7
+        name "Box"
+        position -6 0 1.5
+        children {
+            Spinner {
+                id 94
+                speed 0 0.5 0
+            }
+            Bobber {
+                id 95
+                phase -3
+            }
+        }
+    }
+    MeshPart {
+        id 8
+        name "Box"
+        position -6 0 3
+        children {
+            Spinner {
+                id 96
+                speed 0 0.5 0
+            }
+            Bobber {
+                id 97
+                phase -2
+            }
+        }
+    }
+    MeshPart {
+        id 9
+        name "Box"
+        position -6 0 4.5
+        children {
+            Spinner {
+                id 98
+                speed 0 0.5 0
+            }
+            Bobber {
+                id 99
+                phase -1
+            }
+        }
+    }
+    MeshPart {
+        id 10
+        name "Box"
+        position -6 0 6
+        children {
+            Spinner {
+                id 100
+                speed 0 0.5 0
+            }
+            Bobber {
+                id 101
+            }
+        }
+    }
+    MeshPart {
+        id 11
+        name "Box"
+        position -4.5 0 -6
+        children {
+            Spinner {
+                id 102
+                speed 0 0.5 0
+            }
+            Bobber {
+                id 103
+                phase -7
+            }
+        }
+    }
+    MeshPart {
+        id 12
+        name "Box"
+        position -4.5 0 -4.5
+        children {
+            Spinner {
+                id 104
+                speed 0 0.5 0
+            }
+            Bobber {
+                id 105
+                phase -6
+            }
+        }
+    }
+    MeshPart {
+        id 13
+        name "Box"
+        position -4.5 0 -3
+        children {
+            Spinner {
+                id 106
+                speed 0 0.5 0
+            }
+            Bobber {
+                id 107
+                phase -5
+            }
+        }
+    }
+    MeshPart {
+        id 14
+        name "Box"
+        position -4.5 0 -1.5
+        children {
+            Spinner {
+                id 108
+                speed 0 0.5 0
+            }
+            Bobber {
+                id 109
+                phase -4
+            }
+        }
+    }
+    MeshPart {
+        id 15
+        name "Box"
+        position -4.5 0 0
+        children {
+            Spinner {
+                id 110
+                speed 0 0.5 0
+            }
+            Bobber {
+                id 111
+                phase -3
+            }
+        }
+    }
+    MeshPart {
+        id 16
+        name "Box"
+        position -4.5 0 1.5
+        children {
+            Spinner {
+                id 112
+                speed 0 0.5 0
+            }
+            Bobber {
+                id 113
+                phase -2
+            }
+        }
+    }
+    MeshPart {
+        id 17
+        name "Box"
+        position -4.5 0 3
+        children {
+            Spinner {
+                id 114
+                speed 0 0.5 0
+            }
+            Bobber {
+                id 115
+                phase -1
+            }
+        }
+    }
+    MeshPart {
+        id 18
+        name "Box"
+        position -4.5 0 4.5
+        children {
+            Spinner {
+                id 116
+                speed 0 0.5 0
+            }
+            Bobber {
+                id 117
+            }
+        }
+    }
+    MeshPart {
+        id 19
+        name "Box"
+        position -4.5 0 6
+        children {
+            Spinner {
+                id 118
+                speed 0 0.5 0
+            }
+            Bobber {
+                id 119
+                phase 1
+            }
+        }
+    }
+    MeshPart {
+        id 20
+        name "Box"
+        position -3 0 -6
+        children {
+            Spinner {
+                id 120
+                speed 0 0.5 0
+            }
+            Bobber {
+                id 121
+                phase -6
+            }
+        }
+    }
+    MeshPart {
+        id 21
+        name "Box"
+        position -3 0 -4.5
+        children {
+            Spinner {
+                id 122
+                speed 0 0.5 0
+            }
+            Bobber {
+                id 123
+                phase -5
+            }
+        }
+    }
+    MeshPart {
+        id 22
+        name "Box"
+        position -3 0 -3
+        children {
+            Spinner {
+                id 124
+                speed 0 0.5 0
+            }
+            Bobber {
+                id 125
+                phase -4
+            }
+        }
+    }
+    MeshPart {
+        id 23
+        name "Box"
+        position -3 0 -1.5
+        children {
+            Spinner {
+                id 126
+                speed 0 0.5 0
+            }
+            Bobber {
+                id 127
+                phase -3
+            }
+        }
+    }
+    MeshPart {
+        id 24
+        name "Box"
+        position -3 0 0
+        children {
+            Spinner {
+                id 128
+                speed 0 0.5 0
+            }
+            Bobber {
+                id 129
+                phase -2
+            }
+        }
+    }
+    MeshPart {
+        id 25
+        name "Box"
+        position -3 0 1.5
+        children {
+            Spinner {
+                id 130
+                speed 0 0.5 0
+            }
+            Bobber {
+                id 131
+                phase -1
+            }
+        }
+    }
+    MeshPart {
+        id 26
+        name "Box"
+        position -3 0 3
+        children {
+            Spinner {
+                id 132
+                speed 0 0.5 0
+            }
+            Bobber {
+                id 133
+            }
+        }
+    }
+    MeshPart {
+        id 27
+        name "Box"
+        position -3 0 4.5
+        children {
+            Spinner {
+                id 134
+                speed 0 0.5 0
+            }
+            Bobber {
+                id 135
+                phase 1
+            }
+        }
+    }
+    MeshPart {
+        id 28
+        name "Box"
+        position -3 0 6
+        children {
+            Spinner {
+                id 136
+                speed 0 0.5 0
+            }
+            Bobber {
+                id 137
+                phase 2
+            }
+        }
+    }
+    MeshPart {
+        id 29
+        name "Box"
+        position -1.5 0 -6
+        children {
+            Spinner {
+                id 138
+                speed 0 0.5 0
+            }
+            Bobber {
+                id 139
+                phase -5
+            }
+        }
+    }
+    MeshPart {
+        id 30
+        name "Box"
+        position -1.5 0 -4.5
+        children {
+            Spinner {
+                id 140
+                speed 0 0.5 0
+            }
+            Bobber {
+                id 141
+                phase -4
+            }
+        }
+    }
+    MeshPart {
+        id 31
+        name "Box"
+        position -1.5 0 -3
+        children {
+            Spinner {
+                id 142
+                speed 0 0.5 0
+            }
+            Bobber {
+                id 143
+                phase -3
+            }
+        }
+    }
+    MeshPart {
+        id 32
+        name "Box"
+        position -1.5 0 -1.5
+        children {
+            Spinner {
+                id 144
+                speed 0 0.5 0
+            }
+            Bobber {
+                id 145
+                phase -2
+            }
+        }
+    }
+    MeshPart {
+        id 33
+        name "Box"
+        position -1.5 0 0
+        children {
+            Spinner {
+                id 146
+                speed 0 0.5 0
+            }
+            Bobber {
+                id 147
+                phase -1
+            }
+        }
+    }
+    MeshPart {
+        id 34
+        name "Box"
+        position -1.5 0 1.5
+        children {
+            Spinner {
+                id 148
+                speed 0 0.5 0
+            }
+            Bobber {
+                id 149
+            }
+        }
+    }
+    MeshPart {
+        id 35
+        name "Box"
+        position -1.5 0 3
+        children {
+            Spinner {
+                id 150
+                speed 0 0.5 0
+            }
+            Bobber {
+                id 151
+                phase 1
+            }
+        }
+    }
+    MeshPart {
+        id 36
+        name "Box"
+        position -1.5 0 4.5
+        children {
+            Spinner {
+                id 152
+                speed 0 0.5 0
+            }
+            Bobber {
+                id 153
+                phase 2
+            }
+        }
+    }
+    MeshPart {
+        id 37
+        name "Box"
+        position -1.5 0 6
+        children {
+            Spinner {
+                id 154
+                speed 0 0.5 0
+            }
+            Bobber {
+                id 155
+                phase 3
+            }
+        }
+    }
+    MeshPart {
+        id 38
+        name "Box"
+        position 0 0 -6
+        children {
+            Spinner {
+                id 156
+                speed 0 0.5 0
+            }
+            Bobber {
+                id 157
+                phase -4
+            }
+        }
+    }
+    MeshPart {
+        id 39
+        name "Box"
+        position 0 0 -4.5
+        children {
+            Spinner {
+                id 158
+                speed 0 0.5 0
+            }
+            Bobber {
+                id 159
+                phase -3
+            }
+        }
+    }
+    MeshPart {
+        id 40
+        name "Box"
+        position 0 0 -3
+        children {
+            Spinner {
+                id 160
+                speed 0 0.5 0
+            }
+            Bobber {
+                id 161
+                phase -2
+            }
+        }
+    }
+    MeshPart {
+        id 41
+        name "Box"
+        position 0 0 -1.5
+        children {
+            Spinner {
+                id 162
+                speed 0 0.5 0
+            }
+            Bobber {
+                id 163
+                phase -1
+            }
+        }
+    }
+    MeshPart {
+        id 42
+        name "Box"
+        children {
+            Spinner {
+                id 164
+                speed 0 0.5 0
+            }
+            Bobber {
+                id 165
+            }
+        }
+    }
+    MeshPart {
+        id 43
+        name "Box"
+        position 0 0 1.5
+        children {
+            Spinner {
+                id 166
+                speed 0 0.5 0
+            }
+            Bobber {
+                id 167
+                phase 1
+            }
+        }
+    }
+    MeshPart {
+        id 44
+        name "Box"
+        position 0 0 3
+        children {
+            Spinner {
+                id 168
+                speed 0 0.5 0
+            }
+            Bobber {
+                id 169
+                phase 2
+            }
+        }
+    }
+    MeshPart {
+        id 45
+        name "Box"
+        position 0 0 4.5
+        children {
+            Spinner {
+                id 170
+                speed 0 0.5 0
+            }
+            Bobber {
+                id 171
+                phase 3
+            }
+        }
+    }
+    MeshPart {
+        id 46
+        name "Box"
+        position 0 0 6
+        children {
+            Spinner {
+                id 172
+                speed 0 0.5 0
+            }
+            Bobber {
+                id 173
+                phase 4
+            }
+        }
+    }
+    MeshPart {
+        id 47
+        name "Box"
+        position 1.5 0 -6
+        children {
+            Spinner {
+                id 174
+                speed 0 0.5 0
+            }
+            Bobber {
+                id 175
+                phase -3
+            }
+        }
+    }
+    MeshPart {
+        id 48
+        name "Box"
+        position 1.5 0 -4.5
+        children {
+            Spinner {
+                id 176
+                speed 0 0.5 0
+            }
+            Bobber {
+                id 177
+                phase -2
+            }
+        }
+    }
+    MeshPart {
+        id 49
+        name "Box"
+        position 1.5 0 -3
+        children {
+            Spinner {
+                id 178
+                speed 0 0.5 0
+            }
+            Bobber {
+                id 179
+                phase -1
+            }
+        }
+    }
+    MeshPart {
+        id 50
+        name "Box"
+        position 1.5 0 -1.5
+        children {
+            Spinner {
+                id 180
+                speed 0 0.5 0
+            }
+            Bobber {
+                id 181
+            }
+        }
+    }
+    MeshPart {
+        id 51
+        name "Box"
+        position 1.5 0 0
+        children {
+            Spinner {
+                id 182
+                speed 0 0.5 0
+            }
+            Bobber {
+                id 183
+                phase 1
+            }
+        }
+    }
+    MeshPart {
+        id 52
+        name "Box"
+        position 1.5 0 1.5
+        children {
+            Spinner {
+                id 184
+                speed 0 0.5 0
+            }
+            Bobber {
+                id 185
+                phase 2
+            }
+        }
+    }
+    MeshPart {
+        id 53
+        name "Box"
+        position 1.5 0 3
+        children {
+            Spinner {
+                id 186
+                speed 0 0.5 0
+            }
+            Bobber {
+                id 187
+                phase 3
+            }
+        }
+    }
+    MeshPart {
+        id 54
+        name "Box"
+        position 1.5 0 4.5
+        children {
+            Spinner {
+                id 188
+                speed 0 0.5 0
+            }
+            Bobber {
+                id 189
+                phase 4
+            }
+        }
+    }
+    MeshPart {
+        id 55
+        name "Box"
+        position 1.5 0 6
+        children {
+            Spinner {
+                id 190
+                speed 0 0.5 0
+            }
+            Bobber {
+                id 191
+                phase 5
+            }
+        }
+    }
+    MeshPart {
+        id 56
+        name "Box"
+        position 3 0 -6
+        children {
+            Spinner {
+                id 192
+                speed 0 0.5 0
+            }
+            Bobber {
+                id 193
+                phase -2
+            }
+        }
+    }
+    MeshPart {
+        id 57
+        name "Box"
+        position 3 0 -4.5
+        children {
+            Spinner {
+                id 194
+                speed 0 0.5 0
+            }
+            Bobber {
+                id 195
+                phase -1
+            }
+        }
+    }
+    MeshPart {
+        id 58
+        name "Box"
+        position 3 0 -3
+        children {
+            Spinner {
+                id 196
+                speed 0 0.5 0
+            }
+            Bobber {
+                id 197
+            }
+        }
+    }
+    MeshPart {
+        id 59
+        name "Box"
+        position 3 0 -1.5
+        children {
+            Spinner {
+                id 198
+                speed 0 0.5 0
+            }
+            Bobber {
+                id 199
+                phase 1
+            }
+        }
+    }
+    MeshPart {
+        id 60
+        name "Box"
+        position 3 0 0
+        children {
+            Spinner {
+                id 200
+                speed 0 0.5 0
+            }
+            Bobber {
+                id 201
+                phase 2
+            }
+        }
+    }
+    MeshPart {
+        id 61
+        name "Box"
+        position 3 0 1.5
+        children {
+            Spinner {
+                id 202
+                speed 0 0.5 0
+            }
+            Bobber {
+                id 203
+                phase 3
+            }
+        }
+    }
+    MeshPart {
+        id 62
+        name "Box"
+        position 3 0 3
+        children {
+            Spinner {
+                id 204
+                speed 0 0.5 0
+            }
+            Bobber {
+                id 205
+                phase 4
+            }
+        }
+    }
+    MeshPart {
+        id 63
+        name "Box"
+        position 3 0 4.5
+        children {
+            Spinner {
+                id 206
+                speed 0 0.5 0
+            }
+            Bobber {
+                id 207
+                phase 5
+            }
+        }
+    }
+    MeshPart {
+        id 64
+        name "Box"
+        position 3 0 6
+        children {
+            Spinner {
+                id 208
+                speed 0 0.5 0
+            }
+            Bobber {
+                id 209
+                phase 6
+            }
+        }
+    }
+    MeshPart {
+        id 65
+        name "Box"
+        position 4.5 0 -6
+        children {
+            Spinner {
+                id 210
+                speed 0 0.5 0
+            }
+            Bobber {
+                id 211
+                phase -1
+            }
+        }
+    }
+    MeshPart {
+        id 66
+        name "Box"
+        position 4.5 0 -4.5
+        children {
+            Spinner {
+                id 212
+                speed 0 0.5 0
+            }
+            Bobber {
+                id 213
+            }
+        }
+    }
+    MeshPart {
+        id 67
+        name "Box"
+        position 4.5 0 -3
+        children {
+            Spinner {
+                id 214
+                speed 0 0.5 0
+            }
+            Bobber {
+                id 215
+                phase 1
+            }
+        }
+    }
+    MeshPart {
+        id 68
+        name "Box"
+        position 4.5 0 -1.5
+        children {
+            Spinner {
+                id 216
+                speed 0 0.5 0
+            }
+            Bobber {
+                id 217
+                phase 2
+            }
+        }
+    }
+    MeshPart {
+        id 69
+        name "Box"
+        position 4.5 0 0
+        children {
+            Spinner {
+                id 218
+                speed 0 0.5 0
+            }
+            Bobber {
+                id 219
+                phase 3
+            }
+        }
+    }
+    MeshPart {
+        id 70
+        name "Box"
+        position 4.5 0 1.5
+        children {
+            Spinner {
+                id 220
+                speed 0 0.5 0
+            }
+            Bobber {
+                id 221
+                phase 4
+            }
+        }
+    }
+    MeshPart {
+        id 71
+        name "Box"
+        position 4.5 0 3
+        children {
+            Spinner {
+                id 222
+                speed 0 0.5 0
+            }
+            Bobber {
+                id 223
+                phase 5
+            }
+        }
+    }
+    MeshPart {
+        id 72
+        name "Box"
+        position 4.5 0 4.5
+        children {
+            Spinner {
+                id 224
+                speed 0 0.5 0
+            }
+            Bobber {
+                id 225
+                phase 6
+            }
+        }
+    }
+    MeshPart {
+        id 73
+        name "Box"
+        position 4.5 0 6
+        children {
+            Spinner {
+                id 226
+                speed 0 0.5 0
+            }
+            Bobber {
+                id 227
+                phase 7
+            }
+        }
+    }
+    MeshPart {
+        id 74
+        name "Box"
+        position 6 0 -6
+        children {
+            Spinner {
+                id 228
+                speed 0 0.5 0
+            }
+            Bobber {
+                id 229
+            }
+        }
+    }
+    MeshPart {
+        id 75
+        name "Box"
+        position 6 0 -4.5
+        children {
+            Spinner {
+                id 230
+                speed 0 0.5 0
+            }
+            Bobber {
+                id 231
+                phase 1
+            }
+        }
+    }
+    MeshPart {
+        id 76
+        name "Box"
+        position 6 0 -3
+        children {
+            Spinner {
+                id 232
+                speed 0 0.5 0
+            }
+            Bobber {
+                id 233
+                phase 2
+            }
+        }
+    }
+    MeshPart {
+        id 77
+        name "Box"
+        position 6 0 -1.5
+        children {
+            Spinner {
+                id 234
+                speed 0 0.5 0
+            }
+            Bobber {
+                id 235
+                phase 3
+            }
+        }
+    }
+    MeshPart {
+        id 78
+        name "Box"
+        position 6 0 0
+        children {
+            Spinner {
+                id 236
+                speed 0 0.5 0
+            }
+            Bobber {
+                id 237
+                phase 4
+            }
+        }
+    }
+    MeshPart {
+        id 79
+        name "Box"
+        position 6 0 1.5
+        children {
+            Spinner {
+                id 238
+                speed 0 0.5 0
+            }
+            Bobber {
+                id 239
+                phase 5
+            }
+        }
+    }
+    MeshPart {
+        id 80
+        name "Box"
+        position 6 0 3
+        children {
+            Spinner {
+                id 240
+                speed 0 0.5 0
+            }
+            Bobber {
+                id 241
+                phase 6
+            }
+        }
+    }
+    MeshPart {
+        id 81
+        name "Box"
+        position 6 0 4.5
+        children {
+            Spinner {
+                id 242
+                speed 0 0.5 0
+            }
+            Bobber {
+                id 243
+                phase 7
+            }
+        }
+    }
+    MeshPart {
+        id 82
+        name "Box"
+        position 6 0 6
+        children {
+            Spinner {
+                id 244
+                speed 0 0.5 0
+            }
+            Bobber {
+                id 245
+                phase 8
+            }
+        }
+    }
+}

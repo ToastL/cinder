@@ -1,7 +1,7 @@
 ---
 type: module
 system: "[[UI framework]]"
-source: "src/ui/docking/TabManager.hpp"
+source: "Source/ui/docking/TabManager.hpp"
 ---
 
 **A layout tree, not widget surgery.** `TabManager` holds a `LayoutNode` tree of splits and stacks; every change (drop, close, reopen) edits the tree and rebuilds widgets from it, carrying splitter sizes over first — nothing reparents a live `Splitter`.

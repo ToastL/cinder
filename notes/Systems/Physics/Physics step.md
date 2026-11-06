@@ -1,7 +1,7 @@
 ---
 type: concept
 system: "[[Physics]]"
-source: "src/physics/World.cpp"
+source: "Source/physics/World.cpp"
 ---
 
 `World::step`, in order:

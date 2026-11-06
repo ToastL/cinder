@@ -2,18 +2,18 @@
 type: system
 status: in-progress
 layer: "dev"
-source: "src/dev/, src/editor/"
+source: "Source/dev/, Source/editor/"
 started: 2026-09-11
 last-update: 2026-09-26
 ---
 
 ## About
 
-**What it is:** the dev build. `editor` links `engine_dev` ([[Decision - Dev tools as a link target]]): one window of docked tabs — Explorer left, Scene view middle with the console under it, Properties right — over a toolbar with File, Edit, Window, Play and Platforms menus. Opens a project in **Edit mode**: the scene is drawn, no game code runs.
+**What it is:** the dev build. `editor` links the `dev` module ([[Decision - Dev tools as a link target]]): one window of docked tabs — Explorer left, Scene view middle with the console under it, Properties right — over a toolbar with File, Edit, Window, Play and Platforms menus. Opens a project in **Edit mode**: the scene is drawn, no game code runs.
 
 **Run:**
 ```sh
-DYLD_LIBRARY_PATH=/opt/homebrew/lib ./build/editor samples/sandbox2d
+DYLD_LIBRARY_PATH=/opt/homebrew/lib ./Binaries/macOS/Development/editor Samples/sandbox2d
 ```
 Flags: `--scene <path>` (relative to `Content/`), `--play`, `--frames <n>`, `--capture <png>` (scene target only), `--capture-window <png>` (UI included), `--input-script <file>`.
 

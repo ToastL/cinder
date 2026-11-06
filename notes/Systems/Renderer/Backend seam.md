@@ -1,7 +1,7 @@
 ---
 type: concept
 system: "[[Renderer]]"
-source: "src/gfx/rhi/"
+source: "Source/gfx/rhi/"
 ---
 
 `gfx/rhi` is a neutral leaf that **declares** `Ctx`, `GpuBuffer`, `GraphicsPipeline`, `Texture`, `TexturePool`, `RenderTarget`, `GlyphPages` and `Presenter`. A backend **defines** them in namespace `cinder::gfx::rhi`. No vtables: `Engine` holds `rhi::Ctx ctx_` by value. See [[Decision - Compile-time backend]].
