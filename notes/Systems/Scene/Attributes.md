@@ -1,7 +1,7 @@
 ---
 type: concept
 system: "[[Scene]]"
-source: "src/scene/Attributes.hpp"
+source: "Source/scene/Attributes.hpp"
 ---
 
 Per-node free-form data: a `PropRec` on `Node`, saved as an `attributes { ... }` block, edited in [[Properties panel]], read by game code with `Node::attribute`.

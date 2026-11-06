@@ -1,7 +1,7 @@
 ---
 type: module
 system: "[[Platform]]"
-source: "src/platform/Log.hpp"
+source: "Source/platform/Log.hpp"
 ---
 
 Everything prints through `logInfo` / `logError` — printf-style, `__attribute__((format))`-checked. Both always write to stdout/stderr, and also to a `LogSink` when one is installed.

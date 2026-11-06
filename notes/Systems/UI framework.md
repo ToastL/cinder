@@ -2,7 +2,7 @@
 type: system
 status: live
 layer: "text, ui/core, ui/framework, ui/widgets, ui/docking"
-source: "src/text/, src/ui/"
+source: "Source/text/, Source/ui/"
 started: 2026-09-22
 last-update: 2026-09-25
 ---
@@ -15,7 +15,7 @@ last-update: 2026-09-25
 
 **Test bench:** `ui_gallery` — every widget live, every primitive drawn.
 ```sh
-DYLD_LIBRARY_PATH=/opt/homebrew/lib ./build/ui_gallery --frames 10 --capture-window gallery.png
+DYLD_LIBRARY_PATH=/opt/homebrew/lib ./Binaries/macOS/Development/ui_gallery --frames 10 --capture-window gallery.png
 ```
 `--lowdpi` turns off framebuffer scaling; `--text-gamma` tunes glyph coverage.
 

@@ -1,7 +1,7 @@
 ---
 type: concept
 system: "[[Renderer]]"
-source: "src/gfx/RendererDrawList.cpp, src/gfx/asset/Assets.hpp"
+source: "Source/gfx/RendererDrawList.cpp, Source/gfx/asset/Assets.hpp"
 ---
 
 **Nodes never store GPU handles** — a handle means nothing on the next run. `Sprite.texture`, `MeshPart.texture` and `MeshPart.mesh` are *names*: a path under `Content/` or a primitive like `"cube"`.

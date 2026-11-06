@@ -1,7 +1,7 @@
 ---
 type: module
 system: "[[Renderer]]"
-source: "src/gfx/UiRenderer.hpp"
+source: "Source/gfx/UiRenderer.hpp"
 ---
 
 Draws a `ui::ElementList` in the present pass, after the composite.

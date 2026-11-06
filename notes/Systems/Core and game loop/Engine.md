@@ -1,7 +1,7 @@
 ---
 type: class
 system: "[[Core and game loop]]"
-source: "src/core/Engine.hpp"
+source: "Source/core/Engine.hpp"
 ---
 
 A library that gets ticked, not something that runs itself. **Don't move the loop into `Engine`.**

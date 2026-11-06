@@ -1,7 +1,7 @@
 ---
 type: class
 system: "[[Editor]]"
-source: "src/dev/EditorCamera.hpp"
+source: "Source/dev/EditorCamera.hpp"
 ---
 
 In Edit mode the Scene view looks through `dev/EditorCamera` via `Renderer::overrideCamera`; every other state calls `releaseCamera`, so Play and Pause show the game's camera. Covers sprites too, so a 2D scene is flown like a 3D one.

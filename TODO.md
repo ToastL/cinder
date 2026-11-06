@@ -11,7 +11,7 @@ hot-reloads between frames. A Roblox-style tree of nodes
 with a prop system that feeds the serializer and the editor from one declaration. A
 bidirectional `Archive` with text and INI backends, and games that are project folders in Unreal's
 shape — a `.cinder` file, `Config/`, `Content/` and `Source/` — rather than code in the engine. The
-editor runs on a UI framework of our own, in a separate `engine_dev` target: docked tabs holding the
+editor runs on a UI framework of our own, in a separate `dev` module: docked tabs holding the
 Explorer, the Scene view, Properties and a console, over a toolbar with the File,
 Edit, Window, Play and Platforms menus and a Build button — `player` ships without a byte of it. The editor opens a project in Edit mode, seen
 through a free-flying editor camera — 2D scenes included — with a gizmo drawn for every scene camera; Play serializes the
@@ -32,8 +32,8 @@ view, the editor camera, the Explorer, Properties, picking, undo and transform g
 
 ## Editor shell
 
-- [x] The editor's UI is our own — see *UI framework*. `editor` is the dev build on `engine_dev`;
-      `player` links `engine` and `ctest` runs `nm` over both.
+- [x] The editor's UI is our own — see *UI framework*. `editor` is the dev build on the `dev` module;
+      `player` never links it, and `cbt test`'s `shipping` check runs `nm` over it.
 - [x] Docking layout: the Scene view, Explorer, Properties and Console as tabs in splits, with
       drag-to-redock and a Window menu; the asset browser docks into it when it lands.
 - [x] **Scene view** — `dev/panels/SceneView`. The target is sized to the panel through
@@ -102,20 +102,41 @@ a text buffer that competes with a real IDE and loses.
       never loses nodes
 - [x] Node event hooks, `Scene::connect` and `Scene::after`/`every` — owned by the scene, so a library
       can always be unloaded
-- [x] `core/GameModule` loads, ABI-checks, registers and unloads a library; `player` loads one before
-      opening its scene
-- [x] `dev/ModuleBuilder` drives clang from `cinder-toolchain.json`: parallel, incremental through
-      depfiles, `compile_commands.json`; Build and ⌘B in the editor, the build before the scene opens
+- [x] `core/GameModule` loads, BuildId-checks, registers and unloads a library; `player` loads one
+      before opening its scene
+- [x] Game code builds through `cbt game`: parallel, incremental through depfiles and command
+      signatures, `compile_commands.json`; Build and ⌘B in the editor, the build before the scene opens
 - [x] Hot reload between frames in Edit mode, through a scene round trip; a failed build or load keeps
       the old library
 - [ ] Hot reload during Play — today it waits for Stop
 - [ ] Rebuild automatically when a file in `Source/` is saved, as Unity does
 - [ ] Coroutines for waits — `co_await game::seconds(0.5)` in place of `Scene::after` chains
-- [ ] A library built against older engine headers fails `dlopen` with a missing symbol; detect the
-      engine changing (a build id in the ABI string) and rebuild instead
+- [x] A library built against an older engine is rebuilt: the engine's BuildId is part of every game
+      compile command, and `GameModule` refuses a library carrying another one
 - [ ] Compiler errors in the console as clickable `file:line`
 - [ ] A precompiled header for `game/Game.hpp`, which dominates compile time
 - [ ] iOS forbids loading code that is not signed into the app: link the game statically there
+
+## Build tool
+
+`cbt`, in `Source/Programs/CinderBuildTool/`, builds the engine, the tools and game code — Unreal's
+UnrealBuildTool model.
+
+- [x] Rules as code: a `.Build.cpp` per module and a `.Target.cpp` per target, compiled into `cbt` by
+      `Setup.sh`; `cbt` rebuilds itself when they change
+- [x] Vendored third-party code in `Source/ThirdParty/`, built from its own rules
+- [x] Parallel, incremental actions: depfiles, mtimes and command signatures; shaders; Debug,
+      Development and Shipping; `mtl` and `vk`
+- [x] The layer graph derived from the rules — `cbt check`
+- [x] `cbt test` — layers, fixtures, shaders, the shipping check, unit tests and hot reload
+- [x] `cbt game` — project C++ with optional project rules; the BuildId keeps it in step with the engine
+- [x] `cbt generate xcode` and `cbt generate compile-commands`; Xcode only calls `cbt`
+- [x] The repo root in a project's shape: `Source/`, `Content/`, `Shaders/`, `Samples/`, `Tests/`
+- [ ] Remember `--backend` and `--shader-formats` between runs (`Intermediate/BuildSettings.ini`); an
+      Xcode build always uses the backend the project was generated with
+- [ ] Linux: the rules carry the X11 and `-rdynamic` cases, but nothing has been built there
+- [ ] Running from Xcode is untested beyond `xcodebuild`: a scheme's Run is fixed to the Debug binary
+- [ ] Project-level `cbt generate xcode --project <dir>` for a game's own Xcode project
 
 ## UI framework
 
@@ -136,7 +157,7 @@ includes `scene`, `reflect` or `gfx` — the reflection-driven Properties panel 
 - [x] **Text** — `text/` (-> `platform`) on FreeType and HarfBuzz: load a font, shape and measure a
       string, rasterize glyphs into CPU atlas pages, map carets to clusters. No GPU, so layout measures
       text without an edge to `gfx`, and all of it tests headlessly. Roboto and Roboto Mono ship in
-      `engine/fonts/`.
+      `Content/Fonts/`.
 - [x] **UI renderer** — `gfx/UiRenderer` records in the present pass after the composite, not as a
       `DrawPass`: every `DrawPass` records in the scene pass, which has depth. Rounded rectangles and
       borders as an SDF, anti-aliased lines and convex fills for gizmos, images including the scene
@@ -229,7 +250,7 @@ includes `scene`, `reflect` or `gfx` — the reflection-driven Properties panel 
       broadphase, exact sphere–sphere and sphere–box contacts, and sequential impulses with Baumgarte
       correction and restitution. `World::step` walks the scene, so Play, Stop, disable and reparent
       need no bookkeeping, and Edit mode never simulates. `dev/Gizmos` draws collider wireframes from
-      the same geometry the solver collides. `samples/physics` is the sample.
+      the same geometry the solver collides. `Samples/physics` is the sample.
 - [x] **Physics, phase 2** — box–box contacts through a separating axis test with face clipping and an
       edge-edge fallback, Coulomb friction on two tangents, impulses carried across steps by feature id,
       and split-impulse position correction. A stack of 10 crates stands for 600 steps, a crate holds on
@@ -237,7 +258,7 @@ includes `scene`, `reflect` or `gfx` — the reflection-driven Properties panel 
 - [x] **Physics, phase 3** — `applyImpulse` / `applyForce` / `applyTorque` as accumulators on
       `Body`, `game::raycast` returning a `RayHit`, `Touched` and `TouchEnded` emitted on both nodes
       through `Scene::emit`, a `planar` lock that
-      makes a scene 2D, and `[Physics] gravity` in `Game.ini`. `samples/physics` gained a 2D scene.
+      makes a scene 2D, and `[Physics] gravity` in `Game.ini`. `Samples/physics` gained a 2D scene.
 - [ ] Physics: sensors that detect without responding, and collision layers to filter pairs
 - [ ] Physics: `unitsPerMeter` in `Game.ini`, so a project working in pixels can scale the solver's
       slop and bounce threshold with it
@@ -263,10 +284,10 @@ includes `scene`, `reflect` or `gfx` — the reflection-driven Properties panel 
 
 ## Ship a game
 
-- [x] Packaging in C++ — `dev/Staging` and the `packager` executable replace `cmake/PackageGame.cmake`
-      and `package_game`; `player` builds with the editor and is copied, never compiled at package time
-- [x] Development and Shipping packages — Shipping strips the game library and keeps its symbols in
-      `Saved/Symbols/`
+- [x] Packaging in C++ — `dev/Staging` and the `packager` executable; the packager has `cbt` build
+      `player` in the package's configuration and copies it
+- [x] Development and Shipping packages — Shipping strips `player` and the game library and keeps their
+      symbols in `Saved/Symbols/`
 - [x] "Build Game" in the editor — the **Platforms** menu lists macOS, Linux, Windows, iOS and
       Android; the host desktop packages the open project into `Saved/Builds/<Platform>/`, the rest
       are listed as unavailable until their hosts exist
@@ -327,8 +348,8 @@ includes `scene`, `reflect` or `gfx` — the reflection-driven Properties panel 
       `vkDeviceWaitIdle` and rebuilds both targets on every size change, so dragging a dock splitter
       stalls once per frame. Rebuilding each target when its own fence comes round would avoid it,
       but the descriptor set already recorded for that frame would have to survive the rebuild.
-- [x] **Enforce the layer graph.** CTest runs `architecture_layers` against first-party includes and
-      `architecture_checker` against allowed and forbidden include fixtures.
+- [x] **Enforce the layer graph.** `cbt test` derives it from the module rules and runs `layers`
+      against first-party includes and `layer_fixtures` against allowed and forbidden include fixtures.
 - [ ] **Scene text numeric parsing still follows the process locale.** `TextLoad` uses `std::stod` /
       `std::stoll`, which also accept numeric prefixes. The refactor shares writer formatting only;
       changing this grammar and its error behavior belongs in a separate correctness change.
@@ -337,9 +358,9 @@ includes `scene`, `reflect` or `gfx` — the reflection-driven Properties panel 
       pipelines need a separate compatibility fix.
 - [ ] **The points-vs-pixels split is implicit.** `ViewCamera` and `screenToWorld` are in
       window points; the swapchain and render target are in framebuffer pixels. 2x apart on Retina.
-      `FollowMouse` and `Spawner` in `samples/sandbox2d` depend on the current behaviour.
+      `FollowMouse` and `Spawner` in `Samples/sandbox2d` depend on the current behaviour.
 - [ ] **The packaged player finds itself through `argv[0]`**, so launching it through a `PATH`
-      lookup rather than by path misses `engine/` and `project/` next to it
+      lookup rather than by path misses `Engine/` and `Project/` next to it
 - [ ] No CI
 
 ## Backends and platforms
@@ -348,8 +369,8 @@ DXC is the single HLSL frontend and already emits SPIR-V, DXIL and MSL/`.metalli
 *Commands* section. Only the Vulkan backend consumes its output; these are the phases that would
 change that. Each leaves the engine running on Vulkan after every step.
 
-- [x] **The backend seam.** *(done)* Vulkan is not confined to `src/gfx/vk/`: 273 `Vk*` references and 55 raw
-      `vk*()` calls live outside it. A neutral leaf `src/gfx/rhi/` (formats, `Commands`/`Uploads`
+- [x] **The backend seam.** *(done)* Vulkan is not confined to `Source/gfx/vk/`: 273 `Vk*` references and 55 raw
+      `vk*()` calls live outside it. A neutral leaf `Source/gfx/rhi/` (formats, `Commands`/`Uploads`
       handles, `TextureBinding`, a neutral pipeline builder) that `gfx/vk` and a future `gfx/mtl`
       each *define*, selected by a `CINDER_BACKEND` cache variable — compile-time, no vtables, so
       `Engine` keeps holding its context by value. The deliverable is deleting `gfx/vk` from
@@ -361,7 +382,7 @@ change that. Each leaves the engine running on Vulkan after every step.
       - [x] Extract a per-backend `Presenter` (swapchain, `FrameSync`, acquire/submit/present,
             window capture). Riskiest step: the `OUT_OF_DATE` path paints without recording, and
             `pixelsPerPoint` is measured only on swapchain rebuild.
-- [x] **`src/gfx/mtl`** — a native Metal backend on that seam. *(done; pixel-identical to Vulkan on the gallery and both sandboxes)* Objective-C++, so `OBJCXX` joins the
+- [x] **`Source/gfx/mtl`** — a native Metal backend on that seam. *(done; pixel-identical to Vulkan on the gallery and both sandboxes)* Objective-C++, so `OBJCXX` joins the
       project languages. `platform::Window` needs no change (`GLFW_NO_API` already); only
       `Glfw::acquire`'s volk bootstrap gets guarded.
 - [ ] **Android.** The shader work is nearly free (same SPIR-V; the GLES fallback would be

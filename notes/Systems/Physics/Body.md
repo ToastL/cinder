@@ -1,7 +1,7 @@
 ---
 type: class
 system: "[[Physics]]"
-source: "src/physics/Body.hpp"
+source: "Source/physics/Body.hpp"
 ---
 
 What physics moves. Props: `motion` (`static | kinematic | dynamic`), `mass`, `gravityScale`, `linearDamping`, `angularDamping`, `velocity`, `angularVelocity`, `planar`.

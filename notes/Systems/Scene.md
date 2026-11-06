@@ -2,7 +2,7 @@
 type: system
 status: live
 layer: "scene, components"
-source: "src/scene/, src/components/"
+source: "Source/scene/, Source/components/"
 started: 2026-09-09
 last-update: 2026-09-21
 ---

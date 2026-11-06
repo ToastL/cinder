@@ -1,7 +1,7 @@
 ---
 type: module
 system: "[[Renderer]]"
-source: "src/gfx/vk/"
+source: "Source/gfx/vk/"
 ---
 
 The default backend off macOS (`-DCINDER_BACKEND=vk`). VMA for memory, volk for loading. Files: `Ctx`, `Swapchain`, `FrameSync`, `Presenter`, `RenderTarget`, `DepthBuffer`, `Texture`, `TexturePool`, `GpuBuffer`, `GraphicsPipeline`, `PipelineFactory`, `GlyphPages`, `Vk*` helpers.

@@ -1,7 +1,7 @@
 ---
 type: concept
 system: "[[Scene]]"
-source: "src/scene/Scene.cpp"
+source: "Source/scene/Scene.cpp"
 ---
 
 - Every inserted node queues `onStart`, run at the top of the next `Scene::update` — disabled or not. A node inserted during a start starts in the same pass.

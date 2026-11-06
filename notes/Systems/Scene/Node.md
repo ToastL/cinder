@@ -1,7 +1,7 @@
 ---
 type: class
 system: "[[Scene]]"
-source: "src/scene/Node.hpp, src/scene/Spatial.hpp, src/scene/Scene.hpp"
+source: "Source/scene/Node.hpp, Source/scene/Spatial.hpp, Source/scene/Scene.hpp"
 ---
 
 - **`Node`** — id, name, parent, children, `enabled`, attributes, and the hooks `onStart`, `onUpdate`, `onRender`, `onDestroy`. `CINDER_PROPS(Node, void)` declares `enabled`.

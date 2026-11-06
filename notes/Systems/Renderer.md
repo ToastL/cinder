@@ -2,7 +2,7 @@
 type: system
 status: live
 layer: "gfx, gfx/rhi, gfx/vk, gfx/mtl, gfx/asset, gfx/pass"
-source: "src/gfx/"
+source: "Source/gfx/"
 started: 2026-09-09
 last-update: 2026-09-25
 ---

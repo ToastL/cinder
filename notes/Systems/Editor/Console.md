@@ -1,7 +1,7 @@
 ---
 type: module
 system: "[[Editor]]"
-source: "src/dev/panels/Console.hpp"
+source: "Source/dev/panels/Console.hpp"
 ---
 
 A log view. It installs the `LogSink` ([[Logging]]) in its constructor and clears it in its destructor. Lines queued by the sink join the panel in `update`, so nothing edits the widget tree during paint.

@@ -7,37 +7,43 @@ project folders containing a `.cinder` descriptor, `Config/`, `Content/`, and
 
 ## Build and run
 
-Use CMake 3.24 or newer, Ninja, and a C++20 compiler. Dependencies are fetched by
-CMake. Shader compilation requires `dxc`; the default macOS shader configuration
-also requires `spirv-cross`. Xcode's Metal toolchain compiles `.metallib` files when
-available; otherwise the Metal backend can load the generated `.metal` source.
+Cinder builds with its own tool, `cbt`, which lives in `Source/Programs/CinderBuildTool/`. You need
+a C++20 compiler (Xcode's on macOS). Every library is vendored in `Source/ThirdParty/`, so nothing is
+downloaded. Shader compilation requires `dxc` from the Vulkan SDK; the default macOS shader formats
+also require `spirv-cross`. Xcode's Metal toolchain compiles `.metallib` files when available;
+otherwise the Metal backend loads the generated `.metal` source.
 
 ```sh
-cmake -S . -B build -G Ninja
-cmake --build build
-./build/editor samples/sandbox2d
+./Setup.sh                                   # builds Binaries/macOS/cbt
+./Binaries/macOS/cbt build                   # editor, player, packager, ui_gallery, tests
+./Binaries/macOS/Development/editor Samples/sandbox2d
 ```
 
-Metal is the default backend on macOS; Vulkan is the default elsewhere. Select one
-explicitly with `-DCINDER_BACKEND=mtl` or `-DCINDER_BACKEND=vk`. Metal requires macOS;
-Vulkan needs an installed Vulkan loader and driver. `CINDER_SHADER_FORMATS` controls
-shader outputs independently of the selected backend.
+Metal is the default backend on macOS; Vulkan is the default elsewhere. Pick one with
+`--backend mtl` or `--backend vk`, a configuration with `--config Debug|Development|Shipping`, and
+shader outputs with `--shader-formats`, independently of the backend. Output goes to
+`Binaries/<Platform>/<Config>/` and `Intermediate/`.
 
-Building the editor also builds `player` and `packager`. The editor compiles a
-project's C++ when it opens it; the player loads that library and never links the
-editor:
+Building the editor also builds `player` and `packager`. The editor compiles a project's C++ through
+`cbt game` when it opens it; the player loads that library and never links the editor:
 
 ```sh
-./build/editor samples/sandbox3d --frames 2
-./build/player samples/sandbox3d
-./build/packager samples/sandbox3d --config shipping
+B=Binaries/macOS/Development
+$B/editor Samples/sandbox3d --frames 2
+$B/player Samples/sandbox3d
+$B/packager Samples/sandbox3d --config shipping
 ```
 
-`packager` stages the player, engine assets, shaders, the project's content and its
-compiled game library under `<project>/Saved/Builds/<Platform>/`. The editor's
-Platforms menu runs the same binary.
+`packager` stages the player, engine data, shaders, the project's content and its compiled game
+library under `<project>/Saved/Builds/<Platform>/`. The editor's Platforms menu runs the same binary.
+
+For Xcode, run `./Binaries/macOS/cbt generate xcode` and open `Cinder.xcodeproj`: its targets call
+`cbt`, its schemes run the binaries, and an index-only target gives Xcode the include paths. For
+clangd, run `./Binaries/macOS/cbt generate compile-commands`.
 
 ## Source map
+
+Every area is a folder under `Source/`, the include root.
 
 | Area | Responsibility |
 | --- | --- |
@@ -54,10 +60,12 @@ Platforms menu runs the same binary.
 | `game` | The API game code includes: node classes plus input, time, drawing, physics queries |
 | `dev` | Editor application, panels, play sessions, selection, undo, manipulators, game code builds and hot reload, packaging |
 | `editor`, `player`, `packager` | Executable entry points |
+| `Programs/CinderBuildTool` | `cbt`, the build tool |
+| `ThirdParty` | Vendored dependencies; versions and licences in its `README.md` |
 
-`engine` owns runtime code; `engine_dev` adds editor code. The allowed include graph
-is defined in `cmake/AssertLayers.cmake` and checked for C++, headers, and
-Objective-C++ sources.
+Each module's `<Name>.Build.cpp` sits in its folder and declares its dependencies. The
+allowed include graph is derived from those rules and checked for C++, headers, and
+Objective-C++ sources by `cbt check`. `dev` holds the editor and never reaches the player.
 
 The UI application implementation is grouped by responsibility:
 `Application.cpp` owns activation, frame dispatch, and painting;
@@ -73,24 +81,18 @@ composes the editor and runs its frame loop. `platform/GlfwSession` balances GLF
 acquisition and release on scope exit, including exceptions; a `Window` owns its
 own session so it can also be used independently.
 
-Build configuration is separated into `cmake/Backend.cmake` (selection and generated
-backend header), `Dependencies.cmake`, `Shaders.cmake`, `Targets.cmake`,
-and `Testing.cmake`. `Targets.cmake` also writes `cinder-toolchain.json`, which
-tells the editor how to compile game code. The root `CMakeLists.txt` assembles them.
-
 ## Verification
 
 ```sh
-ctest --test-dir build --output-on-failure
-cmake --build build --target graphics_smoke
-./build/graphics_smoke
+./Binaries/macOS/cbt test
+./Binaries/macOS/cbt build graphics_smoke
+./Binaries/macOS/Development/graphics_smoke
 ```
 
-CTest runs the headless unit suite, include-layer checks and their fixtures, shader
-validation, a check that the shipping player contains no editor code, and a hot-reload
-test that compiles real game C++. `graphics_smoke` requires a window and GPU; it drives
-editor selection, transforms, undo/redo, play transitions, docking, resizing, and
-captures into the build directory.
+`cbt test` runs the headless unit suite, the include-layer check and its fixtures, shader
+validation, a check that the shipping player contains no editor code, and a hot-reload test that
+compiles real game C++. `graphics_smoke` requires a window and GPU; it drives editor selection,
+transforms, undo/redo, play transitions, docking, resizing, and captures into `Intermediate/`.
 
 `ui_gallery` is an interactive widget test bench. Both the gallery and editor
 accept `--frames`, `--capture-window`, and `--input-script` for reproducible runs.

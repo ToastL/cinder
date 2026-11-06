@@ -1,7 +1,7 @@
 ---
 type: concept
 system: "[[Projects and packaging]]"
-source: "src/core/ProjectConfig.cpp"
+source: "Source/core/ProjectConfig.cpp"
 ---
 
 ```

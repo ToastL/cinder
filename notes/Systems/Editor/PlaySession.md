@@ -1,7 +1,7 @@
 ---
 type: class
 system: "[[Editor]]"
-source: "src/dev/PlaySession.hpp"
+source: "Source/dev/PlaySession.hpp"
 ---
 
 Owns the editor's state, `Edit | Playing | Paused`.

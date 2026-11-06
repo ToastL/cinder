@@ -5,7 +5,7 @@ type: hub
 A from-scratch C++20 game engine: Vulkan and Metal renderers, C++ game code, its own UI, physics and editor. The target is a Unity/Unreal-shaped workflow — select a node, edit its fields, hit Play, hit Stop, land back where you started. Repo: `ToastL/cinder` on GitHub, main branch `main`.
 
 ## Engine (`engine` library)
-- [[Build and shaders]] — CMake, pinned dependencies, DXC shader pipeline, the layer graph
+- [[Build and shaders]] — [[cbt]], vendored dependencies, DXC shader pipeline, the layer graph
 - [[Platform]] — logging, asset paths, input, the window
 - [[Reflection]] — `CINDER_PROP` and the prop system
 - [[Scene]] — the node tree, lifecycle, attributes
@@ -17,9 +17,9 @@ A from-scratch C++20 game engine: Vulkan and Metal renderers, C++ game code, its
 - [[Core and game loop]] — `Engine`, `GameLoop`, project config
 
 ## Tools and shipping
-- [[Editor]] — `engine_dev`: panels, Scene view, gizmos, undo, Play/Stop
+- [[Editor]] — the `dev` module: panels, Scene view, gizmos, undo, Play/Stop
 - [[Projects and packaging]] — project folders, the `.cinder` descriptor, the `packager`
-- [[Testing]] — `ctest`, the selftest, `graphics_smoke`
+- [[Testing]] — `cbt test`, the selftest, `graphics_smoke`
 
 ## In flight
 - [[Platform hosts]] — GLFW → `platform::Host` adapters (branch `platform-hosts`)

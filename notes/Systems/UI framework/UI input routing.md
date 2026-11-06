@@ -1,7 +1,7 @@
 ---
 type: concept
 system: "[[UI framework]]"
-source: "src/ui/framework/Application.hpp"
+source: "Source/ui/framework/Application.hpp"
 ---
 
 Input comes from `platform::Input`'s event queue ([[Input]]) via `Application::processEvents`. Routing is Slate's:

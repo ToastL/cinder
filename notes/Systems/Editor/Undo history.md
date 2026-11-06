@@ -1,7 +1,7 @@
 ---
 type: class
 system: "[[Editor]]"
-source: "src/dev/History.hpp"
+source: "Source/dev/History.hpp"
 ---
 
 `dev/History` stores **whole scenes**, not commands: after every finished edit it saves the scene to text; undo loads the previous text with `SceneCodec::load`. Nothing has to describe an edit to make it undoable — a new `CINDER_PROP` is undoable with zero editor code.

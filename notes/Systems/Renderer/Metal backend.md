@@ -1,7 +1,7 @@
 ---
 type: module
 system: "[[Renderer]]"
-source: "src/gfx/mtl/"
+source: "Source/gfx/mtl/"
 ---
 
 Native Metal, macOS only (`-DCINDER_BACKEND=mtl`, the macOS default). Objective-C++ with `-fobjc-arc`; links Metal, QuartzCore, Foundation, CoreGraphics, AppKit.

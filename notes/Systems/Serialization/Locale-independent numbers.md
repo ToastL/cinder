@@ -1,7 +1,7 @@
 ---
 type: concept
 system: "[[Serialization]]"
-source: "src/serial/NumberText.hpp"
+source: "Source/serial/NumberText.hpp"
 ---
 
 `std::to_chars` everywhere in `serial` — never `printf` or `ostream`, which follow the locale. A test pins the output under a Turkish locale. `IniLoad` and `parseJson` parse with `std::from_chars`. `serial/NumberText` holds the shared formatting.

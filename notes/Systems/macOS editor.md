@@ -2,7 +2,7 @@
 type: system
 status: planned
 layer: "capi"
-source: "src/capi/ (planned)"
+source: "Source/capi/ (planned)"
 started: 2026-09-25
 last-update: 2026-09-26
 ---
@@ -13,7 +13,7 @@ last-update: 2026-09-26
 
 **Layout (decided 2026-09-26):** Xcode-shaped — sidebar Explorer, viewport, `.inspector` Properties, bottom console, no docking. macOS 26 minimum for the editor (no Liquid Glass fallbacks); the player can target older macOS. Metal only (`CINDER_BACKEND=mtl`).
 
-**Bridge:** a hand-written flat C ABI in `src/capi/` (`cinder.h`, `cn_` prefix) over `engine_dev` — not Swift's C++ interop.
+**Bridge:** a hand-written flat C ABI in `Source/capi/` (`cinder.h`, `cn_` prefix) over the `dev` module — not Swift's C++ interop.
 
 **Invariant:** `CINDER_PROP` still needs zero editor code. The Swift inspector is one generic view per `PropType`/`PropHint`, never a view per node class. See [[Props]], [[Properties panel]].
 

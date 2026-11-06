@@ -1,7 +1,7 @@
 ---
 type: module
 system: "[[Platform]]"
-source: "src/platform/Input.hpp"
+source: "Source/platform/Input.hpp"
 ---
 
 Two interfaces over one input stream:

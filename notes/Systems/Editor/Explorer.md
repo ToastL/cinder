@@ -1,7 +1,7 @@
 ---
 type: module
 system: "[[Editor]]"
-source: "src/dev/panels/Explorer.hpp"
+source: "Source/dev/panels/Explorer.hpp"
 ---
 
 A [[TreeView]] over node **ids**: builds only rows in view and nothing can dangle — each row reads its node from the scene every frame.

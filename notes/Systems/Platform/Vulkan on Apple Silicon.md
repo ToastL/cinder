@@ -1,7 +1,7 @@
 ---
 type: concept
 system: "[[Platform]]"
-source: "src/platform/Glfw.cpp"
+source: "Source/platform/Glfw.cpp"
 ---
 
 Two failures, one cause: Homebrew's `/opt/homebrew/lib` isn't on the dyld default search path, and both volk and the Vulkan loader `dlopen` by leaf name.

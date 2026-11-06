@@ -1,7 +1,7 @@
 ---
 type: concept
 system: "[[Renderer]]"
-source: "src/gfx/pass/DrawPass.hpp"
+source: "Source/gfx/pass/DrawPass.hpp"
 ---
 
 The extension point: `beginFrame` / `record`. Named `DrawPass` so that `renderPass` unambiguously means a Vulkan render pass.

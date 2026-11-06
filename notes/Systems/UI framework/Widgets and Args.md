@@ -1,7 +1,7 @@
 ---
 type: concept
 system: "[[UI framework]]"
-source: "src/ui/core/Args.hpp, src/ui/core/Widget.hpp"
+source: "Source/ui/core/Args.hpp, Source/ui/core/Widget.hpp"
 ---
 
 Widgets are built with `ui::make<T>()`, which returns the widget's `Args`; chained setters fill them, `[child]` sets content, `+ T::slot()` adds a slot, and the `Args` convert to `std::shared_ptr<T>` by building. `.assign(ptr)` keeps a handle, like `SAssignNew`.

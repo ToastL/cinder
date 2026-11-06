@@ -1,7 +1,7 @@
 ---
 type: concept
 system: "[[Renderer]]"
-source: "src/gfx/Renderer.cpp, src/gfx/FrameTargets.hpp"
+source: "Source/gfx/Renderer.cpp, Source/gfx/FrameTargets.hpp"
 ---
 
 Two passes, two frames in flight:

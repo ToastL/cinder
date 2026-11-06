@@ -2,7 +2,7 @@
 type: system
 status: live
 layer: "serial"
-source: "src/serial/"
+source: "Source/serial/"
 started: 2026-09-09
 last-update: 2026-09-21
 ---

@@ -1,10 +1,10 @@
 ---
 type: concept
 system: "[[Build and shaders]]"
-source: "cmake/AssertLayers.cmake"
+source: "Source/Programs/CinderBuildTool/Layers.cpp"
 ---
 
-`src/` is acyclic and strictly layered; `architecture_layers` in `ctest` checks every first-party include, `architecture_checker` tests the checker.
+`Source/` is acyclic and strictly layered. The graph is derived from the module rules (each module's dependencies, for both backends); `cbt check` and the `layers` check in [[cbt test]] scan every first-party include, and `layer_fixtures` tests the checker. `Source/ThirdParty/` and `Source/Programs/` are outside it.
 
 ```
 reflect, platform      leaves
@@ -21,7 +21,7 @@ gfx/pass               -> gfx/asset, gfx/rhi, scene, platform
 gfx                    -> gfx/pass, gfx/asset, gfx/rhi, ui/core, text, scene, platform
 core                   -> all of the above
 game                   -> core and below (what game code includes)
-dev                    -> core and below (engine_dev)
+dev                    -> core and below (never in player)
 player, editor, packager  executables
 ```
 
@@ -33,4 +33,4 @@ Nothing in a subdirectory includes its parent. `ui` never includes `scene`, `ref
 3. `PropValue` lives in `scene`, so serializer and Properties each read it without an edge to one another.
 4. `core/Module.hpp` (the `Registrar` and registration macros) lives in `core`, so `core/GameModule` can load a library without including `game`.
 
-`game/Game.hpp` forward-declares `Engine`, so a game library needs only `src/` and glm on its include path. The generated `gfx/rhi/Backend.hpp` lives in the build tree and is invisible to the check.
+`game/Game.hpp` forward-declares `Engine`, so a game library needs only `Source/` and glm on its include path. The generated `gfx/rhi/Backend.hpp` lives in `Intermediate/` and is invisible to the check.

@@ -1,7 +1,7 @@
 ---
 type: concept
 system: "[[Scene]]"
-source: "src/components/Builtins.cpp, src/physics/Nodes.cpp"
+source: "Source/components/Builtins.cpp, Source/physics/Nodes.cpp"
 ---
 
 | Class | Base | Props | |

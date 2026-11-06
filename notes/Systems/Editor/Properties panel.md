@@ -1,7 +1,7 @@
 ---
 type: module
 system: "[[Editor]]"
-source: "src/dev/panels/Properties.hpp"
+source: "Source/dev/panels/Properties.hpp"
 ---
 
 Rows come from the prop list, with **no per-class widget code**: name, class and id; a Transform section for spatial nodes; the class's props; attributes. Each section is an `ExpandableArea`.

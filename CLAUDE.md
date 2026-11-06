@@ -12,64 +12,81 @@ architectural work, since it records what is deliberately deferred and what is o
 
 The repo holds the engine only. A game is a **project folder** — a `.cinder` file, `Config/`,
 `Content/` and `Source/` — that the editor opens and the player plays; see *Projects and packaging*.
-`samples/` holds three example projects; nothing in them is compiled.
+`Samples/` holds three example projects. The repo root has a project's shape too: `Source/`,
+`Content/`, `Binaries/`, `Intermediate/`.
 
 ## Commands
 
-```bash
-cmake -S . -B build -G Ninja && cmake --build build
-```
-
-`CINDER_BACKEND` picks the graphics backend: `mtl` (the default on macOS) or `vk`
-(the default elsewhere). The native Metal renderer is macOS-only.
+Everything is built by **`cbt`**, CinderBuildTool — our own build tool, shaped like UnrealBuildTool and
+living in `Source/Programs/CinderBuildTool/`. There is no CMake. Bootstrap it once:
 
 ```bash
-cmake -S . -B build-mtl -G Ninja -DCINDER_BACKEND=mtl && cmake --build build-mtl
+./Setup.sh
 ```
+
+then build:
+
+```bash
+./Binaries/macOS/cbt build
+```
+
+That builds `editor`, `ui_gallery` and `tests` — and `player` and `packager`, because the editor target
+requires them, so building the editor always leaves a matching runtime and packager next to it.
+Packaging copies that `player`, the way Godot's export templates work. Output goes to
+`Binaries/<Platform>/<Config>/` — the executables, `Shaders/` and `Engine.modules` — with objects and
+generated files in `Intermediate/<Platform>/<Config>/`. Both are gitignored. Name targets to build only
+those: `cbt build player packager`.
+
+| Option | |
+|---|---|
+| `--config Debug\|Development\|Shipping` | `-O0 -g`, `-O2 -g` (the default), `-O2 -DNDEBUG` |
+| `--backend mtl\|vk` | the graphics backend: `mtl` is the default on macOS, `vk` elsewhere |
+| `--shader-formats spirv,msl,dxil` | defaults to `spirv,msl` on macOS and `spirv` elsewhere |
+| `--output <dir>` | where `Binaries/` and `Intermediate/` go; the repo root by default |
+| `-j <n>` | parallel jobs; all cores by default |
 
 A Metal build needs no `DYLD_LIBRARY_PATH` and no Vulkan SDK at runtime, and it still compiles the
-SPIR-V, because `CINDER_SHADER_FORMATS` is independent of the backend.
-
-A plain build produces `engine`, `engine_dev`, `editor`, `player`, `packager`, `ui_gallery` and
-`tests`. `editor` depends on `player` and `packager`, so building the editor always leaves a matching
-runtime and packager next to it — packaging copies that `player`, the way Godot's export templates
-work, and never compiles the engine. A game's own C++ is not built by CMake at all; see *Game code*.
+SPIR-V, because the shader formats are independent of the backend. The commands below write `B` for
+`Binaries/macOS/Development`.
 
 ```bash
-DYLD_LIBRARY_PATH=/opt/homebrew/lib ./build/ui_gallery --frames 10 --capture-window gallery.png
+DYLD_LIBRARY_PATH=/opt/homebrew/lib $B/ui_gallery --frames 10 --capture-window gallery.png
 ```
 
-`ui_gallery` is the test bench for the new UI, linked against `engine` alone: every widget, live, on
+`ui_gallery` is the test bench for the new UI, linked against the engine alone: every widget, live, on
 one side of a splitter, and everything the UI renderer can draw on the other. `--capture-window` writes
 the swapchain image, UI included, which `--capture` never does; `--input-script <file>` replays input
 instead of the OS's (see *The UI framework*); `--lowdpi` turns off framebuffer scaling so text can be
 judged at 1x on a Retina display, and `--text-gamma` tunes glyph coverage.
 
 ```bash
-ctest --test-dir build --output-on-failure
+./Binaries/macOS/cbt test
 ```
 
-`ctest` still builds `player` through a fixture before `shipping_binary_is_clean` inspects it, so a
-`--target tests` build is enough. The `hot_reload` entry compiles real game C++ and takes seconds.
-It also runs `architecture_layers`, which checks first-party includes against the layer graph, and
-`architecture_checker`, which exercises allowed and forbidden include fixtures.
+`cbt test` builds `editor` and `tests` and runs six checks, reporting each as passed or failed:
+`layers` checks first-party includes against the layer graph, `layer_fixtures` exercises allowed and
+forbidden include fixtures, `shaders` asserts every program produced every artifact, `shipping` runs
+`nm` over `player` to prove no `cinder::dev` symbol reached it, `unit` is the doctest suite, and
+`hot_reload` compiles real game C++ and takes seconds. Name checks to run only those:
+`cbt test unit hot_reload`. `cbt check` runs the layer check alone.
 
 The optional graphical integration check builds only when requested and needs a working window and
-Vulkan device:
+GPU:
 
 ```bash
-cmake --build build --target graphics_smoke
-DYLD_LIBRARY_PATH=/opt/homebrew/lib ./build/graphics_smoke
+./Binaries/macOS/cbt build graphics_smoke
+DYLD_LIBRARY_PATH=/opt/homebrew/lib $B/graphics_smoke
 ```
 
 It runs the editor's own UI and drives it with injected input: it clicks a node in the Explorer, drags
 a move gizmo in the Scene view, undoes and redoes with ⌘Z, saves a scene, plays and stops with ⌘P,
 cycles Play/Pause/Step/Resume/Stop and a game-side quit, re-docks the console onto the Scene
-stack, resizes the window and scene targets, and captures both the window and the composited view. Its output stays in `build/graphics-smoke/`;
-it never saves over a sample project. On other platforms omit the Apple-specific library path.
+stack, resizes the window and scene targets, and captures both the window and the composited view. Its
+output stays in `Intermediate/macOS/<Config>/graphics-smoke/`; it never saves over a sample project.
+On other platforms omit the Apple-specific library path.
 
 ```bash
-DYLD_LIBRARY_PATH=/opt/homebrew/lib ./build/editor samples/sandbox2d
+DYLD_LIBRARY_PATH=/opt/homebrew/lib $B/editor Samples/sandbox2d
 ```
 
 `editor` is the **dev build** — the same engine plus the editor UI, which is our own (see *The UI
@@ -86,19 +103,19 @@ the project folder or its `.cinder` file, then `--scene <path>` (relative to `Co
 is a second executable rather than a flag.
 
 ```bash
-./build/editor samples/sandbox3d --frames 2 && ./build/player samples/sandbox3d
+$B/editor Samples/sandbox3d --frames 2 && $B/player Samples/sandbox3d
 ```
 
 `player` is the generic runtime: it loads the project's game library and plays the scene at once. It
-takes the same `--scene`, `--frames` and `--capture`; with no project argument it looks for `project/`
+takes the same `--scene`, `--frames` and `--capture`; with no project argument it looks for `Project/`
 next to its own executable, which is the packaged layout. It never compiles anything, so a project's
-C++ must have been built — opening it in the editor does that.
+C++ must have been built — opening it in the editor does that, and so does `cbt game <project>`.
 
 ```bash
-./build/packager samples/sandbox3d --config shipping
+$B/packager Samples/sandbox3d --config shipping
 ```
 
-Stages a runnable game in `samples/sandbox3d/Saved/Builds/macOS/sandbox3d/` — see *Projects and
+Stages a runnable game in `Samples/sandbox3d/Saved/Builds/macOS/sandbox3d/` — see *Projects and
 packaging*. `--platform` and `--out` pick the target and the folder.
 
 Note that `--capture` reads back the **scene render target**, not the swapchain, so the editor's own
@@ -108,19 +125,68 @@ the editor camera's — which starts as a copy of a perspective scene camera, so
 --capture` still writes the game's frame. An orthographic scene starts from a perspective view framing
 the same rectangle instead. See *The editor camera*.
 
-The first configure fetches every dependency and needs network — glfw, glm, VMA, stb, volk,
-Vulkan-Headers, doctest, FreeType and HarfBuzz, all pinned in `cmake/Dependencies.cmake`.
-Nothing needs installing: FreeType is built with zlib, bzip2, PNG, Brotli and HarfBuzz switched off, so
-it never finds Homebrew's copies, and HarfBuzz is compiled from its single-file `src/harfbuzz.cc`
-rather than through its community-maintained CMake build.
-The shader compilers are the exception: they are *build tools*, found with `find_program` on `PATH`
-or in `$VULKAN_SDK/bin`. Shaders are HLSL, one `engine/shaders/<name>.hlsl` per program holding
-`VSMain` and `PSMain`, and `GraphicsPipelineBuilder::shader` takes the program name.
+**IDEs only call `cbt`.** `cbt generate xcode` writes `Cinder.xcodeproj` at the root: one External
+Build System target per `cbt` target, each running `cbt xcode <target> $(CONFIGURATION) $(ACTION)`;
+Debug, Development and Shipping configurations; shared schemes that run the binaries, the editor on
+`Samples/sandbox3d`; and an `Index` target that is never built, carrying the real include paths and
+defines so Xcode can index the code. Xcode compiles nothing itself. A scheme's Run uses the Debug
+binary and Profile the Development one. `cbt generate compile-commands` writes `compile_commands.json`
+at the root for clangd, including `cbt`'s own sources and the rule files. Both are gitignored;
+regenerate them when files are added. `cbt clean` deletes one configuration's `Binaries/` and
+`Intermediate/`.
 
-**DXC is the one frontend, and the target decides the backend.** `cmake/Shaders.cmake` compiles each
-program to the formats in `CINDER_SHADER_FORMATS`, a cache list defaulting to `spirv;msl` on macOS,
-`spirv;dxil` on Windows and `spirv` on Linux; `spirv` is always built, because it is the only format
-the engine loads today and MSL is derived from it.
+The third-party code is vendored in `Source/ThirdParty/` — glfw, glm, VMA, stb, volk, Vulkan-Headers,
+doctest, FreeType and HarfBuzz, each with its licence, a `.Build.cpp`, and a row in
+`Source/ThirdParty/README.md` giving its version. Nothing is fetched and nothing needs installing:
+FreeType is built with zlib, bzip2, PNG, Brotli and HarfBuzz switched off, so it never finds Homebrew's
+copies, and HarfBuzz is compiled from its single-file `src/harfbuzz.cc`.
+The shader compilers are the exception: they are *build tools*, taken from `DXC` and `SPIRV_CROSS`
+when set, else found in `$VULKAN_SDK/bin`, then on `PATH`. Xcode builds with a minimal `PATH`, so
+`cbt generate xcode` records the `PATH` it ran with into each target's command as `--path`;
+regenerate the project after installing a tool somewhere new. Shaders are HLSL, one `Shaders/<name>.hlsl` per program holding `VSMain` and `PSMain`,
+and `GraphicsPipelineBuilder::shader` takes the program name.
+
+### How `cbt` works
+
+- **Bootstrap.** `Setup.sh` runs one compiler command that builds the tool's sources together with
+  every rule file in `Source/` and `Tests/` into `Binaries/<Platform>/cbt`, the way UnrealBuildTool
+  compiles every `Build.cs` first. The repo root is baked in as `CBT_ROOT`. On every start `cbt`
+  compares itself with its sources, the rule files and `Setup.sh`, and with the set of rule files on
+  disk; when anything changed it reruns `Setup.sh` and restarts itself.
+- **Rules are code.** A module is a folder with a `<Name>.Build.cpp` beside its code:
+
+  ```cpp
+  #include "CinderBuildTool/Rules.hpp"
+  CINDER_MODULE(scene, [](cbt::ModuleRules& m, const cbt::TargetInfo&) {
+      m.publicDependencies({"reflect", "platform"});
+  });
+  ```
+
+  Its sources are the `.cpp`, `.mm` and `.c` files in its folder, minus nested module folders, rule
+  files and anything it `exclude`s. Rules set public, private and link dependencies, include paths,
+  defines, frameworks, system libraries and ObjC++ flags, and may test `TargetInfo` — the platform, the
+  configuration, the backend, the version and the BuildId — which is how `gfx/rhi` picks Metal or
+  Vulkan. A public dependency is seen by everyone who depends on you, a private one by you alone, and a
+  link dependency is linked in without reaching your includes — Unreal's model.
+  A `<Name>.Target.cpp` (`CINDER_TARGET`) declares what to produce: an executable or a game module, its
+  root modules, whether it exports its symbols, its defines, and the targets it requires.
+- **The layer graph is the rules.** `cbt check` and the `layers` test derive the allowed includes from
+  each module's dependencies, evaluated for both backends; `Source/ThirdParty/` and
+  `Source/Programs/` are outside the graph.
+- **Actions.** A build is a list of actions — one compile per source, the shader steps, the generated
+  `gfx/rhi/Backend.hpp` and `BuildId.cpp`, one link per target — run in parallel in dependency order.
+  An action reruns when an output is missing, when an input or a header from its `-MMD` depfile is
+  newer, or when its command line differs from the signature `Actions.txt` recorded, so changing a flag
+  or a define rebuilds exactly what it touches.
+- **No static libraries.** Engine modules compile once, into `Intermediate/<Platform>/<Config>/Modules/`,
+  and each executable links the objects it needs directly. A target's own modules compile under
+  `Targets/<target>/`, with the target's defines.
+
+### Shaders
+
+**DXC is the one frontend, and the target decides the backend.** `cbt` compiles each program to the
+formats in `--shader-formats`; `spirv` is always built, because it is the only format the engine loads
+today and MSL is derived from it.
 
 | Format | How |
 |---|---|
@@ -131,11 +197,12 @@ the engine loads today and MSL is derived from it.
 `--msl-decoration-binding` makes MSL resource indices equal the SPIR-V binding numbers and
 `--rename-entry-point` keeps `VSMain`/`PSMain`, so a Metal backend reads the binding map rather than
 guessing it. DXIL cannot be *signed* without `dxil.dll`, which is Windows-only, so DXIL built
-anywhere else is unsigned, rejected by D3D12 outside developer mode, and a syntax check only —
-the build warns. `metal` and `metallib` are invoked through `xcrun` rather than resolved to absolute
+anywhere else is unsigned, rejected by D3D12 outside developer mode, and a syntax check only.
+`metal` and `metallib` are invoked through `xcrun` rather than resolved to absolute
 paths, because the Metal Toolchain lives in a version-stamped cryptex mount that moves when it
 updates; when it is absent the build emits `.metal` source and skips the metallib step instead of
-failing. Install it with `xcodebuild -downloadComponent MetalToolchain`.
+failing. Install it with `xcodebuild -downloadComponent MetalToolchain`. Its module cache lives in
+`Intermediate/`, never next to the shipped shaders.
 
 One HLSL source serves every target: bindings, varyings and vertex inputs carry explicit
 `[[vk::binding]]` and `[[vk::location]]` **alongside** `register(t0)`/`register(s0)`/`register(b0)`,
@@ -147,9 +214,9 @@ push-constant block in SPIR-V and cbuffer `b0` everywhere else. Matrices stay HL
 needs a rebuild, not just a restart. DXC is not on Homebrew; install the LunarG Vulkan SDK if it is
 missing. `spirv-cross` is `brew install spirv-cross`.
 
-**Compiled shaders live in the build tree, not the source tree** — `${CMAKE_BINARY_DIR}/shaders/` —
-and are gitignored. `ctest`'s `shaders_are_valid` asserts every program produced every artifact its
-formats call for, checks the SPIR-V magic number, and runs `spirv-val` when it is on `PATH`.
+**Compiled shaders live in `Binaries/<Platform>/<Config>/Shaders/`, not beside their HLSL.** The
+`shaders` test asserts every program produced every artifact its formats call for, checks the SPIR-V
+magic number, and runs `spirv-val` when it can find it.
 
 `player/main.cpp` and `editor/main.cpp` duplicate their arg parsing on purpose, and their loops have
 diverged: the player only ever calls `GameLoop::tick`, while the editor calls `PlaySession::tick`,
@@ -170,37 +237,44 @@ default search path, and both volk and the Vulkan loader `dlopen` by leaf name.*
 To actually get validation, put the prefix on the dyld path:
 
 ```bash
-DYLD_LIBRARY_PATH=/opt/homebrew/lib ./build/editor samples/sandbox2d
+DYLD_LIBRARY_PATH=/opt/homebrew/lib ./Binaries/macOS/Development/editor Samples/sandbox2d
 ```
 
-**Do this whenever touching the renderer.** Without it you are running unvalidated — it has already
+That assumes a `--backend vk` build. **Do this whenever touching the renderer.** Without it you are running unvalidated — it has already
 caught a missing `TRANSFER_SRC_BIT` that no test would have.
 
 ## Layout
 
+The repo root has a project's shape: folders that organize are capitalized, and a module's folder is
+named after its namespace, in lowercase.
+
 ```
 cinder/
-  CMakeLists.txt
-  cmake/          dependency, shader-compilation and packaging modules
-  engine/         engine data: shaders/ (HLSL; compiled output goes to the build tree) and fonts/
-                  (Roboto and Roboto Mono, OFL-1.1, licences beside them)
-  samples/        sandbox2d/, sandbox3d/ and physics/ — example projects
-  src/
+  Setup.sh          bootstraps cbt
+  Content/Fonts/    Roboto and Roboto Mono, OFL-1.1, licences beside them
+  Shaders/          HLSL, one program per file; compiled output goes to Binaries/
+  Samples/          sandbox2d/, sandbox3d/ and physics/ — example projects
+  Source/           the include root
     reflect/ platform/ text/         leaves
     scene/ serial/ components/       the world model
     physics/                         rigid bodies, collision and the solver
     ui/core/ ui/framework/ ui/widgets/ ui/docking/  the UI framework the editor is built on
     gfx/ gfx/rhi/ gfx/vk/ gfx/mtl/ gfx/asset/ gfx/pass/  the renderer, its seam and two backends
     core/ game/                      the engine, module loading, and the API game code calls
-    dev/                             editor panels, gizmos, history, play session; NOT part of `engine`
+    dev/                             editor panels, gizmos, history, play session; never in the player
     player/ editor/ packager/        the three executables
-  tests/
+    Programs/CinderBuildTool/        cbt, the build tool
+    ThirdParty/                      vendored dependencies; see its README.md
+  Tests/
     selftest/                        a project whose C++ runs the engine smoke test
-    modules/                         a game module CMake builds for the module tests
+    modules/                         a game module cbt builds for the module tests
+    gallery/ graphics/               ui_gallery and graphics_smoke
+  Binaries/ Intermediate/            cbt's output; gitignored
+  notes/                             the Obsidian vault
 ```
 
-`src/` is the only include root, so every include carries its layer: `#include "scene/Node.hpp"`.
-Headers sit next to their sources.
+`Source/` is the only include root, so every include carries its layer: `#include "scene/Node.hpp"`.
+Headers sit next to their sources, and every module's `.Build.cpp` sits in its folder.
 
 ## Layering
 
@@ -228,14 +302,14 @@ game                       -> core and all of the above
 dev                        -> core and all of the above (a separate target, see below)
 ```
 
-Everything down to `core` is the `engine` library. **`dev` is not** — it is its own target,
-`engine_dev`, and it holds everything editor-only: the panels in `dev/panels/`, the Scene view with
-its editor camera and gizmos, the selection, the undo history and the play session. `player` links
-`engine`; `editor` links `engine_dev`.
+Everything down to `core` is the engine. **`dev` is not** — it is its own module, and it holds
+everything editor-only: the panels in `dev/panels/`, the Scene view with its editor camera and gizmos,
+the selection, the undo history and the play session. The `player` module depends on `core`, and the
+`editor` module on `dev`, so `dev` is only ever linked into the editor, the packager and the tests.
 
 **The editor's UI is the engine's own** — see *The UI framework* below. `text` and the four `ui`
 layers are part of `engine`, because the game will use them too; `ui` never includes `scene`,
-`reflect` or `gfx`. `ctest` runs `nm` over `player` to prove no `cinder::dev` symbol reached it.
+`reflect` or `gfx`. The `shipping` test runs `nm` over `player` to prove no `cinder::dev` symbol reached it.
 
 **`platform` is the one leaf everything may reach for**, because `platform/Log.hpp` lives there and
 every layer logs, and `platform/Assets.hpp` is the only thing that turns a name into a path. That is
@@ -246,14 +320,15 @@ from the engine, so the edges cost nothing and create no cycle.
 `Commands`/`Uploads` handles, `TextureBinding`, the fluent `PipelineBuilder` — that *declares* the
 types a backend must provide: `Ctx`, `GpuBuffer`, `GraphicsPipeline`, `Texture`, `TexturePool`,
 `RenderTarget`, `GlyphPages`, `Presenter`. `gfx/vk` **defines** them in namespace
-`cinder::gfx::rhi`, and `gfx/mtl` defines the same names in Objective-C++; CMake compiles exactly
-one of the two. The choice is a `CINDER_BACKEND` cache variable, not a runtime flag — the same reasoning
-that makes the dev tools a separate link target. No vtables: `Engine` still holds `rhi::Ctx ctx_` by
+`cinder::gfx::rhi`, and `gfx/mtl` defines the same names in Objective-C++; `cbt` compiles exactly
+one of the two, because `gfx/rhi`'s rules add a link dependency on `gfx/mtl` or `gfx/vk` by backend.
+The choice is `cbt`'s `--backend`, not a runtime flag — the same reasoning that makes the dev tools a
+separate module. No vtables: `Engine` still holds `rhi::Ctx ctx_` by
 value in the same declaration slot.
 
-**Both backends work.** `-DCINDER_BACKEND=vk` (the default) builds the Vulkan renderer;
-`-DCINDER_BACKEND=mtl` builds the native Metal one, which is macOS-only and turns on `OBJCXX` with
-`-fobjc-arc` and the Metal, QuartzCore, Foundation, CoreGraphics and AppKit frameworks. The Metal
+**Both backends work.** `--backend vk` builds the Vulkan renderer; `--backend mtl` builds the native
+Metal one, which is macOS-only and compiles its `.mm` files with `-fobjc-arc`, linking the Metal,
+QuartzCore, Foundation, CoreGraphics and AppKit frameworks. The Metal
 backend is about half the Vulkan one's size, because Metal has no allocator, no descriptor pools,
 no layout barriers and no explicit frame synchronization — those concepts are deleted rather than
 ported. Its headers are plain C++ holding `void*`, bridged inside the `.mm` files, because neutral
@@ -268,9 +343,9 @@ because Metal has no index-buffer binding point and `drawIndexed` must find it; 
 Vulkan has one combined image sampler. `PipelineFactory` loads the `.metallib` phase 1 produced and
 falls back to compiling the `.metal` source at runtime when it is absent.
 
-`gfx/rhi/Backend.hpp` is **generated** by `configure_file` into the build tree and is one line —
-`#include "gfx/<backend>/Backend.hpp"`. Everything above the backend includes only that, so no
-first-party source names a backend. `AssertLayers.cmake` globs `src/` only, so the generated header
+`gfx/rhi/Backend.hpp` is **generated** by `cbt` into `Intermediate/<Platform>/<Config>/Generated/` and
+is one line — `#include "gfx/<backend>/Backend.hpp"`. Everything above the backend includes only that,
+so no first-party source names a backend. The layer check scans `Source/` only, so the generated header
 is invisible to it and the checked graph stays a strict DAG. **Nothing outside a backend directory names a
 Vulkan or Metal type**, and the one `<volk.h>` left outside it is `platform/Glfw.cpp`'s loader bootstrap,
 guarded by `CINDER_BACKEND_VK` — loader setup is the one place outside `gfx/` that names a backend,
@@ -278,7 +353,7 @@ because it runs before `gfx` exists. `gfx/asset` is what you draw with (`Assets`
 `gfx/pass` is how you draw it (`DrawPass` and its implementations, their pipelines, and `ViewCamera`), and
 `gfx` itself contains orchestration and frame resources: `Renderer`, `FrameTargets`, `RenderTarget`,
 `Capture`, `UiRenderer`, `CompositePipeline` and `RendererDrawList`. Nothing in a subdirectory includes
-its parent. `cmake/AssertLayers.cmake` enforces these include directions through CTest. `ui` is split
+its parent. `cbt check` and the `layers` test enforce these include directions. `ui` is split
 the same way, and the same rule holds: `ui/core` never includes `ui/widgets`.
 
 Four placements are load-bearing and were each chosen to kill a cycle: `Glfw`/`Window`/`Input` live
@@ -290,7 +365,7 @@ library without including the layer above it.
 
 `game` sits on top of `core` and is the one layer game code includes: `game/Game.hpp` pulls in the node
 classes and declares free functions over the running engine. It forward-declares `Engine` rather than
-including it, so a module needs only `src/` and glm on its include path.
+including it, so a module needs only `Source/` and glm on its include path.
 
 `platform/Files` holds the shared binary-mode text I/O used by project loading, scene files, module
 builds and editor history. Callers still decide whether to create parent directories and
@@ -482,7 +557,7 @@ a `gfx/pass/ViewCamera`, and the scene's `Camera` writes it every frame through 
 view uses the fov at the view's aspect. An orthographic one covers `virtualSize / zoom` world units —
 or the view's own size in points when `virtualSize` is zero — centred on the camera and stretched to
 the view. Both clip at `near` and `far`, so an orthographic camera at `z = 0` cannot see a sprite at
-`z = 0`; `samples/sandbox2d` puts its camera at `z = 10`. Every pass draws through the one matrix, so
+`z = 0`; `Samples/sandbox2d` puts its camera at `z = 10`. Every pass draws through the one matrix, so
 meshes and sprites share a world, and a scene with several cameras draws through the last one rendered.
 
 `Renderer::overrideCamera(view)` sets a second `ViewCamera` that the frame draws through while it is
@@ -546,8 +621,8 @@ per-frame features.
 ## Physics
 
 **The physics engine is our own**, like the renderer and the coming UI framework — not Jolt, not Box2D.
-It is `src/physics/`: a layer over `scene` and `reflect` with no Vulkan and no window in it, so all of
-it runs headlessly in `ctest`.
+It is `Source/physics/`: a layer over `scene` and `reflect` with no Vulkan and no window in it, so all of
+it runs headlessly in `cbt test`.
 
 `Engine` owns a `physics::World` and steps it in `Engine::update`, after `Scene::update` and before
 `input.consume()`. Edit mode never calls `Engine::update`, so **physics never runs while you edit** —
@@ -579,7 +654,7 @@ the body spelled out.
 inserting, destroying, disabling and reparenting a body need no bookkeeping: a disabled subtree is
 skipped exactly as `Scene::update` skips it, and `Scene::clear` on Stop empties the world by
 construction. The walk is in tree order and nothing iterates an `unordered_map`, so a scene steps
-identically every run; `tests/physics_test` pins that bit for bit.
+identically every run; `Tests/physics_test` pins that bit for bit.
 
 `World` gathers `BodyState` values, owns scene traversal, integration, sleeping and contact events,
 and delegates contact preparation, warm starting and impulse solving to `ContactSolver`. The solver
@@ -653,7 +728,7 @@ A raycast does **not** use the tree: it walks the scene and tests every collider
 belongs to the last step and game code can cast a ray at any time, after anything has moved. One ray
 costs the walk either way; many rays per frame are what would justify keeping the tree valid.
 
-`samples/physics` is the sample: a floor, a ramp and a step as static colliders, balls, capsules, a
+`Samples/physics` is the sample: a floor, a ramp and a step as static colliders, balls, capsules, a
 stack of crates, and a `Dropper` that drops more balls onto it. `--scene Scenes/planar.scene` opens the 2D half —
 an orthographic camera over sprites with `planar` bodies, where a click drops another box. `MeshPass` carries three primitives — `cube`, `sphere` and `capsule`, the last two matching what a
 sphere and a `1 2 1` capsule collider cover; `Picking` still treats every `MeshPart` as a cube.
@@ -667,7 +742,7 @@ transforms, so at `fixedHz` 60 on a 120 Hz display a falling body visibly steps.
 root for its desired size bottom-up (`Widget::prepass`), arranges children top-down
 (`arrangeChildren` hands out a `Geometry`), and paints into the renderer's `ui::ElementList`. The same
 paint builds the `HitTester`, so input always routes against what was last drawn. Everything in
-`text` and `ui` runs headlessly: `tests/ui_harness.hpp` drives a real `Application` with a
+`text` and `ui` runs headlessly: `Tests/ui_harness.hpp` drives a real `Application` with a
 `HeadlessPlatform` clock and clipboard.
 
 Widgets are built with `ui::make<T>()`, which returns the widget's `Args`; chained setters fill them,
@@ -796,9 +871,9 @@ linear `ui::Color`s authored as sRGB hex; the swapchain encodes them.
 
 ## The dev tools
 
-**The dev tools are a separate link target, not a runtime flag.** `player` links `engine` and
-`editor` links `engine_dev`, so nothing editor-only is in the shipping binary. There is no `--dev`:
-to get the tools, run `editor`. `tests` links `engine_dev` as well, so `History`, `Picking`,
+**The dev tools are a separate module, not a runtime flag.** The `player` module never depends on
+`dev` and the `editor` module does, so nothing editor-only is in the shipping binary. There is no
+`--dev`: to get the tools, run `editor`. `tests` depends on `dev` as well, so `History`, `Picking`,
 `EditorCamera`, `Manipulator` and the panels themselves are tested headlessly.
 
 The seam is `Renderer::setUiPaint(std::function<void(ui::ElementList&)>)`: `gfx` knows how to draw an
@@ -864,7 +939,7 @@ it backs away along the camera's forward axis until its fov frames the orthograp
 near plane, pushes its far plane back by the same distance, and flies at half that distance per
 second, so a 640-unit view does not crawl at 5 units a second; anything beyond the near plane looks
 slightly smaller than it will in Play. Stop does not reset it: like Unity's Scene view, it stays where
-you left it. It has no roll and is not saved. `tests/editor_camera_test` pins both seeds.
+you left it. It has no roll and is not saved. `Tests/editor_camera_test` pins both seeds.
 
 Its controls are not read from `Input` — they are an interaction with a panel, and `Input` belongs to
 the game — and they only act on the Scene image: the mouse comes from the widget's own events and the
@@ -1089,39 +1164,47 @@ outside the class. Settings are typed props; attributes stay as free-form data o
 
 - **`core/Module.hpp`.** `CINDER_REGISTER(T)` appends to a list behind a hidden-visibility inline
   function, so each library has its own. `CINDER_MODULE_ENTRY()` defines the two exports,
-  `cinder_module_abi` and `cinder_module_register`; the builder generates the one file that expands it.
+  `cinder_module_abi` and `cinder_module_register`; `cbt` generates the one file that expands it.
   Registration goes through a `Registrar`, which refuses a name the engine or another class already owns.
-- **`core/GameModule`** `dlopen`s a library and refuses it unless its ABI string matches `CINDER_ABI`
-  (version, backend, compiler and configuration, baked in by CMake). `enlist` registers its classes;
+- **`core/GameModule`** `dlopen`s a library and refuses it unless its `cinder_module_abi` matches the
+  engine's **BuildId** — see below. `enlist` registers its classes;
   the destructor calls `NodeTypes::remove` for each — dropping cached default instances, which live in
   the library's code — and only then `dlclose`s. `locate` finds `Binaries/<Platform>/<name>.dylib`
   (packaged) or `Saved/Binaries/<name>.dylib` (the editor's build); `.so` on Linux.
-- **The engine is exported to libraries.** `editor`, `player` and `tests` set `ENABLE_EXPORTS` and
-  force-load `engine` whole (`cinder_export_engine` in `cmake/Targets.cmake`), so any engine symbol a
-  library calls exists; libraries link with `-undefined dynamic_lookup`. That grows `player` — 13.4 MB
-  to 18.1 MB in a Debug build. A library built against older engine headers fails `dlopen` with the
-  missing symbol, and the scene loads with placeholders instead.
+- **The engine is exported to libraries.** `editor`, `player` and `tests` are targets with
+  `exportSymbols()`: they link every engine object directly and pass `-export_dynamic` (`-rdynamic` on
+  Linux), so any engine symbol a library calls exists; libraries link with `-undefined dynamic_lookup`.
+  A Shipping package strips `player`, which keeps the exported symbols and drops the rest.
+- **The BuildId** is a hash of the engine's sources under `Source/` — `ThirdParty/` included — its
+  version, backend, configuration and compiler. `cbt build` writes it to
+  `Binaries/<Platform>/<Config>/Engine.modules` and compiles it into the engine through a generated
+  `BuildId.cpp`, and `cbt game` passes it to game code as `CINDER_MODULE_ABI`. Because it is part of
+  every game compile command, game code built against an older engine is recompiled by the next
+  `cbt game` rather than failing with a missing symbol; a library that is never rebuilt is refused and
+  the scene loads with placeholders.
 - **`player`** loads the library before it opens the scene, and clears the scene before unloading it.
 
 ### Building and hot reload
 
-- **`cinder-toolchain.json`** is written next to the executables by `file(GENERATE)`: the compiler, the
-  ABI string, the engine's configuration flags plus `-std=c++20 -fPIC -fvisibility=hidden`, the include
-  directories (`src/` and glm) and `engine`'s compile definitions. `dev/Toolchain` reads it from
-  `executableDir()`; it is the only thing CMake contributes to building game code.
-- **`dev/ModuleBuilder`** compiles `Source/**/*.cpp` and the generated `ModuleEntry.cpp` into
-  `Saved/Intermediate/<name>/`, in parallel, with `-MMD` depfiles. An object is rebuilt when its
-  source, a header it depends on, or the toolchain's fingerprint changed; the library is linked to a
-  temporary file and renamed into `Saved/Binaries/<name>.dylib`, so a half-written file is never loaded.
-  It writes `compile_commands.json` at the project root for clangd, and streams compiler output as
-  `[build]` lines.
+- **`cbt game <project>`** builds a project's C++ as a game-module target. A project with no rule files
+  gets one module, `Project.<name>`, holding every `.cpp` under `Source/` and depending on `game`; a
+  project with `*.Build.cpp` files under `Source/` has them compiled into a library `cbt` loads first,
+  and a project module named like an engine module is an error. Objects go to
+  `Saved/Intermediate/<Platform>/<Config>/` with `-MMD` depfiles, next to a generated
+  `ModuleEntry.cpp`; the library goes to `Saved/Binaries/<name>.dylib` (`.so` on Linux), or to
+  `--library <file>`. It writes `compile_commands.json` at the project root for clangd. It needs the
+  engine's `Engine.modules`, so the engine must be built for the same configuration first.
+- **`dev/GameBuild`** finds `cbt` at `Binaries/<Platform>/cbt`, one folder above the running
+  executable, and spells the `cbt game` and `cbt build` command lines for the executable's own
+  configuration and backend. The editor and the packager compile nothing themselves.
 - **`dev/Process`** runs a child through `posix_spawn` in its own process group with default signal
-  handlers, reads its output by line, and can terminate the whole group. The builder and the packager
-  both use it.
-- **`dev/ModuleHost`** is the editor's owner of all this. The editor builds and loads synchronously
-  **before the scene opens**, so the scene's classes exist when it loads. **Build** on the toolbar and
-  **⌘B** build in the background; `update` relays the output on the main thread and marks a reload
-  pending when the library was relinked. The editor applies it between frames, in Edit mode only and
+  handlers, reads its output by line, and can terminate the whole group. `ModuleHost`, `Staging` and
+  the packager use it to run `cbt`.
+- **`dev/ModuleHost`** is the editor's owner of all this. The editor runs `cbt game` and loads the
+  library synchronously **before the scene opens**, so the scene's classes exist when it loads.
+  **Build** on the toolbar and **⌘B** run it in the background; `update` relays its output as `[build]`
+  lines on the main thread, counts compiles and errors from it, and marks a reload pending when the
+  library was relinked. Cancelling sends `SIGTERM` to `cbt`'s whole process group. The editor applies it between frames, in Edit mode only and
   never mid-interaction — during Play it waits for Stop:
   1. copy the library to `Saved/Binaries/Loaded/<name>-<n>.dylib`, because `dlopen` caches by path;
   2. `dlopen` the copy and check its ABI;
@@ -1132,8 +1215,8 @@ outside the class. Settings are typed props; attributes stay as free-form data o
   Any failure leaves the old library loaded. Selection, history and the Explorer's rows survive,
   because they are all keyed by id or text; `Properties::rebuild` runs after a swap, because its rows
   hold `PropDef`s that lived in the old library. Statics in a library reset on reload and nowhere else.
-- **`tests/hot_reload_test`** compiles a real two-version library with the real toolchain and swaps
-  it; `ctest` runs it as its own `hot_reload` entry because it takes seconds.
+- **`Tests/hot_reload_test`** compiles a real two-version library through `cbt game` and swaps it;
+  `cbt test` runs it as its own `hot_reload` check because it takes seconds.
 
 ### Attributes
 
@@ -1144,11 +1227,11 @@ only when the value really changes, and `loadAttributes` never notifies.
 
 ### The selftest
 
-`tests/selftest` is a project whose `SelfTest` node checks, from inside a game library, the engine
+`Tests/selftest` is a project whose `SelfTest` node checks, from inside a game library, the engine
 behaviour game code relies on — scene editing, reflection, attributes, signals, timers, classes created
-by name at runtime, and physics — and prints `ALL PASS`. The editor builds it: `./build/editor
-tests/selftest --frames 2`, then `./build/player tests/selftest`. It needs a window, so it is not part
-of `ctest`.
+by name at runtime, and physics — and prints `ALL PASS`. The editor builds it: `$B/editor
+Tests/selftest --frames 2`, then `$B/player Tests/selftest`. It needs a window, so it is not part
+of `cbt test`.
 
 ## Reflection
 
@@ -1190,9 +1273,9 @@ type for delta encoding. Re-binding a name keeps its slot — so iteration order
 reboot — and drops its cached default, so a default instance never outlives the library whose code
 it runs.
 
-`SceneCodec::VERSION` and `OLDEST` are both 4 — see *The scene file*. `tests/scene_files_test` loads
-and re-saves every `.scene` and every project's `Config/Game.ini` under `samples/` and
-`tests/selftest/`, and requires the bytes to match, so shipped scenes and settings stay canonical as
+`SceneCodec::VERSION` and `OLDEST` are both 4 — see *The scene file*. `Tests/scene_files_test` loads
+and re-saves every `.scene` and every project's `Config/Game.ini` under `Samples/` and
+`Tests/selftest/`, and requires the bytes to match, so shipped scenes and settings stay canonical as
 the formats move.
 
 ## Projects and packaging
@@ -1257,7 +1340,7 @@ yet:
 
 - **`fileVersion`** must be `ProjectDescriptor::FILE_VERSION`, 1.
 - **`engineAssociation`** is the cinder version the project was made with. One that differs from
-  `ProjectDescriptor::engineVersion()` — CMake's `PROJECT_VERSION`, baked in as `CINDER_VERSION` —
+  `ProjectDescriptor::engineVersion()` — `cbt`'s `ENGINE_VERSION`, baked in as `CINDER_VERSION` —
   logs a warning. Empty means the project lives in the engine's tree, which is Unreal's convention
   and what the samples do.
 - **`targetPlatforms`** (`macOS`, `Linux`, `Windows`; empty means all) and **`preBuildSteps`** /
@@ -1268,7 +1351,7 @@ yet:
   wait for a plugin system and for `require`.
 
 `ProjectDescriptor::save` writes Unreal's layout — tabs, the first four keys always, everything else
-only when it is set — and `tests/scene_files_test` holds the shipped descriptors to it. A wrong type,
+only when it is set — and `Tests/scene_files_test` holds the shipped descriptors to it. A wrong type,
 or a module or plugin without a `name`, is an error that names the key, and `ProjectConfig::load`
 prefixes the file name. `serial/Json` is the format: `parseJson` builds a `PropValue` — objects are
 `PropRec`, arrays `PropSeq`, and `null` is rejected — and reports errors as `line:column`, and
@@ -1281,27 +1364,27 @@ one throws `std::logic_error`.
 
 `platform/Assets` is the only thing that turns a name into a path, and it has four roots:
 
-- **`enginePath`** — the fonts. `CINDER_ENGINE` if set; else `engine/` next to the
-  executable, if it exists, which is the packaged layout; else the source tree's `engine/`, baked in
-  at configure time as `CINDER_ENGINE_DEFAULT`.
-- **`shaderPath`** — the compiled shaders, which are built into the build tree rather than beside
-  their HLSL. `CINDER_SHADERS` if set; else `engine/shaders/` next to the executable, if it exists,
-  which is the packaged layout; else `${CMAKE_BINARY_DIR}/shaders`, baked in as
-  `CINDER_SHADERS_DEFAULT`; else `engineRoot() / "shaders"`. The packaged layout deliberately beats
+- **`enginePath`** — engine data, such as `Content/Fonts/`. `CINDER_ENGINE` if set; else `Engine/`
+  next to the executable, if it exists, which is the packaged layout; else the repo root, baked in by
+  `cbt` as `CINDER_ENGINE_DEFAULT`.
+- **`shaderPath`** — the compiled shaders, which are built into `Binaries/` rather than beside their
+  HLSL. `CINDER_SHADERS` if set; else `Engine/Shaders/` next to the executable, if it exists, which is
+  the packaged layout; else `Binaries/<Platform>/<Config>/Shaders/`, baked in as
+  `CINDER_SHADERS_DEFAULT`; else `engineRoot() / "Shaders"`. The packaged layout deliberately beats
   the baked build directory, so a packaged game run on the dev machine never reads the build tree.
 - **`contentPath`** — `Content/`: the scene to open, `Sprite.texture`, `MeshPart.texture` and
   `game::loadTexture`.
-- **`sourcePath`** — `Source/`: the game's C++, which `ModuleBuilder` walks.
+- **`sourcePath`** — `Source/`: the game's C++, which `cbt game` builds.
 
 The loader picks the root, so a path never names it — a scene says `texture "Textures/box.png"`. Both roots sit under the project root, which is made absolute, so a project
-folder can live anywhere and runs from any working directory; the player falls back to `project/`
+folder can live anywhere and runs from any working directory; the player falls back to `Project/`
 next to itself. A path that is absolute or climbs out of its root with `..` throws: a texture logs
 and draws white, and `game::loadTexture` throws. It would work in the editor and break
 once packaged. A path that exists but differs in case from the disk logs `[assets] ... differs in
 case`: macOS is case-insensitive by default, and the same project would not find the file on a
 case-sensitive system.
 
-**Packaging is C++, not CMake.** `dev/Staging` does it, and two things call it: the `packager`
+**Packaging is C++.** `dev/Staging` does it, and two things call it: the `packager`
 executable, and the editor's **Platforms** menu, which runs that executable as a child process.
 `stage(request)`:
 
@@ -1309,22 +1392,23 @@ executable, and the editor's **Platforms** menu, which runs that executable as a
    `postBuildSteps` — and refuses a platform the project does not target;
 2. runs `preBuildSteps` for the platform, each through `sh -c` in the project folder with
    `$(ProjectDir)`, `$(EngineDir)` and `$(StageDir)` expanded; a step that fails stops the package;
-3. builds the project's C++ with `ModuleBuilder` into `Saved/Binaries/Package-<Config>/`, from its own
-   `Saved/Intermediate/Package-<Config>/` so it never fights the editor's objects, adding `-O2`;
-4. wipes the output and copies `player`, keeping its permissions; the compiled shaders the targets
-   need — macOS `.spv` and `.metallib`, iOS `.metallib`, Linux and Android `.spv`, Windows `.dxil`, all
-   three when no platform is named, a missing one a warning; `engine/fonts/`; and `project/`, holding
-   the `.cinder` file, `Config/`, `Content/` and the library in `Binaries/<Platform>/` — **never
-   `Source/` or `Saved/`**: a package ships compiled code only;
-5. for **Shipping**, copies the unstripped library to `Saved/Symbols/<Platform>/` and `strip`s the
-   shipped one — Unreal's split, where the symbols stay with the developer; **Development** ships it as
-   built;
+3. builds the project's C++ with `cbt game --config <Config> --library
+   Saved/Binaries/Package-<Config>/<name>.dylib`;
+4. wipes the output and copies `player`, keeping its permissions, into a folder shaped like the repo:
+   `Engine/Shaders/` with the compiled shaders the targets need — macOS `.spv` and `.metallib`, iOS
+   `.metallib`, Linux and Android `.spv`, Windows `.dxil`, all three when no platform is named, a
+   missing one a warning; `Engine/Content/Fonts/`; and `Project/`, holding the `.cinder` file,
+   `Config/`, `Content/` and the library in `Binaries/<Platform>/` — **never `Source/` or `Saved/`**:
+   a package ships compiled code only;
+5. for **Shipping**, copies the unstripped `player` and library to `Saved/Symbols/<Platform>/` and
+   `strip`s the shipped ones — Unreal's split, where the symbols stay with the developer;
+   **Development** ships them as built;
 6. runs `postBuildSteps`.
 
 `packager <project> [--platform macOS] [--config development|shipping] [--out dir]` defaults to the
-host, Development and `<project>/Saved/Builds/<Platform>/<name>/`. It finds `player`, `engine/` and the
-shaders the way every executable does — next to itself, then the baked defaults — and the toolchain
-manifest next to itself, so nothing about the build tree is baked into it.
+host, Development and `<project>/Saved/Builds/<Platform>/<name>/`. When it finds `cbt` it first runs
+`cbt build player --config <Config>`, so a Shipping package ships a Shipping `player` and that
+configuration's shaders; without `cbt` it falls back to the `player` and shaders next to itself.
 
 **The editor's Platforms menu** has a Development/Shipping check and one entry per platform in
 `dev/Staging` — macOS, Linux, Windows, iOS and Android. `dev/Packager` runs `packager` through

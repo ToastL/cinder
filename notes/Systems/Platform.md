@@ -2,9 +2,9 @@
 type: system
 status: live
 layer: "platform"
-source: "src/platform/"
+source: "Source/platform/"
 started: 2026-09-09
-last-update: 2026-09-25
+last-update: 2026-11-06
 ---
 
 ## About
@@ -19,7 +19,7 @@ last-update: 2026-09-25
 [[Assets and paths]], [[Input]], [[Input scripts]], [[Logging]], [[Vulkan on Apple Silicon]]
 
 ## Tasks
-- [ ] The packaged player finds itself through `argv[0]`, so a `PATH` launch misses `engine/` and `project/`
+- [ ] The packaged player finds itself through `argv[0]`, so a `PATH` launch misses `Engine/` and `Project/`
 - [ ] Settings/save-data location per OS
 
 ## Notes

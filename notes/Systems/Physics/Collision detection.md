@@ -1,7 +1,7 @@
 ---
 type: concept
 system: "[[Physics]]"
-source: "src/physics/Collide.cpp, src/physics/Broadphase.cpp"
+source: "Source/physics/Collide.cpp, Source/physics/Broadphase.cpp"
 ---
 
 - **Broadphase:** a bounding volume tree rebuilt every step by splitting the widest axis at the median. A pair is tested once, when at least one side is dynamic.

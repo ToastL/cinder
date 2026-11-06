@@ -2,7 +2,7 @@
 type: system
 status: in-progress
 layer: "platform, hosts"
-source: "src/platform/Host.hpp (branch platform-hosts), src/hosts/"
+source: "Source/platform/Host.hpp (branch platform-hosts), Source/hosts/"
 started: 2026-09-26
 last-update: 2026-09-26
 ---
@@ -15,13 +15,13 @@ last-update: 2026-09-26
 
 **The shape:**
 - `platform/Host.hpp` declares the surface, sizes, `pump(wait)`, `time()`, close flag, clipboard, cursor and cursor lock, plus `createHost(const HostOptions&)`.
-- Adapters in `src/hosts/<name>/` (layer → `platform` only). `CINDER_HOST` picks one per desktop executable.
+- Adapters in `Source/hosts/<name>/` (layer → `platform` only). `CINDER_HOST` picks one per desktop executable.
 - Hosts: **Cocoa** (macOS), **SDL3** (Linux), **UIKit** (iOS), **GameActivity** (Android), **headless** (tests). GLFW is a temporary first adapter, deleted in Phase 5. Consoles: a contract doc only.
 - Hosts deliver input only on the main thread, inside `pump()` or their own callbacks. While the cursor is locked they report a virtual cursor accumulating raw deltas (GLFW's disabled-cursor semantics).
 
 **What phase 1 did:** `Input` builds key names from `platform::keys` and asks the host to lock the cursor; volk bootstrap moved to `gfx/vk/Loader.cpp` and surface creation to `gfx/vk/Surface.cpp`; Metal takes its `CAMetalLayer` from the host and no longer links AppKit; `engine.time()` reads the host clock. Captures byte-identical to GLFW on mtl and vk. Linux X11/Wayland paths only compile on Linux, so they're untested.
 
-**Headless host:** adds `selftest_headless` and `graphics_smoke_headless` to `ctest` — no window, fixed 1/60 s clock, byte-identical captures.
+**Headless host:** adds `selftest_headless` and `graphics_smoke_headless` to `cbt test` — no window, fixed 1/60 s clock, byte-identical captures.
 
 ## Tasks
 - [ ] Find the plan file — memory points to `~/.claude/plans/create-a-big-plan-frolicking-scroll.md`, which no longer exists (?)

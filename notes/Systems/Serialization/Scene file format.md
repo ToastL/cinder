@@ -1,7 +1,7 @@
 ---
 type: format
 system: "[[Serialization]]"
-source: "src/serial/SceneCodec.cpp"
+source: "Source/serial/SceneCodec.cpp"
 ---
 
 `SceneCodec` writes version 4 (`VERSION` and `OLDEST` are both 4; the old actor/component formats aren't read).
