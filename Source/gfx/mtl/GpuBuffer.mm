@@ -35,7 +35,9 @@ void GpuBuffer::bindVertex(Commands cmd) const {
     auto& state = unwrap(cmd);
     id<MTLRenderCommandEncoder> encoder =
             cinder::gfx::mtl::bridge<id<MTLRenderCommandEncoder>>(state.encoder);
-    [encoder setVertexBuffer:cinder::gfx::mtl::bridge<id<MTLBuffer>>(handle_) offset:0 atIndex:1];
+    [encoder setVertexBuffer:cinder::gfx::mtl::bridge<id<MTLBuffer>>(handle_)
+                      offset:0
+                     atIndex:cinder::gfx::mtl::VERTEX_BUFFER_SLOT];
 }
 
 void GpuBuffer::bindIndex(Commands cmd) const { unwrap(cmd).indexBuffer = handle_; }

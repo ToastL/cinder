@@ -57,7 +57,7 @@ void SpriteBatch::vertex(uint32_t& cursor, const glm::vec3& position, float u, f
 void SpriteBatch::quad(int texture, const glm::mat4& model, glm::vec2 size, const glm::vec4& uv,
                        const glm::vec4& color) {
     if (quadCount_ >= MAX_QUADS) {
-        overflowWarned_ = warnOverflow(overflowWarned_, "sprite batch", "10000 quads");
+        overflowWarned_ = warnOverflow(overflowWarned_, "sprite batch", MAX_QUADS, "quads");
         return;
     }
 

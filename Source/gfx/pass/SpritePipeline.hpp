@@ -13,6 +13,8 @@ class SpritePipeline {
 public:
     static constexpr uint32_t FLOATS_PER_VERTEX = 9;
     static constexpr uint32_t VERTEX_STRIDE = FLOATS_PER_VERTEX * sizeof(float);
+    static constexpr uint32_t UV_OFFSET = 3 * sizeof(float);
+    static constexpr uint32_t COLOR_OFFSET = 5 * sizeof(float);
 
     explicit SpritePipeline(const cinder::gfx::rhi::Presenter& presenter);
 

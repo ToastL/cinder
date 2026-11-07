@@ -1,5 +1,6 @@
 #pragma once
 
+#include "gfx/rhi/GlyphRegion.hpp"
 #include "gfx/rhi/Handles.hpp"
 
 #include <cstddef>
@@ -12,15 +13,6 @@ namespace cinder::gfx::rhi {
 class Ctx;
 class GpuBuffer;
 class TexturePool;
-
-struct GlyphRegion {
-    std::size_t page = 0;
-    std::int32_t x = 0;
-    std::int32_t y = 0;
-    std::int32_t width = 0;
-    std::int32_t height = 0;
-    std::uint64_t offset = 0;
-};
 
 class GlyphPages {
 public:

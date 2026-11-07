@@ -3,6 +3,7 @@
 namespace cinder::gfx::rhi {
 
 class Ctx;
+class GlyphPages;
 class GpuBuffer;
 class GraphicsPipeline;
 class Texture;

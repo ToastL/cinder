@@ -10,7 +10,11 @@ namespace cinder::gfx::asset {
 
 class Mesh {
 public:
-    static constexpr uint32_t VERTEX_STRIDE = 12 * sizeof(float);
+    static constexpr uint32_t VERTEX_FLOATS = 12;
+    static constexpr uint32_t VERTEX_STRIDE = VERTEX_FLOATS * sizeof(float);
+    static constexpr uint32_t NORMAL_OFFSET = 3 * sizeof(float);
+    static constexpr uint32_t UV_OFFSET = 6 * sizeof(float);
+    static constexpr uint32_t COLOR_OFFSET = 8 * sizeof(float);
 
     Mesh(const cinder::gfx::rhi::Ctx& ctx, const std::vector<float>& vertices,
          const std::vector<uint32_t>& indices);

@@ -11,6 +11,10 @@ extern "C" void objc_autoreleasePoolPop(void* token);
 
 namespace cinder::gfx::mtl {
 
+constexpr NSUInteger PUSH_CONSTANT_SLOT = 0;
+constexpr NSUInteger VERTEX_BUFFER_SLOT = 1;
+constexpr NSUInteger TEXTURE_SLOT = 0;
+
 class PoolScope {
 public:
     PoolScope() : token_(objc_autoreleasePoolPush()) {}

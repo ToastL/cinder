@@ -12,8 +12,8 @@ SpritePipeline::SpritePipeline(const cinder::gfx::rhi::Presenter& presenter) {
                         .pushConstants(GraphicsPipeline::MATRIX_BYTES)
                         .vertexStride(VERTEX_STRIDE)
                         .attribute(0, cinder::gfx::rhi::VertexFormat::Float3, 0)
-                        .attribute(1, cinder::gfx::rhi::VertexFormat::Float2, 3 * sizeof(float))
-                        .attribute(2, cinder::gfx::rhi::VertexFormat::Float4, 5 * sizeof(float))
+                        .attribute(1, cinder::gfx::rhi::VertexFormat::Float2, UV_OFFSET)
+                        .attribute(2, cinder::gfx::rhi::VertexFormat::Float4, COLOR_OFFSET)
                         .depthRead()
                         .alphaBlend()
                         .build();

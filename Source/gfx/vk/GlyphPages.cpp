@@ -11,22 +11,6 @@ namespace {
 
 constexpr VkFormat PAGE_FORMAT = VK_FORMAT_R8_UNORM;
 
-void barrier(VkCommandBuffer cmd, VkImage image, VkImageLayout from, VkImageLayout to,
-             VkAccessFlags srcAccess, VkAccessFlags dstAccess, VkPipelineStageFlags srcStage,
-             VkPipelineStageFlags dstStage) {
-    VkImageMemoryBarrier info{};
-    info.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
-    info.oldLayout = from;
-    info.newLayout = to;
-    info.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-    info.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-    info.image = image;
-    info.subresourceRange = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1};
-    info.srcAccessMask = srcAccess;
-    info.dstAccessMask = dstAccess;
-    vkCmdPipelineBarrier(cmd, srcStage, dstStage, 0, 0, nullptr, 0, nullptr, 1, &info);
-}
-
 }
 
 GlyphPages::GlyphPages(const cinder::gfx::rhi::Ctx& ctx, std::uint32_t size)
@@ -58,7 +42,7 @@ void GlyphPages::upload(Uploads cmd, const GpuBuffer& staging,
     for (const GlyphRegion& region : regions) {
         Page& target = page(region.page);
 
-        barrier(unwrap(cmd), target.image.image,
+        images::barrier(unwrap(cmd), target.image.image,
                 target.uploaded ? VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
                                 : VK_IMAGE_LAYOUT_UNDEFINED,
                 VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 0, VK_ACCESS_TRANSFER_WRITE_BIT,
@@ -73,7 +57,7 @@ void GlyphPages::upload(Uploads cmd, const GpuBuffer& staging,
         vkCmdCopyBufferToImage(unwrap(cmd), staging.handle(), target.image.image,
                                VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &copy);
 
-        barrier(unwrap(cmd), target.image.image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+        images::barrier(unwrap(cmd), target.image.image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
                 VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_ACCESS_TRANSFER_WRITE_BIT,
                 VK_ACCESS_SHADER_READ_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT,
                 VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT);

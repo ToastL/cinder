@@ -6,6 +6,7 @@
 
 #include <cstring>
 #include <stdexcept>
+#include <string>
 
 #include <glm/gtc/type_ptr.hpp>
 
@@ -34,7 +35,7 @@ void GraphicsPipeline::bind(Commands cmd) const {
     [encoder setCullMode:cullBack_ ? MTLCullModeBack : MTLCullModeNone];
     state.pushConstantBytes = pushConstantBytes_;
     if (pushConstantBytes_ > state.pushConstants.size()) {
-        throw std::runtime_error("Metal push constant block exceeds 4096 bytes");
+        throw std::runtime_error("Metal push constant block exceeds " + std::to_string(state.pushConstants.size()) + " bytes");
     }
     std::memset(state.pushConstants.data(), 0, pushConstantBytes_);
 }
@@ -45,10 +46,14 @@ void GraphicsPipeline::updatePushConstants(Commands cmd, ShaderStages stages) co
     id<MTLRenderCommandEncoder> encoder =
             cinder::gfx::mtl::bridge<id<MTLRenderCommandEncoder>>(state.encoder);
     if (stages == ShaderStages::Vertex || stages == ShaderStages::Both) {
-        [encoder setVertexBytes:state.pushConstants.data() length:pushConstantBytes_ atIndex:0];
+        [encoder setVertexBytes:state.pushConstants.data()
+                         length:pushConstantBytes_
+                        atIndex:cinder::gfx::mtl::PUSH_CONSTANT_SLOT];
     }
     if (stages == ShaderStages::Fragment || stages == ShaderStages::Both) {
-        [encoder setFragmentBytes:state.pushConstants.data() length:pushConstantBytes_ atIndex:0];
+        [encoder setFragmentBytes:state.pushConstants.data()
+                           length:pushConstantBytes_
+                          atIndex:cinder::gfx::mtl::PUSH_CONSTANT_SLOT];
     }
 }
 
@@ -78,9 +83,10 @@ void GraphicsPipeline::bindTexture(Commands cmd, TextureBinding texture) const {
     id<MTLRenderCommandEncoder> encoder =
             cinder::gfx::mtl::bridge<id<MTLRenderCommandEncoder>>(state.encoder);
     [encoder setFragmentTexture:cinder::gfx::mtl::bridge<id<MTLTexture>>(value->texture)
-                        atIndex:0];
+                        atIndex:cinder::gfx::mtl::TEXTURE_SLOT];
     [encoder setFragmentSamplerState:
-                     cinder::gfx::mtl::bridge<id<MTLSamplerState>>(value->sampler) atIndex:0];
+                     cinder::gfx::mtl::bridge<id<MTLSamplerState>>(value->sampler)
+                                 atIndex:cinder::gfx::mtl::TEXTURE_SLOT];
 }
 
 GraphicsPipeline::~GraphicsPipeline() {

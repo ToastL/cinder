@@ -15,6 +15,16 @@ using cinder::gfx::rhi::Ctx;
 
 namespace {
 
+void gridIndices(std::vector<uint32_t>& indices, int rows, int segments) {
+    for (int row = 0; row + 1 < rows; ++row) {
+        for (int segment = 0; segment < segments; ++segment) {
+            const auto top = static_cast<uint32_t>(row * (segments + 1) + segment);
+            const auto bottom = top + static_cast<uint32_t>(segments) + 1;
+            indices.insert(indices.end(), {top, top + 1, bottom, bottom, top + 1, bottom + 1});
+        }
+    }
+}
+
 void cross(const float* a, const float* b, float* out) {
     out[0] = a[1] * b[2] - a[2] * b[1];
     out[1] = a[2] * b[0] - a[0] * b[2];
@@ -45,7 +55,7 @@ Mesh Mesh::cube(const Ctx& ctx, float r, float g, float b) {
         {0, 1, 0}, {0, -1, 0},
     };
 
-    std::vector<float> vertices(24 * 12);
+    std::vector<float> vertices(24 * VERTEX_FLOATS);
     std::vector<uint32_t> indices(36);
     std::size_t v = 0;
     std::size_t i = 0;
@@ -97,7 +107,7 @@ Mesh Mesh::sphere(const Ctx& ctx, float r, float g, float b) {
 
     std::vector<float> vertices;
     std::vector<uint32_t> indices;
-    vertices.reserve(static_cast<std::size_t>((RINGS + 1) * (SEGMENTS + 1) * 12));
+    vertices.reserve(static_cast<std::size_t>((RINGS + 1) * (SEGMENTS + 1) * VERTEX_FLOATS));
     indices.reserve(static_cast<std::size_t>(RINGS * SEGMENTS * 6));
 
     for (int ring = 0; ring <= RINGS; ++ring) {
@@ -113,13 +123,7 @@ Mesh Mesh::sphere(const Ctx& ctx, float r, float g, float b) {
         }
     }
 
-    for (int ring = 0; ring < RINGS; ++ring) {
-        for (int segment = 0; segment < SEGMENTS; ++segment) {
-            const uint32_t top = static_cast<uint32_t>(ring * (SEGMENTS + 1) + segment);
-            const uint32_t bottom = top + SEGMENTS + 1;
-            indices.insert(indices.end(), {top, top + 1, bottom, bottom, top + 1, bottom + 1});
-        }
-    }
+    gridIndices(indices, RINGS + 1, SEGMENTS);
 
     return Mesh(ctx, vertices, indices);
 }
@@ -133,7 +137,7 @@ Mesh Mesh::capsule(const Ctx& ctx, float r, float g, float b) {
 
     std::vector<float> vertices;
     std::vector<uint32_t> indices;
-    vertices.reserve(static_cast<std::size_t>(ROWS * (SEGMENTS + 1) * 12));
+    vertices.reserve(static_cast<std::size_t>(ROWS * (SEGMENTS + 1) * VERTEX_FLOATS));
     indices.reserve(static_cast<std::size_t>((ROWS - 1) * SEGMENTS * 6));
 
     int row = 0;
@@ -158,13 +162,7 @@ Mesh Mesh::capsule(const Ctx& ctx, float r, float g, float b) {
         }
     }
 
-    for (int i = 0; i + 1 < ROWS; ++i) {
-        for (int segment = 0; segment < SEGMENTS; ++segment) {
-            const uint32_t top = static_cast<uint32_t>(i * (SEGMENTS + 1) + segment);
-            const uint32_t bottom = top + SEGMENTS + 1;
-            indices.insert(indices.end(), {top, top + 1, bottom, bottom, top + 1, bottom + 1});
-        }
-    }
+    gridIndices(indices, ROWS, SEGMENTS);
 
     return Mesh(ctx, vertices, indices);
 }

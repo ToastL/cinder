@@ -82,4 +82,19 @@ VkFramebuffer framebuffer(const rhi::Ctx& ctx, VkRenderPass renderPass,
     return handle;
 }
 
+void barrier(VkCommandBuffer cmd, VkImage image, VkImageLayout from, VkImageLayout to, VkAccessFlags srcAccess,
+             VkAccessFlags dstAccess, VkPipelineStageFlags srcStage, VkPipelineStageFlags dstStage) {
+    VkImageMemoryBarrier info{};
+    info.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+    info.oldLayout = from;
+    info.newLayout = to;
+    info.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+    info.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+    info.image = image;
+    info.subresourceRange = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1};
+    info.srcAccessMask = srcAccess;
+    info.dstAccessMask = dstAccess;
+    vkCmdPipelineBarrier(cmd, srcStage, dstStage, 0, 0, nullptr, 0, nullptr, 1, &info);
+}
+
 }

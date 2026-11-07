@@ -1,5 +1,4 @@
 #include "gfx/rhi/Pipeline.hpp"
-
 #include "gfx/rhi/PipelineBuilder.hpp"
 
 #include "gfx/vk/Formats.hpp"
@@ -192,8 +191,6 @@ std::unique_ptr<GraphicsPipeline> createPipeline(const Presenter& presenter,
     return std::make_unique<GraphicsPipeline>(ctx, layout.release(), handle);
 }
 
-std::unique_ptr<GraphicsPipeline> PipelineBuilder::build() {
-    return createPipeline(presenter_, desc_);
-}
+std::unique_ptr<GraphicsPipeline> PipelineBuilder::build() { return createPipeline(presenter_, desc_); }
 
 }

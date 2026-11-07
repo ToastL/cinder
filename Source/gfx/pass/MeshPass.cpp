@@ -34,7 +34,7 @@ void MeshPass::beginFrame() { drawCount_ = 0; }
 bool MeshPass::accept(int mesh) {
     if (mesh < 0 || static_cast<std::size_t>(mesh) >= meshes_.size()) return false;
     if (drawCount_ >= MAX_DRAWS) {
-        overflowWarned_ = warnOverflow(overflowWarned_, "mesh queue", "4096");
+        overflowWarned_ = warnOverflow(overflowWarned_, "mesh queue", MAX_DRAWS, "draws");
         return false;
     }
     return true;

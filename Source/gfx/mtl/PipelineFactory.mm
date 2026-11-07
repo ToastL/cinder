@@ -1,11 +1,11 @@
 #include "gfx/rhi/Pipeline.hpp"
+#include "gfx/rhi/PipelineBuilder.hpp"
 
 #include "gfx/mtl/Ctx.hpp"
 #include "gfx/mtl/Formats.hpp"
 #include "gfx/mtl/GraphicsPipeline.hpp"
 #include "gfx/mtl/MetalUtil.hpp"
 #include "gfx/mtl/Presenter.hpp"
-#include "gfx/rhi/PipelineBuilder.hpp"
 #include "platform/Assets.hpp"
 #include "platform/Files.hpp"
 
@@ -63,13 +63,13 @@ std::unique_ptr<GraphicsPipeline> createPipeline(const Presenter& presenter,
 
     if (desc.vertexStride > 0) {
         MTLVertexDescriptor* vertices = [[MTLVertexDescriptor alloc] init];
-        vertices.layouts[1].stride = desc.vertexStride;
-        vertices.layouts[1].stepFunction = MTLVertexStepFunctionPerVertex;
+        vertices.layouts[cinder::gfx::mtl::VERTEX_BUFFER_SLOT].stride = desc.vertexStride;
+        vertices.layouts[cinder::gfx::mtl::VERTEX_BUFFER_SLOT].stepFunction = MTLVertexStepFunctionPerVertex;
         for (const VertexAttribute& attribute : desc.attributes) {
             vertices.attributes[attribute.location].format = static_cast<MTLVertexFormat>(
                     cinder::gfx::mtl::vertexFormat(attribute.format));
             vertices.attributes[attribute.location].offset = attribute.offset;
-            vertices.attributes[attribute.location].bufferIndex = 1;
+            vertices.attributes[attribute.location].bufferIndex = cinder::gfx::mtl::VERTEX_BUFFER_SLOT;
         }
         pipeline.vertexDescriptor = vertices;
     }
@@ -111,8 +111,6 @@ std::unique_ptr<GraphicsPipeline> createPipeline(const Presenter& presenter,
             desc.pushConstantStages, desc.winding, desc.cullBack);
 }
 
-std::unique_ptr<GraphicsPipeline> PipelineBuilder::build() {
-    return createPipeline(presenter_, desc_);
-}
+std::unique_ptr<GraphicsPipeline> PipelineBuilder::build() { return createPipeline(presenter_, desc_); }
 
 }

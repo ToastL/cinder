@@ -1,10 +1,8 @@
 #include "gfx/vk/Texture.hpp"
 
-#include "gfx/vk/GpuBuffer.hpp"
+#include "gfx/rhi/Image.hpp"
 #include "gfx/vk/Ctx.hpp"
-
-#define STB_IMAGE_IMPLEMENTATION
-#include <stb_image.h>
+#include "gfx/vk/GpuBuffer.hpp"
 
 #include <cstring>
 #include <stdexcept>
@@ -33,23 +31,8 @@ Texture::Texture(const rhi::Ctx& ctx, const unsigned char* pixels, uint32_t widt
 
     VkCommandBuffer cmd = ctx.beginSingleTime();
 
-    VkImageMemoryBarrier barrier{};
-    barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
-    barrier.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-    barrier.newLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
-    barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-    barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-    barrier.image = image_.image;
-    barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-    barrier.subresourceRange.baseMipLevel = 0;
-    barrier.subresourceRange.levelCount = 1;
-    barrier.subresourceRange.baseArrayLayer = 0;
-    barrier.subresourceRange.layerCount = 1;
-    barrier.srcAccessMask = 0;
-    barrier.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
-
-    vkCmdPipelineBarrier(cmd, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT,
-                         0, 0, nullptr, 0, nullptr, 1, &barrier);
+    images::barrier(cmd, image_.image, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 0,
+                    VK_ACCESS_TRANSFER_WRITE_BIT, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT);
 
     VkBufferImageCopy copy{};
     copy.bufferOffset = 0;
@@ -65,13 +48,9 @@ Texture::Texture(const rhi::Ctx& ctx, const unsigned char* pixels, uint32_t widt
     vkCmdCopyBufferToImage(cmd, staging.handle(), image_.image,
                            VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &copy);
 
-    barrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
-    barrier.newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-    barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
-    barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
-
-    vkCmdPipelineBarrier(cmd, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
-                         0, 0, nullptr, 0, nullptr, 1, &barrier);
+    images::barrier(cmd, image_.image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                    VK_ACCESS_TRANSFER_WRITE_BIT, VK_ACCESS_SHADER_READ_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT,
+                    VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT);
 
     ctx.endSingleTime(cmd);
 
@@ -79,18 +58,8 @@ Texture::Texture(const rhi::Ctx& ctx, const unsigned char* pixels, uint32_t widt
 }
 
 Texture Texture::load(const rhi::Ctx& ctx, const std::string& path) {
-    int width = 0;
-    int height = 0;
-    int channels = 0;
-
-    stbi_uc* pixels = stbi_load(path.c_str(), &width, &height, &channels, STBI_rgb_alpha);
-    if (pixels == nullptr) {
-        throw std::runtime_error("Failed to load " + path + ": " + stbi_failure_reason());
-    }
-
-    Texture texture(ctx, pixels, static_cast<uint32_t>(width), static_cast<uint32_t>(height));
-    stbi_image_free(pixels);
-    return texture;
+    const Image image = loadImage(path);
+    return Texture(ctx, image.pixels.data(), image.width, image.height);
 }
 
 Texture Texture::white(const rhi::Ctx& ctx) {

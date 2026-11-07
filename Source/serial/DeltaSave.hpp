@@ -8,6 +8,7 @@ namespace cinder::serial {
 
 class DeltaSave : public Archive {
 public:
+    using Archive::text;
     const std::string& text() const { return out_; }
 
     bool loading() const override { return false; }

@@ -2,9 +2,7 @@
 
 #include "gfx/mtl/Ctx.hpp"
 #include "gfx/mtl/MetalUtil.hpp"
-
-#define STB_IMAGE_IMPLEMENTATION
-#include <stb_image.h>
+#include "gfx/rhi/Image.hpp"
 
 #include <stdexcept>
 #include <utility>
@@ -29,17 +27,8 @@ Texture::Texture(const Ctx& ctx, const unsigned char* pixels, std::uint32_t widt
 }
 
 Texture Texture::load(const Ctx& ctx, const std::string& path) {
-    int width = 0;
-    int height = 0;
-    int channels = 0;
-    stbi_uc* pixels = stbi_load(path.c_str(), &width, &height, &channels, STBI_rgb_alpha);
-    if (pixels == nullptr) {
-        throw std::runtime_error("Failed to load " + path + ": " + stbi_failure_reason());
-    }
-    Texture texture(ctx, pixels, static_cast<std::uint32_t>(width),
-                    static_cast<std::uint32_t>(height));
-    stbi_image_free(pixels);
-    return texture;
+    const Image image = loadImage(path);
+    return Texture(ctx, image.pixels.data(), image.width, image.height);
 }
 
 Texture Texture::white(const Ctx& ctx) {
