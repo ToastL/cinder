@@ -46,7 +46,6 @@ public:
     std::unique_ptr<Node> create(std::string_view name) const;
     std::string_view nameOf(const std::type_info& type) const;
     std::string_view nameOf(const Node& node) const;
-    const cinder::reflect::PropList* propsOf(std::string_view name) const;
     const Node* fallback(std::string_view name) const;
     const Entry* entry(std::string_view name) const { return find(name); }
 

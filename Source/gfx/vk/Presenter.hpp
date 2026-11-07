@@ -62,7 +62,6 @@ public:
 
     void captureTarget(const RenderTarget& target, const std::string& path) const;
     void requestWindowCapture(const std::string& path);
-    bool windowCapturePending() const { return !windowCapture_.empty(); }
 
 private:
     void createRenderPasses();

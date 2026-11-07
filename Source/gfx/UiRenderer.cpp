@@ -71,7 +71,7 @@ void UiRenderer::reserve(const Ctx& ctx, std::unique_ptr<GpuBuffer>& buffer, std
                          cinder::gfx::rhi::BufferUsage usage) {
     if (buffer && buffer->size() >= size) return;
     const std::uint64_t grown = std::max(size, buffer ? buffer->size() * 2 : std::uint64_t{4096});
-    buffer = std::make_unique<GpuBuffer>(ctx, grown, usage, true);
+    buffer = std::make_unique<GpuBuffer>(ctx, grown, usage);
 }
 
 void UiRenderer::upload(cinder::gfx::rhi::Uploads cmd, Frame& frame, GlyphAtlas& atlas) {

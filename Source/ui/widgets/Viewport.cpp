@@ -9,7 +9,6 @@ void Viewport::construct(const Args& args) {
     opaque_ = args.opaque_;
     focusable_ = args.focusable_;
     childSlot_.widget = args.content_;
-    if (client_) client_->widget_ = weak_from_this();
 }
 
 void Viewport::tick(const Geometry& geometry, double time, float deltaTime) {

@@ -39,13 +39,6 @@ public:
                                                                 const PointerEvent& event) const {
         return std::nullopt;
     }
-
-protected:
-    std::shared_ptr<Widget> widget() const { return widget_.lock(); }
-
-private:
-    friend class Viewport;
-    std::weak_ptr<Widget> widget_;
 };
 
 class Viewport : public CompoundWidget {

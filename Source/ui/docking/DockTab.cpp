@@ -53,9 +53,7 @@ Reply DockTab::onMouseUp(const Geometry& geometry, const PointerEvent& event) {
     if (event.button != cinder::platform::buttons::LEFT) return Reply::unhandled();
     if (closable() && closeRect(geometry).contains(event.position)) {
         const std::string tab = tab_;
-        TabManager& manager = *manager_;
-        manager.closeTab(tab);
-        return Reply::handled();
+        manager_->closeTab(tab);
     }
     return Reply::handled();
 }

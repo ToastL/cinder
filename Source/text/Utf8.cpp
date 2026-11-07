@@ -2,6 +2,8 @@
 
 #include "platform/Utf8.hpp"
 
+#include <cstdint>
+
 namespace cinder::text {
 
 namespace {

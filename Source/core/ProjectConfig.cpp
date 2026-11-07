@@ -1,8 +1,7 @@
 #include "core/ProjectConfig.hpp"
 
-#include "platform/Files.hpp"
-
 #include "core/GameLoop.hpp"
+#include "platform/Files.hpp"
 #include "platform/Log.hpp"
 #include "serial/IniLoad.hpp"
 #include "serial/IniSave.hpp"

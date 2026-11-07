@@ -40,6 +40,6 @@ const cinder::gfx::rhi::Texture& Assets::get(int id) const {
     return textures_[static_cast<std::size_t>(id)];
 }
 
-Assets::~Assets() { textures_.clear(); }
+Assets::~Assets() = default;
 
 }

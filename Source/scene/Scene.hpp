@@ -50,7 +50,6 @@ public:
     Node* byId(int id) const;
     Node* find(std::string_view name) const;
     const std::vector<Node*>& roots() const { return roots_; }
-    int nextId() const { return nextId_; }
 
     void update(float dt);
     void render(float alpha, DrawList& draws);

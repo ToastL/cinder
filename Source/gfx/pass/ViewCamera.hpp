@@ -19,18 +19,18 @@ public:
     glm::vec2 size() const;
     glm::vec2 extent() const;
 
-    const glm::mat4& viewProjection();
+    const glm::mat4& viewProjection() const;
     std::array<glm::vec3, 8> corners() const;
-    glm::vec3 screenToWorld(float x, float y);
+    glm::vec3 screenToWorld(float x, float y) const;
 
 private:
-    void recompute();
+    void recompute() const;
 
     cinder::scene::View view_;
     float width_ = 1.0f;
     float height_ = 1.0f;
-    glm::mat4 combined_{1.0f};
-    bool dirty_ = true;
+    mutable glm::mat4 combined_{1.0f};
+    mutable bool dirty_ = true;
 };
 
 }

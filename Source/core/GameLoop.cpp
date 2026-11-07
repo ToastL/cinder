@@ -24,7 +24,6 @@ void GameLoop::requirePositiveHz(int hz, const char* what) {
 
 bool GameLoop::begin(Engine& engine) {
     cinder::platform::Glfw::pollEvents();
-    engine.beginFrame();
 
     if (engine.minimized()) {
         cinder::platform::Glfw::waitEvents();

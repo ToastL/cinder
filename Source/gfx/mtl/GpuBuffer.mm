@@ -8,7 +8,7 @@
 
 namespace cinder::gfx::rhi {
 
-GpuBuffer::GpuBuffer(const Ctx& ctx, std::uint64_t size, BufferUsage, bool)
+GpuBuffer::GpuBuffer(const Ctx& ctx, std::uint64_t size, BufferUsage)
     : size_(size) {
     id<MTLDevice> device = cinder::gfx::mtl::bridge<id<MTLDevice>>(ctx.device());
     id<MTLBuffer> buffer = [device newBufferWithLength:static_cast<NSUInteger>(size)

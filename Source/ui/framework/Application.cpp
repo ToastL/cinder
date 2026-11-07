@@ -3,8 +3,6 @@
 
 #include "ui/core/ElementList.hpp"
 
-#include <glm/geometric.hpp>
-
 #include <algorithm>
 #include <stdexcept>
 #include <utility>

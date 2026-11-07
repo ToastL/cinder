@@ -11,7 +11,7 @@ class Ctx;
 
 class GpuBuffer {
 public:
-    GpuBuffer(const Ctx& ctx, std::uint64_t size, BufferUsage usage, bool hostVisible);
+    GpuBuffer(const Ctx& ctx, std::uint64_t size, BufferUsage usage);
     ~GpuBuffer();
 
     GpuBuffer(const GpuBuffer&) = delete;

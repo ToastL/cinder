@@ -30,6 +30,7 @@ public:
 
     const cinder::scene::View& view() const { return camera_.view(); }
     cinder::gfx::pass::ViewCamera& camera() { return camera_; }
+    const cinder::gfx::pass::ViewCamera& camera() const { return camera_; }
 
 private:
     glm::mat4 orientation() const;

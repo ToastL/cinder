@@ -18,7 +18,6 @@ class Scene;
 namespace cinder::ui {
 class Application;
 class Border;
-class MenuBuilder;
 }
 
 namespace cinder::dev {

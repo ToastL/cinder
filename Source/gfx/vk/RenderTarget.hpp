@@ -20,7 +20,6 @@ public:
 
     VkFramebuffer framebuffer() const { return framebuffer_; }
     VkImage image() const { return image_.image; }
-    VkImageView view() const { return view_; }
     TextureBinding binding() const { return binding_; }
     uint32_t width() const { return width_; }
     uint32_t height() const { return height_; }

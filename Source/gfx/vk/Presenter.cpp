@@ -235,7 +235,7 @@ void Presenter::captureTarget(const RenderTarget& target, const std::string& pat
     const uint32_t height = target.height();
     const VkDeviceSize size = static_cast<VkDeviceSize>(width) * height * 4;
 
-    GpuBuffer staging(ctx, size, BufferUsage::TransferDst, true);
+    GpuBuffer staging(ctx, size, BufferUsage::TransferDst);
 
     VkCommandBuffer cmd = ctx.beginSingleTime();
 
@@ -278,7 +278,7 @@ void Presenter::recordWindowCapture(VkCommandBuffer cmd, std::uint32_t imageInde
     const VkDeviceSize size = static_cast<VkDeviceSize>(width) * height * 4;
     if (!captureBuffer_ || captureBuffer_->size() < size) {
         captureBuffer_ =
-                std::make_unique<GpuBuffer>(ctx_, size, BufferUsage::TransferDst, true);
+                std::make_unique<GpuBuffer>(ctx_, size, BufferUsage::TransferDst);
     }
 
     const VkImage image = swapchain_->image(imageIndex);

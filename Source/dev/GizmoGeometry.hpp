@@ -43,7 +43,7 @@ struct HandleShape {
     Tip tip = Tip::None;
 };
 
-GizmoView gizmoView(cinder::gfx::pass::ViewCamera& camera, glm::vec2 size);
+GizmoView gizmoView(const cinder::gfx::pass::ViewCamera& camera, glm::vec2 size);
 std::optional<glm::vec2> toScreen(const GizmoView& view, const glm::vec3& position);
 
 std::optional<Gizmo> gizmoFor(cinder::scene::Transform& transform, Tool tool, Space space, const GizmoView& view);

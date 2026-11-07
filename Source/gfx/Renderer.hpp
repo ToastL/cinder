@@ -47,7 +47,6 @@ public:
     void drawFrame();
     void capture(const std::string& path);
     void requestWindowCapture(const std::string& path);
-    bool windowCapturePending() const;
 
     cinder::gfx::asset::Assets& assets() { return *assets_; }
     cinder::gfx::pass::ViewCamera& camera() { return camera_; }

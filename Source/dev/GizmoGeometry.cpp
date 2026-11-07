@@ -209,7 +209,7 @@ bool inFront(const glm::vec3& point, const Gizmo& gizmo, const glm::vec3& normal
 
 }
 
-GizmoView gizmoView(cinder::gfx::pass::ViewCamera& camera, glm::vec2 size) {
+GizmoView gizmoView(const cinder::gfx::pass::ViewCamera& camera, glm::vec2 size) {
     return GizmoView{camera.viewProjection(), camera.view().world, camera.view().fovDegrees, size};
 }
 

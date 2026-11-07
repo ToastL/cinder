@@ -40,9 +40,9 @@ Mesh::Mesh(const Ctx& ctx, const std::vector<float>& vertices,
     const std::uint64_t indexBytes = indices.size() * sizeof(uint32_t);
 
     vertexBuffer_ = std::make_unique<GpuBuffer>(ctx, vertexBytes,
-                                                cinder::gfx::rhi::BufferUsage::Vertex, true);
+                                                cinder::gfx::rhi::BufferUsage::Vertex);
     indexBuffer_ = std::make_unique<GpuBuffer>(ctx, indexBytes,
-                                               cinder::gfx::rhi::BufferUsage::Index, true);
+                                               cinder::gfx::rhi::BufferUsage::Index);
 
     std::memcpy(vertexBuffer_->mapped(), vertices.data(), static_cast<std::size_t>(vertexBytes));
     std::memcpy(indexBuffer_->mapped(), indices.data(), static_cast<std::size_t>(indexBytes));

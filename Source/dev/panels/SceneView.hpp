@@ -7,7 +7,6 @@
 #include <memory>
 
 namespace cinder::core { class Engine; }
-namespace cinder::scene { class Node; }
 namespace cinder::ui { class Application; }
 
 namespace cinder::dev {

@@ -1,7 +1,6 @@
 #include "serial/SceneCodec.hpp"
 
 #include "platform/Files.hpp"
-
 #include "platform/Log.hpp"
 #include "reflect/Reflect.hpp"
 #include "scene/Attributes.hpp"

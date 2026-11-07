@@ -17,7 +17,6 @@
 #include "ui/widgets/TextField.hpp"
 #include "ui/widgets/TreeView.hpp"
 
-#include <filesystem>
 #include <string_view>
 
 namespace cinder::dev::panels {
@@ -40,8 +39,6 @@ bool containsIgnoreCase(std::string_view text, std::string_view needle) {
     }
     return false;
 }
-
-std::string detailOf(const Node& node, std::string_view type) { return std::string(type); }
 
 }
 
@@ -166,7 +163,7 @@ std::shared_ptr<Widget> Explorer::rowFor(ItemId item) {
                           .text([this, id] {
                               const Node* node = scene_.byId(id);
                               if (node == nullptr) return std::string();
-                              const std::string detail = detailOf(*node, scene_.types().nameOf(*node));
+                              const std::string detail(scene_.types().nameOf(*node));
                               return detail == node->name() ? std::string() : detail;
                           })
                           .textStyle("Label.Small")

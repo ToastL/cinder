@@ -37,8 +37,6 @@ void Engine::saveScene(const std::filesystem::path& path) {
     cinder::serial::SceneCodec::saveToFile(path, scene_);
 }
 
-void Engine::beginFrame() {}
-
 void Engine::update(float dt) {
     scene_.update(dt);
     physics_.step(dt);

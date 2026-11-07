@@ -1,8 +1,7 @@
 #include "scene/NodeTypes.hpp"
 
-#include "scene/Placeholder.hpp"
-
 #include "scene/Node.hpp"
+#include "scene/Placeholder.hpp"
 
 namespace cinder::scene {
 
@@ -59,11 +58,6 @@ std::string_view NodeTypes::nameOf(const std::type_info& type) const {
 std::string_view NodeTypes::nameOf(const Node& node) const {
     if (const auto* placeholder = dynamic_cast<const Placeholder*>(&node)) return placeholder->className();
     return nameOf(typeid(node));
-}
-
-const cinder::reflect::PropList* NodeTypes::propsOf(std::string_view name) const {
-    const Entry* entry = find(name);
-    return entry == nullptr ? nullptr : entry->props;
 }
 
 const Node* NodeTypes::fallback(std::string_view name) const {

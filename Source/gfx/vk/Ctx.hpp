@@ -18,7 +18,6 @@ public:
     Ctx(const Ctx&) = delete;
     Ctx& operator=(const Ctx&) = delete;
 
-    VkInstance instance() const { return instance_; }
     VkPhysicalDevice physicalDevice() const { return physicalDevice_; }
     VkDevice device() const { return device_; }
     VkQueue graphicsQueue() const { return graphicsQueue_; }

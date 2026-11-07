@@ -1,8 +1,6 @@
 #include "ui/framework/Application.hpp"
 #include "ui/framework/ApplicationInternals.hpp"
 
-#include <glm/geometric.hpp>
-
 #include <algorithm>
 #include <utility>
 
@@ -11,7 +9,6 @@ namespace cinder::ui {
 using cinder::platform::InputEvent;
 using detail::bubble;
 using detail::holds;
-using detail::within;
 
 void Application::beginDragDrop(std::shared_ptr<DragDropOperation> operation) {
     if (dragDrop_) cancelDragDrop();

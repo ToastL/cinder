@@ -11,11 +11,6 @@
 #include <unordered_set>
 #include <vector>
 
-namespace cinder::scene {
-class Node;
-class Scene;
-}
-
 namespace cinder::physics {
 
 class Body;
@@ -31,10 +26,6 @@ struct RayHit {
 
 class World {
 public:
-    static constexpr int ITERATIONS = ContactSolver::ITERATIONS;
-    static constexpr float SLOP = ContactSolver::SLOP;
-    static constexpr float BAUMGARTE = ContactSolver::BAUMGARTE;
-    static constexpr float BOUNCE_THRESHOLD = ContactSolver::BOUNCE_THRESHOLD;
     static constexpr float SLEEP_TIME = 0.5f;
     static constexpr float SLEEP_LINEAR = 0.05f;
     static constexpr float SLEEP_ANGULAR = 0.1f;

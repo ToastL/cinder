@@ -16,7 +16,7 @@ namespace cinder::gfx::rhi {
 
 class GpuBuffer {
 public:
-    GpuBuffer(const Ctx& ctx, std::uint64_t size, BufferUsage usage, bool hostVisible);
+    GpuBuffer(const Ctx& ctx, std::uint64_t size, BufferUsage usage);
     ~GpuBuffer();
 
     GpuBuffer(const GpuBuffer&) = delete;
@@ -28,7 +28,6 @@ public:
     void bindIndex(Commands cmd) const;
 
     VkBuffer handle() const { return handle_; }
-    VmaAllocation allocation() const { return allocation_; }
     void* mapped() const { return mapped_; }
     VkDeviceSize size() const { return size_; }
 

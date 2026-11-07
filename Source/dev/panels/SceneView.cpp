@@ -214,7 +214,7 @@ void SceneView::tick(float deltaTime) {
     scroll_ = 0.0f;
 }
 
-GizmoView SceneView::gizmoView() const { return dev::gizmoView(const_cast<EditorCamera&>(camera_).camera(), extent_); }
+GizmoView SceneView::gizmoView() const { return dev::gizmoView(camera_.camera(), extent_); }
 
 std::optional<Gizmo> SceneView::gizmo() const {
     cinder::scene::Node* selected = selection_.resolve(engine_.scene());

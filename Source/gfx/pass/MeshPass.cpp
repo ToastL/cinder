@@ -4,9 +4,6 @@
 
 #include "gfx/pass/Overflow.hpp"
 #include "gfx/rhi/Backend.hpp"
-#include "scene/DrawList.hpp"
-
-#include <glm/gtc/matrix_transform.hpp>
 
 namespace cinder::gfx::pass {
 

@@ -11,7 +11,7 @@ namespace cinder::gfx::rhi {
 
 using cinder::gfx::vk::check;
 
-GpuBuffer::GpuBuffer(const Ctx& ctx, std::uint64_t size, BufferUsage usage, bool hostVisible)
+GpuBuffer::GpuBuffer(const Ctx& ctx, std::uint64_t size, BufferUsage usage)
     : ctx_(&ctx), size_(size) {
     VkBufferCreateInfo info{};
     info.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
@@ -21,16 +21,13 @@ GpuBuffer::GpuBuffer(const Ctx& ctx, std::uint64_t size, BufferUsage usage, bool
 
     VmaAllocationCreateInfo alloc{};
     alloc.usage = VMA_MEMORY_USAGE_AUTO;
-    if (hostVisible) {
-        alloc.flags = VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT
-                | VMA_ALLOCATION_CREATE_MAPPED_BIT;
-    }
+    alloc.flags = VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT | VMA_ALLOCATION_CREATE_MAPPED_BIT;
 
     VmaAllocationInfo result{};
     check(vmaCreateBuffer(ctx.allocator(), &info, &alloc, &handle_, &allocation_, &result),
           "vmaCreateBuffer");
 
-    if (hostVisible) mapped_ = result.pMappedData;
+    mapped_ = result.pMappedData;
 }
 
 GpuBuffer::GpuBuffer(GpuBuffer&& other) noexcept

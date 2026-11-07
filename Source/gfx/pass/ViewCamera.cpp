@@ -35,7 +35,7 @@ glm::vec2 ViewCamera::size() const {
 
 glm::vec2 ViewCamera::extent() const { return size() / std::max(view_.zoom, MIN_ZOOM); }
 
-void ViewCamera::recompute() {
+void ViewCamera::recompute() const {
     glm::mat4 projection(1.0f);
     if (view_.orthographic) {
         const glm::vec2 half = extent() * 0.5f;
@@ -49,7 +49,7 @@ void ViewCamera::recompute() {
     dirty_ = false;
 }
 
-const glm::mat4& ViewCamera::viewProjection() {
+const glm::mat4& ViewCamera::viewProjection() const {
     if (dirty_) recompute();
     return combined_;
 }
@@ -72,7 +72,7 @@ std::array<glm::vec3, 8> ViewCamera::corners() const {
     return points;
 }
 
-glm::vec3 ViewCamera::screenToWorld(float x, float y) {
+glm::vec3 ViewCamera::screenToWorld(float x, float y) const {
     const glm::vec2 ndc(x / width_ * 2.0f - 1.0f, y / height_ * 2.0f - 1.0f);
     const glm::mat4 inverse = glm::inverse(viewProjection());
 

@@ -1,15 +1,16 @@
-#include "core/GameModule.hpp"
 #include "core/ProjectConfig.hpp"
-#include "dev/Staging.hpp"
 #include "dev/GameBuild.hpp"
 #include "dev/Process.hpp"
+#include "dev/Staging.hpp"
 #include "platform/Assets.hpp"
 #include "platform/Log.hpp"
 
 #include <cstdio>
 #include <exception>
 #include <filesystem>
+#include <memory>
 #include <optional>
+#include <stdexcept>
 #include <string>
 #include <string_view>
 
@@ -19,7 +20,7 @@ namespace {
 
 int usage() {
     cinder::platform::logError(
-            "usage: packager <project folder or .cinder file> [--platform macOS|Linux] "
+            "usage: packager <project folder or .cinder file> [--platform macOS|Linux|Windows|iOS|Android] "
             "[--config development|shipping] [--out dir]\n");
     return 2;
 }

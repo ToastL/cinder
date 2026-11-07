@@ -28,7 +28,6 @@
 #include "ui/widgets/TextField.hpp"
 #include "ui/widgets/TreeView.hpp"
 #include "ui/widgets/VectorInputBox.hpp"
-#include "ui/widgets/Viewport.hpp"
 
 #include <GLFW/glfw3.h>
 

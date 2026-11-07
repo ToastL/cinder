@@ -3,15 +3,12 @@
 
 #include "ui/core/ElementList.hpp"
 
-#include <glm/geometric.hpp>
-
 #include <algorithm>
 #include <utility>
 
 namespace cinder::ui {
 
 using cinder::platform::InputEvent;
-using detail::bubble;
 using detail::holds;
 using detail::within;
 

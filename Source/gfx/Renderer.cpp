@@ -6,7 +6,6 @@
 #include "gfx/RendererDrawList.hpp"
 #include "gfx/pass/MeshPass.hpp"
 #include "gfx/pass/SpritePass.hpp"
-#include "platform/Log.hpp"
 #include "platform/Window.hpp"
 #include "scene/DrawList.hpp"
 
@@ -138,25 +137,12 @@ void Renderer::capture(const std::string& path) {
 
 float Renderer::pixelsPerPoint() const { return presenter_->pixelsPerPoint(); }
 
-bool Renderer::windowCapturePending() const { return presenter_->windowCapturePending(); }
-
 void Renderer::requestWindowCapture(const std::string& path) {
     presenter_->requestWindowCapture(path);
 }
 
 cinder::scene::DrawList& Renderer::draws() { return *draws_; }
 
-Renderer::~Renderer() {
-    ctx_.waitIdle();
-    targets_.clear();
-    draws_.reset();
-    passes_.clear();
-    compositePipeline_.reset();
-    ui_.reset();
-    meshPipeline_.reset();
-    spritePipeline_.reset();
-    assets_.reset();
-    presenter_.reset();
-}
+Renderer::~Renderer() { ctx_.waitIdle(); }
 
 }

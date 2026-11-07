@@ -31,7 +31,6 @@ public:
     void openScene(const std::filesystem::path& path);
     void saveScene(const std::filesystem::path& path);
 
-    void beginFrame();
     void update(float dt);
     void render(float alpha);
 

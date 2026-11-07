@@ -22,12 +22,11 @@ SpriteBatch::SpriteBatch(const Ctx& ctx, cinder::gfx::asset::Assets& assets,
 
     vertexBuffers_.reserve(framesInFlight);
     for (uint32_t i = 0; i < framesInFlight; ++i) {
-        vertexBuffers_.emplace_back(ctx, vertexBytes, cinder::gfx::rhi::BufferUsage::Vertex, true);
+        vertexBuffers_.emplace_back(ctx, vertexBytes, cinder::gfx::rhi::BufferUsage::Vertex);
     }
 
     const std::uint64_t indexBytes = static_cast<std::uint64_t>(MAX_QUADS) * 6 * sizeof(uint32_t);
-    indexBuffer_ = std::make_unique<GpuBuffer>(ctx, indexBytes, cinder::gfx::rhi::BufferUsage::Index,
-                                               true);
+    indexBuffer_ = std::make_unique<GpuBuffer>(ctx, indexBytes, cinder::gfx::rhi::BufferUsage::Index);
 
     auto* indices = static_cast<uint32_t*>(indexBuffer_->mapped());
     for (uint32_t quad = 0; quad < MAX_QUADS; ++quad) {

@@ -23,7 +23,7 @@ Texture::Texture(const rhi::Ctx& ctx, const unsigned char* pixels, uint32_t widt
     : ctx_(&ctx), width_(width), height_(height) {
     const VkDeviceSize size = static_cast<VkDeviceSize>(width) * height * 4;
 
-    GpuBuffer staging(ctx, size, BufferUsage::TransferSrc, true);
+    GpuBuffer staging(ctx, size, BufferUsage::TransferSrc);
     std::memcpy(staging.mapped(), pixels, static_cast<std::size_t>(size));
 
     image_ = images::create(ctx, FORMAT, width, height,
