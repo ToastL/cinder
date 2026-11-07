@@ -17,6 +17,15 @@ using cinder::core::Engine;
 using cinder::core::GameLoop;
 using cinder::core::ProjectConfig;
 
+namespace {
+
+struct SceneClearer {
+    Engine& engine;
+    ~SceneClearer() { engine.scene().clear(); }
+};
+
+}
+
 int main(int argc, char** argv) {
     std::setvbuf(stdout, nullptr, _IOLBF, 0);
     cinder::platform::locateExecutable(argv[0]);
@@ -33,8 +42,9 @@ int main(int argc, char** argv) {
 
         const cinder::platform::GlfwSession glfw;
         {
-            std::unique_ptr<cinder::core::GameModule> module;
             Engine engine(config);
+            std::unique_ptr<cinder::core::GameModule> module;
+            const SceneClearer clearer{engine};
             if (const auto library = cinder::core::GameModule::locate(root, config.name)) {
                 std::string error;
                 module = cinder::core::GameModule::open(*library, engine.types(), error);
@@ -51,7 +61,6 @@ int main(int argc, char** argv) {
             }
 
             if (!options.capture.empty()) engine.renderer().capture(options.capture);
-            engine.scene().clear();
         }
         return 0;
     } catch (const std::exception& e) {
