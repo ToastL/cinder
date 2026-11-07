@@ -8,10 +8,10 @@
 
 #include <vector>
 
-namespace cinder::Nodes { class Camera; }
+namespace cinder::Components { class CameraComponent; }
 
 namespace cinder::Scene {
-class Node;
+class Object;
 class Scene;
 }
 
@@ -34,12 +34,12 @@ struct GizmoStroke {
 
 using GizmoStrokes = std::vector<GizmoStroke>;
 
-std::vector<cinder::Nodes::Camera*> sceneCameras(cinder::Scene::Scene& scene);
+std::vector<cinder::Components::CameraComponent*> sceneCameras(cinder::Scene::Scene& scene);
 
-void frustumStrokes(GizmoStrokes& out, const std::vector<cinder::Nodes::Camera*>& cameras,
+void frustumStrokes(GizmoStrokes& out, const std::vector<cinder::Components::CameraComponent*>& cameras,
                     const GizmoCanvas& canvas);
 void colliderStrokes(GizmoStrokes& out, cinder::Scene::Scene& scene, const GizmoCanvas& canvas);
-void selectionStrokes(GizmoStrokes& out, cinder::Scene::Node& node, const GizmoCanvas& canvas);
+void selectionStrokes(GizmoStrokes& out, cinder::Scene::Object& object, const GizmoCanvas& canvas);
 void manipulatorStrokes(GizmoStrokes& out, const std::vector<HandleShape>& shapes, Handle hot,
                         const GizmoCanvas& canvas);
 

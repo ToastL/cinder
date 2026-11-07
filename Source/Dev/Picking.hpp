@@ -7,7 +7,7 @@
 #include <optional>
 
 namespace cinder::Scene {
-class Node;
+class Component;
 class Scene;
 }
 
@@ -27,6 +27,6 @@ struct PickView {
 Ray rayThrough(const glm::mat4& viewProjection, glm::vec2 point, glm::vec2 size);
 std::optional<float> hitCube(const Ray& ray, const glm::mat4& world);
 std::optional<float> hitSprite(const Ray& ray, const glm::mat4& world, glm::vec2 size);
-cinder::Scene::Node* pick(cinder::Scene::Scene& scene, const PickView& view);
+cinder::Scene::Component* pick(cinder::Scene::Scene& scene, const PickView& view);
 
 }

@@ -3,8 +3,11 @@
 #include <optional>
 
 namespace cinder::Scene {
-class Node;
+class Actor;
+class Component;
+class Object;
 class Scene;
+class SceneComponent;
 }
 
 namespace cinder::Dev {
@@ -26,7 +29,10 @@ public:
     bool revealing() const { return reveal_; }
     void revealed() { reveal_ = false; }
 
-    cinder::Scene::Node* resolve(cinder::Scene::Scene& scene);
+    cinder::Scene::Object* resolve(cinder::Scene::Scene& scene);
+    cinder::Scene::Actor* actor(cinder::Scene::Scene& scene);
+    cinder::Scene::Component* component(cinder::Scene::Scene& scene);
+    cinder::Scene::SceneComponent* placed(cinder::Scene::Scene& scene);
 
 private:
     std::optional<int> id_;

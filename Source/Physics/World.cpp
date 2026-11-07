@@ -1,10 +1,10 @@
 #include "Physics/World.hpp"
 
-#include "Physics/Body.hpp"
+#include "Physics/RigidBodyComponent.hpp"
 #include "Physics/Collide.hpp"
-#include "Physics/Collider.hpp"
+#include "Physics/ColliderComponent.hpp"
 #include "Physics/Pose.hpp"
-#include "Scene/Node.hpp"
+#include "Scene/Actor.hpp"
 #include "Scene/Scene.hpp"
 #include "Scene/Transform.hpp"
 
@@ -17,7 +17,7 @@
 
 namespace cinder::Physics {
 
-using cinder::Scene::Node;
+using cinder::Scene::Actor;
 using cinder::Scene::Transform;
 
 namespace {
@@ -36,7 +36,7 @@ void World::step(float dt) {
     touching_.clear();
     states_.emplace_back();
 
-    for (Node* root : scene_.roots()) gather(*root, 0);
+    for (Actor* root : scene_.roots()) gather(*root, 0);
     for (std::size_t i = 1; i < states_.size(); ++i) place(states_[i], dt);
     for (Proxy& proxy : proxies_) {
         proxy.geometry = proxy.collider->geometry();
@@ -56,37 +56,42 @@ void World::step(float dt) {
     notify();
 }
 
-void World::gather(Node& node, int owner) {
-    if (node.destroyed() || !node.isEnabled()) return;
+void World::gather(Actor& actor, int owner) {
+    if (actor.destroyed() || !actor.isEnabled()) return;
 
-    if (auto* body = dynamic_cast<Body*>(&node)) {
+    auto* body = actor.findComponent<RigidBodyComponent>();
+    if (body != nullptr && body->activeInActor() && body->transform() != nullptr) {
         BodyState state;
         state.body = body;
         states_.push_back(state);
         owner = static_cast<int>(states_.size()) - 1;
-    } else if (auto* collider = dynamic_cast<Collider*>(&node)) {
+    }
+
+    for (cinder::Scene::Component* component : actor.components()) {
+        auto* collider = dynamic_cast<ColliderComponent*>(component);
+        if (collider == nullptr || collider->destroyed() || !collider->activeInActor()) continue;
         Proxy proxy;
         proxy.collider = collider;
         proxy.owner = owner;
         proxies_.push_back(proxy);
     }
 
-    for (Node* child : node.children()) gather(*child, owner);
+    for (Actor* child : actor.attachedActors()) gather(*child, owner);
 }
 
 void World::place(BodyState& state, float dt) {
-    Body& body = *state.body;
+    RigidBodyComponent& body = *state.body;
     if (body.velocity_ != body.wroteVelocity_ || body.angularVelocity_ != body.wroteSpin_) body.wake();
 
     const glm::mat4& world = body.transform()->world();
-    if (body.motion_ == Body::Motion::Dynamic && body.simulated_ && world == body.placed_) return;
+    if (body.motion_ == RigidBodyComponent::Motion::Dynamic && body.simulated_ && world == body.placed_) return;
 
     body.wake();
 
     const glm::quat previous = body.orientation_;
     body.origin_ = glm::vec3(world[3]);
     body.orientation_ = orientationOf(world);
-    if (body.motion_ == Body::Motion::Kinematic) {
+    if (body.motion_ == RigidBodyComponent::Motion::Kinematic) {
         body.angularVelocity_ =
             body.simulated_ ? angularVelocityOf(previous, body.orientation_, dt) : glm::vec3(0.0f);
     }
@@ -119,7 +124,7 @@ void World::weigh() {
 
     for (std::size_t i = 1; i < states_.size(); ++i) {
         BodyState& state = states_[i];
-        if (state.body->motion_ != Body::Motion::Dynamic) continue;
+        if (state.body->motion_ != RigidBodyComponent::Motion::Dynamic) continue;
         if (state.body->asleep_) continue;
         state.inverseMass = 1.0f / state.body->mass_;
         if (glm::determinant(state.inertia) > 0.0f) state.inverseInertia = glm::inverse(state.inertia);
@@ -132,16 +137,16 @@ void World::weigh() {
 }
 
 void World::accelerate(BodyState& state, float dt) {
-    Body& body = *state.body;
+    RigidBodyComponent& body = *state.body;
     switch (body.motion_) {
-        case Body::Motion::Static:
+        case RigidBodyComponent::Motion::Static:
             return;
-        case Body::Motion::Kinematic:
+        case RigidBodyComponent::Motion::Kinematic:
             body.velocity_ = body.simulated_ ? (state.center - body.center_) / dt : glm::vec3(0.0f);
             state.velocity = body.velocity_;
             state.angularVelocity = body.angularVelocity_;
             return;
-        case Body::Motion::Dynamic:
+        case RigidBodyComponent::Motion::Dynamic:
             if (body.asleep_) return;
             state.velocity = (body.velocity_ + gravity_ * (body.gravityScale_ * dt) +
                               (body.force_ * dt + body.impulse_) * state.inverseMass) /
@@ -161,7 +166,7 @@ void World::accelerate(BodyState& state, float dt) {
 }
 
 bool World::dynamic(int index) const {
-    return index != 0 && states_[static_cast<std::size_t>(index)].body->motion_ == Body::Motion::Dynamic;
+    return index != 0 && states_[static_cast<std::size_t>(index)].body->motion_ == RigidBodyComponent::Motion::Dynamic;
 }
 
 void World::detect(float dt) {
@@ -184,11 +189,12 @@ void World::detect(float dt) {
             if (!dynamic(a.owner) && !dynamic(b.owner)) continue;
             if (!collide(a.geometry, b.geometry, manifold)) continue;
 
-            const Body* first = states_[static_cast<std::size_t>(a.owner)].body;
-            const Body* second = states_[static_cast<std::size_t>(b.owner)].body;
+            const RigidBodyComponent* first = states_[static_cast<std::size_t>(a.owner)].body;
+            const RigidBodyComponent* second = states_[static_cast<std::size_t>(b.owner)].body;
             touching_.push_back({contactKey(a.collider->id(), b.collider->id(), 0),
-                                 first != nullptr ? first->id() : a.collider->id(),
-                                 second != nullptr ? second->id() : b.collider->id()});
+                                 (first != nullptr ? first->owner() : a.collider->owner())->id(),
+                                 (second != nullptr ? second->owner() : b.collider->owner())->id(),
+                                 a.collider->id(), b.collider->id()});
 
             for (int k = 0; k < manifold.count; ++k) {
                 const ContactPoint& point = manifold.points[static_cast<std::size_t>(k)];
@@ -246,7 +252,7 @@ void World::rest(float dt) {
         if (!dynamic(static_cast<int>(i))) continue;
 
         BodyState& state = states_[i];
-        Body& body = *state.body;
+        RigidBodyComponent& body = *state.body;
         const bool slow = nudged_[i] == 0 && glm::length(state.velocity) < SLEEP_LINEAR &&
                           glm::length(state.angularVelocity) < SLEEP_ANGULAR;
         body.sleepTimer_ = slow ? body.sleepTimer_ + dt : 0.0f;
@@ -262,11 +268,11 @@ void World::rest(float dt) {
 }
 
 void World::advance(BodyState& state, float dt) {
-    Body& body = *state.body;
+    RigidBodyComponent& body = *state.body;
     body.simulated_ = true;
     body.center_ = state.center;
 
-    if (body.motion_ != Body::Motion::Dynamic) {
+    if (body.motion_ != RigidBodyComponent::Motion::Dynamic) {
         body.placed_ = body.transform()->world();
         return;
     }
@@ -290,13 +296,12 @@ void World::advance(BodyState& state, float dt) {
     write(body);
 }
 
-void World::write(Body& body) {
+void World::write(RigidBodyComponent& body) {
     Transform& transform = *body.transform();
     glm::vec3 position = body.origin_;
     glm::quat orientation = body.orientation_;
 
-    Node* parent = body.parent();
-    if (Transform* above = parent != nullptr ? parent->transform() : nullptr) {
+    if (Transform* above = body.parentTransform()) {
         const glm::mat4& parentWorld = above->world();
         position = glm::vec3(glm::inverse(parentWorld) * glm::vec4(position, 1.0f));
         orientation = glm::conjugate(orientationOf(parentWorld)) * orientation;

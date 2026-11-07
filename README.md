@@ -48,7 +48,7 @@ Every area is a folder under `Source/`, the include root.
 | Area | Responsibility |
 | --- | --- |
 | `platform` | Windows, input, files, asset paths, logging, GLFW lifetime |
-| `reflect`, `scene`, `components` | Property metadata, node trees, transforms, built-in scene nodes |
+| `reflect`, `scene`, `components` | Property metadata, actors and components, transforms, built-in actors and components |
 | `serial` | Scene, JSON, and INI encoding |
 | `physics` | Geometry, collision detection, contact solving, simulation |
 | `text` | Font loading, shaping, text layout, CPU glyph atlases |
@@ -57,7 +57,7 @@ Every area is a folder under `Source/`, the include root.
 | `gfx/rhi`, `gfx/vk`, `gfx/mtl` | Rendering interface and backend implementations |
 | `gfx/asset`, `gfx/pass`, `gfx` | GPU assets, scene passes, rendering orchestration |
 | `core` | Engine orchestration, game loop, project configuration, game library loading |
-| `game` | The API game code includes: node classes plus input, time, drawing, physics queries |
+| `game` | The API game code includes: actor and component classes plus input, time, drawing, physics queries |
 | `dev` | Editor application, panels, play sessions, selection, undo, manipulators, game code builds and hot reload, packaging |
 | `editor`, `player`, `packager` | Executable entry points |
 | `Programs/CinderBuildTool` | `cbt`, the build tool |

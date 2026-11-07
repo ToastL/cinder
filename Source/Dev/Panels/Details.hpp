@@ -11,7 +11,8 @@
 #include <vector>
 
 namespace cinder::Scene {
-class Node;
+class Actor;
+class Object;
 class Scene;
 }
 
@@ -27,14 +28,14 @@ class Selection;
 
 namespace cinder::Dev::Panels {
 
-class Properties {
+class Details {
 public:
     using Target = std::function<void*()>;
 
-    Properties(Selection& selection, History& history, cinder::Scene::Scene& scene, cinder::UI::Application& app);
+    Details(Selection& selection, History& history, cinder::Scene::Scene& scene, cinder::UI::Application& app);
 
-    Properties(const Properties&) = delete;
-    Properties& operator=(const Properties&) = delete;
+    Details(const Details&) = delete;
+    Details& operator=(const Details&) = delete;
 
     const std::shared_ptr<cinder::UI::Widget>& widget() const { return widget_; }
 
@@ -42,9 +43,15 @@ public:
     void rebuild();
 
 private:
-    cinder::Scene::Node* node() const;
+    cinder::Scene::Actor* actor() const;
+    cinder::Scene::Object* editing() const;
+    void* targetOf(int id, bool transform) const;
     void touched();
-    std::shared_ptr<cinder::UI::Widget> body(cinder::Scene::Node& node);
+    std::shared_ptr<cinder::UI::Widget> body(cinder::Scene::Actor& actor);
+    std::shared_ptr<cinder::UI::Widget> componentsSection(cinder::Scene::Actor& actor);
+    std::shared_ptr<cinder::UI::Widget> addComponentMenu(int actor);
+    void addComponent(int actor, const std::string& className);
+    void removeComponent(int component);
     std::shared_ptr<cinder::UI::Widget> rows(const cinder::Reflect::PropList& defs, Target target);
     std::shared_ptr<cinder::UI::Widget> row(std::string label, std::shared_ptr<cinder::UI::Widget> editor,
                                             std::shared_ptr<cinder::UI::Widget> trailing = nullptr);
@@ -72,6 +79,7 @@ private:
     std::shared_ptr<cinder::UI::Border> host_;
     std::optional<int> shown_;
     std::vector<std::string> keys_;
+    std::vector<int> components_;
     std::string newName_;
     std::string newKind_ = "Number";
 };

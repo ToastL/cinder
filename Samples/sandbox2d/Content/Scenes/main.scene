@@ -1,31 +1,41 @@
-version 4
-nodes {
-    Camera {
+version 5
+actors {
+    CameraActor {
         id 1
-        position 0 0 10
-        projection "orthographic"
-        clearColor 0.05 0.05 0.08 1
-        virtualSize 640 360
-        children {
+        name "Camera"
+        components {
+            CameraComponent {
+                id 7
+                position 0 0 10
+                projection "orthographic"
+                clearColor 0.05 0.05 0.08 1
+                virtualSize 640 360
+            }
             PanCamera {
                 id 4
             }
         }
     }
-    Group {
+    Actor {
         id 2
         name "Spawner"
-        children {
+        components {
+            SceneComponent {
+                id 8
+            }
             Spawner {
                 id 5
             }
         }
     }
-    Sprite {
+    SpriteActor {
         id 3
         name "Cursor"
-        size 6 6
-        children {
+        components {
+            SpriteComponent {
+                id 9
+                size 6 6
+            }
             FollowMouse {
                 id 6
             }

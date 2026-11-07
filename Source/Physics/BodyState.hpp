@@ -5,10 +5,10 @@
 
 namespace cinder::Physics {
 
-class Body;
+class RigidBodyComponent;
 
 struct BodyState {
-    Body* body = nullptr;
+    RigidBodyComponent* body = nullptr;
     glm::vec3 center{0.0f};
     glm::vec3 velocity{0.0f};
     glm::vec3 angularVelocity{0.0f};

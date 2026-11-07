@@ -12,78 +12,103 @@
 
 namespace cinder::Scene {
 
+class Actor;
+class ClassRegistry;
+class Component;
 class DrawList;
-class Node;
-class NodeTypes;
+class Object;
+class SceneComponent;
 
-enum class Signal { AttributeChanged, ChildAdded, ChildRemoved, Touched, TouchEnded, Destroying };
+enum class Signal { AttributeChanged, ChildAdded, ChildRemoved, ComponentAdded, Touched, TouchEnded, Destroying };
 
 struct SignalArgs {
-    Node* other = nullptr;
+    Actor* other = nullptr;
+    Component* component = nullptr;
     std::string_view name;
 };
 
 using SignalHandler = std::function<void(const SignalArgs&)>;
 using TimerHandler = std::function<void()>;
 
+struct IdHint {
+    const Component* component = nullptr;
+    int id = 0;
+};
+
 class Scene {
 public:
     static constexpr int MAX_ID = std::numeric_limits<int>::max() - 1;
 
-    explicit Scene(NodeTypes& types);
+    explicit Scene(ClassRegistry& types);
     ~Scene();
 
     Scene(const Scene&) = delete;
     Scene& operator=(const Scene&) = delete;
 
-    NodeTypes& types() const { return types_; }
+    ClassRegistry& types() const { return types_; }
 
-    Node* insert(std::unique_ptr<Node> node, Node* parent, std::optional<int> id = std::nullopt);
-    Node* create(std::string_view className, Node* parent);
-    Node* clone(const Node& source, Node* parent);
+    Actor* insert(std::unique_ptr<Actor> actor, Actor* parent = nullptr, std::optional<int> id = std::nullopt,
+                  const std::vector<IdHint>& componentIds = {});
+    Actor* spawn(std::string_view className, Actor* parent = nullptr);
+    Actor* clone(const Actor& source, Actor* parent);
 
     template <class T, class... Args>
-    T* create(Node* parent, Args&&... args) {
+    T* spawn(Actor* parent = nullptr, Args&&... args) {
         return static_cast<T*>(insert(std::make_unique<T>(std::forward<Args>(args)...), parent));
     }
 
-    Node* byId(int id) const;
-    Node* find(std::string_view name) const;
-    const std::vector<Node*>& roots() const { return roots_; }
+    Component* addComponent(Actor& actor, std::unique_ptr<Component> component, std::string name = {},
+                            SceneComponent* attachTo = nullptr);
+    Component* addComponent(Actor& actor, std::string_view className, SceneComponent* attachTo = nullptr);
+
+    Object* byId(int id) const;
+    Actor* actor(int id) const;
+    Component* component(int id) const;
+    Actor* find(std::string_view name) const;
+    const std::vector<Actor*>& roots() const { return roots_; }
+
+    bool isDefault(const Component& component) const;
+    const Component* archetype(const Component& component) const;
 
     void update(float dt);
     void render(float alpha, DrawList& draws);
 
-    void destroy(Node* node);
-    void destroyNow(Node* node);
+    void destroy(Actor* actor);
+    void destroy(Component* component);
+    void destroyNow(Actor* actor);
+    void destroyNow(Component* component);
     void clear();
 
-    void reparent(Node& node, Node* next);
-    void attributeChanged(Node& node, const std::string& name);
+    void reattach(Actor& actor, Actor* parent);
+    void attributeChanged(Actor& actor, const std::string& name);
 
-    void emit(Node& source, Signal signal, const SignalArgs& args = {});
-    int connect(Node& source, Signal signal, Node& owner, SignalHandler handler);
+    void emit(Object& source, Signal signal, const SignalArgs& args = {});
+    int connect(Object& source, Signal signal, Object& owner, SignalHandler handler);
     void disconnect(int connection);
 
-    int after(Node& owner, double seconds, TimerHandler handler);
-    int every(Node& owner, double seconds, TimerHandler handler);
+    int after(Object& owner, double seconds, TimerHandler handler);
+    int every(Object& owner, double seconds, TimerHandler handler);
     void cancel(int timer);
     double time() const { return time_; }
 
 private:
-    void attach(Node& node, Node* parent);
-    void detach(Node& node);
-    void update(Node& node, float dt);
-    void render(Node& node, float alpha, DrawList& draws);
+    void enroll(Object& object, std::optional<int> id);
+    void attach(Actor& actor, Actor* parent);
+    void detach(Actor& actor);
+    void update(Actor& actor, float dt);
+    void render(Actor& actor, float alpha, DrawList& draws);
     void startPending();
+    void start(Object& object);
     void flushDestroy();
-    void markDestroyed(Node& node);
-    void teardown(Node& node, bool clearing);
-    void unqueueStart(Node* node);
-    void hook(Node& node, Signal signal, const SignalArgs& args);
-    int schedule(Node& owner, double seconds, bool repeat, TimerHandler handler);
+    void markDestroyed(Actor& actor);
+    void markDestroyed(Component& component);
+    void teardown(Actor& actor, bool clearing);
+    void remove(Component& component);
+    void unqueueStart(const Object* object);
+    void hook(Object& object, Signal signal, const SignalArgs& args);
+    int schedule(Object& owner, double seconds, bool repeat, TimerHandler handler);
     void runTimers(double dt);
-    void dropHandlers(int node);
+    void dropHandlers(int object);
 
     struct Connection {
         int id;
@@ -102,10 +127,11 @@ private:
         TimerHandler handler;
     };
 
-    NodeTypes& types_;
-    std::vector<Node*> roots_;
-    std::unordered_map<int, std::unique_ptr<Node>> nodes_;
-    std::vector<Node*> pendingStart_;
+    ClassRegistry& types_;
+    std::vector<Actor*> roots_;
+    std::unordered_map<int, std::unique_ptr<Actor>> actors_;
+    std::unordered_map<int, Object*> objects_;
+    std::vector<Object*> pendingStart_;
     std::vector<int> pendingDestroy_;
     int nextId_ = 1;
     std::vector<Connection> connections_;

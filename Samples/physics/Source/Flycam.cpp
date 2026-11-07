@@ -4,15 +4,15 @@
 
 using namespace cinder;
 
-class Flycam final : public Scene::Node {
+class Flycam final : public Scene::Component {
 public:
-    CINDER_NODE(Flycam, Scene::Node) {
+    CINDER_COMPONENT(Flycam, Scene::Component) {
         CINDER_PROP(sensitivity_);
         CINDER_PROP(speed_);
         CINDER_PROP(sprint_);
     }
 
-    void onStart() override {
+    void beginPlay() override {
         if (Scene::Transform* camera = target()) {
             pitch_ = camera->rotation().x;
             yaw_ = camera->rotation().y;
@@ -20,7 +20,7 @@ public:
         Platform::logInfo("[game] click to capture the mouse, wasd + space/ctrl to fly, esc to release\n");
     }
 
-    void onUpdate(float dt) override {
+    void tick(float dt) override {
         Scene::Transform* camera = target();
         if (camera == nullptr) return;
 
@@ -50,7 +50,7 @@ public:
     }
 
 private:
-    Scene::Transform* target() { return parent() != nullptr ? parent()->transform() : nullptr; }
+    Scene::Transform* target() { return owner()->transform(); }
 
     float sensitivity_ = 0.0021f;
     float speed_ = 8.0f;

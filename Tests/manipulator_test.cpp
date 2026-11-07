@@ -3,9 +3,10 @@
 #include "Dev/History.hpp"
 #include "Dev/Manipulator.hpp"
 #include "Gfx/Pass/ViewCamera.hpp"
-#include "Nodes/Builtins.hpp"
-#include "Scene/Node.hpp"
-#include "Scene/NodeTypes.hpp"
+#include "Components/Builtins.hpp"
+#include "Scene/Actor.hpp"
+#include "Scene/ClassRegistry.hpp"
+#include "Scene/SceneComponent.hpp"
 #include "Scene/Scene.hpp"
 #include "Scene/Transform.hpp"
 #include "Scene/View.hpp"
@@ -30,8 +31,9 @@ using cinder::Dev::Tool;
 using cinder::Dev::gizmoFor;
 using cinder::Dev::hitHandle;
 using cinder::Dev::shapes;
-using cinder::Scene::Node;
-using cinder::Scene::NodeTypes;
+using cinder::Scene::Actor;
+using cinder::Scene::ClassRegistry;
+using cinder::Scene::SceneComponent;
 using cinder::Scene::Scene;
 using cinder::Scene::Transform;
 
@@ -41,12 +43,12 @@ const glm::vec2 SIZE(400.0f, 300.0f);
 const glm::vec3 UP(0.0f, 1.0f, 0.0f);
 
 struct World {
-    NodeTypes types;
+    ClassRegistry types;
     Scene scene{types};
     cinder::Gfx::Pass::ViewCamera camera;
 
     World() {
-        cinder::Nodes::registerBuiltins(types);
+        cinder::Components::registerBuiltins(types);
         lookFrom(glm::vec3(0.0f, 0.0f, 10.0f), glm::vec3(0.0f));
     }
 
@@ -70,14 +72,15 @@ struct World {
         return *point;
     }
 
-    Node* add(std::string_view className, const glm::vec3& position, Node* parent = nullptr) {
-        Node* node = scene.create(className, parent);
-        if (Transform* transform = node->transform()) transform->setPosition(position.x, position.y, position.z);
-        return node;
+    Actor* add(std::string_view className, const glm::vec3& position, Actor* parent = nullptr) {
+        Actor* actor = scene.spawn(className, parent);
+        if (actor->rootComponent() == nullptr) actor->addComponent<SceneComponent>();
+        actor->transform()->setPosition(position.x, position.y, position.z);
+        return actor;
     }
 
-    Gizmo gizmo(Node& node, Tool tool, Space space = Space::World) {
-        std::optional<Gizmo> found = gizmoFor(*node.transform(), tool, space, view());
+    Gizmo gizmo(Actor& actor, Tool tool, Space space = Space::World) {
+        std::optional<Gizmo> found = gizmoFor(*actor.transform(), tool, space, view());
         REQUIRE(found);
         return *found;
     }
@@ -86,8 +89,8 @@ struct World {
         return hitHandle(shapes(gizmo, view()), view(), screen(position));
     }
 
-    bool grab(Manipulation& drag, Node& node, const Gizmo& gizmo, Handle handle, const glm::vec3& at) {
-        return drag.begin(node, gizmo, handle, view(), screen(at));
+    bool grab(Manipulation& drag, Actor& actor, const Gizmo& gizmo, Handle handle, const glm::vec3& at) {
+        return drag.begin(*actor.rootComponent(), gizmo, handle, view(), screen(at));
     }
 
     bool to(Manipulation& drag, const glm::vec3& position, bool snap = false) {
@@ -115,7 +118,7 @@ std::set<Handle> handlesOf(const Gizmo& gizmo, const GizmoView& view) {
 
 TEST_CASE("a world X drag moves only position.x by the mouse's travel along X") {
     World world;
-    Node* box = world.add("MeshPart", glm::vec3(0.0f, 1.0f, 0.0f));
+    Actor* box = world.add("StaticMeshActor", glm::vec3(0.0f, 1.0f, 0.0f));
     const Gizmo gizmo = world.gizmo(*box, Tool::Move);
     const glm::vec3 grab = gizmo.pivot + glm::vec3(gizmo.length * 0.8f, 0.0f, 0.0f);
     CHECK(world.hit(gizmo, grab) == Handle::X);
@@ -133,10 +136,10 @@ TEST_CASE("a world X drag moves only position.x by the mouse's travel along X") 
 
 TEST_CASE("a drag under a rotated, scaled Group lands the node where the ray says") {
     World world;
-    Node* group = world.add("Group", glm::vec3(0.0f));
+    Actor* group = world.add("Actor", glm::vec3(0.0f));
     group->transform()->setRotation(0.0f, glm::radians(90.0f), 0.0f);
     group->transform()->setScale(2.0f);
-    Node* box = world.add("MeshPart", glm::vec3(1.0f, 0.0f, 0.0f), group);
+    Actor* box = world.add("StaticMeshActor", glm::vec3(1.0f, 0.0f, 0.0f), group);
     REQUIRE(box->transform()->worldPosition().z == doctest::Approx(-2.0f));
 
     const Gizmo gizmo = world.gizmo(*box, Tool::Move);
@@ -151,24 +154,28 @@ TEST_CASE("a drag under a rotated, scaled Group lands the node where the ray say
     CHECK(placed.z == doctest::Approx(-2.0f));
 }
 
-TEST_CASE("a drag under a Folder writes world coordinates") {
+TEST_CASE("a drag on a component that is not the root writes coordinates relative to the root") {
     World world;
-    Node* folder = world.scene.create("Folder", nullptr);
-    Node* sprite = world.add("Sprite", glm::vec3(1.0f, 2.0f, 0.0f), folder);
+    Actor* holder = world.add("Actor", glm::vec3(10.0f, 0.0f, 0.0f));
+    auto* part = holder->addComponent<SceneComponent>("Part");
+    part->transform().setPosition(1.0f, 2.0f, 0.0f);
 
-    const Gizmo gizmo = world.gizmo(*sprite, Tool::Move);
-    const glm::vec3 grab = gizmo.pivot + glm::vec3(gizmo.length * 0.8f, 0.0f, 0.0f);
+    std::optional<Gizmo> found = gizmoFor(part->transform(), Tool::Move, Space::World, world.view());
+    REQUIRE(found);
+    const glm::vec3 grab = found->pivot + glm::vec3(found->length * 0.8f, 0.0f, 0.0f);
     Manipulation drag;
-    REQUIRE(world.grab(drag, *sprite, gizmo, Handle::X, grab));
+    REQUIRE(drag.begin(*part, *found, Handle::X, world.view(), world.screen(grab)));
+    CHECK(drag.target() == part->id());
     REQUIRE(world.to(drag, grab + glm::vec3(2.0f, 0.0f, 0.0f)));
 
-    CHECK(sprite->transform()->position().x == doctest::Approx(3.0f).epsilon(1e-3));
-    CHECK(sprite->transform()->position().y == 2.0f);
+    CHECK(part->transform().position().x == doctest::Approx(3.0f).epsilon(1e-3));
+    CHECK(part->transform().position().y == 2.0f);
+    CHECK(holder->transform()->position().x == 10.0f);
 }
 
 TEST_CASE("a local drag follows the node's own axes") {
     World world;
-    Node* box = world.add("MeshPart", glm::vec3(0.0f));
+    Actor* box = world.add("StaticMeshActor", glm::vec3(0.0f));
     box->transform()->setRotation(0.0f, 0.0f, glm::radians(90.0f));
 
     const Gizmo gizmo = world.gizmo(*box, Tool::Move, Space::Local);
@@ -186,7 +193,7 @@ TEST_CASE("a local drag follows the node's own axes") {
 
 TEST_CASE("an axis pointing at the camera and planes seen edge-on are not offered") {
     World world;
-    Node* sprite = world.add("Sprite", glm::vec3(0.0f));
+    Actor* sprite = world.add("SpriteActor", glm::vec3(0.0f));
     const Gizmo gizmo = world.gizmo(*sprite, Tool::Move);
 
     const std::set<Handle> offered = handlesOf(gizmo, world.view());
@@ -197,7 +204,7 @@ TEST_CASE("an axis pointing at the camera and planes seen edge-on are not offere
 
 TEST_CASE("a plane drag and a view drag follow the ray's hit exactly") {
     World world;
-    Node* sprite = world.add("Sprite", glm::vec3(0.0f));
+    Actor* sprite = world.add("SpriteActor", glm::vec3(0.0f));
     const Gizmo gizmo = world.gizmo(*sprite, Tool::Move);
     const glm::vec3 grab = gizmo.pivot + glm::vec3(gizmo.length * 0.3f, gizmo.length * 0.3f, 0.0f);
     CHECK(world.hit(gizmo, grab) == Handle::XY);
@@ -219,10 +226,10 @@ TEST_CASE("a plane drag and a view drag follow the ray's hit exactly") {
 
 TEST_CASE("each ring turns one Euler angle, about that ring's axis") {
     World world;
-    Node* group = world.add("Group", glm::vec3(0.0f));
+    Actor* group = world.add("Actor", glm::vec3(0.0f));
     group->transform()->setRotation(0.2f, 0.4f, 0.1f);
     group->transform()->setScale(1.5f);
-    Node* box = world.add("MeshPart", glm::vec3(0.0f), group);
+    Actor* box = world.add("StaticMeshActor", glm::vec3(0.0f), group);
     const glm::vec3 start(0.3f, 0.5f, 0.2f);
 
     for (int i = 0; i < 3; ++i) {
@@ -257,7 +264,7 @@ TEST_CASE("each ring turns one Euler angle, about that ring's axis") {
 
 TEST_CASE("a ring facing the camera from off-center can be grabbed all the way round") {
     World world;
-    Node* box = world.add("MeshPart", glm::vec3(2.5f, 0.0f, 0.0f));
+    Actor* box = world.add("StaticMeshActor", glm::vec3(2.5f, 0.0f, 0.0f));
     const Gizmo gizmo = world.gizmo(*box, Tool::Rotate);
     const glm::vec3 normal(0.0f, 0.0f, 1.0f);
 
@@ -272,12 +279,12 @@ TEST_CASE("a ring facing the camera from off-center can be grabbed all the way r
 
 TEST_CASE("an edge-on ring turns with the mouse along its tangent") {
     World world;
-    Node* box = world.add("MeshPart", glm::vec3(0.0f));
+    Actor* box = world.add("StaticMeshActor", glm::vec3(0.0f));
     const Gizmo gizmo = world.gizmo(*box, Tool::Rotate);
     const glm::vec2 below = world.screen(gizmo.pivot) + glm::vec2(0.0f, 40.0f);
 
     Manipulation drag;
-    REQUIRE(drag.begin(*box, gizmo, Handle::X, world.view(), below));
+    REQUIRE(drag.begin(*box->rootComponent(), gizmo, Handle::X, world.view(), below));
     REQUIRE(drag.drag(world.scene, world.view(), below + glm::vec2(0.0f, 30.0f), false));
     CHECK(box->transform()->rotation().x > 0.1f);
     CHECK(box->transform()->rotation().y == 0.0f);
@@ -285,7 +292,7 @@ TEST_CASE("an edge-on ring turns with the mouse along its tangent") {
 
 TEST_CASE("an axis scale changes one component and a uniform scale all three") {
     World world;
-    Node* box = world.add("MeshPart", glm::vec3(0.0f));
+    Actor* box = world.add("StaticMeshActor", glm::vec3(0.0f));
     box->transform()->setRotation(0.0f, 0.0f, glm::radians(90.0f));
     box->transform()->setScale(1.0f, 2.0f, 3.0f);
 
@@ -304,7 +311,7 @@ TEST_CASE("an axis scale changes one component and a uniform scale all three") {
     box->transform()->setScale(1.0f, 2.0f, 3.0f);
     const glm::vec2 center = world.screen(gizmo.pivot);
     CHECK(hitHandle(shapes(gizmo, world.view()), world.view(), center) == Handle::Uniform);
-    REQUIRE(drag.begin(*box, gizmo, Handle::Uniform, world.view(), center));
+    REQUIRE(drag.begin(*box->rootComponent(), gizmo, Handle::Uniform, world.view(), center));
     REQUIRE(drag.drag(world.scene, world.view(), center + glm::vec2(cinder::Dev::GIZMO_POINTS * 0.5f, 0.0f), false));
     CHECK(box->transform()->scale().x == doctest::Approx(1.5f));
     CHECK(box->transform()->scale().y == doctest::Approx(3.0f));
@@ -313,7 +320,7 @@ TEST_CASE("an axis scale changes one component and a uniform scale all three") {
 
 TEST_CASE("snapping rounds the change, not the value") {
     World world;
-    Node* box = world.add("MeshPart", glm::vec3(0.25f, 0.0f, 0.0f));
+    Actor* box = world.add("StaticMeshActor", glm::vec3(0.25f, 0.0f, 0.0f));
 
     const Gizmo move = world.gizmo(*box, Tool::Move);
     const glm::vec3 grab = move.pivot + glm::vec3(move.length * 0.8f, 0.0f, 0.0f);
@@ -339,7 +346,7 @@ TEST_CASE("snapping rounds the change, not the value") {
 
 TEST_CASE("cancelling restores the transform exactly and leaves no undo step") {
     World world;
-    Node* box = world.add("MeshPart", glm::vec3(0.1f, 0.2f, 0.3f));
+    Actor* box = world.add("StaticMeshActor", glm::vec3(0.1f, 0.2f, 0.3f));
     box->transform()->setRotation(0.4f, 0.5f, 0.6f);
     box->transform()->setScale(1.1f, 1.2f, 1.3f);
     const glm::vec3 position = box->transform()->position();
@@ -370,10 +377,10 @@ TEST_CASE("cancelling restores the transform exactly and leaves no undo step") {
 
 TEST_CASE("a press on a handle that never moves records no undo step") {
     World world;
-    Node* group = world.add("Group", glm::vec3(1.0f, 2.0f, -3.0f));
+    Actor* group = world.add("Actor", glm::vec3(1.0f, 2.0f, -3.0f));
     group->transform()->setRotation(0.3f, 0.7f, 0.1f);
     group->transform()->setScale(1.7f, 0.6f, 1.3f);
-    Node* box = world.add("MeshPart", glm::vec3(0.3f, -0.2f, 0.9f), group);
+    Actor* box = world.add("StaticMeshActor", glm::vec3(0.3f, -0.2f, 0.9f), group);
     box->transform()->setRotation(0.2f, 0.1f, 0.4f);
 
     History history(world.scene);
@@ -398,7 +405,7 @@ TEST_CASE("handles keep their size on screen at any distance") {
     World world;
     for (float z : {0.0f, -40.0f}) {
         CAPTURE(z);
-        Node* box = world.add("MeshPart", glm::vec3(0.0f, 0.0f, z));
+        Actor* box = world.add("StaticMeshActor", glm::vec3(0.0f, 0.0f, z));
         const Gizmo gizmo = world.gizmo(*box, Tool::Move);
         const float length = glm::distance(world.screen(gizmo.pivot),
                                            world.screen(gizmo.pivot + glm::vec3(gizmo.length, 0.0f, 0.0f)));
@@ -408,18 +415,18 @@ TEST_CASE("handles keep their size on screen at any distance") {
 
 TEST_CASE("there is no gizmo under a zero-scale parent or behind the camera") {
     World world;
-    Node* group = world.add("Group", glm::vec3(0.0f));
+    Actor* group = world.add("Actor", glm::vec3(0.0f));
     group->transform()->setScale(0.0f);
-    Node* flat = world.add("MeshPart", glm::vec3(0.0f), group);
+    Actor* flat = world.add("StaticMeshActor", glm::vec3(0.0f), group);
     CHECK_FALSE(gizmoFor(*flat->transform(), Tool::Move, Space::World, world.view()));
 
-    Node* behind = world.add("MeshPart", glm::vec3(0.0f, 0.0f, 20.0f));
+    Actor* behind = world.add("StaticMeshActor", glm::vec3(0.0f, 0.0f, 20.0f));
     CHECK_FALSE(gizmoFor(*behind->transform(), Tool::Move, Space::World, world.view()));
 }
 
-TEST_CASE("a drag ends when its node is destroyed") {
+TEST_CASE("a drag ends when its actor is destroyed") {
     World world;
-    Node* box = world.add("MeshPart", glm::vec3(0.0f));
+    Actor* box = world.add("StaticMeshActor", glm::vec3(0.0f));
     const Gizmo gizmo = world.gizmo(*box, Tool::Move);
     const glm::vec3 grab = gizmo.pivot + glm::vec3(gizmo.length * 0.8f, 0.0f, 0.0f);
 
@@ -432,12 +439,9 @@ TEST_CASE("a drag ends when its node is destroyed") {
 
 TEST_CASE("a handle that does not belong to the tool cannot be grabbed") {
     World world;
-    Node* box = world.add("MeshPart", glm::vec3(0.0f));
+    Actor* box = world.add("StaticMeshActor", glm::vec3(0.0f));
     Manipulation drag;
-    CHECK_FALSE(drag.begin(*box, world.gizmo(*box, Tool::Rotate), Handle::XY, world.view(), SIZE * 0.5f));
-    CHECK_FALSE(drag.begin(*box, world.gizmo(*box, Tool::Scale), Handle::View, world.view(), SIZE * 0.5f));
+    CHECK_FALSE(drag.begin(*box->rootComponent(), world.gizmo(*box, Tool::Rotate), Handle::XY, world.view(), SIZE * 0.5f));
+    CHECK_FALSE(drag.begin(*box->rootComponent(), world.gizmo(*box, Tool::Scale), Handle::View, world.view(), SIZE * 0.5f));
     CHECK_FALSE(drag.active());
-
-    Node* folder = world.scene.create("Folder", nullptr);
-    CHECK_FALSE(drag.begin(*folder, world.gizmo(*box, Tool::Move), Handle::X, world.view(), SIZE * 0.5f));
 }

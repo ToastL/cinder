@@ -1,32 +1,33 @@
 # TODO
 
-Roadmap toward a Unity/Unreal-shaped engine: an editor where you select a node, edit its fields,
+Roadmap toward a Unity/Unreal-shaped engine: an editor where you select an actor, edit its fields,
 hit Play, hit Stop, and land back where you started.
 
 **Where we are:** a renderer with Vulkan and Metal backends driving an ordered pass list into an offscreen target,
 composited to the swapchain by a fullscreen triangle. Sprite batch with atlas support, mesh pipeline
 with one directional light, one camera that every pass draws through, edge-triggered input, and game
-code in C++: each project's `Source/` defines node classes, built by the editor into a library it
-hot-reloads between frames. A Roblox-style tree of nodes
+code in C++: each project's `Source/` defines actor and component classes, built by the editor into a
+library it hot-reloads between frames. Unreal's object model — actors owning components, with
+transforms in a scene-component hierarchy —
 with a prop system that feeds the serializer and the editor from one declaration. A
 bidirectional `Archive` with text and INI backends, and games that are project folders in Unreal's
 shape — a `.cinder` file, `Config/`, `Content/` and `Source/` — rather than code in the engine. The
 editor runs on a UI framework of our own, in a separate `Dev` module: docked tabs holding the
-Explorer, the Scene view, Properties and a console, over a toolbar with the File,
+Outliner, the Scene view, Details and a console, over a toolbar with the File,
 Edit, Window, Play and Platforms menus and a Build button — `player` ships without a byte of it. The editor opens a project in Edit mode, seen
 through a free-flying editor camera — 2D scenes included — with a gizmo drawn for every scene camera; Play serializes the
-scene and rebuilds every node from it, and Stop restores it. An Explorer shows the whole node tree, and Properties edits the selected node's fields and attributes with no per-type editor
+scene and rebuilds every actor from it, and Stop restores it. An Outliner shows the actor tree, and Details edits the selected actor's fields, components and attributes with no per-type editor
 code. A click in the Scene view selects, gizmos move, rotate and scale the selection, every edit is
 undoable, and an unsaved scene is marked and guarded on close. A physics engine of our own has
-started: bodies and colliders as nodes, spheres and boxes, friction, and a sequential-impulse solver
+started: bodies and colliders as components, spheres and boxes, friction, and a sequential-impulse solver
 with warm starting that stacks crates and never runs in Edit mode; boxes, spheres and capsules meet
 through a bounding volume tree, settled islands fall asleep, and game code pushes bodies around, casts rays
-and hears about contacts, with a `planar` body making a 2D scene physical. 355 headless test cases, a
+and hears about contacts, with a `planar` body making a 2D scene physical. 372 headless test cases, a
 hot-reload test that compiles real C++, and a C++ selftest project.
 
 Foundations, the scene model, game code in C++, serialization and the Edit/Play split are
 done. The editor shell is underway — the UI framework, docking, the console, the toolbar, the Scene
-view, the editor camera, the Explorer, Properties, picking, undo and transform gizmos have landed.
+view, the editor camera, the Outliner, Details, picking, undo and transform gizmos have landed.
 
 ---
 
@@ -34,31 +35,35 @@ view, the editor camera, the Explorer, Properties, picking, undo and transform g
 
 - [x] The editor's UI is our own — see *UI framework*. `editor` is the dev build on the `Dev` module;
       `player` never links it, and `cbt test`'s `shipping` check runs `nm` over it.
-- [x] Docking layout: the Scene view, Explorer, Properties and Console as tabs in splits, with
+- [x] Docking layout: the Scene view, Outliner, Details and Console as tabs in splits, with
       drag-to-redock and a Window menu; the asset browser docks into it when it lands.
 - [x] **Scene view** — `Dev/Panels/SceneView`. The target is sized to the panel through
       `Renderer::setViewportSize` and drawn as an opaque image element, and `engine.mousePosition()`
       is relative to the panel's top-left.
-- [x] **Explorer** — `Dev/Panels/Explorer`, a virtualized tree over node ids: a filter, "+" to insert any registered class, right-click to insert, duplicate or
-      delete, and drag to reparent. `Dev/Selection` holds a node id, so the selection survives Play
-      and Stop.
-- [ ] Explorer: multi-select, inline rename, copy and paste
-- [x] **Properties** — `Dev/Panels/Properties` shows one node: its transform when it is spatial, its
-      class's props with a widget per `PropType` and `PropHint` (spin boxes, vector boxes, enum
-      combos, colour pickers), and its attributes with add and remove. An edit during Play fires the
-      game's changed signals.
-- [ ] Properties: an asset-reference widget for texture and mesh names, and a node-reference widget
+- [x] **Outliner** — `Dev/Panels/Outliner`, a virtualized tree over actor ids: a filter, "+" to spawn any registered actor class, right-click to add, duplicate or
+      delete, and drag to attach. `Dev/Selection` holds an actor or component id, so the selection
+      survives Play and Stop.
+- [ ] Outliner: multi-select, inline rename, copy and paste
+- [ ] Outliner: folders as an editor label on actors, the way Unreal's are — the old `Folder` node went
+      with the node tree
+- [x] **Details** — `Dev/Panels/Details` shows one actor: its props, its components with Add Component
+      and remove, and the selected component's transform and props with a widget per `PropType` and
+      `PropHint` (spin boxes, vector boxes, enum combos, colour pickers), and its attributes with add
+      and remove. An edit during Play fires the game's changed signals.
+- [ ] Details: an asset-reference widget for texture and mesh names, and an actor-reference widget
+- [ ] Details: rename, reorder and reattach components by dragging, and set the root
 - [x] **Gizmos** — `Dev/Manipulator` moves along world or local axes and planes, rotates on gimbal
       rings that each turn one Euler angle, and scales along local axes or uniformly; ⌘ snaps and
       Esc cancels. 1/2/3 pick the tool and X toggles World/Local. `Dev/GizmoLines` builds the strokes
-      from the same shapes the hit test uses, and every scene `Camera` as a frustum.
+      from the same shapes the hit test uses, and every scene `CameraComponent` as a frustum.
 - [ ] Gizmos: world- and local-space rotation rings and a view-facing ring — rotation is gimbal-only
 - [ ] Gizmos: snapping to absolute grid positions, and snap steps set in the editor
 - [ ] Gizmos during Play — like picking, they only exist in Edit mode
-- [ ] Gizmos for a multi-selection, about the pivot or the selection's centre — waits for Explorer
+- [ ] Gizmos for a multi-selection, about the pivot or the selection's centre — waits for Outliner
       multi-select
-- [x] Mouse picking — `Dev/Picking`, a CPU raycast against each `MeshPart`'s cube, each `Sprite`'s
-      quad and each `Camera`; the Explorer reveals the pick and `Dev/GizmoLines` outlines it
+- [x] Mouse picking — `Dev/Picking`, a CPU raycast against each `StaticMeshComponent`'s cube, each
+      `SpriteComponent`'s quad and each `CameraComponent`; the hit's actor is selected, the Outliner
+      reveals it and `Dev/GizmoLines` outlines it
 - [ ] Picking against real mesh bounds — `MeshPass` now has a `sphere` primitive that `Picking` still
       treats as a cube, and imported meshes will need their own bounds or triangles
 - [x] Editor camera, independent of the game camera — `Dev/EditorCamera`, seeded from the scene's
@@ -86,7 +91,7 @@ view, the editor camera, the Explorer, Properties, picking, undo and transform g
 - [ ] Scene switching — open, new and save-as. The editor edits the one scene named by
       `startScene` in `Config/Game.ini` or `--scene`.
 
-**Done when:** adding `CINDER_PROP(bounciness_)` to any node class makes it appear in Properties, save
+**Done when:** adding `CINDER_PROP(bounciness_)` to any actor or component class makes it appear in Details, save
 to disk, and become undoable — with zero editor code.
 
 **Code editing is external, by decision.** Game code is C++ on disk, edited in VS Code, Xcode or
@@ -96,11 +101,16 @@ a text buffer that competes with a real IDE and loses.
 
 ## Game code
 
-- [x] **C++ game code** (2026-11-06) — game code is node classes in the project's `Source/`,
-      registered with `CINDER_REGISTER`, so props save, show in Properties and undo with no extra code
-- [x] Unknown classes load as `Scene::Placeholder` and save back byte for byte, so a failed build
-      never loses nodes
-- [x] Node event hooks, `Scene::connect` and `Scene::after`/`every` — owned by the scene, so a library
+- [x] **C++ game code** (2026-11-06) — game code is actor and component classes in the project's
+      `Source/`, registered with `CINDER_REGISTER`, so props save, show in Details and undo with no
+      extra code
+- [x] **Actor/Component object model** (2026-11-07) — Unreal's shape replaced the Roblox/Godot node
+      tree: `Scene/Actor`, `Component` and `SceneComponent`, default components made in a constructor
+      and written against the class's own default, one id space, scene file version 5, and the
+      Explorer and Properties became the Outliner and Details
+- [x] Unknown classes load as `ActorPlaceholder` and `ComponentPlaceholder` and save back byte for
+      byte, so a failed build never loses an actor or a component
+- [x] Actor and component event hooks, `Scene::connect` and `Scene::after`/`every` — owned by the scene, so a library
       can always be unloaded
 - [x] `Core/GameModule` loads, BuildId-checks, registers and unloads a library; `player` loads one
       before opening its scene
@@ -152,7 +162,7 @@ The shape is Slate's: a retained tree of widgets with plain names — `Button`, 
 in two passes, desired size bottom-up and arrangement top-down; paint into draw elements that a
 GPU-free batcher turns into vertices; input routed along the widget path with a `Reply`, focus and
 mouse capture; a `Theme` of named styles; docking; menus and shortcuts from a `CommandList`. `UI` never
-includes `Scene`, `Reflect` or `Gfx` — the reflection-driven Properties panel lives in `Dev`.
+includes `Scene`, `Reflect` or `Gfx` — the reflection-driven Details panel lives in `Dev`.
 
 - [x] **Text** — `Text/` (-> `Platform`) on FreeType and HarfBuzz: load a font, shape and measure a
       string, rasterize glyphs into CPU atlas pages, map carets to clusters. No GPU, so layout measures
@@ -189,7 +199,7 @@ includes `Scene`, `Reflect` or `Gfx` — the reflection-driven Properties panel 
       closed tab where it last lived. The editor runs on it.
 - [ ] **Floating panels** — panels in their own OS windows, after parity: `RHI::Ctx` has to stop owning
       the one GLFW surface — one device, a swapchain per window.
-- [x] **Port the panels** — `Dev/Panels/` holds `Toolbar`, `SceneView`, `Explorer`, `Properties`,
+- [x] **Port the panels** — `Dev/Panels/` holds `Toolbar`, `SceneView`, `Outliner`, `Details`,
       `Console` and the docked `Layout`, and `editor` is now the new UI. `PlaySession`, `History`,
       `Selection`, `Picking`, `EditorCamera`, `Manipulator`, `GizmoGeometry` and `GizmoLines`
       carried over unchanged, and
@@ -198,7 +208,7 @@ includes `Scene`, `Reflect` or `Gfx` — the reflection-driven Properties panel 
       `Gfx::Overlay` with its `OverlayTexture` and the third-party dependency behind them are all
       gone; `Renderer`'s only UI seam is `setUiPaint`.
 - [ ] **Game UI** — reflected widget classes saved as `.widget` assets under `Content/`, created from
-      game code and added to the viewport, never nodes in the `Scene`: Unreal's UMG, in its own layer over
+      game code and added to the viewport, never actors in the `Scene`: Unreal's UMG, in its own layer over
       `UI`, `Reflect` and `Serial`, and its own plan.
 - [ ] **Project browser** — the first screen of `editor` with no argument: recent projects and
       templates, as Unreal's Project Browser and Godot's Project Manager do. Built on the new UI once
@@ -208,10 +218,10 @@ includes `Scene`, `Reflect` or `Gfx` — the reflection-driven Properties panel 
 
 - [x] Play / Pause / Step / Stop — `Dev/PlaySession`, driven by `Dev/Panels/Toolbar`
 - [x] Serialize scene on Play, restore on Stop — both are `Engine::loadScene` on one snapshot, so
-      every node is rebuilt from text and every connection and timer starts empty
+      every actor is rebuilt from text and every connection and timer starts empty
 - [x] Editor keeps rendering while paused — `GameLoop::idle`
 - [x] Game code never runs in Edit mode — there is no entry point, and hooks, connections and timers
-      reach only nodes `Scene::update` has started, which Edit mode never calls. `onRender` still draws.
+      reach only objects `Scene::update` has started, which Edit mode never calls. `onRender` still draws.
 - [x] Input routing — `Dev/Panels/SceneView` gives the game the keyboard while the Scene view is focused
       and the mouse while its image is hovered; a locked cursor keeps both. Play focuses the Scene.
 - [x] Dirty tracking — the toolbar shows `main.scene*`, and closing the window with unsaved changes
@@ -220,12 +230,15 @@ includes `Scene`, `Reflect` or `Gfx` — the reflection-driven Properties panel 
 
 ## Serialization — what is left
 
-- [ ] Node references — a prop type holding a node id, set by dragging a node from the Explorer into
-      Properties. `Reflect` is a leaf and cannot include `Scene`, so the prop stores the id and
+- [ ] Actor references — a prop type holding an actor or component id, set by dragging an actor from
+      the Outliner into Details. `Reflect` is a leaf and cannot include `Scene`, so the prop stores the id and
       `Scene` resolves it.
-- [ ] Prefabs — a saved subtree that can be instanced, with per-instance overrides. `Scene::clone`
-      already copies a subtree generically.
-- [ ] Tags — one class driving every node carrying a tag, like Roblox's `CollectionService`
+- [ ] Prefabs — a saved actor that can be instanced, with per-instance overrides: Unreal's Blueprint
+      class without the graph. `Scene::clone` already copies an actor, its components and its attached
+      actors generically, and the archetype delta is the override model.
+- [ ] Tags — one class driving every actor carrying a tag, like Unreal's actor tags
+- [ ] Attach to a named component or socket of the parent actor — attachment is always to the parent's
+      root today
 
 ## Asset pipeline
 
@@ -245,8 +258,8 @@ includes `Scene`, `Reflect` or `Gfx` — the reflection-driven Properties panel 
 
 ## Gameplay systems
 
-- [x] **Physics, phase 1** — our own engine in `Physics/`, not Jolt or Box2D: `Body` and `Collider` as
-      nodes, sphere and box shapes, compound mass and inertia about the centre of mass, a brute-force
+- [x] **Physics, phase 1** — our own engine in `Physics/`, not Jolt or Box2D: bodies and colliders —
+      `RigidBodyComponent` and `ColliderComponent` since the actor model — sphere and box shapes, compound mass and inertia about the centre of mass, a brute-force
       broadphase, exact sphere–sphere and sphere–box contacts, and sequential impulses with Baumgarte
       correction and restitution. `World::step` walks the scene, so Play, Stop, disable and reparent
       need no bookkeeping, and Edit mode never simulates. `Dev/GizmoLines` draws collider wireframes from
@@ -256,7 +269,8 @@ includes `Scene`, `Reflect` or `Gfx` — the reflection-driven Properties panel 
       and split-impulse position correction. A stack of 10 crates stands for 600 steps, a crate holds on
       a slope it cannot slide down, and a sliding sphere turns into a rolling one.
 - [x] **Physics, phase 3** — `applyImpulse` / `applyForce` / `applyTorque` as accumulators on
-      `Body`, `Game::raycast` returning a `RayHit`, `Touched` and `TouchEnded` emitted on both nodes
+      the body, `Game::raycast` returning a `RayHit`, `Touched` and `TouchEnded` emitted on both actors
+      and both colliders
       through `Scene::emit`, a `planar` lock that
       makes a scene 2D, and `[Physics] gravity` in `Game.ini`. `Samples/physics` gained a 2D scene.
 - [ ] Physics: sensors that detect without responding, and collision layers to filter pairs
@@ -278,7 +292,7 @@ includes `Scene`, `Reflect` or `Gfx` — the reflection-driven Properties panel 
 - [ ] **UI system** — there is no screen-space layer: sprites live in the world, so a HUD has to be
       placed in front of the camera. It is *Game UI* under *UI framework*, on the same widget core
       the editor moves onto. World-space text may still want MSDF later.
-- [ ] **Particles** — emitters as nodes, GPU-driven if it matters
+- [ ] **Particles** — emitters as components, GPU-driven if it matters
 - [ ] Scene queries — raycast, overlap, spatial partition (BVH or grid)
 - [ ] Timers, event bus
 
@@ -324,7 +338,7 @@ includes `Scene`, `Reflect` or `Gfx` — the reflection-driven Properties panel 
 - [ ] **Fast bodies tunnel.** There is no CCD, so a small body moving more than its own size in one
       fixed step can pass through a thin collider.
 - [ ] **A body's rotation is stored as Euler angles.** The world keeps a quaternion and the conversion
-      is exact, but the angles Properties shows flip near ±90° pitch.
+      is exact, but the angles Details shows flip near ±90° pitch.
 - [ ] **Everything is host-visible memory.** `GpuBuffer` always maps; `Mesh` writes vertices straight
       into a mapped buffer. Static geometry wants device-local + staging.
 - [ ] **Sprite batching is run-based** — `SpriteBatch::flush` only merges *consecutive* quads sharing
@@ -336,11 +350,11 @@ includes `Scene`, `Reflect` or `Gfx` — the reflection-driven Properties panel 
 - [ ] **Half the project descriptor is read by nothing.** `modules`, `plugins`,
       `additionalRootDirectories`, `additionalPluginDirectories` and `disableEnginePluginsByDefault`
       are parsed, checked and saved; they wait for a plugin system.
-- [ ] **An attribute cannot name a node** — it holds numbers, strings, bools and small vectors. A node
-      reference needs *Node references*.
-- [ ] **A disabled node's timers still fire.** `enabled` skips a subtree's update and render, but
+- [ ] **An attribute cannot name an actor** — it holds numbers, strings, bools and small vectors. An actor
+      reference needs *Actor references*.
+- [ ] **A disabled actor's timers still fire.** `enabled` skips an actor's tick and render, but
       `Scene::after`/`every` only check that the owner exists.
-- [ ] **Runtime meshes cannot be named in a scene** — `MeshPart.mesh` names a primitive, and
+- [ ] **Runtime meshes cannot be named in a scene** — `StaticMeshComponent.mesh` names a primitive, and
       `engine.newCube` hands back an anonymous handle. Mesh import is where named meshes come from.
 - [ ] Fixed caps with no growth path: `MAX_QUADS = 10000`, `MAX_DRAWS = 4096`, `MAX_TEXTURES = 256`
 - [ ] **`Renderer::capture` stalls the device** and reads the target back synchronously. It is a
@@ -397,8 +411,8 @@ change that. Each leaves the engine running on Vulkan after every step.
 
 Naming these keeps them from creeping in:
 
-- Feature parity with Roblox/Unity/Unreal. Roblox's Explorer, Properties and Play loop over a tree of
-  nodes (Godot's structure too) is the shape being copied — the *workflow*, not the feature list.
+- Feature parity with Roblox/Unity/Unreal. Unreal's Outliner, Details and Play loop over actors and
+  components is the shape being copied — the *workflow*, not the feature list.
 - Console platforms
 - Networking / multiplayer
 - Visual scripting

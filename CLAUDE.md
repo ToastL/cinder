@@ -6,7 +6,7 @@ Guidance for Claude Code (claude.ai/code) when working in this repository.
 
 A from-scratch C++20 game engine: Vulkan and Metal renderers, GLFW windowing, and game code in C++ —
 each project's `Source/` builds into a library the editor hot-reloads.
-The long-term target is a Unity/Unreal-shaped editor workflow — select a node, edit its fields, hit Play, hit
+The long-term target is a Unity/Unreal-shaped editor workflow — select an actor, edit its fields, hit Play, hit
 Stop, land back where you started. `TODO.md` is the authoritative roadmap; read it before proposing
 architectural work, since it records what is deliberately deferred and what is out of scope.
 
@@ -78,7 +78,7 @@ GPU:
 DYLD_LIBRARY_PATH=/opt/homebrew/lib $B/graphics_smoke
 ```
 
-It runs the editor's own UI and drives it with injected input: it clicks a node in the Explorer, drags
+It runs the editor's own UI and drives it with injected input: it clicks an actor in the Outliner, drags
 a move gizmo in the Scene view, undoes and redoes with ⌘Z, saves a scene, plays and stops with ⌘P,
 cycles Play/Pause/Step/Resume/Stop and a game-side quit, re-docks the console onto the Scene
 stack, resizes the window and scene targets, and captures both the window and the composited view. Its
@@ -90,8 +90,8 @@ DYLD_LIBRARY_PATH=/opt/homebrew/lib $B/editor Samples/sandbox2d
 ```
 
 `editor` is the **dev build** — the same engine plus the editor UI, which is our own (see *The UI
-framework*): one window of docked tabs, the Explorer on the left, the Scene view in the middle with
-the console under it and Properties on the right, over a toolbar carrying the File, Edit, Window, Play and
+framework*): one window of docked tabs, the Outliner on the left, the Scene view in the middle with
+the console under it and Details on the right, over a toolbar carrying the File, Edit, Window, Play and
 Platforms menus. Drag a tab to another stack's middle or edge to re-dock it, close it, and reopen it from
 the Window menu. It opens a project in **Edit mode**: the scene is loaded and drawn, and no game code
 runs. Play/Pause/Step/Stop are on the toolbar and on ⌘P, ⌘⇧P and ⌘⌥P; ⌘S saves the scene, and ⌘Z and
@@ -258,7 +258,7 @@ cinder/
   Samples/          sandbox2d/, sandbox3d/ and physics/ — example projects
   Source/           the include root
     Reflect/ Platform/ Text/         leaves
-    Scene/ Serial/ Nodes/            the world model
+    Scene/ Serial/ Components/       the world model
     Physics/                         rigid bodies, collision and the solver
     UI/Core/ UI/Framework/ UI/Widgets/ UI/Docking/  the UI framework the editor is built on
     Gfx/ Gfx/RHI/ Gfx/VK/ Gfx/MTL/ Gfx/Asset/ Gfx/Pass/  the renderer, its seam and two backends
@@ -275,7 +275,7 @@ cinder/
   notes/                             the Obsidian vault
 ```
 
-`Source/` is the only include root, so every include carries its layer: `#include "Scene/Node.hpp"`.
+`Source/` is the only include root, so every include carries its layer: `#include "Scene/Actor.hpp"`.
 Headers sit next to their sources, and every module's `.Build.cpp` sits in its folder.
 
 ## Layering
@@ -288,7 +288,7 @@ Reflect, Platform          -> leaves (no engine includes)
 Text                       -> Platform
 Scene                      -> Reflect
 Serial                     -> Scene, Reflect, Platform
-Nodes                      -> Scene, Reflect
+Components                 -> Scene, Reflect
 Physics                    -> Scene, Reflect
 UI/Core                    -> Text, Platform
 UI/Framework               -> UI/Core, Text, Platform
@@ -361,13 +361,13 @@ the same way, and the same rule holds: `UI/Core` never includes `UI/Widgets`.
 
 Four placements are load-bearing and were each chosen to kill a cycle: `Glfw`/`Window`/`Input` live
 in `Platform`, not next to `Engine`; `DrawList` lives in `Scene`, so the scene graph never includes
-`Gfx`; `PropValue` lives in `Scene`, not `Serial`, so a node's attributes are scene data that the
-serializer and Properties each read without an edge to one another; and `Core/Module.hpp` — the
+`Gfx`; `PropValue` lives in `Scene`, not `Serial`, so an actor's attributes are scene data that the
+serializer and Details each read without an edge to one another; and `Core/Module.hpp` — the
 `Registrar` and the registration macros — lives in `Core`, not `Game`, so `Core/GameModule` can load a
 library without including the layer above it.
 
-`Game` sits on top of `Core` and is the one layer game code includes: `Game/Game.hpp` pulls in the node
-classes and declares free functions over the running engine. It forward-declares `Engine` rather than
+`Game` sits on top of `Core` and is the one layer game code includes: `Game/Game.hpp` pulls in the actor and
+component classes and declares free functions over the running engine. It forward-declares `Engine` rather than
 including it, so a module needs only `Source/` and glm on its include path.
 
 `Platform/Files` holds the shared binary-mode file I/O used by project loading, scene files, fonts,
@@ -390,7 +390,7 @@ happens next. The player calls `GameLoop::tick` every iteration. The editor call
   1. `Glfw::pollEvents()`
   2. minimized -> `Glfw::waitEvents()`, reset the clock, skip the frame
   3. `GameLoop::advance()` accumulates real time, clamped at `MAX_FRAME_TIME = 0.25s`
-  4. `engine.update(fixedDt)` N times — fixed timestep; `scene.update` (which starts pending nodes,
+  4. `engine.update(fixedDt)` N times — fixed timestep; `scene.update` (which starts pending actors,
      runs due timers, then updates the tree), `physics.step`, then `input.consume()`
   5. `engine.render(alpha())` once — `renderer.beginFrame()`, `scene.render(alpha, draws)`,
      `renderer.drawFrame()`
@@ -406,78 +406,108 @@ without a window; keep new loop logic in that shape.
 The editor's loop also calls `ModuleHost::update` every frame and, between frames, applies a pending
 hot reload — see *Game code*.
 
-## The scene: a tree of nodes
+## The scene: actors and components
 
-The world is **one tree of nodes**, the way Roblox and Godot build it. A node is exactly one class,
-and things are made by nesting: a Box is a `MeshPart` with a `Spinner` and a `Bobber` inside it. There
-are no components. Behaviour is a node class too — the engine's classes draw, simulate and organize,
-and a project's C++ adds the rest, registered exactly like them (see *Game code*).
+The world is **Unreal's object model**: a `Scene` holds **actors**, an actor owns **components**, and
+transforms live in a hierarchy of **scene components**. A Box is a `StaticMeshActor` whose
+`StaticMeshComponent` is its root, carrying a `Spinner` and a `Bobber` component beside it. The
+engine's components draw, simulate and hold transforms, and a project's C++ adds the rest — actors and
+components registered exactly like the engine's own (see *Game code*). The tree of nodes this replaced
+was dropped on 2026-11-07.
 
-- **`Scene/Node`** holds an id, a name, a parent, children, `enabled`, attributes, and the lifecycle
-  hooks `onStart`, `onUpdate`, `onRender` and `onDestroy`, plus the event hooks `onAttributeChanged`,
-  `onChildAdded`, `onChildRemoved`, `onTouched` and `onTouchEnded`. `CINDER_PROPS(Node, void)` declares
-  `enabled`, so it is the first prop of every class.
-- **`Scene/Spatial`** is a `Node` that owns a `Transform`; `Node::transform()` is null on every other
-  node. A `Transform` composes with its parent only when the parent is spatial, so a `Folder` breaks
-  the chain and its children sit in world space.
-- **`Scene/NodeTypes`** is the class registry — a name, a factory, the prop list and a default
-  instance per class for delta encoding. Re-binding a name keeps its slot, so iteration order, and
-  the Explorer's insert menu, is stable across a reboot; `remove` empties a slot for a library being
-  unloaded. Types are keyed by their **mangled name**, not `std::type_index`: on Apple's libc++ a
-  library's hidden copy of a header-only class's `type_info` hashes by name while the engine's hashes
-  by address, so a `Group` created by game code would otherwise not be found.
-- **`Scene/Scene`** owns every node by id. `insert` takes a node and an optional id — the codec's
-  path — `create` builds one by class name, and `clone` copies a subtree through the registry, props,
-  transform and attributes, with fresh ids. A node inserted without a name takes its class name.
+- **`Scene/Object`** is what actors and components share: an id, a name, the scene, `enabled`, and the
+  reflection hooks. `CINDER_PROPS(Object, void)` declares `enabled`, so it is the first prop of every
+  class. **Actors and components share one id space**, so a selection, a connection, a timer or a
+  scene file names either by the same kind of id.
+- **`Scene/Actor`** (`CINDER_ACTOR(Type, Base)`) owns its components, holds attributes, and is attached
+  to at most one parent actor — the attachment tree is what the Outliner shows and what ticking walks.
+  Its hooks are `beginPlay`, `tick(dt)`, `endPlay`, `onAttributeChanged`, `onChildAdded`,
+  `onChildRemoved`, `onComponentAdded`, `onTouched` and `onTouchEnded`. `addComponent<T>(name)` called
+  in a constructor makes a **default component** — Unreal's `CreateDefaultSubobject` — and called later,
+  or through `Scene::addComponent`, an instance component. `findComponent<T>()`, `findComponent(name)`
+  and `findAttached(name)` look things up; `transform()` is the root's, or null.
+- **`Scene/Component`** (`CINDER_COMPONENT(Type, Base)`) has an `owner()` and the hooks `beginPlay`,
+  `tick(dt)`, `onRender(alpha, draws)`, `endPlay`, `onTouched` and `onTouchEnded`. `isDefault()` is
+  computed, not stored: a component is a default when the actor class's default instance has one of the
+  same name and class. Only instance components can be removed in the editor.
+- **`Scene/SceneComponent`** owns a `Transform` and attaches to another scene component **of the same
+  actor**. The **root** is the first unattached scene component in the actor's list, and
+  `setRootComponent` moves one to the front. A scene component with no attach parent that is not the
+  root is attached to the root implicitly, and a root composes with the root of the nearest attached
+  parent actor that has one — so an actor with no root passes its parent's transform through.
+- **`Scene/ClassRegistry`** is the class registry: a name, a kind (actor or component), a factory, the
+  prop list and a default instance per class for delta encoding. Re-binding a name keeps its slot, so
+  iteration order, and the editor's add menus, is stable across a reboot; `remove` empties a slot for a
+  library being unloaded. Types are keyed by their **mangled name**, not `std::type_index`: on Apple's
+  libc++ a library's hidden copy of a header-only class's `type_info` hashes by name while the engine's
+  hashes by address, so an `Actor` created by game code would otherwise not be found.
+- **`Scene/Scene`** owns every actor by id. `insert` takes an actor, an optional id and optional ids for
+  its components — the codec's path — `spawn` builds one by class name, `addComponent` adds a component
+  by class name, and `clone` copies an actor, its components, their attachments and the actors attached
+  to it through the registry, with fresh ids. An object inserted without a name takes its class name.
 
 Lifecycle rules that are easy to lose:
 
-- Every inserted node queues `onStart`, which runs at the top of the next `Scene::update`, disabled
-  or not; a node inserted during a start is started in the same pass.
-- A disabled node skips itself **and its subtree** in `update` and `render`. Its timers still fire.
-- `destroy` is deferred to the end of `update`. `destroyNow` tears a subtree down at once and exists
-  for the editor, which never calls `update` in Edit mode; never call it from inside an update walk.
+- Every inserted actor queues `beginPlay`, which runs at the top of the next `Scene::update`, disabled
+  or not: **its components first, in order, then the actor**, Unreal's order. A component added to a
+  started actor begins on the next update; an actor spawned during a begin is started in the same pass.
+- A tick runs the actor, then each of its components, then the actors attached to it. A disabled actor
+  skips itself, its components **and the actors attached to it** in `update` and `render`. A disabled
+  scene component skips itself and the components attached to it; a disabled root takes the implicitly
+  attached ones with it. Timers still fire.
+- `destroy` is deferred to the end of `update`, for an actor or a component. Destroying an actor
+  destroys its components and attached actors; destroying a scene component destroys the components
+  attached to it. `endPlay` runs on started objects only, components last to first and then the actor.
+  `destroyNow` tears down at once and exists for the editor, which never calls `update` in Edit mode;
+  never call it from inside an update walk.
 - `Scene::clear` emits nothing, so loading a scene is not a stream of destroy events, and it drops
   every connection and timer.
 
-**Signals.** `Scene::emit(source, Signal, args)` is how the tree announces `AttributeChanged`,
-`ChildAdded`, `ChildRemoved`, `Touched`, `TouchEnded` and `Destroying`. It calls the source's own hook,
-then every handler that `Scene::connect(source, signal, owner, handler)` registered — but only for
-**started** nodes, so nothing reacts in Edit mode. A connection is keyed by both node ids and dies with
-either. `Scene::after` and `every(owner, seconds, fn)` are timers on scene time, run at the top of
-`Scene::update` after the starts, and owned by a node. Neither connections nor timers outlive the
-scene, which is what makes unloading a game library safe. An attribute notifies only on a real change —
-`sameAttribute` counts `2` and `2.0` as equal — and `loadAttributes` never notifies.
+**Signals.** `Scene::emit(source, Signal, args)` is how the scene announces `AttributeChanged`,
+`ChildAdded`, `ChildRemoved`, `ComponentAdded`, `Touched`, `TouchEnded` and `Destroying`. It calls the
+source's own hook, then every handler that `Scene::connect(source, signal, owner, handler)` registered —
+but only for **started** objects, so nothing reacts in Edit mode. `SignalArgs` carries the other actor,
+the other component (the collider, for a touch) and a name. A connection is keyed by both ids and dies
+with either. `Scene::after` and `every(owner, seconds, fn)` are timers on scene time, run at the top of
+`Scene::update` after the starts, and owned by an actor or a component. Neither connections nor timers
+outlive the scene, which is what makes unloading a game library safe. An attribute notifies only on a
+real change — `sameAttribute` counts `2` and `2.0` as equal — and `loadAttributes` never notifies.
 
-| Class | Base | Props | |
+| Class | Kind | Props | |
 |---|---|---|---|
-| `Group` | Spatial | — | moves its children |
-| `Folder` | Node | — | organizes; breaks the transform chain |
-| `MeshPart` | Spatial | `mesh`, `texture` | |
-| `Sprite` | Spatial | `texture`, `size`, `color` | a quad in its local XY plane |
-| `Camera` | Spatial | `projection`, `fov`, clip planes, `zoom`, `clearColor`, `virtualSize` | `projection` is all that makes a scene 2D |
-| `Body` | Spatial | `motion`, `mass`, `gravityScale`, damping, `velocity`, `planar` | physics moves it; lives in `Physics` |
-| `Collider` | Spatial | `shape`, `size`, `friction`, `restitution` | a shape of its nearest `Body`; see *Physics* |
+| `Actor` | actor | — | a plain actor; give it components |
+| `StaticMeshActor` | actor | — | default `StaticMeshComponent` root |
+| `SpriteActor` | actor | — | default `SpriteComponent` root |
+| `CameraActor` | actor | — | default `CameraComponent` root |
+| `SceneComponent` | component | — | a transform and nothing else |
+| `StaticMeshComponent` | scene component | `mesh`, `texture` | |
+| `SpriteComponent` | scene component | `texture`, `size`, `color` | a quad in its local XY plane |
+| `CameraComponent` | scene component | `projection`, `fov`, clip planes, `zoom`, `clearColor`, `virtualSize` | `projection` is all that makes a scene 2D |
+| `RigidBodyComponent` | component | `motion`, `mass`, `gravityScale`, damping, `velocity`, `planar` | physics moves its actor's root; lives in `Physics` |
+| `ColliderComponent` | scene component | `shape`, `size`, `friction`, `restitution` | a shape of its nearest body; see *Physics* |
 
-A new class derives from `Node` or `Spatial`, declares its props with `CINDER_NODE`, and is
-registered — engine classes in `Nodes::registerBuiltins`, physics ones in
-`Physics::registerNodes`, game classes by `CINDER_REGISTER` in their library. The serializer and the
-editor need no change.
+A new class derives from `Actor`, `Component` or `SceneComponent`, declares its props with
+`CINDER_ACTOR` or `CINDER_COMPONENT`, and is registered — engine classes in
+`Components::registerBuiltins`, physics ones in `Physics::registerComponents`, game classes by
+`CINDER_REGISTER` in their library. The serializer and the editor need no change.
 
 ### The scene file
 
-`Serial/SceneCodec` writes version 4:
+`Serial/SceneCodec` writes version 5:
 
 ```
-version 4
-nodes {
-    MeshPart {
+version 5
+actors {
+    StaticMeshActor {
         id 2
         name "Box"
-        position -6 0 -6
-        children {
-            Spinner {
+        components {
+            StaticMeshComponent {
                 id 3
+                position -6 0 -6
+            }
+            Spinner {
+                id 4
                 speed 0 0.5 0
             }
         }
@@ -485,27 +515,35 @@ nodes {
 }
 ```
 
-An item's block name is its class. A node writes `id`, `name` (omitted when it is the class name),
-its transform if it is spatial, its class props where they differ from the class default,
-`attributes`, then `children`. An unknown class is logged once and loaded as a `Scene::Placeholder`:
-a plain node that keeps the class name and its fields verbatim (`Archive::raw`, in file order) and
-writes them back unchanged, so a scene saved while a game module is missing or failed to build loses
-nothing; its children load as ordinary nodes, and cloning one makes another placeholder. Every token keeps
-its quoting, and only an unquoted `{` opens a block, so a node named `{` round-trips. A stray or missing
-`}` fails the load with its line number before anything is cleared, numbers are parsed with
-`from_chars`, a malformed one is logged and falls back to the default, and an id outside
-`1..Scene::MAX_ID` is replaced with a fresh one. A value an attribute cannot hold is logged and dropped. `VERSION` and `OLDEST` are both 4: the
-actor/component formats are not read, and the repo's scenes were converted once.
+An item's block name is its class. An actor writes `id`, `name` (omitted when it is the class name),
+its class props where they differ from the class default, `components`, `attributes`, then `children` —
+the actors attached to it. A component writes `id`, `name`, its transform if it is a scene component,
+its props, then `attached` — the scene components attached to it. **A default component is written
+against the same component in the actor class's default instance**, Unreal's archetype, so a value the
+constructor set is not repeated; an instance component is written against its class default. On load,
+a default component the constructor already made is matched by name and class and filled in, and
+`Actor::arrange` restores the file's order, so the root stays the root. The first top-level scene
+component is the root. An unknown class is logged once and loaded as an `ActorPlaceholder` or a
+`ComponentPlaceholder` that keeps the class name and its fields verbatim (`Archive::raw`, in file order)
+and writes them back unchanged, so a scene saved while a game module is missing or failed to build loses
+nothing. A component placeholder is a scene component that is never the root, so the components
+attached under it keep their place; an actor placeholder's components and attached actors load as
+ordinary ones, and cloning a placeholder makes another. Every token keeps its quoting, and only an
+unquoted `{` opens a block, so an actor named `{` round-trips. A stray or missing `}` fails the load with
+its line number before anything is cleared, numbers are parsed with `from_chars`, a malformed one is
+logged and falls back to the default, and an id outside `1..Scene::MAX_ID`, or taken, is replaced with a
+fresh one. A value an attribute cannot hold is logged and dropped. `VERSION` and `OLDEST` are both 5:
+the node-tree format is not read, and the repo's scenes were converted once.
 
 ## Edit mode and Play mode
 
-A game is a `.scene` file — a tree of nodes, some of them the project's own classes. There is no entry
-point.
+A game is a `.scene` file — actors and components, some of them the project's own classes. There is no
+entry point.
 
-No game code runs until something calls `Scene::update`: `onStart` fires from `startPending()` at the
-top of the first update, and hooks, connections and timers reach only started nodes. `Scene::render`
-does **not** wait for `start` — it draws every enabled node — so a scene that is never updated is still
-fully drawn. That split *is* Edit mode: meshes, sprites and cameras draw, game classes' `onRender`
+No game code runs until something calls `Scene::update`: `beginPlay` fires from `startPending()` at the
+top of the first update, and hooks, connections and timers reach only started objects. `Scene::render`
+does **not** wait for `beginPlay` — it draws every enabled component — so a scene that is never updated is still
+fully drawn. That split *is* Edit mode: meshes, sprites and cameras draw, game components' `onRender`
 draws too, and nothing else of the game runs. The one thing the editor draws differently is the view: Edit mode looks
 through its own camera and shows the scene's cameras as gizmos — see *The editor camera*.
 
@@ -514,7 +552,7 @@ through its own camera and shows the scene's cameras as gizmos — see *The edit
 - **Play** saves the scene to text with `SceneCodec::save` and hands it to `Engine::loadScene`, which
   is `SceneCodec::load`: it parses and checks the version first and clears the scene only then, so a
   bad file leaves the scene as it was. Play therefore takes exactly the path the player takes
-  from disk: every node is rebuilt from text, connections and timers start empty, and a serialization
+  from disk: every actor is rebuilt from text, connections and timers start empty, and a serialization
   bug shows up on Play rather than on Stop. Statics inside a game library are **not** reset by Play;
   they reset only when the library is reloaded.
 - **Stop** hands the same text to `loadScene` and releases a locked cursor. Play and Stop are one
@@ -522,8 +560,8 @@ through its own camera and shows the scene's cameras as gizmos — see *The edit
 - **Pause** switches to `GameLoop::idle`; **Step** runs one `GameLoop::step`.
 
 Toolbar buttons and shortcuts only set a request, and `PlaySession::tick` applies it **between
-frames**. The toolbar draws inside `Engine::render`, and Stop rebuilds every node, which must never
-happen while a node's own code is on the stack. For the same reason, game code calling `Game::quit()`
+frames**. The toolbar draws inside `Engine::render`, and Stop rebuilds every actor, which must never
+happen while an actor's own code is on the stack. For the same reason, game code calling `Game::quit()`
 only sets a flag. The player ends on it; `PlaySession` turns it into Stop, the way Unity ignores
 `Application.Quit` in the editor.
 
@@ -564,7 +602,7 @@ hand the two built-in passes to `Game/Game` for immediate-mode drawing. A pass o
 is handed the frame's view-projection.
 
 **There is one camera, and 2D and 3D differ only in its projection** — Unity's model. `Renderer` owns
-a `Gfx/Pass/ViewCamera`, and the scene's `Camera` writes it every frame through `DrawList::camera` as a
+a `Gfx/Pass/ViewCamera`, and the scene's `CameraComponent` writes it every frame through `DrawList::camera` as a
 `Scene::View`: the world matrix, `orthographic`, fov, clip planes, zoom and virtual size. A perspective
 view uses the fov at the view's aspect. An orthographic one covers `virtualSize / zoom` world units —
 or the view's own size in points when `virtualSize` is zero — centred on the camera and stretched to
@@ -579,7 +617,7 @@ scene's camera, never the override; `screenToWorld` returns where the ray throug
 `z = 0` plane, which under an orthographic camera looking down -Z is just the point under the cursor.
 
 The world is **Y-up** through either projection: both flip Y in the projection matrix rather than with
-a negative viewport height. A `Sprite` is a quad of `size` in its node's local XY plane, pushed through
+a negative viewport height. A `SpriteComponent` is a quad of `size` in its own local XY plane, pushed through
 its world matrix, so it moves, turns and scales in 3D like a mesh, with the texture's first row along
 its +Y edge. The sprite pipeline tests depth without writing it (`GraphicsPipelineBuilder::depthRead`):
 `MeshPass` has already written depth, so a mesh in front hides a sprite, while sprites still layer among
@@ -601,12 +639,12 @@ Conventions used throughout, follow them:
 `Assets` hands out `int` texture handles (`DrawList::WHITE == 0`), caches by path, and never frees;
 `MAX_TEXTURES = 256` is backed by a fixed-size descriptor pool.
 
-**Nodes never store those handles**, because a handle means nothing on the next run.
-`Sprite::texture` and `MeshPart::texture` / `mesh` are *names* — a path relative to `Content/`,
+**Components never store those handles**, because a handle means nothing on the next run.
+`SpriteComponent::texture` and `StaticMeshComponent::texture` / `mesh` are *names* — a path relative to `Content/`,
 or a primitive such as `"cube"` — resolved through `DrawList::textureHandle` / `meshHandle` on first
 draw and cached until `propChanged` says the name changed. `RendererDrawList` caches the handle by
 name, so a thousand sprites on one texture resolve its path once. A missing file logs once and draws white;
-an unknown mesh logs once and draws a cube. The clear colour and the 2D virtual size are `Camera`
+an unknown mesh logs once and draws a cube. The clear colour and the 2D virtual size are `CameraComponent`
 props, pushed to the renderer every frame through `DrawList::background` and `camera`, so a scene
 file carries them.
 
@@ -641,31 +679,35 @@ it runs headlessly in `cbt test`.
 `input.consume()`. Edit mode never calls `Engine::update`, so **physics never runs while you edit** —
 the same split that keeps game code from running, at no cost in code.
 
-Two node classes, registered by `Physics::registerNodes`:
+Two component classes, registered by `Physics::registerComponents`:
 
-- **`Body`** is what physics moves: `motion` (`static | kinematic | dynamic`), `mass`, `gravityScale`,
+- **`RigidBodyComponent`** is what makes an actor physical, and physics moves the actor's **root
+  component**: `motion` (`static | kinematic | dynamic`), `mass`, `gravityScale`,
   `linearDamping`, `angularDamping`, `velocity`, `angularVelocity` and `planar`. **`planar` is all that
   makes physics 2D**: it locks z travel and x/y turning, so a 2D scene is the same engine with three
   degrees of freedom removed — the rule the renderer already follows, where `projection` is all that
   makes a scene 2D. Velocity is a prop like any
-  other, so a scene file carries a starting velocity, Properties shows it live during Play, and
-  `ball->setVelocity(0, 5, 0)` works from game code — with no code in the editor.
-- **`Collider`** is a shape: `shape` (`box | sphere | capsule`), `size`, `friction` and `restitution`. The
+  other, so a scene file carries a starting velocity, Details shows it live during Play, and
+  `body->setVelocity(0, 5, 0)` works from game code — with no code in the editor. It is a plain
+  component, not a scene component: its pose is the root's, and an actor with no root is not simulated.
+- **`ColliderComponent`** is a shape, a scene component: `shape` (`box | sphere | capsule`), `size`, `friction` and `restitution`. The
   material lives on the shape, not the body, because a static floor is a collider with no body and
   still has to be rough or bouncy; a pair combines as `sqrt(fA * fB)` and `max(eA, eB)`. Its own transform
   offsets it from the body, and `size` is the box the shape fits in — a sphere takes the largest of the
   three; a capsule stands along its own Y, as wide as the larger of x and z and as tall as y, so
   `1 2 1` is a capsule of length 2 and `1 1 1` collapses to a sphere. The default `1 1 1` box is
-  exactly the unit cube a `MeshPart` draws.
+  exactly the unit cube a `StaticMeshComponent` draws.
 
-**A collider belongs to its nearest `Body` ancestor**, which is Unreal's welding rule: every shape under
-one body is one rigid compound. A collider with no `Body` above it is static, so a floor is a `MeshPart`
-with a `Collider` inside it and nothing else — Unity's and Unreal's behaviour, where Godot would want
-the body spelled out.
+**A collider belongs to the body of its own actor, or else of the nearest attached-parent actor that
+has one**, which is Unreal's welding rule: every shape under one body is one rigid compound. A collider
+with no body above it is static, so a floor is a `StaticMeshActor` with a `ColliderComponent` beside its
+mesh and nothing else — Unity's and Unreal's behaviour. A collider takes its root's transform, so a
+unit collider on a mesh scaled `24 1 24` is the mesh's slab.
 
 `World::step` **walks the scene** every step rather than keeping a registry, which is what makes
-inserting, destroying, disabling and reparenting a body need no bookkeeping: a disabled subtree is
-skipped exactly as `Scene::update` skips it, and `Scene::clear` on Stop empties the world by
+spawning, destroying, disabling and reattaching a body need no bookkeeping: a disabled actor and the
+actors attached to it are skipped exactly as `Scene::update` skips them, a disabled component is
+skipped on its own, and `Scene::clear` on Stop empties the world by
 construction. The walk is in tree order and nothing iterates an `unordered_map`, so a scene steps
 identically every run; `Tests/physics_test` pins that bit for bit.
 
@@ -678,10 +720,10 @@ unchanged.
 
 The step, in order:
 
-1. **Place** — a body whose node matrix is not the one physics last wrote has been moved by something
-   else — a script, Properties, or a parent moving — so it teleports there, keeping its velocity. A
-   kinematic body always takes its pose from its node and derives its velocity from how far it moved.
-2. **Geometry** — each collider's world shape, from its node matrix, through `geometryOf`. `Dev/GizmoLines`
+1. **Place** — a body whose root's matrix is not the one physics last wrote has been moved by something
+   else — a script, Details, or a parent moving — so it teleports there, keeping its velocity. A
+   kinematic body always takes its pose from its root and derives its velocity from how far it moved.
+2. **Geometry** — each collider's world shape, from its matrix, through `geometryOf`. `Dev/GizmoLines`
    draws the wireframes from the same function, so what is drawn is what collides.
 3. **Weigh** — a body's mass is split between its colliders by volume, giving a centre of mass and a
    full inertia tensor through the parallel axis theorem. **A body turns about its centre of mass**,
@@ -709,14 +751,14 @@ The step, in order:
    is ready to sleep, but it only sleeps with the **island** it belongs to: contacts between dynamic
    bodies are unioned, and an island sleeps when every member is ready — otherwise one crate in a
    stack would freeze while the rest settled. A sleeping body is solved as if it were static and is
-   never integrated, so a settled stack is bit-for-bit still. It wakes when its node is moved, its
+   never integrated, so a settled stack is bit-for-bit still. It wakes when its root is moved, its
    velocity written, an impulse or force applied, a contact with anything that is moving, or a contact
    it had disappears — which is what catches the floor being deleted under it.
 8. **Advance** — integrate the centre of mass and the orientation by velocity plus drift, then write
    the pose back
-   as the node's local position and the Euler angles in the order `Transform::local()` composes them
+   as the root's local position and the Euler angles in the order `Transform::local()` composes them
    (Y, then X, then Z). The world keeps the quaternion, so a tumbling body simulates exactly through
-   ±90° pitch even though the angles Properties shows flip there.
+   ±90° pitch even though the angles Details shows flip there.
 
 Three tolerances in `Collide.cpp` are load-bearing, and each was found watching a stack fall over.
 Clipping keeps a corner within `CLIP_SLACK` of a side plane, and a contact within `TOUCH_SLACK` of the
@@ -725,14 +767,17 @@ float noise drops one and the lopsided support tips the box. `FACE_BIAS` makes t
 beat the first's by a margin before it becomes the reference face, because on an exact tie the choice
 flapped from step to step, changing every feature id and throwing the warm start away.
 
-**Game code reaches physics directly.** `Body::applyImpulse`, `applyForce` and `applyTorque` are
+**Game code reaches physics directly.** `RigidBodyComponent::applyImpulse`, `applyForce` and `applyTorque` are
 **accumulators**, applied at the next step and cleared there, so the order they are called in never
 matters; `Game::raycast` returns an optional `RayHit`, and `Game::world()` reads and writes gravity.
 
 Contacts reach game code the way scene changes do: `World` tracks which collider pairs touch, compares
 that with the last step's, and emits `Signal::Touched` and `TouchEnded` through `Scene::emit` on both
-nodes — so a node's `onTouched` hook runs, and any connection on it fires. The node handed over is the
-`Body` when there is one and the `Collider` when there is not, so a floor with no body still answers.
+**actors** and on both **colliders** — Unreal's `OnActorHit` and `OnComponentHit` — so their
+`onTouched` hooks run, and any connection on them fires. The actor is the one that owns the body when
+there is one and the collider's own actor when there is not, so a floor with no body still answers;
+`SignalArgs` carries the other actor and the other collider. A `RayHit` reports the same actor and the
+collider it hit.
 
 `Config/Game.ini` carries `[Physics] gravity` as three numbers, read by `ProjectConfig` and pushed into
 the world by `Engine`; a project that says nothing falls at 9.81 units a second squared.
@@ -744,7 +789,7 @@ costs the walk either way; many rays per frame are what would justify keeping th
 `Samples/physics` is the sample: a floor, a ramp and a step as static colliders, balls, capsules, a
 stack of crates, and a `Dropper` that drops more balls onto it. `--scene Scenes/planar.scene` opens the 2D half —
 an orthographic camera over sprites with `planar` bodies, where a click drops another box. `MeshPass` carries three primitives — `cube`, `sphere` and `capsule`, the last two matching what a
-sphere and a `1 2 1` capsule collider cover; `Picking` still treats every `MeshPart` as a cube.
+sphere and a `1 2 1` capsule collider cover; `Picking` still treats every `StaticMeshComponent` as a cube.
 
 What is missing is tracked in `TODO.md`: joints, CCD, sensors, collision layers and convex hulls. So is the one that is not physics' fault — nothing interpolates
 transforms, so at `fixedHz` 60 on a 120 Hz display a falling body visibly steps.
@@ -808,8 +853,8 @@ OS's events ignored. It is how a change to a panel is verified without a human a
 know nothing about any UI: `Toolbar` (the File, Edit, Window, Play and Platforms menus, play controls,
 save, undo and redo, Build and the module status, the dirty marker, the ⌘ shortcuts as a `CommandList`,
 and the modal Save / Don't Save / Cancel and packaging `Dialog`s, which swallow every key), `SceneView` (a `Viewport`
-whose client drives `EditorCamera`, `Picking`, `Manipulation` and `GizmoLines`), `Explorer`,
-`Properties`, `Console` and the docked `Layout`. The host's
+whose client drives `EditorCamera`, `Picking`, `Manipulation` and `GizmoLines`), `Outliner`,
+`Details`, `Console` and the docked `Layout`. The host's
 paint hook runs, in order: `processEvents` on the drained queue, each panel's `update`, `paint`, then
 `SceneView::afterPaint`, which sets the camera override and the game's input suppression — keyboard
 while the Scene has focus, mouse while it is hovered or holds the capture, both while the cursor is
@@ -829,7 +874,7 @@ these. **Tooltips** are the `Application`'s too: after `TOOLTIP_DELAY` over the 
 `toolTipText`, disabled ones included, it draws the text beside the cursor, unhittable; a press hides it
 until the pointer leaves that widget. Widgets that open popups hold a `UI::PopupHandle`, which remembers
 the `Application` they opened on, so tests can ask `isOpen()` outside a frame, and dismisses the popup
-when the widget is destroyed — so Undo or a hot reload rebuilding Properties never leaves a dropdown
+when the widget is destroyed — so Undo or a hot reload rebuilding Details never leaves a dropdown
 calling into a dead combo box. Anything that reads the hit grid during paint — a
 `tick` — finds it empty, because paint rebuilds it; a menu row therefore anchors its submenu to the
 rectangle it last painted.
@@ -848,11 +893,11 @@ fine enough that interpolating in linear space does not show. `Shortcut::label()
 (`Shift+Cmd+P`) until shaping falls back to a symbol font, because Roboto has no ⌘.
 
 **A `TreeView` builds only the rows that fit.** Items are ids, never pointers, so Play, Stop and Undo
-rebuilding every node cannot invalidate a row: each frame it flattens the expanded items through
+rebuilding every actor cannot invalidate a row: each frame it flattens the expanded items through
 `treeItemsSource` and `onGetChildren`, realizes the slice in view — reusing the row a visible item
 already has — and drops the rest, so a thousand items cost a dozen widgets. A `ListView` is a
 `TreeView` with no children callback. Selection is the tree's own, or the panel's when
-`isItemSelected` is bound, which is how the Explorer follows `Selection` with nothing to keep in
+`isItemSelected` is bound, which is how the Outliner follows `Selection` with nothing to keep in
 sync. A press on the expander arrow only expands; a press on the row selects and arms a drag; a double
 click expands or calls `onMouseButtonDoubleClick`; a right press selects and opens
 `onContextMenuOpening` at the pointer; arrow keys move the selection, expand and collapse, and
@@ -927,30 +972,32 @@ would otherwise hover whatever panel it wanders over. Entering `Playing` focuses
 Play and Resume hand the game the keyboard without a click on the scene first.
 
 In Edit mode a **left click** on the image picks. `Dev/Picking` is a CPU raycast that knows nothing
-about the UI: the click unprojects through the editor camera and hits every enabled `MeshPart` as the
-unit cube `Mesh::cube` is — which is every mesh there is — every enabled `Sprite` as the quad it draws,
-in its own plane and axes, and every enabled `Camera` within 10 points of where it projects, taking the
-nearest. A tie goes to the later node in render order, so of two sprites in one plane the one drawn on
-top wins. A disabled node hides its subtree, as it does from `Scene::render`. A click is a press and
+about the UI: the click unprojects through the editor camera and hits every active
+`StaticMeshComponent` as the unit cube `Mesh::cube` is — which is every mesh there is — every active
+`SpriteComponent` as the quad it draws, in its own plane and axes, and every active `CameraComponent`
+within 10 points of where it projects, taking the nearest. `pick` returns the component it hit, and the
+Scene view selects that component's actor, as Unreal's viewport does. A tie goes to the later component
+in render order, so of two sprites in one plane the one drawn on top wins. A disabled actor hides itself
+and the actors attached to it, as it does from `Scene::render`. A click is a press and
 release that stays inside `Application::DRAG_THRESHOLD`; past it, a left drag still looks around. A hit
-selects with `reveal`, so the Explorer expands the node's ancestors and scrolls to its row; a miss
+selects with `reveal`, so the Outliner expands the actor's ancestors and scrolls to its row; a miss
 clears the selection. A press on a gizmo handle comes first: it drags the handle, and its release never
 picks — see *Transform gizmos*.
 
-`Dev/Panels/Layout` builds the default dock layout — the Explorer left, the Scene view in the middle
-with the console under it, Properties right — as a `TabManager` layout of splits and stacks, and hands
+`Dev/Panels/Layout` builds the default dock layout — the Outliner left, the Scene view in the middle
+with the console under it, Details right — as a `TabManager` layout of splits and stacks, and hands
 the toolbar the Window menu that reopens a closed tab.
 
 ### The editor camera
 
-In Edit mode the Scene view looks through `Dev/EditorCamera`, not through the scene's `Camera`.
+In Edit mode the Scene view looks through `Dev/EditorCamera`, not through the scene's `CameraComponent`.
 `SceneView::afterPaint` hands its view to `Renderer::overrideCamera` on every Edit frame and calls
 `releaseCamera` in every other state, so Play and Pause show the game's camera. The override covers the whole frame,
 sprites included, so a 2D scene is flown around exactly like a 3D one — Unity's Scene view with 2D
 mode off.
 
 The editor camera is always perspective. It is seeded once, on the first Edit frame, from the last
-enabled `Camera` in render order — the one whose `DrawList::camera` call wins — taking its pose, fov
+active `CameraComponent` in render order — the one whose `DrawList::camera` call wins — taking its pose, fov
 and clip planes. From a perspective camera that is the game's frame exactly. From an orthographic one
 it backs away along the camera's forward axis until its fov frames the orthographic rectangle at the
 near plane, pushes its far plane back by the same distance, and flies at half that distance per
@@ -967,7 +1014,7 @@ does not start on a handle also looks around; drag the **middle button**, or lef
 scroll with no button held to dolly. A press captures the mouse, so the drag keeps working past the
 panel's edge, and focuses the Scene view, so fly keys never land in the console.
 
-The Scene view draws every enabled `Camera` while editing. A perspective camera is a wireframe frustum:
+The Scene view draws every active `CameraComponent` while editing. A perspective camera is a wireframe frustum:
 the near and far rectangles, the four edges joining them, and dimmer lines from the camera to the near
 corners. An orthographic camera is its near rectangle alone — every cross-section of its box is that
 rectangle, so it is exactly what the camera sees. The corners come from `ViewCamera::corners()` at the
@@ -980,7 +1027,8 @@ leaves half-drawn. Being UI, the gizmos draw over geometry, cost the player noth
 in a `--capture`.
 
 `selectionStrokes` outlines the selection the same way, in orange: the twelve edges of a
-`MeshPart`'s cube, a `Camera`'s gizmo, or a `Sprite`'s quad, all through the editor camera.
+`StaticMeshComponent`'s cube, a camera's gizmo, a sprite's quad or a collider's wireframe, all through
+the editor camera — every component of a selected actor, or the one selected component.
 
 ### Transform gizmos
 
@@ -993,7 +1041,7 @@ keys from its own `onKeyDown`.
 `Dev/GizmoGeometry` owns handle geometry and hit testing; `Dev/Manipulator` owns drag state. Neither
 knows about the UI:
 
-- `gizmoFor` places the gizmo at the node's world position, `GIZMO_POINTS` long on screen at that depth,
+- `gizmoFor` places the gizmo at the scene component's world position, `GIZMO_POINTS` long on screen at that depth,
   so it keeps its size at any distance. There is none behind the editor camera, or under a parent whose
   matrix cannot be inverted.
 - `shapes` is **the one handle geometry** — world-space points per handle — that `drawManipulator`
@@ -1001,7 +1049,7 @@ knows about the UI:
   axis within about 15° of the view ray and a plane handle within about 15° of edge-on are left out,
   which is what hides the Z arrow in a 2D scene. Ties go to the earlier shape: the centre square, then
   the planes, then the axes.
-- `Manipulation` is one drag. It holds the node's **id**, as `Selection` does, and the transform as it
+- `Manipulation` is one drag. It holds the scene component's **id**, as `Selection` does, and the transform as it
   was at the press, and computes every frame from that start rather than from the last frame, so
   snapping is exact and cancelling is a write of the start values.
 
@@ -1009,19 +1057,20 @@ knows about the UI:
 in the plane facing the view. An axis drag takes the point on the axis nearest the mouse ray, and a plane
 drag intersects the ray with the plane. The travel is a world-space vector, taken into the parent's
 space through the inverse of the parent's world matrix — applied as a direction, so a zero travel adds
-exactly zero. Under a `Folder` the parent matrix is the identity, because a `Folder` breaks the chain.
+exactly zero. The parent is whatever `SceneComponent::parentTransform` names — the attach parent, the
+root, or the parent actor's root — and the identity at the top.
 
 **Rotate's rings are the Euler axes, not world or local ones** — Blender's Gimbal orientation.
 `Transform::local()` is T·Ry·Rx·Rz·S, so the Y ring turns about the parent's Y, the X ring about X after
-yaw, and the Z ring about the node's own Z, and a ring changes exactly one component of `rotation`.
+yaw, and the Z ring about the component's own Z, and a ring changes exactly one component of `rotation`.
 Nothing is decomposed back into angles, which is where a gizmo picks up flips near ±90° pitch and float
-noise in the angles it did not touch; the price is that the rings are not perpendicular once a node is
-pitched. A ring facing the camera follows the mouse round its plane, and one nearly edge-on turns with
+noise in the angles it did not touch; the price is that the rings are not perpendicular once a component
+is pitched. A ring facing the camera follows the mouse round its plane, and one nearly edge-on turns with
 the mouse along its screen tangent. Only a ring's front half can be grabbed, unless the ring mostly
 faces the camera — perspective would otherwise put half of a face-on ring beside the centre of the view
 "behind" the pivot. A mirrored parent negates the angle.
 
-**Scale** is always local: a world-axis scale on a rotated node needs shear, which `Transform` cannot
+**Scale** is always local: a world-axis scale on a rotated component needs shear, which `Transform` cannot
 hold. An axis handle multiplies its component by the mouse's travel along the axis over the gizmo's
 length; the centre square multiplies all three by the drag right and up.
 
@@ -1031,54 +1080,64 @@ axis, `ROTATE_SNAP_DEGREES`, and factors in steps of `SCALE_SNAP`. **Esc** cance
 The panel hit-tests on hover and on the press, through the editor camera as it was last drawn. A press
 on a handle starts the drag, stops the left button looking around and keeps the release from picking,
 until the capture is released. Every write goes through `PropDef`, as
-Properties' writes do, and calls `History::touch`, so a drag is one undo step labelled like "Move Box",
+Details' writes do, and calls `History::touch`, so a drag is one undo step labelled like "Move Box" —
+the actor's name for its root, the component's for any other —
 and a cancelled drag saves to the same text and records nothing. While the mouse is still where it was
 pressed, a drag writes the start values themselves: arm64 fuses multiply-adds, so `cross(v, v)` is not
 exactly zero, and a recomputed angle would move a click by an ulp and record a step. Leaving Edit mode
 ends a drag.
 
-### The Explorer and Properties
+### The Outliner and Details
 
-`Dev/Selection` holds the selected node's **id**, never a `Node*`. Play and Stop rebuild every node
-through `loadScene`, and ids are what `SceneCodec` round-trips, so a selection survives both.
-`resolve` returns null — and forgets the id — once the node is gone or marked destroyed, so a node
-spawned during Play drops out of the selection on Stop.
+`Dev/Selection` holds one **id**, never a pointer — an actor's or a component's, since they share one id
+space. Play and Stop rebuild every object through `loadScene`, and ids are what `SceneCodec`
+round-trips, so a selection survives both. `resolve` returns null — and forgets the id — once the object
+is gone or marked destroyed, so an actor spawned during Play drops out of the selection on Stop.
+`actor` resolves to the selected actor or the selected component's owner, and `placed` to the selected
+scene component or the selected actor's root, which is what the gizmo moves.
 
-`Dev/Panels/Explorer` is a `TreeView` over node **ids**, so it builds only the rows in view and
-nothing it holds can dangle: every row reads its node back out of the scene each frame. A row is the
-node's name followed, dimmed, by its class — and a node disabled
-itself or through a parent is dimmed unless it is selected. Selection is bound straight to
-`Dev/Selection` through `isItemSelected`, so picking in the Scene view and clicking a row are the same
-state with nothing to keep in sync. A click selects and a click on empty space clears. **"+"** lists
-every registered class and inserts one under the selection, or at the root. Right-clicking a row
-offers Insert, Duplicate (`Scene::clone`) and Delete; dragging a row onto another reparents it, cycles
-refused, and dropping it below the rows makes it a root. Delete or Backspace removes the selection
-while the tree has focus — a focused text field keeps the key for itself. A filter turns the tree into
-a flat list of the nodes whose name or class matches, with no expanders.
+`Dev/Panels/Outliner` is a `TreeView` over actor **ids** — the attachment tree, Unreal's World
+Outliner — so it builds only the rows in view and nothing it holds can dangle: every row reads its actor
+back out of the scene each frame. A row is the actor's name followed, dimmed, by its class — and an
+actor disabled itself or through a parent is dimmed unless it is selected. A row is highlighted when the
+selection is that actor or one of its components, so picking in the Scene view and clicking a row are
+the same state with nothing to keep in sync. A click selects and a click on empty space clears. **"+"**
+lists every registered actor class and spawns one attached to the selected actor, or at the root.
+Right-clicking a row offers Add Actor, Duplicate (`Scene::clone`) and Delete; dragging a row onto
+another attaches it, cycles refused, and dropping it below the rows makes it a root. Delete or
+Backspace removes the selected actor while the tree has focus — a focused text field keeps the key for
+itself. A filter turns the tree into a flat list of the actors whose name or class matches, with no
+expanders.
 
 Delete uses `destroyNow`, because Edit mode never runs the `Scene::update` that
-flushes a deferred destroy. An inserted or duplicated node becomes the selection. During Play the same
+flushes a deferred destroy. A spawned or duplicated actor becomes the selection. During Play the same
 edits act on the running game and are discarded by Stop.
 
-`Dev/Panels/Properties` builds its rows from the prop list, with no per-node-class widget code: the
-node's name, class and id, a Transform section for spatial nodes, the class's props and the
-attributes, each section an `ExpandableArea` of name | value rows. The widget comes from the
-`PropType` and the `PropHint`: a `SpinBox` for numbers, a `VectorInputBox` for vectors, a `CheckBox`,
-a `TextBox`, a `ComboBox` filled from `PropDef::options()` for enums, and a `ColorBlock` that opens a
-picker for `CINDER_PROP_COLOR`. Every write goes through `PropDef`, so clamping, in-place vector
-writes and `propChanged` behave exactly as they do from the serializer. `step` is the
-drag speed; bounds are applied only when the prop declares them, and a spin box never rounds a value
-to the three decimals it shows. `CINDER_PROP_ANGLE` — `Transform.rotation` — is dragged in degrees and
-written back in radians, so game code and scene files never see degrees. Text commits on Enter or focus
-loss, not per keystroke, so a texture path does not try to load every prefix of itself.
+`Dev/Panels/Details` builds its rows from the prop lists, with no per-class widget code: the actor's
+name, class and id; the actor's props; **Components**, the actor's components as buttons — the root,
+the scene components under it indented by attachment, then the components that are not scene
+components — where a click selects one, an **x** removes an instance component (a default cannot be
+removed) and **Add Component** lists every registered component class and adds one, attached under the
+selected scene component when there is one; then the edited component's Transform and props — the
+selected component, or the root when the actor itself is selected — and the actor's attributes, each
+section an `ExpandableArea` of name | value rows. The widget comes from the `PropType` and the
+`PropHint`: a `SpinBox` for numbers, a `VectorInputBox` for vectors, a `CheckBox`, a `TextBox`, a
+`ComboBox` filled from `PropDef::options()` for enums, and a `ColorBlock` that opens a picker for
+`CINDER_PROP_COLOR`. Every write goes through `PropDef`, so clamping, in-place vector writes and
+`propChanged` behave exactly as they do from the serializer. `step` is the drag speed; bounds are
+applied only when the prop declares them, and a spin box never rounds a value to the three decimals it
+shows. `CINDER_PROP_ANGLE` — `Transform.rotation` — is dragged in degrees and written back in radians,
+so game code and scene files never see degrees. Text commits on Enter or focus loss, not per keystroke,
+so a texture path does not try to load every prefix of itself.
 
-The panel holds the selected node's **id** and nothing else, and rebuilds its rows only when the
-selection or the attribute names change, so a drag is not fighting a fresh widget tree every frame.
+The panel holds the selected **id** and nothing else, and rebuilds its rows only when the selection,
+the actor's components or its attribute names change, so a drag is not fighting a fresh widget tree
+every frame.
 
 The **Attributes** section lists each attribute with a remove button, and **Add Attribute…** opens a
 popup for a name and a type. Every attribute number is edited as a float, integers included:
 `TextLoad` reads `40` back as an integer and `40.5` as a float, so an integer drag could never move a
-saved `40` to `40.5`. Writes go through `Node::setAttribute`, so an edit during Play fires the game's
+saved `40` to `40.5`. Writes go through `Actor::setAttribute`, so an edit during Play fires the game's
 changed signals.
 
 Every edit either panel or a gizmo makes is undoable and marks the scene dirty — see *Undo, redo and unsaved
@@ -1101,7 +1160,7 @@ an edit that saves to the same text as before records nothing. `MAX_STEPS` is 10
 
 Undo calls the codec directly, not `Engine::loadScene`. History is enabled in Edit mode alone, where no
 game code has started: during Play, `touch`, `settle` and the buttons do nothing, and Stop discards Play's edits anyway.
-Ids round-trip through the codec, so the selection stored with the step, and the Explorer's open rows,
+Ids round-trip through the codec, so the selection stored with the step, and the Outliner's open rows,
 which the tree keys by id, come back with it.
 
 The document is the text of the last commit, and it is **dirty** while it differs from the text last
@@ -1133,18 +1192,20 @@ and it names the project's library.
 
 **Game code is C++**, in the project's `Source/`, compiled into one shared library per project — Godot's
 GDExtension and Unreal's game modules, built the way UnrealBuildTool builds them: the editor drives the
-compiler itself, with no per-project build files. There is no entry point. A project defines **node
-classes**, and the scene places them; a behaviour is a child node that acts on its parent.
+compiler itself, with no per-project build files. There is no entry point. A project defines **actor
+and component classes**, and the scene places them. Most behaviour is a component that acts on its
+owner, the way Unreal's `ActorComponent`s do; an actor subclass is for an object that is a thing in its
+own right, and builds its default components in its constructor.
 
 ```cpp
 #include "Game/Game.hpp"
 
-class Spinner final : public cinder::Scene::Node {
+class Spinner final : public cinder::Scene::Component {
 public:
-    CINDER_NODE(Spinner, cinder::Scene::Node) { CINDER_PROP(speed_); }
+    CINDER_COMPONENT(Spinner, cinder::Scene::Component) { CINDER_PROP(speed_); }
 
-    void onUpdate(float dt) override {
-        cinder::Scene::Transform* box = parent() != nullptr ? parent()->transform() : nullptr;
+    void tick(float dt) override {
+        cinder::Scene::Transform* box = owner()->transform();
         if (box == nullptr) return;
         const glm::vec3 rotation = box->rotation() + speed_ * dt;
         box->setRotation(rotation.x, rotation.y, rotation.z);
@@ -1157,14 +1218,16 @@ private:
 CINDER_REGISTER(Spinner);
 ```
 
-A game class is registered exactly like `MeshPart`, so the serializer saves its props by delta against
-its default, Properties edits them, undo covers them and the Explorer's "+" inserts it — with no code
-outside the class. Settings are typed props; attributes stay as free-form data on any node.
+A game class is registered exactly like `StaticMeshComponent`, so the serializer saves its props by
+delta against its default, Details edits them, undo covers them, and the Outliner's "+" or Details'
+**Add Component** creates it — with no code outside the class. Settings are typed props; attributes stay
+as free-form data on any actor.
 
 ### What game code calls
 
-- **The scene** is plain C++: `Scene::create<T>(parent)` and `create("Class", parent)`, `clone`, `find`,
-  `byId`, `destroy`, `Node::setParent`, `findFirstChild`, attributes, and each class's own setters.
+- **The scene** is plain C++: `Scene::spawn<T>(parent)` and `spawn("Class", parent)`, `addComponent`,
+  `clone`, `find`, `byId`, `actor`, `component`, `destroy`, `Actor::attachTo`, `findAttached`,
+  `findComponent<T>()`, `addComponent<T>()`, attributes, and each class's own setters.
 - **`Game/Game.hpp`** declares free functions over the running engine, found through
   `Engine::current()`: `time`, `quit`, `keyDown`/`keyPressed`/`keyReleased`, `mouseDown`/`Pressed`/
   `Released`, `mousePosition`, `mouseDelta`, `scroll`, `setCursorLocked`, `loadTexture`, `textureSize`,
@@ -1173,10 +1236,11 @@ outside the class. Settings are typed props; attributes stay as free-form data o
   it and the editor turns it into Stop. `time` is scene time, so it stops while paused and advances
   one fixed step per Step. `screenToWorld` takes window points relative to the view and
   returns the point on the `z = 0` plane, through the scene's camera, never the editor's.
-- **Events** are `Node` hooks — `onStart`, `onUpdate(dt)`, `onRender(alpha, draws)`, `onDestroy`,
-  `onAttributeChanged`, `onChildAdded`, `onChildRemoved`, `onTouched`, `onTouchEnded` — plus
-  `Scene::connect` to hear another node and `Scene::after`/`every` for timers; see *The scene*. A
-  connection or timer belongs to the scene, never to the library, which is what makes unloading safe.
+- **Events** are actor and component hooks — `beginPlay`, `tick(dt)`, `onRender(alpha, draws)`,
+  `endPlay`, `onAttributeChanged`, `onChildAdded`, `onChildRemoved`, `onComponentAdded`, `onTouched`,
+  `onTouchEnded` — plus `Scene::connect` to hear another object and `Scene::after`/`every` for timers;
+  see *The scene*. A connection or timer belongs to the scene, never to the library, which is what makes
+  unloading safe.
 
 ### Modules
 
@@ -1186,7 +1250,7 @@ outside the class. Settings are typed props; attributes stay as free-form data o
   Registration goes through a `Registrar`, which refuses a name the engine or another class already owns.
 - **`Core/GameModule`** `dlopen`s a library and refuses it unless its `cinder_module_abi` matches the
   engine's **BuildId** — see below. `enlist` registers its classes;
-  the destructor calls `NodeTypes::remove` for each — dropping cached default instances, which live in
+  the destructor calls `ClassRegistry::remove` for each — dropping cached default instances, which live in
   the library's code — and only then `dlclose`s. `locate` finds `Binaries/<Platform>/<name>.dylib`
   (packaged) or `Saved/Binaries/<name>.dylib` (the editor's build); `.so` on Linux.
 - **The engine is exported to libraries.** `editor`, `player` and `tests` are targets with
@@ -1234,22 +1298,22 @@ outside the class. Settings are typed props; attributes stay as free-form data o
      code is still loaded;
   4. destroy the old `GameModule`, then enlist the new one and load the text back.
 
-  Any failure leaves the old library loaded. Selection, history and the Explorer's rows survive,
-  because they are all keyed by id or text; `Properties::rebuild` runs after a swap, because its rows
+  Any failure leaves the old library loaded. Selection, history and the Outliner's rows survive,
+  because they are all keyed by id or text; `Details::rebuild` runs after a swap, because its rows
   hold `PropDef`s that lived in the old library. Statics in a library reset on reload and nowhere else.
 - **`Tests/hot_reload_test`** compiles a real two-version library through `cbt game` and swaps it;
   `cbt test` runs it as its own `hot_reload` check because it takes seconds.
 
 ### Attributes
 
-Per-node free-form data: a `PropRec` on `Node`, saved as an `attributes { ... }` block and edited in
-Properties. `Scene/Attributes` decides what one may hold — a number, string, bool, or a sequence of 2–4
+Per-actor free-form data: a `PropRec` on `Actor`, saved as an `attributes { ... }` block and edited in
+Details. `Scene/Attributes` decides what one may hold — a number, string, bool, or a sequence of 2–4
 numbers — and what a name may be: letters, digits and `_`. A change emits `Signal::AttributeChanged`
 only when the value really changes, and `loadAttributes` never notifies.
 
 ### The selftest
 
-`Tests/selftest` is a project whose `SelfTest` node checks, from inside a game library, the engine
+`Tests/selftest` is a project whose `SelfTest` component checks, from inside a game library, the engine
 behaviour game code relies on — scene editing, reflection, attributes, signals, timers, classes created
 by name at runtime, and physics — and prints `ALL PASS`. The editor builds it: `$B/editor
 Tests/selftest --frames 2`, then `$B/player Tests/selftest`. It needs a window, so it is not part
@@ -1261,7 +1325,7 @@ There is no runtime reflection in C++, so props are declared with a macro that s
 name — the identifier *is* the serialization key:
 
 ```cpp
-CINDER_NODE(Camera, cinder::Scene::Spatial) {
+CINDER_COMPONENT(CameraComponent, cinder::Scene::SceneComponent) {
     CINDER_PROP(projection_);
     CINDER_PROP_S(fov_, 1.0f, 179.0f, 1.0f);
     CINDER_PROP_R(zoom_, 0.05f, 20.0f);
@@ -1270,11 +1334,11 @@ CINDER_NODE(Camera, cinder::Scene::Spatial) {
 
 `CINDER_PROP_R` adds a clamp range, `CINDER_PROP_S` a range and a drag step, and `CINDER_PROP_COLOR`
 marks a `vec3`/`vec4` as a colour through `PropHint`, and `CINDER_PROP_ANGLE` marks radians to show in
-degrees. Only Properties reads the step and the hint; neither changes how a prop is written or saved, and
+degrees. Only Details reads the step and the hint; neither changes how a prop is written or saved, and
 neither a colour nor an angle is clamped.
 
 `props<T>()` builds the list once into a function-local static and a `PropChain` recursion emits the
-base class's props first, so `Node::enabled` is always the first prop of every class —
+base class's props first, so `Object::enabled` is always the first prop of every class —
 which the delta serializer's field order depends on. `PropBuilder` is templated on the **concrete**
 type, so inherited props carry no base-subobject offset assumption.
 
@@ -1289,13 +1353,13 @@ Four behaviours are easy to lose, and each has a test pinning it:
 - **`PropSink::propChanged`** fires after every successful write; `Transform` overrides it to
   `dirty()`, and the renderers override it to drop a cached texture or mesh handle.
 
-`NodeTypes` is an instance owned by `Engine`, threaded to `Scene` -> `SceneCodec` / `SceneApi`. It
+`ClassRegistry` is an instance owned by `Engine`, threaded to `Scene` -> `SceneCodec` / `SceneApi`. It
 keeps insertion-ordered iteration (a vector plus two indices) and caches a class-default instance per
 type for delta encoding. Re-binding a name keeps its slot — so iteration order is stable across a
 reboot — and drops its cached default, so a default instance never outlives the library whose code
 it runs.
 
-`SceneCodec::VERSION` and `OLDEST` are both 4 — see *The scene file*. `Tests/scene_files_test` loads
+`SceneCodec::VERSION` and `OLDEST` are both 5 — see *The scene file*. `Tests/scene_files_test` loads
 and re-saves every `.scene` and every project's `Config/Game.ini` under `Samples/` and
 `Tests/selftest/`, and requires the bytes to match, so shipped scenes and settings stay canonical as
 the formats move.
@@ -1394,7 +1458,7 @@ one throws `std::logic_error`.
   the packaged layout; else `Binaries/<Platform>/<Config>/Shaders/`, baked in as
   `CINDER_SHADERS_DEFAULT`; else `engineRoot() / "Shaders"`. The packaged layout deliberately beats
   the baked build directory, so a packaged game run on the dev machine never reads the build tree.
-- **`contentPath`** — `Content/`: the scene to open, `Sprite.texture`, `MeshPart.texture` and
+- **`contentPath`** — `Content/`: the scene to open, `SpriteComponent.texture`, `StaticMeshComponent.texture` and
   `Game::loadTexture`.
 - **`sourcePath`** — `Source/`: the game's C++, which `cbt game` builds.
 
@@ -1449,7 +1513,7 @@ closing the editor mid-package asks to Stop and Close or Keep Packaging.
 - **Zero comments.** No comments or doc blocks anywhere, by choice. Match it; explain in chat or in
   these docs.
 - Members carry a trailing underscore. `CINDER_PROP(position_)` strips it, so the wire key stays
-  `position`. This is also why `Camera`'s clip planes are `near_`/`far_` — `near` and `far` are
+  `position`. This is also why `CameraComponent`'s clip planes are `near_`/`far_` — `near` and `far` are
   macros in `windef.h`.
 - `Glfw` is refcounted `acquire`/`release`. `Window` acquires in its constructor and releases in its
   destructor, and `main` holds an outer acquire across the whole run.

@@ -1,24 +1,30 @@
-version 4
-nodes {
-    Group {
+version 5
+actors {
+    Actor {
         id 1
         name "SelfTest"
-        children {
+        components {
+            SceneComponent {
+                id 5
+            }
             SelfTest {
                 id 3
             }
         }
     }
-    Group {
+    Actor {
         id 2
         name "Marked"
-        attributes {
-            mark 42
-        }
-        children {
+        components {
+            SceneComponent {
+                id 6
+            }
             Marker {
                 id 4
             }
+        }
+        attributes {
+            mark 42
         }
     }
 }

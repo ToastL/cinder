@@ -2,12 +2,12 @@
 
 using namespace cinder;
 
-class FollowMouse final : public Scene::Node {
+class FollowMouse final : public Scene::Component {
 public:
-    CINDER_NODE(FollowMouse, Scene::Node) {}
+    CINDER_COMPONENT(FollowMouse, Scene::Component) {}
 
-    void onUpdate(float dt) override {
-        Scene::Transform* cursor = parent() != nullptr ? parent()->transform() : nullptr;
+    void tick(float dt) override {
+        Scene::Transform* cursor = owner()->transform();
         if (cursor == nullptr) return;
         const glm::vec2 world = Game::screenToWorld(Game::mousePosition());
         cursor->setPosition(world.x, world.y, 0.0f);

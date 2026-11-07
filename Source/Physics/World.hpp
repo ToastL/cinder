@@ -11,14 +11,16 @@
 #include <unordered_set>
 #include <vector>
 
+namespace cinder::Scene { class Actor; }
+
 namespace cinder::Physics {
 
-class Body;
-class Collider;
+class RigidBodyComponent;
+class ColliderComponent;
 
 struct RayHit {
-    cinder::Scene::Node* node = nullptr;
-    Collider* collider = nullptr;
+    cinder::Scene::Actor* actor = nullptr;
+    ColliderComponent* collider = nullptr;
     glm::vec3 position{0.0f};
     glm::vec3 normal{0.0f};
     float distance = 0.0f;
@@ -46,7 +48,7 @@ public:
 
 private:
     struct Proxy {
-        Collider* collider = nullptr;
+        ColliderComponent* collider = nullptr;
         int owner = 0;
         Geometry geometry;
         Bounds bounds;
@@ -56,10 +58,12 @@ private:
         ContactKey key;
         int a = 0;
         int b = 0;
+        int colliderA = 0;
+        int colliderB = 0;
     };
 
-    void gather(cinder::Scene::Node& node, int owner);
-    void cast(cinder::Scene::Node& node, Body* owner, const glm::vec3& origin,
+    void gather(cinder::Scene::Actor& actor, int owner);
+    void cast(cinder::Scene::Actor& actor, RigidBodyComponent* owner, const glm::vec3& origin,
               const glm::vec3& direction, float maxDistance, RayHit& hit, bool& found) const;
     void notify();
     void signal(const Touch& touch, cinder::Scene::Signal signal);
@@ -71,7 +75,7 @@ private:
     int island(int index);
     bool stirring(int index) const;
     void advance(BodyState& state, float dt);
-    void write(Body& body);
+    void write(RigidBodyComponent& body);
     bool dynamic(int index) const;
 
     cinder::Scene::Scene& scene_;

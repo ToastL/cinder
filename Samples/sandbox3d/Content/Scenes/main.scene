@@ -1,22 +1,29 @@
-version 4
-nodes {
-    Camera {
+version 5
+actors {
+    CameraActor {
         id 1
-        position 0 3 10
-        rotation -0.17 0 0
-        fov 70
-        clearColor 0.05 0.06 0.09 1
-        children {
+        name "Camera"
+        components {
+            CameraComponent {
+                id 246
+                position 0 3 10
+                rotation -0.17 0 0
+                fov 70
+                clearColor 0.05 0.06 0.09 1
+            }
             Flycam {
                 id 83
             }
         }
     }
-    MeshPart {
+    StaticMeshActor {
         id 2
         name "Box"
-        position -6 0 -6
-        children {
+        components {
+            StaticMeshComponent {
+                id 247
+                position -6 0 -6
+            }
             Spinner {
                 id 84
                 speed 0 0.5 0
@@ -28,11 +35,14 @@ nodes {
             }
         }
     }
-    MeshPart {
+    StaticMeshActor {
         id 3
         name "Box"
-        position -6 0 -4.5
-        children {
+        components {
+            StaticMeshComponent {
+                id 248
+                position -6 0 -4.5
+            }
             Spinner {
                 id 86
                 speed 0 0.5 0
@@ -43,11 +53,14 @@ nodes {
             }
         }
     }
-    MeshPart {
+    StaticMeshActor {
         id 4
         name "Box"
-        position -6 0 -3
-        children {
+        components {
+            StaticMeshComponent {
+                id 249
+                position -6 0 -3
+            }
             Spinner {
                 id 88
                 speed 0 0.5 0
@@ -58,11 +71,14 @@ nodes {
             }
         }
     }
-    MeshPart {
+    StaticMeshActor {
         id 5
         name "Box"
-        position -6 0 -1.5
-        children {
+        components {
+            StaticMeshComponent {
+                id 250
+                position -6 0 -1.5
+            }
             Spinner {
                 id 90
                 speed 0 0.5 0
@@ -73,11 +89,14 @@ nodes {
             }
         }
     }
-    MeshPart {
+    StaticMeshActor {
         id 6
         name "Box"
-        position -6 0 0
-        children {
+        components {
+            StaticMeshComponent {
+                id 251
+                position -6 0 0
+            }
             Spinner {
                 id 92
                 speed 0 0.5 0
@@ -88,11 +107,14 @@ nodes {
             }
         }
     }
-    MeshPart {
+    StaticMeshActor {
         id 7
         name "Box"
-        position -6 0 1.5
-        children {
+        components {
+            StaticMeshComponent {
+                id 252
+                position -6 0 1.5
+            }
             Spinner {
                 id 94
                 speed 0 0.5 0
@@ -103,11 +125,14 @@ nodes {
             }
         }
     }
-    MeshPart {
+    StaticMeshActor {
         id 8
         name "Box"
-        position -6 0 3
-        children {
+        components {
+            StaticMeshComponent {
+                id 253
+                position -6 0 3
+            }
             Spinner {
                 id 96
                 speed 0 0.5 0
@@ -118,11 +143,14 @@ nodes {
             }
         }
     }
-    MeshPart {
+    StaticMeshActor {
         id 9
         name "Box"
-        position -6 0 4.5
-        children {
+        components {
+            StaticMeshComponent {
+                id 254
+                position -6 0 4.5
+            }
             Spinner {
                 id 98
                 speed 0 0.5 0
@@ -133,11 +161,14 @@ nodes {
             }
         }
     }
-    MeshPart {
+    StaticMeshActor {
         id 10
         name "Box"
-        position -6 0 6
-        children {
+        components {
+            StaticMeshComponent {
+                id 255
+                position -6 0 6
+            }
             Spinner {
                 id 100
                 speed 0 0.5 0
@@ -147,11 +178,14 @@ nodes {
             }
         }
     }
-    MeshPart {
+    StaticMeshActor {
         id 11
         name "Box"
-        position -4.5 0 -6
-        children {
+        components {
+            StaticMeshComponent {
+                id 256
+                position -4.5 0 -6
+            }
             Spinner {
                 id 102
                 speed 0 0.5 0
@@ -162,11 +196,14 @@ nodes {
             }
         }
     }
-    MeshPart {
+    StaticMeshActor {
         id 12
         name "Box"
-        position -4.5 0 -4.5
-        children {
+        components {
+            StaticMeshComponent {
+                id 257
+                position -4.5 0 -4.5
+            }
             Spinner {
                 id 104
                 speed 0 0.5 0
@@ -177,11 +214,14 @@ nodes {
             }
         }
     }
-    MeshPart {
+    StaticMeshActor {
         id 13
         name "Box"
-        position -4.5 0 -3
-        children {
+        components {
+            StaticMeshComponent {
+                id 258
+                position -4.5 0 -3
+            }
             Spinner {
                 id 106
                 speed 0 0.5 0
@@ -192,11 +232,14 @@ nodes {
             }
         }
     }
-    MeshPart {
+    StaticMeshActor {
         id 14
         name "Box"
-        position -4.5 0 -1.5
-        children {
+        components {
+            StaticMeshComponent {
+                id 259
+                position -4.5 0 -1.5
+            }
             Spinner {
                 id 108
                 speed 0 0.5 0
@@ -207,11 +250,14 @@ nodes {
             }
         }
     }
-    MeshPart {
+    StaticMeshActor {
         id 15
         name "Box"
-        position -4.5 0 0
-        children {
+        components {
+            StaticMeshComponent {
+                id 260
+                position -4.5 0 0
+            }
             Spinner {
                 id 110
                 speed 0 0.5 0
@@ -222,11 +268,14 @@ nodes {
             }
         }
     }
-    MeshPart {
+    StaticMeshActor {
         id 16
         name "Box"
-        position -4.5 0 1.5
-        children {
+        components {
+            StaticMeshComponent {
+                id 261
+                position -4.5 0 1.5
+            }
             Spinner {
                 id 112
                 speed 0 0.5 0
@@ -237,11 +286,14 @@ nodes {
             }
         }
     }
-    MeshPart {
+    StaticMeshActor {
         id 17
         name "Box"
-        position -4.5 0 3
-        children {
+        components {
+            StaticMeshComponent {
+                id 262
+                position -4.5 0 3
+            }
             Spinner {
                 id 114
                 speed 0 0.5 0
@@ -252,11 +304,14 @@ nodes {
             }
         }
     }
-    MeshPart {
+    StaticMeshActor {
         id 18
         name "Box"
-        position -4.5 0 4.5
-        children {
+        components {
+            StaticMeshComponent {
+                id 263
+                position -4.5 0 4.5
+            }
             Spinner {
                 id 116
                 speed 0 0.5 0
@@ -266,11 +321,14 @@ nodes {
             }
         }
     }
-    MeshPart {
+    StaticMeshActor {
         id 19
         name "Box"
-        position -4.5 0 6
-        children {
+        components {
+            StaticMeshComponent {
+                id 264
+                position -4.5 0 6
+            }
             Spinner {
                 id 118
                 speed 0 0.5 0
@@ -281,11 +339,14 @@ nodes {
             }
         }
     }
-    MeshPart {
+    StaticMeshActor {
         id 20
         name "Box"
-        position -3 0 -6
-        children {
+        components {
+            StaticMeshComponent {
+                id 265
+                position -3 0 -6
+            }
             Spinner {
                 id 120
                 speed 0 0.5 0
@@ -296,11 +357,14 @@ nodes {
             }
         }
     }
-    MeshPart {
+    StaticMeshActor {
         id 21
         name "Box"
-        position -3 0 -4.5
-        children {
+        components {
+            StaticMeshComponent {
+                id 266
+                position -3 0 -4.5
+            }
             Spinner {
                 id 122
                 speed 0 0.5 0
@@ -311,11 +375,14 @@ nodes {
             }
         }
     }
-    MeshPart {
+    StaticMeshActor {
         id 22
         name "Box"
-        position -3 0 -3
-        children {
+        components {
+            StaticMeshComponent {
+                id 267
+                position -3 0 -3
+            }
             Spinner {
                 id 124
                 speed 0 0.5 0
@@ -326,11 +393,14 @@ nodes {
             }
         }
     }
-    MeshPart {
+    StaticMeshActor {
         id 23
         name "Box"
-        position -3 0 -1.5
-        children {
+        components {
+            StaticMeshComponent {
+                id 268
+                position -3 0 -1.5
+            }
             Spinner {
                 id 126
                 speed 0 0.5 0
@@ -341,11 +411,14 @@ nodes {
             }
         }
     }
-    MeshPart {
+    StaticMeshActor {
         id 24
         name "Box"
-        position -3 0 0
-        children {
+        components {
+            StaticMeshComponent {
+                id 269
+                position -3 0 0
+            }
             Spinner {
                 id 128
                 speed 0 0.5 0
@@ -356,11 +429,14 @@ nodes {
             }
         }
     }
-    MeshPart {
+    StaticMeshActor {
         id 25
         name "Box"
-        position -3 0 1.5
-        children {
+        components {
+            StaticMeshComponent {
+                id 270
+                position -3 0 1.5
+            }
             Spinner {
                 id 130
                 speed 0 0.5 0
@@ -371,11 +447,14 @@ nodes {
             }
         }
     }
-    MeshPart {
+    StaticMeshActor {
         id 26
         name "Box"
-        position -3 0 3
-        children {
+        components {
+            StaticMeshComponent {
+                id 271
+                position -3 0 3
+            }
             Spinner {
                 id 132
                 speed 0 0.5 0
@@ -385,11 +464,14 @@ nodes {
             }
         }
     }
-    MeshPart {
+    StaticMeshActor {
         id 27
         name "Box"
-        position -3 0 4.5
-        children {
+        components {
+            StaticMeshComponent {
+                id 272
+                position -3 0 4.5
+            }
             Spinner {
                 id 134
                 speed 0 0.5 0
@@ -400,11 +482,14 @@ nodes {
             }
         }
     }
-    MeshPart {
+    StaticMeshActor {
         id 28
         name "Box"
-        position -3 0 6
-        children {
+        components {
+            StaticMeshComponent {
+                id 273
+                position -3 0 6
+            }
             Spinner {
                 id 136
                 speed 0 0.5 0
@@ -415,11 +500,14 @@ nodes {
             }
         }
     }
-    MeshPart {
+    StaticMeshActor {
         id 29
         name "Box"
-        position -1.5 0 -6
-        children {
+        components {
+            StaticMeshComponent {
+                id 274
+                position -1.5 0 -6
+            }
             Spinner {
                 id 138
                 speed 0 0.5 0
@@ -430,11 +518,14 @@ nodes {
             }
         }
     }
-    MeshPart {
+    StaticMeshActor {
         id 30
         name "Box"
-        position -1.5 0 -4.5
-        children {
+        components {
+            StaticMeshComponent {
+                id 275
+                position -1.5 0 -4.5
+            }
             Spinner {
                 id 140
                 speed 0 0.5 0
@@ -445,11 +536,14 @@ nodes {
             }
         }
     }
-    MeshPart {
+    StaticMeshActor {
         id 31
         name "Box"
-        position -1.5 0 -3
-        children {
+        components {
+            StaticMeshComponent {
+                id 276
+                position -1.5 0 -3
+            }
             Spinner {
                 id 142
                 speed 0 0.5 0
@@ -460,11 +554,14 @@ nodes {
             }
         }
     }
-    MeshPart {
+    StaticMeshActor {
         id 32
         name "Box"
-        position -1.5 0 -1.5
-        children {
+        components {
+            StaticMeshComponent {
+                id 277
+                position -1.5 0 -1.5
+            }
             Spinner {
                 id 144
                 speed 0 0.5 0
@@ -475,11 +572,14 @@ nodes {
             }
         }
     }
-    MeshPart {
+    StaticMeshActor {
         id 33
         name "Box"
-        position -1.5 0 0
-        children {
+        components {
+            StaticMeshComponent {
+                id 278
+                position -1.5 0 0
+            }
             Spinner {
                 id 146
                 speed 0 0.5 0
@@ -490,11 +590,14 @@ nodes {
             }
         }
     }
-    MeshPart {
+    StaticMeshActor {
         id 34
         name "Box"
-        position -1.5 0 1.5
-        children {
+        components {
+            StaticMeshComponent {
+                id 279
+                position -1.5 0 1.5
+            }
             Spinner {
                 id 148
                 speed 0 0.5 0
@@ -504,11 +607,14 @@ nodes {
             }
         }
     }
-    MeshPart {
+    StaticMeshActor {
         id 35
         name "Box"
-        position -1.5 0 3
-        children {
+        components {
+            StaticMeshComponent {
+                id 280
+                position -1.5 0 3
+            }
             Spinner {
                 id 150
                 speed 0 0.5 0
@@ -519,11 +625,14 @@ nodes {
             }
         }
     }
-    MeshPart {
+    StaticMeshActor {
         id 36
         name "Box"
-        position -1.5 0 4.5
-        children {
+        components {
+            StaticMeshComponent {
+                id 281
+                position -1.5 0 4.5
+            }
             Spinner {
                 id 152
                 speed 0 0.5 0
@@ -534,11 +643,14 @@ nodes {
             }
         }
     }
-    MeshPart {
+    StaticMeshActor {
         id 37
         name "Box"
-        position -1.5 0 6
-        children {
+        components {
+            StaticMeshComponent {
+                id 282
+                position -1.5 0 6
+            }
             Spinner {
                 id 154
                 speed 0 0.5 0
@@ -549,11 +661,14 @@ nodes {
             }
         }
     }
-    MeshPart {
+    StaticMeshActor {
         id 38
         name "Box"
-        position 0 0 -6
-        children {
+        components {
+            StaticMeshComponent {
+                id 283
+                position 0 0 -6
+            }
             Spinner {
                 id 156
                 speed 0 0.5 0
@@ -564,11 +679,14 @@ nodes {
             }
         }
     }
-    MeshPart {
+    StaticMeshActor {
         id 39
         name "Box"
-        position 0 0 -4.5
-        children {
+        components {
+            StaticMeshComponent {
+                id 284
+                position 0 0 -4.5
+            }
             Spinner {
                 id 158
                 speed 0 0.5 0
@@ -579,11 +697,14 @@ nodes {
             }
         }
     }
-    MeshPart {
+    StaticMeshActor {
         id 40
         name "Box"
-        position 0 0 -3
-        children {
+        components {
+            StaticMeshComponent {
+                id 285
+                position 0 0 -3
+            }
             Spinner {
                 id 160
                 speed 0 0.5 0
@@ -594,11 +715,14 @@ nodes {
             }
         }
     }
-    MeshPart {
+    StaticMeshActor {
         id 41
         name "Box"
-        position 0 0 -1.5
-        children {
+        components {
+            StaticMeshComponent {
+                id 286
+                position 0 0 -1.5
+            }
             Spinner {
                 id 162
                 speed 0 0.5 0
@@ -609,10 +733,13 @@ nodes {
             }
         }
     }
-    MeshPart {
+    StaticMeshActor {
         id 42
         name "Box"
-        children {
+        components {
+            StaticMeshComponent {
+                id 287
+            }
             Spinner {
                 id 164
                 speed 0 0.5 0
@@ -622,11 +749,14 @@ nodes {
             }
         }
     }
-    MeshPart {
+    StaticMeshActor {
         id 43
         name "Box"
-        position 0 0 1.5
-        children {
+        components {
+            StaticMeshComponent {
+                id 288
+                position 0 0 1.5
+            }
             Spinner {
                 id 166
                 speed 0 0.5 0
@@ -637,11 +767,14 @@ nodes {
             }
         }
     }
-    MeshPart {
+    StaticMeshActor {
         id 44
         name "Box"
-        position 0 0 3
-        children {
+        components {
+            StaticMeshComponent {
+                id 289
+                position 0 0 3
+            }
             Spinner {
                 id 168
                 speed 0 0.5 0
@@ -652,11 +785,14 @@ nodes {
             }
         }
     }
-    MeshPart {
+    StaticMeshActor {
         id 45
         name "Box"
-        position 0 0 4.5
-        children {
+        components {
+            StaticMeshComponent {
+                id 290
+                position 0 0 4.5
+            }
             Spinner {
                 id 170
                 speed 0 0.5 0
@@ -667,11 +803,14 @@ nodes {
             }
         }
     }
-    MeshPart {
+    StaticMeshActor {
         id 46
         name "Box"
-        position 0 0 6
-        children {
+        components {
+            StaticMeshComponent {
+                id 291
+                position 0 0 6
+            }
             Spinner {
                 id 172
                 speed 0 0.5 0
@@ -682,11 +821,14 @@ nodes {
             }
         }
     }
-    MeshPart {
+    StaticMeshActor {
         id 47
         name "Box"
-        position 1.5 0 -6
-        children {
+        components {
+            StaticMeshComponent {
+                id 292
+                position 1.5 0 -6
+            }
             Spinner {
                 id 174
                 speed 0 0.5 0
@@ -697,11 +839,14 @@ nodes {
             }
         }
     }
-    MeshPart {
+    StaticMeshActor {
         id 48
         name "Box"
-        position 1.5 0 -4.5
-        children {
+        components {
+            StaticMeshComponent {
+                id 293
+                position 1.5 0 -4.5
+            }
             Spinner {
                 id 176
                 speed 0 0.5 0
@@ -712,11 +857,14 @@ nodes {
             }
         }
     }
-    MeshPart {
+    StaticMeshActor {
         id 49
         name "Box"
-        position 1.5 0 -3
-        children {
+        components {
+            StaticMeshComponent {
+                id 294
+                position 1.5 0 -3
+            }
             Spinner {
                 id 178
                 speed 0 0.5 0
@@ -727,11 +875,14 @@ nodes {
             }
         }
     }
-    MeshPart {
+    StaticMeshActor {
         id 50
         name "Box"
-        position 1.5 0 -1.5
-        children {
+        components {
+            StaticMeshComponent {
+                id 295
+                position 1.5 0 -1.5
+            }
             Spinner {
                 id 180
                 speed 0 0.5 0
@@ -741,11 +892,14 @@ nodes {
             }
         }
     }
-    MeshPart {
+    StaticMeshActor {
         id 51
         name "Box"
-        position 1.5 0 0
-        children {
+        components {
+            StaticMeshComponent {
+                id 296
+                position 1.5 0 0
+            }
             Spinner {
                 id 182
                 speed 0 0.5 0
@@ -756,11 +910,14 @@ nodes {
             }
         }
     }
-    MeshPart {
+    StaticMeshActor {
         id 52
         name "Box"
-        position 1.5 0 1.5
-        children {
+        components {
+            StaticMeshComponent {
+                id 297
+                position 1.5 0 1.5
+            }
             Spinner {
                 id 184
                 speed 0 0.5 0
@@ -771,11 +928,14 @@ nodes {
             }
         }
     }
-    MeshPart {
+    StaticMeshActor {
         id 53
         name "Box"
-        position 1.5 0 3
-        children {
+        components {
+            StaticMeshComponent {
+                id 298
+                position 1.5 0 3
+            }
             Spinner {
                 id 186
                 speed 0 0.5 0
@@ -786,11 +946,14 @@ nodes {
             }
         }
     }
-    MeshPart {
+    StaticMeshActor {
         id 54
         name "Box"
-        position 1.5 0 4.5
-        children {
+        components {
+            StaticMeshComponent {
+                id 299
+                position 1.5 0 4.5
+            }
             Spinner {
                 id 188
                 speed 0 0.5 0
@@ -801,11 +964,14 @@ nodes {
             }
         }
     }
-    MeshPart {
+    StaticMeshActor {
         id 55
         name "Box"
-        position 1.5 0 6
-        children {
+        components {
+            StaticMeshComponent {
+                id 300
+                position 1.5 0 6
+            }
             Spinner {
                 id 190
                 speed 0 0.5 0
@@ -816,11 +982,14 @@ nodes {
             }
         }
     }
-    MeshPart {
+    StaticMeshActor {
         id 56
         name "Box"
-        position 3 0 -6
-        children {
+        components {
+            StaticMeshComponent {
+                id 301
+                position 3 0 -6
+            }
             Spinner {
                 id 192
                 speed 0 0.5 0
@@ -831,11 +1000,14 @@ nodes {
             }
         }
     }
-    MeshPart {
+    StaticMeshActor {
         id 57
         name "Box"
-        position 3 0 -4.5
-        children {
+        components {
+            StaticMeshComponent {
+                id 302
+                position 3 0 -4.5
+            }
             Spinner {
                 id 194
                 speed 0 0.5 0
@@ -846,11 +1018,14 @@ nodes {
             }
         }
     }
-    MeshPart {
+    StaticMeshActor {
         id 58
         name "Box"
-        position 3 0 -3
-        children {
+        components {
+            StaticMeshComponent {
+                id 303
+                position 3 0 -3
+            }
             Spinner {
                 id 196
                 speed 0 0.5 0
@@ -860,11 +1035,14 @@ nodes {
             }
         }
     }
-    MeshPart {
+    StaticMeshActor {
         id 59
         name "Box"
-        position 3 0 -1.5
-        children {
+        components {
+            StaticMeshComponent {
+                id 304
+                position 3 0 -1.5
+            }
             Spinner {
                 id 198
                 speed 0 0.5 0
@@ -875,11 +1053,14 @@ nodes {
             }
         }
     }
-    MeshPart {
+    StaticMeshActor {
         id 60
         name "Box"
-        position 3 0 0
-        children {
+        components {
+            StaticMeshComponent {
+                id 305
+                position 3 0 0
+            }
             Spinner {
                 id 200
                 speed 0 0.5 0
@@ -890,11 +1071,14 @@ nodes {
             }
         }
     }
-    MeshPart {
+    StaticMeshActor {
         id 61
         name "Box"
-        position 3 0 1.5
-        children {
+        components {
+            StaticMeshComponent {
+                id 306
+                position 3 0 1.5
+            }
             Spinner {
                 id 202
                 speed 0 0.5 0
@@ -905,11 +1089,14 @@ nodes {
             }
         }
     }
-    MeshPart {
+    StaticMeshActor {
         id 62
         name "Box"
-        position 3 0 3
-        children {
+        components {
+            StaticMeshComponent {
+                id 307
+                position 3 0 3
+            }
             Spinner {
                 id 204
                 speed 0 0.5 0
@@ -920,11 +1107,14 @@ nodes {
             }
         }
     }
-    MeshPart {
+    StaticMeshActor {
         id 63
         name "Box"
-        position 3 0 4.5
-        children {
+        components {
+            StaticMeshComponent {
+                id 308
+                position 3 0 4.5
+            }
             Spinner {
                 id 206
                 speed 0 0.5 0
@@ -935,11 +1125,14 @@ nodes {
             }
         }
     }
-    MeshPart {
+    StaticMeshActor {
         id 64
         name "Box"
-        position 3 0 6
-        children {
+        components {
+            StaticMeshComponent {
+                id 309
+                position 3 0 6
+            }
             Spinner {
                 id 208
                 speed 0 0.5 0
@@ -950,11 +1143,14 @@ nodes {
             }
         }
     }
-    MeshPart {
+    StaticMeshActor {
         id 65
         name "Box"
-        position 4.5 0 -6
-        children {
+        components {
+            StaticMeshComponent {
+                id 310
+                position 4.5 0 -6
+            }
             Spinner {
                 id 210
                 speed 0 0.5 0
@@ -965,11 +1161,14 @@ nodes {
             }
         }
     }
-    MeshPart {
+    StaticMeshActor {
         id 66
         name "Box"
-        position 4.5 0 -4.5
-        children {
+        components {
+            StaticMeshComponent {
+                id 311
+                position 4.5 0 -4.5
+            }
             Spinner {
                 id 212
                 speed 0 0.5 0
@@ -979,11 +1178,14 @@ nodes {
             }
         }
     }
-    MeshPart {
+    StaticMeshActor {
         id 67
         name "Box"
-        position 4.5 0 -3
-        children {
+        components {
+            StaticMeshComponent {
+                id 312
+                position 4.5 0 -3
+            }
             Spinner {
                 id 214
                 speed 0 0.5 0
@@ -994,11 +1196,14 @@ nodes {
             }
         }
     }
-    MeshPart {
+    StaticMeshActor {
         id 68
         name "Box"
-        position 4.5 0 -1.5
-        children {
+        components {
+            StaticMeshComponent {
+                id 313
+                position 4.5 0 -1.5
+            }
             Spinner {
                 id 216
                 speed 0 0.5 0
@@ -1009,11 +1214,14 @@ nodes {
             }
         }
     }
-    MeshPart {
+    StaticMeshActor {
         id 69
         name "Box"
-        position 4.5 0 0
-        children {
+        components {
+            StaticMeshComponent {
+                id 314
+                position 4.5 0 0
+            }
             Spinner {
                 id 218
                 speed 0 0.5 0
@@ -1024,11 +1232,14 @@ nodes {
             }
         }
     }
-    MeshPart {
+    StaticMeshActor {
         id 70
         name "Box"
-        position 4.5 0 1.5
-        children {
+        components {
+            StaticMeshComponent {
+                id 315
+                position 4.5 0 1.5
+            }
             Spinner {
                 id 220
                 speed 0 0.5 0
@@ -1039,11 +1250,14 @@ nodes {
             }
         }
     }
-    MeshPart {
+    StaticMeshActor {
         id 71
         name "Box"
-        position 4.5 0 3
-        children {
+        components {
+            StaticMeshComponent {
+                id 316
+                position 4.5 0 3
+            }
             Spinner {
                 id 222
                 speed 0 0.5 0
@@ -1054,11 +1268,14 @@ nodes {
             }
         }
     }
-    MeshPart {
+    StaticMeshActor {
         id 72
         name "Box"
-        position 4.5 0 4.5
-        children {
+        components {
+            StaticMeshComponent {
+                id 317
+                position 4.5 0 4.5
+            }
             Spinner {
                 id 224
                 speed 0 0.5 0
@@ -1069,11 +1286,14 @@ nodes {
             }
         }
     }
-    MeshPart {
+    StaticMeshActor {
         id 73
         name "Box"
-        position 4.5 0 6
-        children {
+        components {
+            StaticMeshComponent {
+                id 318
+                position 4.5 0 6
+            }
             Spinner {
                 id 226
                 speed 0 0.5 0
@@ -1084,11 +1304,14 @@ nodes {
             }
         }
     }
-    MeshPart {
+    StaticMeshActor {
         id 74
         name "Box"
-        position 6 0 -6
-        children {
+        components {
+            StaticMeshComponent {
+                id 319
+                position 6 0 -6
+            }
             Spinner {
                 id 228
                 speed 0 0.5 0
@@ -1098,11 +1321,14 @@ nodes {
             }
         }
     }
-    MeshPart {
+    StaticMeshActor {
         id 75
         name "Box"
-        position 6 0 -4.5
-        children {
+        components {
+            StaticMeshComponent {
+                id 320
+                position 6 0 -4.5
+            }
             Spinner {
                 id 230
                 speed 0 0.5 0
@@ -1113,11 +1339,14 @@ nodes {
             }
         }
     }
-    MeshPart {
+    StaticMeshActor {
         id 76
         name "Box"
-        position 6 0 -3
-        children {
+        components {
+            StaticMeshComponent {
+                id 321
+                position 6 0 -3
+            }
             Spinner {
                 id 232
                 speed 0 0.5 0
@@ -1128,11 +1357,14 @@ nodes {
             }
         }
     }
-    MeshPart {
+    StaticMeshActor {
         id 77
         name "Box"
-        position 6 0 -1.5
-        children {
+        components {
+            StaticMeshComponent {
+                id 322
+                position 6 0 -1.5
+            }
             Spinner {
                 id 234
                 speed 0 0.5 0
@@ -1143,11 +1375,14 @@ nodes {
             }
         }
     }
-    MeshPart {
+    StaticMeshActor {
         id 78
         name "Box"
-        position 6 0 0
-        children {
+        components {
+            StaticMeshComponent {
+                id 323
+                position 6 0 0
+            }
             Spinner {
                 id 236
                 speed 0 0.5 0
@@ -1158,11 +1393,14 @@ nodes {
             }
         }
     }
-    MeshPart {
+    StaticMeshActor {
         id 79
         name "Box"
-        position 6 0 1.5
-        children {
+        components {
+            StaticMeshComponent {
+                id 324
+                position 6 0 1.5
+            }
             Spinner {
                 id 238
                 speed 0 0.5 0
@@ -1173,11 +1411,14 @@ nodes {
             }
         }
     }
-    MeshPart {
+    StaticMeshActor {
         id 80
         name "Box"
-        position 6 0 3
-        children {
+        components {
+            StaticMeshComponent {
+                id 325
+                position 6 0 3
+            }
             Spinner {
                 id 240
                 speed 0 0.5 0
@@ -1188,11 +1429,14 @@ nodes {
             }
         }
     }
-    MeshPart {
+    StaticMeshActor {
         id 81
         name "Box"
-        position 6 0 4.5
-        children {
+        components {
+            StaticMeshComponent {
+                id 326
+                position 6 0 4.5
+            }
             Spinner {
                 id 242
                 speed 0 0.5 0
@@ -1203,11 +1447,14 @@ nodes {
             }
         }
     }
-    MeshPart {
+    StaticMeshActor {
         id 82
         name "Box"
-        position 6 0 6
-        children {
+        components {
+            StaticMeshComponent {
+                id 327
+                position 6 0 6
+            }
             Spinner {
                 id 244
                 speed 0 0.5 0

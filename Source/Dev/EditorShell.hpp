@@ -4,8 +4,8 @@
 #include "Dev/PlaySession.hpp"
 #include "Dev/Selection.hpp"
 #include "Dev/Panels/Console.hpp"
-#include "Dev/Panels/Explorer.hpp"
-#include "Dev/Panels/Properties.hpp"
+#include "Dev/Panels/Outliner.hpp"
+#include "Dev/Panels/Details.hpp"
 #include "Dev/Panels/SceneView.hpp"
 #include "Dev/Panels/Toolbar.hpp"
 #include "Text/FontSet.hpp"
@@ -38,8 +38,8 @@ public:
     cinder::UI::Application& app() { return app_; }
     Panels::Toolbar& toolbar() { return toolbar_; }
     Panels::SceneView& view() { return view_; }
-    Panels::Explorer& explorer() { return explorer_; }
-    Panels::Properties& properties() { return properties_; }
+    Panels::Outliner& outliner() { return outliner_; }
+    Panels::Details& details() { return details_; }
     Panels::Console& console() { return console_; }
     cinder::UI::TabManager& tabs() { return tabs_; }
 
@@ -54,8 +54,8 @@ private:
     cinder::UI::Application app_;
     Panels::Toolbar toolbar_;
     Panels::SceneView view_;
-    Panels::Explorer explorer_;
-    Panels::Properties properties_;
+    Panels::Outliner outliner_;
+    Panels::Details details_;
     Panels::Console console_;
     cinder::UI::TabManager tabs_;
 };

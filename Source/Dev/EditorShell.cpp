@@ -17,16 +17,16 @@ EditorShell::EditorShell(cinder::Core::Engine& engine, ModuleHost& modules, Pack
       fonts_(cinder::Text::FontSet::engineDefault()), platform_(engine.window()),
       app_(platform_, fonts_, Panels::editorTheme()),
       toolbar_(session_, history_, selection_, packager, modules, std::move(scene), app_),
-      view_(session_, selection_, history_, engine, app_), explorer_(selection_, history_, engine.scene(), app_),
-      properties_(selection_, history_, engine.scene(), app_), console_(app_) {
-    app_.setRoot(Panels::editorLayout(toolbar_, view_, explorer_, properties_, console_, tabs_));
+      view_(session_, selection_, history_, engine, app_), outliner_(selection_, history_, engine.scene(), app_),
+      details_(selection_, history_, engine.scene(), app_), console_(app_) {
+    app_.setRoot(Panels::editorLayout(toolbar_, view_, outliner_, details_, console_, tabs_));
     engine.renderer().setUiPaint([this](cinder::UI::ElementList& list) {
         const std::vector<cinder::Platform::InputEvent> events = engine_.input().takeEvents();
         app_.processEvents(events);
         toolbar_.update();
         view_.update();
-        explorer_.update();
-        properties_.update();
+        outliner_.update();
+        details_.update();
         console_.update();
         app_.paint(list);
         view_.afterPaint();
@@ -43,7 +43,7 @@ bool EditorShell::applyPendingReload() {
         || app_.hasPopups() || !modules_.reload()) {
         return false;
     }
-    properties_.rebuild();
+    details_.rebuild();
     return true;
 }
 

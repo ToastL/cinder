@@ -1,12 +1,12 @@
-#include "Nodes/Camera.hpp"
+#include "Components/CameraComponent.hpp"
 
 #include "Scene/DrawList.hpp"
 
-namespace cinder::Nodes {
+namespace cinder::Components {
 
-cinder::Scene::View Camera::view() {
+cinder::Scene::View CameraComponent::view() {
     cinder::Scene::View view;
-    view.world = transform()->world();
+    view.world = transform().world();
     view.orthographic = projection_ == Projection::Orthographic;
     view.fovDegrees = fov_;
     view.nearClip = near_;
@@ -16,7 +16,7 @@ cinder::Scene::View Camera::view() {
     return view;
 }
 
-void Camera::onRender(float alpha, cinder::Scene::DrawList& draws) {
+void CameraComponent::onRender(float alpha, cinder::Scene::DrawList& draws) {
     draws.background(clearColor_.r, clearColor_.g, clearColor_.b);
     draws.camera(view());
 }

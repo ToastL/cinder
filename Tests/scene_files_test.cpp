@@ -1,9 +1,9 @@
 #include <doctest/doctest.h>
 
 #include "Core/ProjectConfig.hpp"
-#include "Nodes/Builtins.hpp"
-#include "Physics/Nodes.hpp"
-#include "Scene/NodeTypes.hpp"
+#include "Components/Builtins.hpp"
+#include "Physics/Components.hpp"
+#include "Scene/ClassRegistry.hpp"
 #include "Scene/Scene.hpp"
 #include "Serial/SceneCodec.hpp"
 
@@ -17,7 +17,7 @@
 
 using cinder::Core::ProjectConfig;
 using cinder::Core::ProjectDescriptor;
-using cinder::Scene::NodeTypes;
+using cinder::Scene::ClassRegistry;
 using cinder::Scene::Scene;
 using cinder::Serial::SceneCodec;
 
@@ -35,8 +35,9 @@ std::string read(const std::filesystem::path& path) {
 std::vector<std::filesystem::path> shippedScenes() {
     std::vector<std::filesystem::path> out;
     for (const std::filesystem::path& root : {SOURCE / "Samples", SOURCE / "Tests" / "selftest"}) {
-        for (const auto& entry : std::filesystem::recursive_directory_iterator(root)) {
-            if (entry.path().extension() == ".scene") out.push_back(entry.path());
+        for (auto it = std::filesystem::recursive_directory_iterator(root); it != std::filesystem::recursive_directory_iterator(); ++it) {
+            if (it->is_directory() && it->path().filename() == "Saved") it.disable_recursion_pending();
+            else if (it->path().extension() == ".scene") out.push_back(it->path());
         }
     }
     return out;
@@ -45,8 +46,9 @@ std::vector<std::filesystem::path> shippedScenes() {
 std::vector<std::filesystem::path> shippedDescriptors() {
     std::vector<std::filesystem::path> out;
     for (const std::filesystem::path& root : {SOURCE / "Samples", SOURCE / "Tests" / "selftest"}) {
-        for (const auto& entry : std::filesystem::recursive_directory_iterator(root)) {
-            if (entry.path().extension() == ".cinder") out.push_back(entry.path());
+        for (auto it = std::filesystem::recursive_directory_iterator(root); it != std::filesystem::recursive_directory_iterator(); ++it) {
+            if (it->is_directory() && it->path().filename() == "Saved") it.disable_recursion_pending();
+            else if (it->path().extension() == ".cinder") out.push_back(it->path());
         }
     }
     return out;
@@ -70,9 +72,9 @@ TEST_CASE("every shipped project descriptor and config is canonical") {
 }
 
 TEST_CASE("every shipped scene is canonical") {
-    NodeTypes types;
-    cinder::Nodes::registerBuiltins(types);
-    cinder::Physics::registerNodes(types);
+    ClassRegistry types;
+    cinder::Components::registerBuiltins(types);
+    cinder::Physics::registerComponents(types);
     Scene scene{types};
 
     const std::vector<std::filesystem::path> scenes = shippedScenes();

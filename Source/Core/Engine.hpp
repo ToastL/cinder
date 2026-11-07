@@ -6,7 +6,7 @@
 #include "Physics/World.hpp"
 #include "Platform/Input.hpp"
 #include "Platform/Window.hpp"
-#include "Scene/NodeTypes.hpp"
+#include "Scene/ClassRegistry.hpp"
 #include "Scene/Scene.hpp"
 
 #include <filesystem>
@@ -43,7 +43,7 @@ public:
     cinder::Gfx::Renderer& renderer() { return renderer_; }
     cinder::Scene::Scene& scene() { return scene_; }
     cinder::Physics::World& physics() { return physics_; }
-    cinder::Scene::NodeTypes& types() { return types_; }
+    cinder::Scene::ClassRegistry& types() { return types_; }
 
 private:
 
@@ -51,7 +51,7 @@ private:
     cinder::Platform::Input input_;
     cinder::Gfx::RHI::Ctx ctx_;
     cinder::Gfx::Renderer renderer_;
-    cinder::Scene::NodeTypes types_;
+    cinder::Scene::ClassRegistry types_;
     cinder::Scene::Scene scene_{types_};
     cinder::Physics::World physics_{scene_};
     bool quit_ = false;

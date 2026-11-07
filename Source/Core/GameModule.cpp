@@ -2,7 +2,7 @@
 
 #include "Core/Module.hpp"
 #include "Platform/Log.hpp"
-#include "Scene/NodeTypes.hpp"
+#include "Scene/ClassRegistry.hpp"
 
 #include <dlfcn.h>
 
@@ -42,7 +42,7 @@ std::optional<std::filesystem::path> GameModule::locate(const std::filesystem::p
 }
 
 std::unique_ptr<GameModule> GameModule::open(const std::filesystem::path& library,
-                                             cinder::Scene::NodeTypes& types, std::string& error) {
+                                             cinder::Scene::ClassRegistry& types, std::string& error) {
     void* handle = dlopen(library.c_str(), RTLD_NOW | RTLD_LOCAL);
     if (handle == nullptr) {
         const char* reason = dlerror();
@@ -66,7 +66,7 @@ std::unique_ptr<GameModule> GameModule::open(const std::filesystem::path& librar
     return std::unique_ptr<GameModule>(new GameModule(handle, enlist, library, types));
 }
 
-GameModule::GameModule(void* handle, RegisterFn enlist, std::filesystem::path path, cinder::Scene::NodeTypes& types)
+GameModule::GameModule(void* handle, RegisterFn enlist, std::filesystem::path path, cinder::Scene::ClassRegistry& types)
     : handle_(handle), register_(enlist), path_(std::move(path)), types_(types) {}
 
 GameModule::~GameModule() {

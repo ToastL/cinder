@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Scene/NodeTypes.hpp"
+#include "Scene/ClassRegistry.hpp"
 
 #include <string>
 #include <utility>
@@ -10,7 +10,7 @@ namespace cinder::Core {
 
 class Registrar {
 public:
-    explicit Registrar(cinder::Scene::NodeTypes& types) : types_(types) {}
+    explicit Registrar(cinder::Scene::ClassRegistry& types) : types_(types) {}
 
     template <class T>
     void add(std::string name) {
@@ -26,7 +26,7 @@ public:
     const std::vector<std::string>& refused() const { return refused_; }
 
 private:
-    cinder::Scene::NodeTypes& types_;
+    cinder::Scene::ClassRegistry& types_;
     std::vector<std::string> added_;
     std::vector<std::string> refused_;
 };

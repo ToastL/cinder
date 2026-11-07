@@ -2,10 +2,11 @@
 
 #include "Dev/GizmoLines.hpp"
 #include "Gfx/Pass/ViewCamera.hpp"
-#include "Nodes/Builtins.hpp"
-#include "Nodes/Camera.hpp"
-#include "Scene/Node.hpp"
-#include "Scene/NodeTypes.hpp"
+#include "Components/Actors.hpp"
+#include "Components/Builtins.hpp"
+#include "Scene/Actor.hpp"
+#include "Scene/ClassRegistry.hpp"
+#include "Scene/SceneComponent.hpp"
 #include "Scene/Scene.hpp"
 #include "Scene/Transform.hpp"
 #include "Scene/View.hpp"
@@ -16,15 +17,15 @@
 #include <optional>
 #include <string_view>
 
-using cinder::Nodes::Camera;
+using Camera = cinder::Components::CameraComponent;
 using cinder::Dev::GizmoCanvas;
 using cinder::Dev::GizmoStroke;
 using cinder::Dev::GizmoStrokes;
 using cinder::Dev::Handle;
 using cinder::Dev::Space;
 using cinder::Dev::Tool;
-using cinder::Scene::Node;
-using cinder::Scene::NodeTypes;
+using cinder::Scene::Actor;
+using cinder::Scene::ClassRegistry;
 using cinder::Scene::Scene;
 
 namespace {
@@ -33,12 +34,12 @@ const glm::vec2 ORIGIN(20.0f, 30.0f);
 const glm::vec2 SIZE(400.0f, 300.0f);
 
 struct World {
-    NodeTypes types;
+    ClassRegistry types;
     Scene scene{types};
     cinder::Gfx::Pass::ViewCamera camera;
 
     World() {
-        cinder::Nodes::registerBuiltins(types);
+        cinder::Components::registerBuiltins(types);
         cinder::Scene::View view;
         view.world = glm::inverse(glm::lookAt(glm::vec3(0.0f, 0.0f, 10.0f), glm::vec3(0.0f), glm::vec3(0.0f, 1.0f, 0.0f)));
         view.fovDegrees = 60.0f;
@@ -50,10 +51,11 @@ struct World {
 
     GizmoCanvas canvas() { return GizmoCanvas{camera.viewProjection(), ORIGIN, SIZE}; }
 
-    Node* add(std::string_view className, const glm::vec3& position) {
-        Node* node = scene.create(className, nullptr);
-        node->transform()->setPosition(position.x, position.y, position.z);
-        return node;
+    Actor* add(std::string_view className, const glm::vec3& position) {
+        Actor* actor = scene.spawn(className, nullptr);
+        if (actor->rootComponent() == nullptr) actor->addComponent<cinder::Scene::SceneComponent>();
+        actor->transform()->setPosition(position.x, position.y, position.z);
+        return actor;
     }
 };
 
@@ -79,7 +81,7 @@ float signedArea(const GizmoStroke& stroke) {
 
 TEST_CASE("a selected cube in view is its twelve edges, inside the panel") {
     World world;
-    Node* part = world.add("MeshPart", glm::vec3(0.0f));
+    Actor* part = world.add("StaticMeshActor", glm::vec3(0.0f));
 
     GizmoStrokes strokes;
     cinder::Dev::selectionStrokes(strokes, *part, world.canvas());
@@ -95,12 +97,12 @@ TEST_CASE("a selected cube in view is its twelve edges, inside the panel") {
 
 TEST_CASE("a cube behind the view draws nothing, and one across the edge is cut at the panel") {
     World world;
-    Node* behind = world.add("MeshPart", glm::vec3(0.0f, 0.0f, 20.0f));
+    Actor* behind = world.add("StaticMeshActor", glm::vec3(0.0f, 0.0f, 20.0f));
     GizmoStrokes strokes;
     cinder::Dev::selectionStrokes(strokes, *behind, world.canvas());
     CHECK(strokes.empty());
 
-    Node* wide = world.add("MeshPart", glm::vec3(0.0f));
+    Actor* wide = world.add("StaticMeshActor", glm::vec3(0.0f));
     wide->transform()->setScale(100.0f, 1.0f, 1.0f);
     cinder::Dev::selectionStrokes(strokes, *wide, world.canvas());
     REQUIRE_FALSE(strokes.empty());
@@ -109,8 +111,8 @@ TEST_CASE("a cube behind the view draws nothing, and one across the edge is cut 
 
 TEST_CASE("a perspective camera is sixteen lines and an orthographic one is its near rectangle") {
     World world;
-    Camera* camera = world.scene.create<Camera>(nullptr);
-    camera->transform()->setPosition(0.0f, 0.0f, -5.0f);
+    Camera* camera = &world.scene.spawn<cinder::Components::CameraActor>()->camera();
+    camera->transform().setPosition(0.0f, 0.0f, -5.0f);
 
     GizmoStrokes strokes;
     cinder::Dev::frustumStrokes(strokes, {camera}, world.canvas());
@@ -128,7 +130,7 @@ TEST_CASE("a perspective camera is sixteen lines and an orthographic one is its 
 
 TEST_CASE("the move gizmo fills its planes clockwise, outlines them, and tips its arrows") {
     World world;
-    Node* node = world.add("Group", glm::vec3(0.0f));
+    Actor* node = world.add("Actor", glm::vec3(0.0f));
     const cinder::Dev::GizmoView view = cinder::Dev::gizmoView(world.camera, SIZE);
     std::optional<cinder::Dev::Gizmo> gizmo = cinder::Dev::gizmoFor(*node->transform(), Tool::Move, Space::World, view);
     REQUIRE(gizmo);

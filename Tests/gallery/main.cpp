@@ -234,7 +234,7 @@ struct Gallery {
                                  [make<Label>().text([this, item] { return outline.names.count(item) ? outline.names.at(item) : std::string(); })]
                            + HorizontalBox::slot().fill(1.0f).vAlign(VAlign::Center).padding(Margin(6.0f, 0.0f, 0.0f, 0.0f))
                                  [make<Label>()
-                                      .text([this, item] { return outline.childrenOf(item).empty() ? "MeshPart" : "Folder"; })
+                                      .text([this, item] { return outline.childrenOf(item).empty() ? "StaticMeshActor" : "Actor"; })
                                       .textStyle("Label.Small")
                                       .colorAndOpacity(Attribute<Color>([] { return Application::get().theme().color("Color.ForegroundDim"); }))];
                 })
@@ -377,7 +377,7 @@ struct Gallery {
                 make<VerticalBox>()
                 + VerticalBox::slot().autoHeight()[make<Label>().text("Small 11: The quick brown fox jumps over the lazy dog").textStyle("Label.Small")]
                 + VerticalBox::slot().autoHeight()[make<Label>().text("Regular 13: Kerning AV Wa To \xC3\xA9\xC3\xA0\xC3\xBC \xE2\x80\x94 12\xC2\xB0")]
-                + VerticalBox::slot().autoHeight()[make<Label>().text("Bold 13: Properties  Explorer  Transform").textStyle("Label.Bold")]
+                + VerticalBox::slot().autoHeight()[make<Label>().text("Bold 13: Details  Outliner  Transform").textStyle("Label.Bold")]
                 + VerticalBox::slot().autoHeight()[make<Label>().text("Mono 12: > engine.time()  1.2500").textStyle("Label.Mono")])]
             + VerticalBox::slot().fill(1.0f).padding(Margin(0.0f, 10.0f, 0.0f, 0.0f))
                   [make<Splitter>()

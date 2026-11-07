@@ -1,12 +1,14 @@
-#include "Dev/Panels/Properties.hpp"
+#include "Dev/Panels/Details.hpp"
 
 #include "Dev/History.hpp"
 #include "Dev/Selection.hpp"
 #include "Dev/Panels/EditorStyle.hpp"
 #include "Reflect/Reflect.hpp"
 #include "Scene/Attributes.hpp"
-#include "Scene/Node.hpp"
-#include "Scene/NodeTypes.hpp"
+#include "Scene/Actor.hpp"
+#include "Scene/ClassRegistry.hpp"
+#include "Scene/Component.hpp"
+#include "Scene/SceneComponent.hpp"
 #include "Scene/PropValue.hpp"
 #include "Scene/Scene.hpp"
 #include "Scene/Transform.hpp"
@@ -21,6 +23,7 @@
 #include "UI/Widgets/ScrollBox.hpp"
 #include "UI/Widgets/SizeBox.hpp"
 #include "UI/Widgets/SpinBox.hpp"
+#include "UI/Widgets/Menu.hpp"
 #include "UI/Widgets/TextField.hpp"
 #include "UI/Widgets/VectorInputBox.hpp"
 
@@ -36,7 +39,9 @@ using cinder::Reflect::PropDef;
 using cinder::Reflect::PropHint;
 using cinder::Reflect::PropList;
 using cinder::Reflect::PropType;
-using cinder::Scene::Node;
+using cinder::Scene::Actor;
+using cinder::Scene::Component;
+using cinder::Scene::SceneComponent;
 using cinder::Scene::PropRec;
 using cinder::Scene::PropSeq;
 using cinder::Scene::PropValue;
@@ -92,35 +97,57 @@ double numberOf(const PropValue& value) {
 
 }
 
-Properties::Properties(Selection& selection, History& history, cinder::Scene::Scene& scene, Application& app)
+Details::Details(Selection& selection, History& history, cinder::Scene::Scene& scene, Application& app)
     : selection_(selection), history_(history), scene_(scene), app_(app) {
     host_ = make<Border>().padding(Margin(0.0f));
     widget_ = make<ScrollBox>() + ScrollBox::slot().padding(Margin(6.0f, 4.0f))[host_];
     rebuild();
 }
 
-Node* Properties::node() const { return selection_.resolve(scene_); }
+Actor* Details::actor() const { return selection_.actor(scene_); }
 
-void Properties::touched() {
-    Node* current = node();
-    history_.touch("Edit " + (current != nullptr ? current->name() : std::string("node")), selection_.id());
+cinder::Scene::Object* Details::editing() const {
+    cinder::Scene::Object* selected = selection_.resolve(scene_);
+    if (auto* chosen = dynamic_cast<Actor*>(selected)) {
+        if (SceneComponent* root = chosen->rootComponent()) return root;
+    }
+    return selected;
 }
 
-void Properties::update() {
-    Node* current = node();
-    const std::optional<int> id = current != nullptr ? std::optional<int>(current->id()) : std::nullopt;
+void* Details::targetOf(int id, bool transform) const {
+    cinder::Scene::Object* object = scene_.byId(id);
+    if (object == nullptr || object->destroyed()) return nullptr;
+    if (!transform) return object->propTarget();
+    auto* component = dynamic_cast<Component*>(object);
+    SceneComponent* placed = component != nullptr ? component->asSceneComponent() : nullptr;
+    return placed != nullptr ? &placed->transform() : nullptr;
+}
+
+void Details::touched() {
+    Actor* current = actor();
+    history_.touch("Edit " + (current != nullptr ? current->name() : std::string("actor")), selection_.id());
+}
+
+void Details::update() {
+    Actor* current = actor();
+    const std::optional<int> id = selection_.resolve(scene_) != nullptr ? selection_.id() : std::nullopt;
     std::vector<std::string> keys;
+    std::vector<int> components;
     if (current != nullptr) {
         for (const auto& [name, value] : current->attributes()) keys.push_back(name);
+        for (const Component* component : current->components()) {
+            if (!component->destroyed()) components.push_back(component->id());
+        }
     }
-    if (id == shown_ && keys == keys_) return;
+    if (id == shown_ && keys == keys_ && components == components_) return;
     shown_ = id;
     keys_ = std::move(keys);
+    components_ = std::move(components);
     rebuild();
 }
 
-void Properties::rebuild() {
-    Node* current = node();
+void Details::rebuild() {
+    Actor* current = actor();
     if (current == nullptr) {
         host_->setContent(make<Label>()
                                   .text("Nothing selected")
@@ -130,7 +157,7 @@ void Properties::rebuild() {
     host_->setContent(body(*current));
 }
 
-std::shared_ptr<Widget> Properties::row(std::string label, std::shared_ptr<Widget> editor,
+std::shared_ptr<Widget> Details::row(std::string label, std::shared_ptr<Widget> editor,
                                         std::shared_ptr<Widget> trailing) {
     auto line = make<HorizontalBox>()
             + HorizontalBox::slot().fill(LABEL_FILL).vAlign(VAlign::Center).padding(Margin(0.0f, 0.0f, 6.0f, 0.0f))
@@ -140,7 +167,7 @@ std::shared_ptr<Widget> Properties::row(std::string label, std::shared_ptr<Widge
     return line;
 }
 
-std::shared_ptr<Widget> Properties::colorEditorFor(const PropDef& def, Target target) {
+std::shared_ptr<Widget> Details::colorEditorFor(const PropDef& def, Target target) {
     const PropDef* prop = &def;
     const int arity = def.arity();
     return make<HorizontalBox>()
@@ -167,7 +194,7 @@ std::shared_ptr<Widget> Properties::colorEditorFor(const PropDef& def, Target ta
            + HorizontalBox::slot().fill(1.0f)[make<Spacer>()];
 }
 
-std::shared_ptr<Widget> Properties::editorFor(const PropDef& def, Target target) {
+std::shared_ptr<Widget> Details::editorFor(const PropDef& def, Target target) {
     const PropDef* prop = &def;
     const auto text = [prop, target] {
         void* at = target();
@@ -227,7 +254,7 @@ std::shared_ptr<Widget> Properties::editorFor(const PropDef& def, Target target)
     }
 }
 
-std::shared_ptr<Widget> Properties::rows(const PropList& defs, Target target) {
+std::shared_ptr<Widget> Details::rows(const PropList& defs, Target target) {
     auto list = make<VerticalBox>();
     for (const PropDef& def : defs) {
         list + VerticalBox::slot().autoHeight().padding(Margin(0.0f, 0.0f, 0.0f, 3.0f))
@@ -236,15 +263,15 @@ std::shared_ptr<Widget> Properties::rows(const PropList& defs, Target target) {
     return list;
 }
 
-std::shared_ptr<Widget> Properties::attributeEditor(int id, const std::string& name) {
+std::shared_ptr<Widget> Details::attributeEditor(int id, const std::string& name) {
     const auto valueOf = [this, id, name]() -> PropValue {
-        const Node* current = scene_.byId(id);
+        const Actor* current = scene_.actor(id);
         if (current == nullptr) return PropValue::number(0.0);
         const auto found = current->attributes().find(name);
         return found == current->attributes().end() ? PropValue::number(0.0) : found->second;
     };
     const auto write = [this, id, name](PropValue value) {
-        if (Node* current = scene_.byId(id)) {
+        if (Actor* current = scene_.actor(id)) {
             current->setAttribute(name, std::move(value));
             touched();
         }
@@ -304,7 +331,7 @@ std::shared_ptr<Widget> Properties::attributeEditor(int id, const std::string& n
             });
 }
 
-std::shared_ptr<Widget> Properties::addAttributePopup(int id) {
+std::shared_ptr<Widget> Details::addAttributePopup(int id) {
     return make<Border>()
             .brush([] { return Application::get().theme().get<MenuStyle>("Menu").background; })
             .padding(Margin(10.0f))
@@ -333,12 +360,12 @@ std::shared_ptr<Widget> Properties::addAttributePopup(int id) {
                                         .text("Add")
                                         .buttonStyle("Button.Primary")
                                         .isEnabled([this, id] {
-                                            Node* current = scene_.byId(id);
+                                            Actor* current = scene_.actor(id);
                                             return current != nullptr && cinder::Scene::isAttributeName(newName_)
                                                     && current->attributes().count(newName_) == 0;
                                         })
                                         .onClicked([this, id] {
-                                            if (Node* current = scene_.byId(id)) {
+                                            if (Actor* current = scene_.actor(id)) {
                                                 touched();
                                                 current->setAttribute(newName_, zeroOf(newKind_));
                                                 newName_.clear();
@@ -348,8 +375,8 @@ std::shared_ptr<Widget> Properties::addAttributePopup(int id) {
                                         })]]]];
 }
 
-std::shared_ptr<Widget> Properties::attributesSection(int id) {
-    Node* current = scene_.byId(id);
+std::shared_ptr<Widget> Details::attributesSection(int id) {
+    Actor* current = scene_.actor(id);
     auto list = make<VerticalBox>();
     if (current != nullptr) {
         for (const auto& [name, value] : current->attributes()) {
@@ -359,7 +386,7 @@ std::shared_ptr<Widget> Properties::attributesSection(int id) {
                     .buttonStyle("Button.Small")
                     .toolTipText("Remove " + key)
                     .onClicked([this, id, key] {
-                        if (Node* node = scene_.byId(id)) {
+                        if (Actor* node = scene_.actor(id)) {
                             touched();
                             node->removeAttribute(key);
                         }
@@ -381,27 +408,110 @@ std::shared_ptr<Widget> Properties::attributesSection(int id) {
     return list;
 }
 
-std::shared_ptr<Widget> Properties::body(Node& node) {
-    const int id = node.id();
-    const std::string type(scene_.types().nameOf(node));
-    const Target self = [this, id]() -> void* {
-        Node* current = scene_.byId(id);
-        return current != nullptr ? current->propTarget() : nullptr;
+std::shared_ptr<Widget> Details::componentsSection(Actor& owner) {
+    const int actorId = owner.id();
+    auto list = make<VerticalBox>();
+
+    const auto entry = [&](const auto& self, Component& component, int depth) -> void {
+        const int id = component.id();
+        const std::string type(scene_.types().nameOf(component));
+        const std::string label = component.name() == type ? type : component.name() + "  (" + type + ")";
+        auto line = make<HorizontalBox>()
+                + HorizontalBox::slot().fill(1.0f).padding(Margin(static_cast<float>(depth) * 12.0f, 0.0f, 0.0f, 0.0f))
+                      [make<Button>()
+                               .text(label)
+                               .hAlign(HAlign::Left)
+                               .buttonStyle([this, id] {
+                                   return selection_.selected(id) ? std::string("Button.Primary") : std::string("Button");
+                               })
+                               .onClicked([this, id] {
+                                   selection_.select(id);
+                                   return Reply::handled();
+                               })];
+        if (!component.isDefault()) {
+            line + HorizontalBox::slot().autoWidth().vAlign(VAlign::Center).padding(Margin(4.0f, 0.0f, 0.0f, 0.0f))
+                       [make<Button>()
+                                .text("x")
+                                .toolTipText("Remove this component")
+                                .onClicked([this, id] {
+                                    removeComponent(id);
+                                    return Reply::handled();
+                                })];
+        }
+        list + VerticalBox::slot().autoHeight().padding(Margin(0.0f, 1.0f))[line];
+
+        if (SceneComponent* placed = component.asSceneComponent()) {
+            for (SceneComponent* child : placed->attachChildren()) {
+                if (!child->destroyed()) self(self, *child, depth + 1);
+            }
+        }
     };
-    const Target transform = [this, id]() -> void* {
-        Node* current = scene_.byId(id);
-        return current != nullptr ? current->transform() : nullptr;
-    };
+
+    SceneComponent* root = owner.rootComponent();
+    if (root != nullptr) entry(entry, *root, 0);
+    for (Component* component : owner.components()) {
+        const SceneComponent* placed = component->asSceneComponent();
+        if (component->destroyed() || component == root || placed == nullptr || placed->attachParent() != nullptr) continue;
+        entry(entry, *component, root != nullptr ? 1 : 0);
+    }
+    for (Component* component : owner.components()) {
+        if (!component->destroyed() && component->asSceneComponent() == nullptr) entry(entry, *component, 0);
+    }
+
+    list + VerticalBox::slot().autoHeight().padding(Margin(0.0f, 4.0f, 0.0f, 0.0f))
+               [make<HorizontalBox>()
+                + HorizontalBox::slot().autoWidth()
+                      [make<ComboButton>()
+                               .onGetMenuContent([this, actorId] { return addComponentMenu(actorId); })
+                               [make<Label>().text("Add Component")]]
+                + HorizontalBox::slot().fill(1.0f)[make<Spacer>()]];
+    return list;
+}
+
+std::shared_ptr<Widget> Details::addComponentMenu(int actorId) {
+    MenuBuilder menu;
+    for (const auto& entry : scene_.types().registered()) {
+        if (!entry.factory || entry.kind != cinder::Scene::ClassKind::Component) continue;
+        const std::string name = entry.name;
+        menu.entry(name, [this, actorId, name] { addComponent(actorId, name); });
+    }
+    return menu.build();
+}
+
+void Details::addComponent(int actorId, const std::string& className) {
+    Actor* owner = scene_.actor(actorId);
+    if (owner == nullptr) return;
+    history_.touch("Add " + className, selection_.id());
+    SceneComponent* under = nullptr;
+    if (auto* selected = dynamic_cast<Component*>(selection_.resolve(scene_))) {
+        if (selected->owner() == owner) under = selected->asSceneComponent();
+    }
+    if (Component* added = scene_.addComponent(*owner, className, under)) selection_.select(added->id());
+}
+
+void Details::removeComponent(int id) {
+    Component* component = scene_.component(id);
+    if (component == nullptr || component->isDefault()) return;
+    Actor* owner = component->owner();
+    history_.touch("Remove " + component->name(), selection_.id());
+    scene_.destroyNow(component);
+    if (owner != nullptr) selection_.select(owner->id());
+}
+
+std::shared_ptr<Widget> Details::body(Actor& owner) {
+    const int id = owner.id();
+    const std::string type(scene_.types().nameOf(owner));
+    const Target self = [this, id]() -> void* { return targetOf(id, false); };
 
     auto column = make<VerticalBox>()
             + VerticalBox::slot().autoHeight()
                   [make<TextBox>()
                            .text([this, id] {
-                               Node* current = scene_.byId(id);
+                               Actor* current = scene_.actor(id);
                                return current != nullptr ? current->name() : std::string();
                            })
                            .onTextCommitted([this, id](const std::string& text, TextCommit) {
-                               Node* current = scene_.byId(id);
+                               Actor* current = scene_.actor(id);
                                if (current == nullptr || text.empty() || text == current->name()) return;
                                touched();
                                current->setName(text);
@@ -412,18 +522,38 @@ std::shared_ptr<Widget> Properties::body(Node& node) {
                            .textStyle("Label.Small")
                            .colorAndOpacity(themeColor("Color.ForegroundDim"))];
 
-    if (node.transform() != nullptr) {
-        column + VerticalBox::slot().autoHeight().padding(Margin(0.0f, 0.0f, 0.0f, 4.0f))
-                         [make<ExpandableArea>()
-                                  .areaTitle("Transform")
-                                  .padding(Margin(6.0f, 6.0f))
-                                  .bodyContent(rows(cinder::Reflect::props<cinder::Scene::Transform>(), transform))];
-    }
     column + VerticalBox::slot().autoHeight().padding(Margin(0.0f, 0.0f, 0.0f, 4.0f))
                      [make<ExpandableArea>()
-                              .areaTitle(type.empty() ? "Node" : type)
+                              .areaTitle(type.empty() ? "Actor" : type)
                               .padding(Margin(6.0f, 6.0f))
-                              .bodyContent(rows(node.propList(), self))];
+                              .bodyContent(rows(owner.propList(), self))];
+    column + VerticalBox::slot().autoHeight().padding(Margin(0.0f, 0.0f, 0.0f, 4.0f))
+                     [make<ExpandableArea>()
+                              .areaTitle("Components")
+                              .padding(Margin(6.0f, 6.0f))
+                              .bodyContent(componentsSection(owner))];
+
+    if (auto* component = dynamic_cast<Component*>(editing())) {
+        const int componentId = component->id();
+        const std::string componentType(scene_.types().nameOf(*component));
+        if (component->asSceneComponent() != nullptr) {
+            const Target transform = [this, componentId]() -> void* { return targetOf(componentId, true); };
+            column + VerticalBox::slot().autoHeight().padding(Margin(0.0f, 0.0f, 0.0f, 4.0f))
+                             [make<ExpandableArea>()
+                                      .areaTitle("Transform")
+                                      .padding(Margin(6.0f, 6.0f))
+                                      .bodyContent(rows(cinder::Reflect::props<cinder::Scene::Transform>(), transform))];
+        }
+        const Target props = [this, componentId]() -> void* { return targetOf(componentId, false); };
+        const std::string title = component->name() == componentType ? componentType
+                                                                     : component->name() + " (" + componentType + ")";
+        column + VerticalBox::slot().autoHeight().padding(Margin(0.0f, 0.0f, 0.0f, 4.0f))
+                         [make<ExpandableArea>()
+                                  .areaTitle(title.empty() ? "Component" : title)
+                                  .padding(Margin(6.0f, 6.0f))
+                                  .bodyContent(rows(component->propList(), props))];
+    }
+
     column + VerticalBox::slot().autoHeight()
                      [make<ExpandableArea>()
                               .areaTitle("Attributes")

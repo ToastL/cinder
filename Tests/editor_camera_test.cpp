@@ -2,9 +2,9 @@
 
 #include "Dev/EditorCamera.hpp"
 #include "Gfx/Pass/ViewCamera.hpp"
-#include "Nodes/Builtins.hpp"
-#include "Nodes/Camera.hpp"
-#include "Scene/NodeTypes.hpp"
+#include "Components/Actors.hpp"
+#include "Components/Builtins.hpp"
+#include "Scene/ClassRegistry.hpp"
 #include "Scene/Scene.hpp"
 #include "Scene/Transform.hpp"
 
@@ -15,10 +15,10 @@
 #include <cmath>
 #include <cstddef>
 
-using cinder::Nodes::Camera;
+using Camera = cinder::Components::CameraComponent;
 using cinder::Dev::EditorCamera;
 using cinder::Gfx::Pass::ViewCamera;
-using cinder::Scene::NodeTypes;
+using cinder::Scene::ClassRegistry;
 using cinder::Scene::Scene;
 
 namespace {
@@ -26,15 +26,15 @@ namespace {
 const glm::vec2 PANEL(400.0f, 300.0f);
 
 struct World {
-    NodeTypes types;
+    ClassRegistry types;
     Scene scene{types};
     Camera* camera = nullptr;
 
     World() {
-        cinder::Nodes::registerBuiltins(types);
-        camera = scene.create<Camera>(nullptr);
-        camera->transform()->setPosition(10.0f, 20.0f, 30.0f);
-        camera->transform()->setRotation(glm::radians(-20.0f), glm::radians(35.0f), 0.0f);
+        cinder::Components::registerBuiltins(types);
+        camera = &scene.spawn<cinder::Components::CameraActor>()->camera();
+        camera->transform().setPosition(10.0f, 20.0f, 30.0f);
+        camera->transform().setRotation(glm::radians(-20.0f), glm::radians(35.0f), 0.0f);
     }
 
     std::array<glm::vec3, 8> corners() {

@@ -1,16 +1,17 @@
 #include <doctest/doctest.h>
 
-#include "Nodes/Builtins.hpp"
-#include "Nodes/Group.hpp"
-#include "Physics/Body.hpp"
+#include "Components/Builtins.hpp"
 #include "Physics/Broadphase.hpp"
 #include "Physics/Collide.hpp"
-#include "Physics/Collider.hpp"
+#include "Physics/ColliderComponent.hpp"
+#include "Physics/Components.hpp"
 #include "Physics/Geometry.hpp"
-#include "Physics/Nodes.hpp"
 #include "Physics/Pose.hpp"
+#include "Physics/RigidBodyComponent.hpp"
 #include "Physics/World.hpp"
-#include "Scene/NodeTypes.hpp"
+#include "Scene/Actor.hpp"
+#include "Scene/ClassRegistry.hpp"
+#include "Scene/SceneComponent.hpp"
 #include "Scene/Scene.hpp"
 #include "Scene/Transform.hpp"
 #include "Serial/SceneCodec.hpp"
@@ -26,29 +27,48 @@
 #include <string>
 #include <vector>
 
-using cinder::Physics::Body;
-using cinder::Physics::Collider;
+using Body = cinder::Physics::RigidBodyComponent;
+using Collider = cinder::Physics::ColliderComponent;
 using cinder::Physics::Geometry;
 using cinder::Physics::Manifold;
 using cinder::Physics::Shape;
 using cinder::Physics::World;
-using cinder::Scene::Node;
-using cinder::Scene::NodeTypes;
+using cinder::Scene::Actor;
+using cinder::Scene::ClassRegistry;
+using cinder::Scene::SceneComponent;
 using cinder::Scene::Scene;
 
 namespace {
 
 constexpr float DT = 1.0f / 60.0f;
 
+Actor* group(Scene& scene, Actor* parent = nullptr) {
+    Actor* actor = scene.spawn<Actor>(parent);
+    actor->addComponent<SceneComponent>();
+    return actor;
+}
+
+Body* makeBody(Scene& scene, Actor* parent) { return group(scene, parent)->addComponent<Body>(); }
+
+Collider* colliderOn(Body* body) { return body->owner()->addComponent<Collider>(); }
+
+Collider* colliderOf(Body* body) { return body->owner()->findComponent<Collider>(); }
+
+Collider* staticCollider(Scene& scene, Actor* parent) {
+    return scene.spawn<Actor>(parent)->addComponent<Collider>();
+}
+
 struct Fixture {
-    NodeTypes types;
+    ClassRegistry types;
     Scene scene{types};
     World world{scene};
 
     Fixture() {
-        cinder::Nodes::registerBuiltins(types);
-        cinder::Physics::registerNodes(types);
+        cinder::Components::registerBuiltins(types);
+        cinder::Physics::registerComponents(types);
     }
+
+    Actor* group(Actor* parent = nullptr) { return ::group(scene, parent); }
 
     void run(int steps) {
         for (int i = 0; i < steps; ++i) {
@@ -57,24 +77,24 @@ struct Fixture {
         }
     }
 
-    Collider* floor(Node* parent = nullptr) {
-        Collider* collider = scene.create<Collider>(parent);
+    Collider* floor(Actor* parent = nullptr) {
+        Collider* collider = staticCollider(scene, parent);
         collider->setSize(20.0f, 1.0f, 20.0f);
-        collider->transform()->setPosition(0.0f, -0.5f, 0.0f);
+        collider->transform().setPosition(0.0f, -0.5f, 0.0f);
         return collider;
     }
 
-    Body* ball(float x, float y, float z, Node* parent = nullptr) {
-        Body* body = scene.create<Body>(parent);
+    Body* ball(float x, float y, float z, Actor* parent = nullptr) {
+        Body* body = makeBody(scene, parent);
         body->transform()->setPosition(x, y, z);
-        scene.create<Collider>(body)->setShape(Shape::Sphere);
+        colliderOn(body)->setShape(Shape::Sphere);
         return body;
     }
 
     Body* crate(float x, float y, float z) {
-        Body* body = scene.create<Body>(nullptr);
+        Body* body = makeBody(scene, nullptr);
         body->transform()->setPosition(x, y, z);
-        scene.create<Collider>(body);
+        colliderOn(body);
         return body;
     }
 };
@@ -101,7 +121,9 @@ void checkVec(const glm::vec3& actual, const glm::vec3& expected, double epsilon
     CHECK(actual.z == doctest::Approx(expected.z).epsilon(epsilon));
 }
 
-glm::vec3 worldOf(Node* node) { return node->transform()->worldPosition(); }
+glm::vec3 worldOf(Body* body) { return body->transform()->worldPosition(); }
+
+glm::vec3 worldOf(Collider* collider) { return collider->transform().worldPosition(); }
 
 }
 
@@ -229,10 +251,9 @@ TEST_CASE("written rotations compose back into the orientation they came from") 
         glm::quat(1.0f, 0.0f, 0.0f, 0.0f),
     };
 
-    NodeTypes types;
+    ClassRegistry types;
     Scene scene{types};
-    cinder::Nodes::registerBuiltins(types);
-    Node* node = scene.create<cinder::Nodes::Group>(nullptr);
+    Actor* node = group(scene);
 
     for (const glm::quat& orientation : orientations) {
         const glm::vec3 rotation = cinder::Physics::rotationOf(orientation);
@@ -245,7 +266,7 @@ TEST_CASE("written rotations compose back into the orientation they came from") 
 
 TEST_CASE("a dynamic body falls under gravity with semi-implicit Euler") {
     Fixture f;
-    Body* body = f.scene.create<Body>(nullptr);
+    Body* body = makeBody(f.scene, nullptr);
     body->transform()->setPosition(0.0f, 10.0f, 0.0f);
 
     f.run(1);
@@ -279,9 +300,9 @@ TEST_CASE("a sphere comes to rest on a collider with no body") {
 
 TEST_CASE("a static body is a floor too, and a kinematic one ignores gravity") {
     Fixture f;
-    Body* ground = f.scene.create<Body>(nullptr);
+    Body* ground = makeBody(f.scene, nullptr);
     ground->setMotion(Body::Motion::Static);
-    f.floor(ground);
+    f.floor(ground->owner());
     Body* lift = f.ball(3.0f, 2.0f, 0.0f);
     lift->setMotion(Body::Motion::Kinematic);
     Body* body = f.ball(0.0f, 3.0f, 0.0f);
@@ -296,7 +317,7 @@ TEST_CASE("restitution bounces a falling sphere back up") {
     Fixture f;
     f.floor();
     Body* body = f.ball(0.0f, 5.5f, 0.0f);
-    static_cast<Collider*>(body->children().front())->setRestitution(0.8f);
+    colliderOf(body)->setRestitution(0.8f);
 
     float peak = 0.0f;
     bool bounced = false;
@@ -319,7 +340,7 @@ TEST_CASE("equal spheres swap velocities in an elastic head-on collision") {
     Body* right = f.ball(2.0f, 0.0f, 0.0f);
     left->setVelocity(3.0f, 0.0f, 0.0f);
     right->setVelocity(-1.0f, 0.0f, 0.0f);
-    static_cast<Collider*>(left->children().front())->setRestitution(1.0f);
+    colliderOf(left)->setRestitution(1.0f);
 
     f.run(120);
     CHECK(left->velocity().x == doctest::Approx(-1.0f).epsilon(0.02));
@@ -349,7 +370,7 @@ TEST_CASE("a kinematic body pushes a dynamic one and takes its velocity from its
 TEST_CASE("writing a body's position teleports it and keeps its velocity") {
     Fixture f;
     f.world.setGravity(glm::vec3(0.0f));
-    Body* body = f.scene.create<Body>(nullptr);
+    Body* body = makeBody(f.scene, nullptr);
     body->setVelocity(1.0f, 0.0f, 0.0f);
 
     f.run(10);
@@ -362,8 +383,8 @@ TEST_CASE("writing a body's position teleports it and keeps its velocity") {
 TEST_CASE("moving a body's parent carries the body with it") {
     Fixture f;
     f.world.setGravity(glm::vec3(0.0f));
-    Node* group = f.scene.create<cinder::Nodes::Group>(nullptr);
-    Body* body = f.scene.create<Body>(group);
+    Actor* group = f.group();
+    Body* body = makeBody(f.scene, group);
     body->transform()->setPosition(0.0f, 5.0f, 0.0f);
     body->setVelocity(1.0f, 0.0f, 0.0f);
 
@@ -376,9 +397,9 @@ TEST_CASE("moving a body's parent carries the body with it") {
 TEST_CASE("a body under a rotated parent keeps its world pose when written back") {
     Fixture f;
     f.world.setGravity(glm::vec3(0.0f));
-    Node* group = f.scene.create<cinder::Nodes::Group>(nullptr);
+    Actor* group = f.group();
     group->transform()->setPosition(1.0f, 2.0f, 3.0f).setRotation(0.4f, 1.1f, -0.3f);
-    Body* body = f.scene.create<Body>(group);
+    Body* body = makeBody(f.scene, group);
 
     f.run(1);
     const glm::vec3 before = worldOf(body);
@@ -390,10 +411,10 @@ TEST_CASE("a body under a rotated parent keeps its world pose when written back"
 TEST_CASE("a spinning body turns about its center of mass") {
     Fixture f;
     f.world.setGravity(glm::vec3(0.0f));
-    Body* body = f.scene.create<Body>(nullptr);
-    Collider* collider = f.scene.create<Collider>(body);
+    Body* body = makeBody(f.scene, nullptr);
+    Collider* collider = colliderOn(body);
     collider->setShape(Shape::Sphere);
-    collider->transform()->setPosition(1.0f, 0.0f, 0.0f);
+    collider->transform().setPosition(1.0f, 0.0f, 0.0f);
     body->setAngularVelocity(0.0f, glm::pi<float>(), 0.0f);
 
     f.run(60);
@@ -404,12 +425,12 @@ TEST_CASE("a spinning body turns about its center of mass") {
 TEST_CASE("a body two spheres wide rests level on the floor") {
     Fixture f;
     f.floor();
-    Body* body = f.scene.create<Body>(nullptr);
+    Body* body = makeBody(f.scene, nullptr);
     body->transform()->setPosition(0.0f, 2.0f, 0.0f);
     for (const float x : {-1.0f, 1.0f}) {
-        Collider* collider = f.scene.create<Collider>(body);
+        Collider* collider = colliderOn(body);
         collider->setShape(Shape::Sphere);
-        collider->transform()->setPosition(x, 0.0f, 0.0f);
+        collider->transform().setPosition(x, 0.0f, 0.0f);
     }
 
     f.run(300);
@@ -421,7 +442,7 @@ TEST_CASE("disabled bodies and colliders take no part in the step") {
     Fixture f;
     Collider* floor = f.floor();
     Body* body = f.ball(0.0f, 3.0f, 0.0f);
-    Node* group = f.scene.create<cinder::Nodes::Group>(nullptr);
+    Actor* group = f.group();
     Body* hidden = f.ball(5.0f, 3.0f, 0.0f, group);
     group->setEnabled(false);
     floor->setEnabled(false);
@@ -437,7 +458,7 @@ TEST_CASE("a destroyed body leaves the world") {
     Body* body = f.ball(0.0f, 3.0f, 0.0f);
     Body* other = f.ball(0.0f, 1.0f, 0.0f);
     f.run(5);
-    other->destroy();
+    other->owner()->destroy();
     f.run(300);
     CHECK(worldOf(body).y == doctest::Approx(0.5f).epsilon(0.01));
 }
@@ -451,7 +472,7 @@ TEST_CASE("the same scene steps to the same bits") {
         }
         f.run(240);
         std::vector<float> out;
-        for (Node* root : f.scene.roots()) {
+        for (Actor* root : f.scene.roots()) {
             const glm::vec3 p = root->transform()->position();
             const glm::vec3 r = root->transform()->rotation();
             out.insert(out.end(), {p.x, p.y, p.z, r.x, r.y, r.z});
@@ -464,12 +485,12 @@ TEST_CASE("the same scene steps to the same bits") {
 
 TEST_CASE("bodies and colliders round-trip through the scene file") {
     Fixture f;
-    Body* body = f.scene.create<Body>(nullptr);
+    Body* body = makeBody(f.scene, nullptr);
     body->setMotion(Body::Motion::Kinematic).setMass(2.5f).setVelocity(1.0f, 0.0f, 0.0f);
-    Collider* collider = f.scene.create<Collider>(body);
+    Collider* collider = colliderOn(body);
     collider->setShape(Shape::Sphere).setSize(2.0f, 2.0f, 2.0f).setRestitution(0.25f);
 
-    Collider* capsule = f.scene.create<Collider>(body);
+    Collider* capsule = colliderOn(body);
     capsule->setShape(Shape::Capsule).setSize(1.0f, 2.0f, 1.0f).setFriction(0.25f);
 
     const std::string text = cinder::Serial::SceneCodec::save(f.scene);
@@ -521,15 +542,15 @@ TEST_CASE("friction holds a crate on a slope it cannot slide down") {
 
     auto slide = [tilt](float friction) {
         Fixture f;
-        Collider* ramp = f.scene.create<Collider>(nullptr);
+        Collider* ramp = staticCollider(f.scene, nullptr);
         ramp->setSize(20.0f, 1.0f, 20.0f).setFriction(friction);
-        ramp->transform()->setRotation(0.0f, 0.0f, tilt);
+        ramp->transform().setRotation(0.0f, 0.0f, tilt);
 
         const glm::vec3 up(-std::sin(tilt), std::cos(tilt), 0.0f);
         const glm::vec3 seat = up * 1.0f;
-        Body* box = f.scene.create<Body>(nullptr);
+        Body* box = makeBody(f.scene, nullptr);
         box->transform()->setPosition(seat.x, seat.y, seat.z).setRotation(0.0f, 0.0f, tilt);
-        f.scene.create<Collider>(box)->setFriction(friction);
+        colliderOn(box)->setFriction(friction);
 
         f.run(180);
         return worldOf(box) - seat;
@@ -569,7 +590,7 @@ TEST_CASE("friction turns a sliding sphere into a rolling one") {
 TEST_CASE("an impulse changes velocity by impulse over mass") {
     Fixture f;
     f.world.setGravity(glm::vec3(0.0f));
-    Body* body = f.scene.create<Body>(nullptr);
+    Body* body = makeBody(f.scene, nullptr);
     body->setMass(2.0f);
 
     body->applyImpulse(glm::vec3(4.0f, 0.0f, 0.0f));
@@ -595,7 +616,7 @@ TEST_CASE("an impulse off the center of mass adds spin") {
 TEST_CASE("a force lasts one step") {
     Fixture f;
     f.world.setGravity(glm::vec3(0.0f));
-    Body* body = f.scene.create<Body>(nullptr);
+    Body* body = makeBody(f.scene, nullptr);
 
     body->applyForce(glm::vec3(3.0f, 0.0f, 0.0f));
     f.run(1);
@@ -627,7 +648,7 @@ TEST_CASE("a ray reports the nearest shape it meets") {
 
     cinder::Physics::RayHit hit;
     REQUIRE(f.world.raycast(glm::vec3(0.0f, 10.0f, 0.0f), glm::vec3(0.0f, -1.0f, 0.0f), 100.0f, hit));
-    CHECK(hit.node == ball);
+    CHECK(hit.actor == ball->owner());
     CHECK(hit.distance == doctest::Approx(6.5f));
     checkVec(hit.position, glm::vec3(0.0f, 3.5f, 0.0f));
     checkVec(hit.normal, glm::vec3(0.0f, 1.0f, 0.0f));
@@ -635,9 +656,9 @@ TEST_CASE("a ray reports the nearest shape it meets") {
     CHECK_FALSE(f.world.raycast(glm::vec3(0.0f, 10.0f, 0.0f), glm::vec3(1.0f, 0.0f, 0.0f), 100.0f, hit));
     CHECK_FALSE(f.world.raycast(glm::vec3(0.0f, 10.0f, 0.0f), glm::vec3(0.0f, -1.0f, 0.0f), 5.0f, hit));
 
-    ball->setEnabled(false);
+    ball->owner()->setEnabled(false);
     REQUIRE(f.world.raycast(glm::vec3(0.0f, 10.0f, 0.0f), glm::vec3(0.0f, -1.0f, 0.0f), 100.0f, hit));
-    CHECK(hit.node == floor);
+    CHECK(hit.actor == floor->owner());
     CHECK(hit.distance == doctest::Approx(10.0f));
 }
 
@@ -745,9 +766,9 @@ TEST_CASE("a capsule lying on the floor settles level") {
     Fixture f;
     f.floor();
 
-    Body* body = f.scene.create<Body>(nullptr);
+    Body* body = makeBody(f.scene, nullptr);
     body->transform()->setPosition(0.0f, 3.0f, 0.0f).setRotation(0.0f, 0.0f, glm::half_pi<float>());
-    f.scene.create<Collider>(body)->setShape(Shape::Capsule).setSize(1.0f, 2.0f, 1.0f);
+    colliderOn(body)->setShape(Shape::Capsule).setSize(1.0f, 2.0f, 1.0f);
 
     f.run(240);
     CHECK(worldOf(body).y == doctest::Approx(0.5f).epsilon(0.02));
@@ -876,26 +897,36 @@ TEST_CASE("a sleeping body wakes when the floor under it goes away") {
     CHECK(worldOf(crate).y < 0.4f);
 }
 
-TEST_CASE("touches reach both nodes' hooks and any connected listener") {
+TEST_CASE("touches reach both actors, both colliders and any connected listener") {
     Fixture f;
     Collider* floor = f.floor();
     Body* ball = f.ball(0.0f, 3.0f, 0.0f);
-    Node* watcher = f.scene.create<cinder::Nodes::Group>(nullptr);
+    Actor* watcher = f.group();
 
     std::vector<int> touched;
     std::vector<int> ended;
-    f.scene.connect(*ball, cinder::Scene::Signal::Touched, *watcher,
-                    [&touched](const cinder::Scene::SignalArgs& args) { touched.push_back(args.other->id()); });
-    f.scene.connect(*ball, cinder::Scene::Signal::TouchEnded, *watcher,
+    std::vector<int> shapeTouched;
+    std::vector<int> touchedVia;
+    f.scene.connect(*ball->owner(), cinder::Scene::Signal::Touched, *watcher,
+                    [&touched, &touchedVia](const cinder::Scene::SignalArgs& args) {
+                        touched.push_back(args.other->id());
+                        touchedVia.push_back(args.component != nullptr ? args.component->id() : 0);
+                    });
+    f.scene.connect(*ball->owner(), cinder::Scene::Signal::TouchEnded, *watcher,
                     [&ended](const cinder::Scene::SignalArgs& args) { ended.push_back(args.other->id()); });
+    f.scene.connect(*colliderOf(ball), cinder::Scene::Signal::Touched, *watcher,
+                    [&shapeTouched](const cinder::Scene::SignalArgs& args) { shapeTouched.push_back(args.other->id()); });
 
     f.run(120);
-    CHECK(touched == std::vector<int>{floor->id()});
+    const int floorActor = floor->owner()->id();
+    CHECK(touched == std::vector<int>{floorActor});
+    CHECK(touchedVia == std::vector<int>{floor->id()});
+    CHECK(shapeTouched == std::vector<int>{floorActor});
     CHECK(ended.empty());
 
     ball->transform()->setPosition(0.0f, 8.0f, 0.0f);
     f.run(1);
-    CHECK(ended == std::vector<int>{floor->id()});
+    CHECK(ended == std::vector<int>{floorActor});
 
     f.run(150);
     CHECK(touched.size() == 2);

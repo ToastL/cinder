@@ -2,12 +2,12 @@
 
 using namespace cinder;
 
-class Spinner final : public Scene::Node {
+class Spinner final : public Scene::Component {
 public:
-    CINDER_NODE(Spinner, Scene::Node) { CINDER_PROP(speed_); }
+    CINDER_COMPONENT(Spinner, Scene::Component) { CINDER_PROP(speed_); }
 
-    void onUpdate(float dt) override {
-        Scene::Transform* box = parent() != nullptr ? parent()->transform() : nullptr;
+    void tick(float dt) override {
+        Scene::Transform* box = owner()->transform();
         if (box == nullptr) return;
         const glm::vec3 rotation = box->rotation() + speed_ * dt;
         box->setRotation(rotation.x, rotation.y, rotation.z);

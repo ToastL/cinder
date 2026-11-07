@@ -4,9 +4,7 @@
 
 #include "Dev/History.hpp"
 #include "Dev/Selection.hpp"
-#include "Nodes/Builtins.hpp"
-#include "Scene/Node.hpp"
-#include "Scene/NodeTypes.hpp"
+#include "Scene/Actor.hpp"
 #include "Scene/Scene.hpp"
 #include "Scene/Transform.hpp"
 #include "Serial/SceneCodec.hpp"
@@ -18,19 +16,18 @@
 
 using cinder::Dev::History;
 using cinder::Dev::Selection;
-using cinder::Scene::Node;
-using cinder::Scene::NodeTypes;
+using cinder::Scene::Actor;
 using cinder::Scene::Scene;
 
 namespace {
 
 struct Editor : testing::EditorFixture {
     Editor() {
-        scene.create("MeshPart", nullptr)->setName("Box");
+        scene.spawn("StaticMeshActor")->setName("Box");
         history.reset();
     }
 
-    Node& box() { return *scene.find("Box"); }
+    Actor& box() { return *scene.find("Box"); }
     float x() { return box().transform()->position().x; }
 
     void move(float to, bool interacting = false) {
@@ -86,9 +83,9 @@ TEST_CASE("a new edit clears redo") {
     CHECK_FALSE(editor.history.canRedo());
 }
 
-TEST_CASE("undoing a delete restores the node, its id, its place and the selection") {
+TEST_CASE("undoing a delete restores the actor, its id, its place and the selection") {
     Editor editor;
-    editor.scene.create("Group", nullptr)->setName("Last");
+    editor.scene.spawn("Actor")->setName("Last");
     editor.history.reset();
 
     const int id = editor.box().id();
@@ -110,7 +107,7 @@ TEST_CASE("undoing a delete restores the node, its id, its place and the selecti
 TEST_CASE("undo and redo restore the selection on each side of an insert") {
     Editor editor;
     editor.history.touch("Insert", editor.selection.id());
-    const int inserted = editor.scene.create("Group", nullptr)->id();
+    const int inserted = editor.scene.spawn("Actor")->id();
     editor.selection.select(inserted);
     editor.history.settle(false);
 

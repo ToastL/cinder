@@ -10,7 +10,7 @@
 #include <optional>
 
 namespace cinder::Scene {
-class Node;
+class SceneComponent;
 class Scene;
 class Transform;
 }
@@ -25,12 +25,12 @@ constexpr float SCALE_SNAP = 0.1f;
 
 class Manipulation {
 public:
-    bool active() const { return node_.has_value(); }
+    bool active() const { return target_.has_value(); }
     Tool tool() const { return tool_; }
     Handle handle() const { return handle_; }
-    std::optional<int> node() const { return node_; }
+    std::optional<int> target() const { return target_; }
 
-    bool begin(cinder::Scene::Node& node, const Gizmo& gizmo, Handle handle, const GizmoView& view,
+    bool begin(cinder::Scene::SceneComponent& target, const Gizmo& gizmo, Handle handle, const GizmoView& view,
                glm::vec2 point);
     bool drag(cinder::Scene::Scene& scene, const GizmoView& view, glm::vec2 point, bool snap);
     bool cancel(cinder::Scene::Scene& scene);
@@ -42,7 +42,7 @@ private:
     std::optional<float> turn(const GizmoView& view, glm::vec2 point);
     bool beginTurn(const GizmoView& view, const Ray& ray, glm::vec2 point);
 
-    std::optional<int> node_;
+    std::optional<int> target_;
     Tool tool_ = Tool::Move;
     Handle handle_ = Handle::None;
     Gizmo gizmo_;

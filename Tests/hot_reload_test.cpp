@@ -5,10 +5,10 @@
 #include "Core/GameModule.hpp"
 #include "Dev/GameBuild.hpp"
 #include "Dev/ModuleHost.hpp"
-#include "Nodes/Builtins.hpp"
+#include "Components/Builtins.hpp"
 #include "Platform/Files.hpp"
-#include "Scene/Node.hpp"
-#include "Scene/NodeTypes.hpp"
+#include "Scene/Actor.hpp"
+#include "Scene/ClassRegistry.hpp"
 #include "Scene/Scene.hpp"
 #include "Scene/Transform.hpp"
 #include "Serial/SceneCodec.hpp"
@@ -20,7 +20,7 @@
 
 using cinder::Dev::ModuleHost;
 using cinder::Dev::GameBuild;
-using cinder::Scene::NodeTypes;
+using cinder::Scene::ClassRegistry;
 using cinder::Scene::Scene;
 
 namespace {
@@ -28,13 +28,13 @@ namespace {
 std::string hopper(const std::string& body) {
     return R"(#include "Game/Game.hpp"
 
-class Hopper final : public cinder::Scene::Spatial {
+class Hopper final : public cinder::Scene::SceneComponent {
 public:
-    CINDER_NODE(Hopper, cinder::Scene::Spatial) { CINDER_PROP(step_); }
-    void onUpdate(float dt) override {
-        glm::vec3 p = transform()->position();
+    CINDER_COMPONENT(Hopper, cinder::Scene::SceneComponent) { CINDER_PROP(step_); }
+    void tick(float dt) override {
+        glm::vec3 p = transform().position();
         )" + body + R"(
-        transform()->setPosition(p.x, p.y, p.z);
+        transform().setPosition(p.x, p.y, p.z);
     }
 private:
     float step_ = 1.0f;
@@ -68,8 +68,8 @@ TEST_CASE("hot reload: a project's C++ builds, loads, swaps and survives a broke
     const std::filesystem::path source = project / "Source" / "Hopper.cpp";
     write(source, hopper("p.x += step_;"));
 
-    NodeTypes types;
-    cinder::Nodes::registerBuiltins(types);
+    ClassRegistry types;
+    cinder::Components::registerBuiltins(types);
     Scene scene(types);
     {
         ModuleHost host(scene, project, "Game", build);
@@ -78,9 +78,11 @@ TEST_CASE("hot reload: a project's C++ builds, loads, swaps and survives a broke
         CHECK(host.lastResult().compiled == 2);
         CHECK(std::filesystem::exists(project / "compile_commands.json"));
 
-        cinder::Serial::SceneCodec::load("version 4\nnodes {\n    Hopper {\n        id 1\n        step 3\n    }\n}\n", scene);
+        cinder::Serial::SceneCodec::load("version 5\nactors {\n    Actor {\n        id 1\n        components {\n"
+                                         "            Hopper {\n                id 2\n                step 3\n"
+                                         "            }\n        }\n    }\n}\n", scene);
         scene.update(0.1f);
-        CHECK(scene.byId(1)->transform()->position().x == doctest::Approx(3.0f));
+        CHECK(scene.actor(1)->transform()->position().x == doctest::Approx(3.0f));
 
         REQUIRE(host.buildNow());
         CHECK(host.lastResult().compiled == 0);
@@ -93,8 +95,8 @@ TEST_CASE("hot reload: a project's C++ builds, loads, swaps and survives a broke
         REQUIRE(host.reload());
         CHECK(host.lastResult().compiled == 1);
         scene.update(0.1f);
-        CHECK(scene.byId(1)->transform()->position().x == doctest::Approx(3.0f));
-        CHECK(scene.byId(1)->transform()->position().y == doctest::Approx(3.0f));
+        CHECK(scene.actor(1)->transform()->position().x == doctest::Approx(3.0f));
+        CHECK(scene.actor(1)->transform()->position().y == doctest::Approx(3.0f));
 
         write(source, hopper("p.z += step_ +;"));
         REQUIRE(host.requestBuild());
@@ -103,9 +105,9 @@ TEST_CASE("hot reload: a project's C++ builds, loads, swaps and survives a broke
         CHECK(host.lastResult().errors > 0);
         CHECK_FALSE(host.reloadPending());
         scene.update(0.1f);
-        CHECK(scene.byId(1)->transform()->position().y == doctest::Approx(6.0f));
+        CHECK(scene.actor(1)->transform()->position().y == doctest::Approx(6.0f));
     }
     CHECK(scene.roots().empty());
-    CHECK(types.create("Hopper") == nullptr);
+    CHECK(types.createComponent("Hopper") == nullptr);
     std::filesystem::remove_all(project);
 }

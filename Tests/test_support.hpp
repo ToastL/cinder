@@ -2,9 +2,12 @@
 
 #include "Dev/History.hpp"
 #include "Dev/Selection.hpp"
-#include "Nodes/Builtins.hpp"
-#include "Scene/NodeTypes.hpp"
+#include "Components/Builtins.hpp"
+#include "Physics/Components.hpp"
+#include "Scene/Actor.hpp"
+#include "Scene/ClassRegistry.hpp"
 #include "Scene/Scene.hpp"
+#include "Scene/SceneComponent.hpp"
 
 #include <filesystem>
 #include <stdexcept>
@@ -22,10 +25,19 @@ inline std::filesystem::path uniqueTempDir(std::string_view prefix) {
 }
 
 struct SceneFixture {
-    cinder::Scene::NodeTypes types;
+    cinder::Scene::ClassRegistry types;
     cinder::Scene::Scene scene{types};
 
-    SceneFixture() { cinder::Nodes::registerBuiltins(types); }
+    SceneFixture() {
+        cinder::Components::registerBuiltins(types);
+        cinder::Physics::registerComponents(types);
+    }
+
+    cinder::Scene::Actor* group(cinder::Scene::Actor* parent = nullptr) {
+        cinder::Scene::Actor* actor = scene.spawn<cinder::Scene::Actor>(parent);
+        actor->addComponent<cinder::Scene::SceneComponent>();
+        return actor;
+    }
 };
 
 struct EditorFixture : SceneFixture {

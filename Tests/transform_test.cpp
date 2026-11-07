@@ -1,45 +1,48 @@
 #include <doctest/doctest.h>
 
-#include "Nodes/Folder.hpp"
-#include "Nodes/Group.hpp"
-#include "Scene/Node.hpp"
-#include "Scene/NodeTypes.hpp"
+#include "Scene/Actor.hpp"
+#include "Scene/ClassRegistry.hpp"
 #include "Scene/Scene.hpp"
+#include "Scene/SceneComponent.hpp"
 #include "Scene/Transform.hpp"
 
 #include <glm/gtc/constants.hpp>
 
-using cinder::Scene::Node;
-using cinder::Scene::NodeTypes;
+using cinder::Scene::Actor;
+using cinder::Scene::ClassRegistry;
+using cinder::Scene::SceneComponent;
 using cinder::Scene::Scene;
 using cinder::Scene::Transform;
 
 namespace {
 
 struct Fixture {
-    NodeTypes types;
+    ClassRegistry types;
     Scene scene{types};
 
-    Node* spawn(const char* name, Node* parent = nullptr) {
-        Node* node = scene.create<cinder::Nodes::Group>(parent);
-        node->setName(name);
-        return node;
+    Actor* spawn(const char* name, Actor* parent = nullptr) {
+        Actor* actor = scene.spawn<Actor>(parent);
+        actor->addComponent<SceneComponent>();
+        actor->setName(name);
+        return actor;
     }
 };
 
-void checkWorld(Node* node, float x, float y, float z) {
-    const glm::vec3 p = node->transform()->worldPosition();
+void checkWorld(Transform& transform, float x, float y, float z) {
+    const glm::vec3 p = transform.worldPosition();
     CHECK(p.x == doctest::Approx(x).epsilon(1e-5));
     CHECK(p.y == doctest::Approx(y).epsilon(1e-5));
     CHECK(p.z == doctest::Approx(z).epsilon(1e-5));
 }
 
+void checkWorld(Actor* actor, float x, float y, float z) { checkWorld(*actor->transform(), x, y, z); }
+
 }
 
 TEST_CASE("world follows the parent") {
     Fixture f;
-    Node* parent = f.spawn("parent");
-    Node* child = f.spawn("child", parent);
+    Actor* parent = f.spawn("parent");
+    Actor* child = f.spawn("child", parent);
 
     parent->transform()->setPosition(10, 0, 0);
     child->transform()->setPosition(0, 5, 0);
@@ -51,8 +54,8 @@ TEST_CASE("world follows the parent") {
 
 TEST_CASE("parent scale scales the child offset") {
     Fixture f;
-    Node* parent = f.spawn("parent");
-    Node* child = f.spawn("child", parent);
+    Actor* parent = f.spawn("parent");
+    Actor* child = f.spawn("child", parent);
 
     parent->transform()->setScale(2);
     child->transform()->setPosition(0, 5, 0);
@@ -61,37 +64,37 @@ TEST_CASE("parent scale scales the child offset") {
 
 TEST_CASE("parent rotation rotates the child offset") {
     Fixture f;
-    Node* parent = f.spawn("parent");
-    Node* child = f.spawn("child", parent);
+    Actor* parent = f.spawn("parent");
+    Actor* child = f.spawn("child", parent);
 
     parent->transform()->setRotation(0, glm::half_pi<float>(), 0);
     child->transform()->setPosition(0, 0, 1);
     checkWorld(child, 1, 0, 0);
 }
 
-TEST_CASE("reparenting recomputes the world matrix") {
+TEST_CASE("reattaching recomputes the world matrix") {
     Fixture f;
-    Node* a = f.spawn("a");
+    Actor* a = f.spawn("a");
     a->transform()->setPosition(10, 0, 0);
-    Node* b = f.spawn("b");
+    Actor* b = f.spawn("b");
     b->transform()->setPosition(-10, 0, 0);
 
-    Node* child = f.spawn("child", a);
+    Actor* child = f.spawn("child", a);
     child->transform()->setPosition(0, 1, 0);
     checkWorld(child, 10, 1, 0);
 
-    child->setParent(b);
+    child->attachTo(b);
     checkWorld(child, -10, 1, 0);
 
-    child->setParent(nullptr);
+    child->attachTo(nullptr);
     checkWorld(child, 0, 1, 0);
 }
 
 TEST_CASE("three levels compose") {
     Fixture f;
-    Node* a = f.spawn("a");
-    Node* b = f.spawn("b", a);
-    Node* c = f.spawn("c", b);
+    Actor* a = f.spawn("a");
+    Actor* b = f.spawn("b", a);
+    Actor* c = f.spawn("c", b);
 
     a->transform()->setPosition(1, 0, 0);
     b->transform()->setPosition(0, 2, 0);
@@ -104,7 +107,7 @@ TEST_CASE("three levels compose") {
 
 TEST_CASE("in-place edits need an explicit dirty") {
     Fixture f;
-    Node* e = f.spawn("e");
+    Actor* e = f.spawn("e");
     checkWorld(e, 0, 0, 0);
 
     e->transform()->position() = glm::vec3(5, 0, 0);
@@ -116,7 +119,7 @@ TEST_CASE("in-place edits need an explicit dirty") {
 
 TEST_CASE("writing position through a prop dirties the world matrix") {
     Fixture f;
-    Node* e = f.spawn("e");
+    Actor* e = f.spawn("e");
     checkWorld(e, 0, 0, 0);
 
     for (const cinder::Reflect::PropDef& prop : cinder::Reflect::props<Transform>()) {
@@ -127,13 +130,13 @@ TEST_CASE("writing position through a prop dirties the world matrix") {
     checkWorld(e, 5, 0, 0);
 }
 
-TEST_CASE("reparenting into its own subtree is rejected") {
+TEST_CASE("attaching into its own subtree is rejected") {
     Fixture f;
-    Node* parent = f.spawn("parent");
-    Node* child = f.spawn("child", parent);
+    Actor* parent = f.spawn("parent");
+    Actor* child = f.spawn("child", parent);
 
-    CHECK_THROWS_AS(parent->setParent(child), std::runtime_error);
-    CHECK_THROWS_AS(parent->setParent(parent), std::runtime_error);
+    CHECK_THROWS_AS(parent->attachTo(child), std::runtime_error);
+    CHECK_THROWS_AS(parent->attachTo(parent), std::runtime_error);
 }
 
 TEST_CASE("transform props are position, rotation, scale in order") {
@@ -144,20 +147,55 @@ TEST_CASE("transform props are position, rotation, scale in order") {
     CHECK(props[2].name() == "scale");
 }
 
-TEST_CASE("a folder breaks the transform chain") {
+TEST_CASE("a component that is not the root composes with the root") {
     Fixture f;
-    Node* group = f.spawn("group");
+    Actor* group = f.spawn("group");
     group->transform()->setPosition(10, 0, 0);
-    Node* folder = f.scene.create<cinder::Nodes::Folder>(group);
-    Node* child = f.spawn("child", folder);
-    child->transform()->setPosition(0, 1, 0);
+    auto* other = group->addComponent<SceneComponent>("Other");
+    other->transform().setPosition(0, 1, 0);
 
-    checkWorld(child, 0, 1, 0);
+    CHECK(group->rootComponent() != other);
+    checkWorld(other->transform(), 10, 1, 0);
 }
 
-TEST_CASE("rotate turns a node from where it already points") {
+TEST_CASE("attached components compose through each other") {
     Fixture f;
-    Node* box = f.spawn("box");
+    Actor* group = f.spawn("group");
+    group->transform()->setScale(2);
+    auto* arm = group->addComponent<SceneComponent>("Arm");
+    auto* hand = group->addComponent<SceneComponent>("Hand");
+    hand->attachTo(arm);
+    arm->transform().setPosition(1, 0, 0);
+    hand->transform().setPosition(0, 1, 0);
+
+    checkWorld(hand->transform(), 2, 2, 0);
+    hand->attachTo(nullptr);
+    checkWorld(hand->transform(), 0, 2, 0);
+}
+
+TEST_CASE("a component attaches only inside its own actor") {
+    Fixture f;
+    Actor* a = f.spawn("a");
+    Actor* b = f.spawn("b");
+    CHECK_THROWS_AS(b->rootComponent()->attachTo(a->rootComponent()), std::runtime_error);
+    CHECK_THROWS_AS(a->rootComponent()->attachTo(a->rootComponent()), std::runtime_error);
+}
+
+TEST_CASE("an attached actor without a root passes its parent's transform through") {
+    Fixture f;
+    Actor* top = f.spawn("top");
+    top->transform()->setPosition(5, 0, 0);
+    Actor* bare = f.scene.spawn<Actor>(top);
+    Actor* leaf = f.spawn("leaf", bare);
+    leaf->transform()->setPosition(0, 0, 1);
+
+    CHECK(bare->rootComponent() == nullptr);
+    checkWorld(leaf, 5, 0, 1);
+}
+
+TEST_CASE("rotate turns a component from where it already points") {
+    Fixture f;
+    Actor* box = f.spawn("box");
     box->transform()->setRotation(0, 1, 0);
     box->transform()->rotate(0, 2, 0);
 

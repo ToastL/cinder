@@ -1,7 +1,7 @@
 #pragma once
 
 #include "Reflect/Enum.hpp"
-#include "Scene/Spatial.hpp"
+#include "Scene/Component.hpp"
 
 #include <glm/gtc/quaternion.hpp>
 #include <glm/mat4x4.hpp>
@@ -10,9 +10,11 @@
 #include <algorithm>
 #include <cfloat>
 
+namespace cinder::Scene { class Transform; }
+
 namespace cinder::Physics {
 
-class Body final : public cinder::Scene::Spatial {
+class RigidBodyComponent final : public cinder::Scene::Component {
 public:
     static constexpr float MIN_MASS = 0.001f;
 
@@ -29,32 +31,34 @@ public:
     bool asleep() const { return asleep_; }
     float sleepTimer() const { return sleepTimer_; }
 
-    Body& setMotion(Motion motion) { motion_ = motion; return *this; }
-    Body& setMass(float mass) { mass_ = std::max(mass, MIN_MASS); return *this; }
-    Body& setGravityScale(float scale) { gravityScale_ = scale; return *this; }
-    Body& setDamping(float linear, float angular) {
+    RigidBodyComponent& setMotion(Motion motion) { motion_ = motion; return *this; }
+    RigidBodyComponent& setMass(float mass) { mass_ = std::max(mass, MIN_MASS); return *this; }
+    RigidBodyComponent& setGravityScale(float scale) { gravityScale_ = scale; return *this; }
+    RigidBodyComponent& setDamping(float linear, float angular) {
         linearDamping_ = std::max(linear, 0.0f);
         angularDamping_ = std::max(angular, 0.0f);
         return *this;
     }
-    Body& setVelocity(float x, float y, float z) { velocity_ = glm::vec3(x, y, z); return *this; }
-    Body& setAngularVelocity(float x, float y, float z) {
+    RigidBodyComponent& setVelocity(float x, float y, float z) { velocity_ = glm::vec3(x, y, z); return *this; }
+    RigidBodyComponent& setAngularVelocity(float x, float y, float z) {
         angularVelocity_ = glm::vec3(x, y, z);
         return *this;
     }
-    Body& setPlanar(bool planar) { planar_ = planar; return *this; }
+    RigidBodyComponent& setPlanar(bool planar) { planar_ = planar; return *this; }
 
-    Body& wake();
+    RigidBodyComponent& wake();
 
-    Body& applyImpulse(const glm::vec3& impulse);
-    Body& applyImpulse(const glm::vec3& impulse, const glm::vec3& point);
-    Body& applyForce(const glm::vec3& force);
-    Body& applyForce(const glm::vec3& force, const glm::vec3& point);
-    Body& applyTorque(const glm::vec3& torque);
+    RigidBodyComponent& applyImpulse(const glm::vec3& impulse);
+    RigidBodyComponent& applyImpulse(const glm::vec3& impulse, const glm::vec3& point);
+    RigidBodyComponent& applyForce(const glm::vec3& force);
+    RigidBodyComponent& applyForce(const glm::vec3& force, const glm::vec3& point);
+    RigidBodyComponent& applyTorque(const glm::vec3& torque);
 
     glm::vec3 center();
+    cinder::Scene::Transform* transform() const;
+    cinder::Scene::Transform* parentTransform() const;
 
-    CINDER_NODE(Body, cinder::Scene::Spatial) {
+    CINDER_COMPONENT(RigidBodyComponent, cinder::Scene::Component) {
         CINDER_PROP(motion_);
         CINDER_PROP_R(mass_, MIN_MASS, FLT_MAX);
         CINDER_PROP(gravityScale_);
@@ -96,4 +100,4 @@ private:
 
 }
 
-CINDER_ENUM_NAMES(cinder::Physics::Body::Motion, "static", "kinematic", "dynamic")
+CINDER_ENUM_NAMES(cinder::Physics::RigidBodyComponent::Motion, "static", "kinematic", "dynamic")

@@ -1,11 +1,11 @@
 #include "Dev/GizmoLines.hpp"
 
 #include "Gfx/Pass/ViewCamera.hpp"
-#include "Nodes/Camera.hpp"
-#include "Nodes/MeshPart.hpp"
-#include "Nodes/Sprite.hpp"
-#include "Physics/Collider.hpp"
-#include "Scene/Node.hpp"
+#include "Components/CameraComponent.hpp"
+#include "Components/SpriteComponent.hpp"
+#include "Components/StaticMeshComponent.hpp"
+#include "Physics/ColliderComponent.hpp"
+#include "Scene/Actor.hpp"
 #include "Scene/Scene.hpp"
 #include "Scene/Transform.hpp"
 
@@ -22,7 +22,7 @@
 
 namespace cinder::Dev {
 
-using cinder::Nodes::Camera;
+using Camera = cinder::Components::CameraComponent;
 
 namespace {
 
@@ -179,13 +179,15 @@ void shape(GizmoStrokes& out, const GizmoCanvas& canvas, const cinder::Physics::
     }
 }
 
-void colliders(GizmoStrokes& out, const GizmoCanvas& canvas, cinder::Scene::Node& node) {
-    if (node.destroyed() || !node.isEnabled()) return;
+void colliders(GizmoStrokes& out, const GizmoCanvas& canvas, cinder::Scene::Actor& actor) {
+    if (actor.destroyed() || !actor.isEnabled()) return;
 
-    if (auto* collider = dynamic_cast<cinder::Physics::Collider*>(&node)) {
+    for (cinder::Scene::Component* component : actor.components()) {
+        auto* collider = dynamic_cast<cinder::Physics::ColliderComponent*>(component);
+        if (collider == nullptr || collider->destroyed() || !collider->activeInActor()) continue;
         shape(out, canvas, collider->geometry(), COLLIDER);
     }
-    for (cinder::Scene::Node* child : node.children()) colliders(out, canvas, *child);
+    for (cinder::Scene::Actor* child : actor.attachedActors()) colliders(out, canvas, *child);
 }
 
 glm::u8vec4 colorOf(Handle handle) {
@@ -252,18 +254,33 @@ void tip(GizmoStrokes& out, const GizmoCanvas& canvas, const HandleShape& shape,
     out.push_back(GizmoStroke{std::move(corners), color, 0.0f, true});
 }
 
-void collect(cinder::Scene::Node& node, std::vector<Camera*>& cameras) {
-    if (node.destroyed() || !node.isEnabled()) return;
+void collect(cinder::Scene::Actor& actor, std::vector<Camera*>& cameras) {
+    if (actor.destroyed() || !actor.isEnabled()) return;
 
-    if (auto* camera = dynamic_cast<Camera*>(&node)) cameras.push_back(camera);
-    for (cinder::Scene::Node* child : node.children()) collect(*child, cameras);
+    for (cinder::Scene::Component* component : actor.components()) {
+        auto* camera = dynamic_cast<Camera*>(component);
+        if (camera != nullptr && !camera->destroyed() && camera->activeInActor()) cameras.push_back(camera);
+    }
+    for (cinder::Scene::Actor* child : actor.attachedActors()) collect(*child, cameras);
+}
+
+void outlineComponent(GizmoStrokes& out, cinder::Scene::Component& component, const GizmoCanvas& canvas) {
+    if (auto* part = dynamic_cast<cinder::Components::StaticMeshComponent*>(&component)) {
+        box(out, canvas, part->transform().world(), SELECTED);
+    } else if (auto* sprite = dynamic_cast<cinder::Components::SpriteComponent*>(&component)) {
+        outline(out, canvas, sprite->transform().world(), sprite->size());
+    } else if (auto* camera = dynamic_cast<Camera*>(&component)) {
+        frustum(out, canvas, *camera, SELECTED, SELECTED_SIGHT);
+    } else if (auto* collider = dynamic_cast<cinder::Physics::ColliderComponent*>(&component)) {
+        shape(out, canvas, collider->geometry(), SELECTED);
+    }
 }
 
 }
 
 std::vector<Camera*> sceneCameras(cinder::Scene::Scene& scene) {
     std::vector<Camera*> cameras;
-    for (cinder::Scene::Node* root : scene.roots()) collect(*root, cameras);
+    for (cinder::Scene::Actor* root : scene.roots()) collect(*root, cameras);
     return cameras;
 }
 
@@ -272,18 +289,18 @@ void frustumStrokes(GizmoStrokes& out, const std::vector<Camera*>& cameras, cons
 }
 
 void colliderStrokes(GizmoStrokes& out, cinder::Scene::Scene& scene, const GizmoCanvas& canvas) {
-    for (cinder::Scene::Node* root : scene.roots()) colliders(out, canvas, *root);
+    for (cinder::Scene::Actor* root : scene.roots()) colliders(out, canvas, *root);
 }
 
-void selectionStrokes(GizmoStrokes& out, cinder::Scene::Node& node, const GizmoCanvas& canvas) {
-    if (auto* part = dynamic_cast<cinder::Nodes::MeshPart*>(&node)) {
-        box(out, canvas, part->transform()->world(), SELECTED);
-    } else if (auto* sprite = dynamic_cast<cinder::Nodes::Sprite*>(&node)) {
-        outline(out, canvas, sprite->transform()->world(), sprite->size());
-    } else if (auto* camera = dynamic_cast<Camera*>(&node)) {
-        frustum(out, canvas, *camera, SELECTED, SELECTED_SIGHT);
-    } else if (auto* collider = dynamic_cast<cinder::Physics::Collider*>(&node)) {
-        shape(out, canvas, collider->geometry(), SELECTED);
+void selectionStrokes(GizmoStrokes& out, cinder::Scene::Object& object, const GizmoCanvas& canvas) {
+    if (auto* component = dynamic_cast<cinder::Scene::Component*>(&object)) {
+        outlineComponent(out, *component, canvas);
+        return;
+    }
+    if (auto* actor = dynamic_cast<cinder::Scene::Actor*>(&object)) {
+        for (cinder::Scene::Component* component : actor->components()) {
+            if (!component->destroyed()) outlineComponent(out, *component, canvas);
+        }
     }
 }
 

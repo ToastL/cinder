@@ -1,9 +1,9 @@
 #include "Dev/Picking.hpp"
 
-#include "Nodes/Camera.hpp"
-#include "Nodes/MeshPart.hpp"
-#include "Nodes/Sprite.hpp"
-#include "Scene/Node.hpp"
+#include "Components/CameraComponent.hpp"
+#include "Components/SpriteComponent.hpp"
+#include "Components/StaticMeshComponent.hpp"
+#include "Scene/Actor.hpp"
 #include "Scene/Scene.hpp"
 #include "Scene/Transform.hpp"
 
@@ -19,10 +19,11 @@
 namespace cinder::Dev {
 namespace {
 
-using cinder::Nodes::Camera;
-using cinder::Nodes::MeshPart;
-using cinder::Nodes::Sprite;
-using cinder::Scene::Node;
+using cinder::Components::CameraComponent;
+using cinder::Components::SpriteComponent;
+using cinder::Components::StaticMeshComponent;
+using cinder::Scene::Actor;
+using cinder::Scene::Component;
 
 constexpr float HALF_EXTENT = 0.5f;
 constexpr float MARKER_RADIUS = 10.0f;
@@ -30,7 +31,7 @@ constexpr float DEGENERATE = 1e-12f;
 constexpr float PARALLEL = 1e-8f;
 
 struct Hits {
-    Node* nearest = nullptr;
+    Component* nearest = nullptr;
     float distance = FLT_MAX;
 };
 
@@ -44,24 +45,28 @@ std::optional<float> hitMarker(const PickView& view, const Ray& ray, const glm::
     return glm::dot(position - ray.origin, ray.direction);
 }
 
-void visit(Node& node, const PickView& view, const Ray& ray, Hits& hits) {
-    if (node.destroyed() || !node.isEnabled()) return;
+void visit(Actor& actor, const PickView& view, const Ray& ray, Hits& hits) {
+    if (actor.destroyed() || !actor.isEnabled()) return;
 
-    std::optional<float> distance;
-    if (auto* part = dynamic_cast<MeshPart*>(&node)) {
-        distance = hitCube(ray, part->transform()->world());
-    } else if (auto* sprite = dynamic_cast<Sprite*>(&node)) {
-        distance = hitSprite(ray, sprite->transform()->world(), sprite->size());
-    } else if (auto* camera = dynamic_cast<Camera*>(&node)) {
-        distance = hitMarker(view, ray, camera->transform()->worldPosition());
+    for (Component* component : actor.components()) {
+        if (component->destroyed() || !component->activeInActor()) continue;
+
+        std::optional<float> distance;
+        if (auto* part = dynamic_cast<StaticMeshComponent*>(component)) {
+            distance = hitCube(ray, part->transform().world());
+        } else if (auto* sprite = dynamic_cast<SpriteComponent*>(component)) {
+            distance = hitSprite(ray, sprite->transform().world(), sprite->size());
+        } else if (auto* camera = dynamic_cast<CameraComponent*>(component)) {
+            distance = hitMarker(view, ray, camera->transform().worldPosition());
+        }
+
+        if (distance && *distance <= hits.distance) {
+            hits.distance = *distance;
+            hits.nearest = component;
+        }
     }
 
-    if (distance && *distance <= hits.distance) {
-        hits.distance = *distance;
-        hits.nearest = &node;
-    }
-
-    for (Node* child : node.children()) visit(*child, view, ray, hits);
+    for (Actor* child : actor.attachedActors()) visit(*child, view, ray, hits);
 }
 
 }
@@ -132,10 +137,10 @@ std::optional<float> hitSprite(const Ray& ray, const glm::mat4& world, glm::vec2
     return distance;
 }
 
-Node* pick(cinder::Scene::Scene& scene, const PickView& view) {
+Component* pick(cinder::Scene::Scene& scene, const PickView& view) {
     const Ray ray = rayThrough(view.viewProjection, view.point, view.size);
     Hits hits;
-    for (Node* root : scene.roots()) visit(*root, view, ray, hits);
+    for (Actor* root : scene.roots()) visit(*root, view, ray, hits);
     return hits.nearest;
 }
 

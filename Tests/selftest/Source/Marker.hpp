@@ -15,12 +15,12 @@ inline int& selftestTicks() {
     return ticks;
 }
 
-class Marker final : public cinder::Scene::Node {
+class Marker final : public cinder::Scene::Component {
 public:
-    CINDER_NODE(Marker, cinder::Scene::Node) {}
+    CINDER_COMPONENT(Marker, cinder::Scene::Component) {}
 
-    void onStart() override {
-        cinder::Scene::Node* marked = parent();
+    void beginPlay() override {
+        cinder::Scene::Actor* marked = owner();
         if (marked == nullptr) return;
         const cinder::Scene::PropValue* mark = marked->attribute("mark");
         if (mark == nullptr) return;
@@ -29,9 +29,9 @@ public:
     }
 };
 
-class Ticker final : public cinder::Scene::Node {
+class Ticker final : public cinder::Scene::Component {
 public:
-    CINDER_NODE(Ticker, cinder::Scene::Node) {}
+    CINDER_COMPONENT(Ticker, cinder::Scene::Component) {}
 
-    void onUpdate(float dt) override { selftestTicks()++; }
+    void tick(float dt) override { selftestTicks()++; }
 };

@@ -7,7 +7,7 @@
 #include "Dev/Staging.hpp"
 #include "Dev/GameBuild.hpp"
 #include "Platform/Files.hpp"
-#include "Scene/NodeTypes.hpp"
+#include "Scene/ClassRegistry.hpp"
 
 #include <chrono>
 #include <filesystem>
@@ -41,7 +41,7 @@ struct Project {
         player = base / "player";
         write(root / "Game.cinder", descriptor);
         write(root / "Config" / "Game.ini", "[Game]\ntitle=Game\n");
-        write(root / "Content" / "Scenes" / "main.scene", "version 4\n");
+        write(root / "Content" / "Scenes" / "main.scene", "version 5\n");
         write(root / "Source" / "notes.txt", "not code\n");
         write(root / "Saved" / "junk.txt", "never shipped\n");
         write(engine / "Content" / "Fonts" / "Roboto.ttf", "font");
@@ -194,9 +194,9 @@ TEST_CASE("hot reload: a Shipping package compiles the project's C++, strips it 
 
     const Project project("module", R"({"fileVersion": 1, "engineAssociation": ""})");
     Project::write(project.root / "Source" / "Mover.cpp", R"(#include "Game/Game.hpp"
-class Mover final : public cinder::Scene::Spatial {
+class Mover final : public cinder::Scene::SceneComponent {
 public:
-    CINDER_NODE(Mover, cinder::Scene::Spatial) {}
+    CINDER_COMPONENT(Mover, cinder::Scene::SceneComponent) {}
 };
 CINDER_REGISTER(Mover);
 )");
@@ -214,7 +214,7 @@ CINDER_REGISTER(Mover);
     CHECK(std::filesystem::exists(project.root / "Saved" / "Symbols" / HOST / "player"));
     CHECK(std::filesystem::file_size(request.out / "player") < std::filesystem::file_size(request.player));
 
-    cinder::Scene::NodeTypes types;
+    cinder::Scene::ClassRegistry types;
     std::unique_ptr<cinder::Core::GameModule> module = cinder::Core::GameModule::open(shipped, types, error);
     REQUIRE_MESSAGE(module != nullptr, error);
     module->enlist();

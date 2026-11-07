@@ -8,11 +8,12 @@
 #include "Dev/Selection.hpp"
 #include "Dev/Panels/Dialog.hpp"
 #include "Dev/Panels/EditorStyle.hpp"
-#include "Dev/Panels/Explorer.hpp"
-#include "Dev/Panels/Properties.hpp"
-#include "Nodes/Builtins.hpp"
-#include "Scene/Node.hpp"
-#include "Scene/NodeTypes.hpp"
+#include "Dev/Panels/Details.hpp"
+#include "Dev/Panels/Outliner.hpp"
+#include "Scene/Actor.hpp"
+#include "Scene/ClassRegistry.hpp"
+#include "Scene/SceneComponent.hpp"
+#include "UI/Widgets/Button.hpp"
 #include "Scene/PropValue.hpp"
 #include "Scene/Scene.hpp"
 #include "Scene/Transform.hpp"
@@ -28,10 +29,9 @@
 using namespace cinder::UI;
 using cinder::Dev::History;
 using cinder::Dev::Selection;
-using cinder::Dev::Panels::Explorer;
-using cinder::Dev::Panels::Properties;
-using cinder::Scene::Node;
-using cinder::Scene::NodeTypes;
+using cinder::Dev::Panels::Details;
+using cinder::Dev::Panels::Outliner;
+using cinder::Scene::Actor;
 using cinder::Scene::PropValue;
 using cinder::Scene::Scene;
 using uitest::Harness;
@@ -41,30 +41,30 @@ namespace {
 
 struct World : testing::EditorFixture {
     World() {
-        Node* box = scene.create("MeshPart", nullptr);
+        Actor* box = scene.spawn("StaticMeshActor");
         box->setName("Box");
         box->setAttribute("phase", PropValue::number(2.0));
-        Node* group = scene.create("Group", nullptr);
+        Actor* group = scene.spawn("Actor");
         group->setName("Props");
-        scene.create("Sprite", group)->setName("Flag");
+        scene.spawn("SpriteActor", group)->setName("Flag");
         history.reset();
     }
 
-    Node& node(const std::string& name) { return *scene.find(name); }
+    Actor& node(const std::string& name) { return *scene.find(name); }
 };
 
 }
 
-TEST_CASE("the Explorer lists the tree, selects a row and deletes the selection with a key") {
+TEST_CASE("the Outliner lists the actors, selects a row and deletes the selection with a key") {
     World world;
     Harness ui(nullptr);
-    Explorer explorer(world.selection, world.history, world.scene, ui.app);
+    Outliner outliner(world.selection, world.history, world.scene, ui.app);
     ui.app.setTheme(cinder::Dev::Panels::editorTheme());
-    ui.app.setRoot(explorer.widget());
+    ui.app.setRoot(outliner.widget());
     ui.size = {320.0f, 400.0f};
     ui.frame();
 
-    const std::shared_ptr<TreeView> tree = explorer.tree();
+    const std::shared_ptr<TreeView> tree = outliner.tree();
     REQUIRE(tree->visibleCount() == 2);
 
     const auto box = static_cast<ItemId>(world.node("Box").id());
@@ -83,16 +83,16 @@ TEST_CASE("the Explorer lists the tree, selects a row and deletes the selection 
     CHECK(world.history.canUndo());
 }
 
-TEST_CASE("the Explorer's filter flattens the tree to what matches") {
+TEST_CASE("the Outliner's filter flattens the tree to what matches") {
     World world;
     Harness ui(nullptr);
-    Explorer explorer(world.selection, world.history, world.scene, ui.app);
+    Outliner outliner(world.selection, world.history, world.scene, ui.app);
     ui.app.setTheme(cinder::Dev::Panels::editorTheme());
-    ui.app.setRoot(explorer.widget());
+    ui.app.setRoot(outliner.widget());
     ui.size = {320.0f, 400.0f};
     ui.frame();
 
-    const std::shared_ptr<TreeView> tree = explorer.tree();
+    const std::shared_ptr<TreeView> tree = outliner.tree();
     CHECK(tree->visibleCount() == 2);
     CHECK(tree->hasChildren(static_cast<ItemId>(world.node("Props").id())));
 
@@ -104,16 +104,16 @@ TEST_CASE("the Explorer's filter flattens the tree to what matches") {
     CHECK_FALSE(tree->hasChildren(static_cast<ItemId>(world.node("Props").id())));
 }
 
-TEST_CASE("dragging a row in the Explorer reparents the node, and refuses a cycle") {
+TEST_CASE("dragging a row in the Outliner attaches the actor, and refuses a cycle") {
     World world;
     Harness ui(nullptr);
-    Explorer explorer(world.selection, world.history, world.scene, ui.app);
+    Outliner outliner(world.selection, world.history, world.scene, ui.app);
     ui.app.setTheme(cinder::Dev::Panels::editorTheme());
-    ui.app.setRoot(explorer.widget());
+    ui.app.setRoot(outliner.widget());
     ui.size = {320.0f, 400.0f};
     ui.frame();
 
-    const std::shared_ptr<TreeView> tree = explorer.tree();
+    const std::shared_ptr<TreeView> tree = outliner.tree();
     const Rect box = ui.rectOf(tree->rowFor(static_cast<ItemId>(world.node("Box").id())));
     const Rect props = ui.rectOf(tree->rowFor(static_cast<ItemId>(world.node("Props").id())));
     ui.move(box.center().x, box.center().y);
@@ -123,7 +123,7 @@ TEST_CASE("dragging a row in the Explorer reparents the node, and refuses a cycl
     ui.move(props.center().x, props.center().y);
     ui.release();
     ui.frame();
-    CHECK(world.node("Box").parent() == &world.node("Props"));
+    CHECK(world.node("Box").attachParent() == &world.node("Props"));
     CHECK(tree->isExpanded(static_cast<ItemId>(world.node("Props").id())));
 
     const Rect parent = ui.rectOf(tree->rowFor(static_cast<ItemId>(world.node("Props").id())));
@@ -137,20 +137,20 @@ TEST_CASE("dragging a row in the Explorer reparents the node, and refuses a cycl
     CHECK_FALSE(tree->dropZoneFor(static_cast<ItemId>(world.node("Box").id())));
     ui.release();
     ui.frame();
-    CHECK(world.node("Props").parent() == nullptr);
+    CHECK(world.node("Props").attachParent() == nullptr);
 }
 
-TEST_CASE("Properties edits a reflected prop through its definition and marks the scene dirty") {
+TEST_CASE("Details edits the root component's transform through its definition and marks the scene dirty") {
     World world;
     Harness ui(nullptr);
-    Properties properties(world.selection, world.history, world.scene, ui.app);
+    Details details(world.selection, world.history, world.scene, ui.app);
     ui.app.setTheme(cinder::Dev::Panels::editorTheme());
-    ui.app.setRoot(properties.widget());
+    ui.app.setRoot(details.widget());
     ui.size = {320.0f, 500.0f};
     ui.frame();
 
     world.selection.select(world.node("Box").id());
-    properties.update();
+    details.update();
     ui.frame();
 
     std::shared_ptr<SpinBox> positionX;
@@ -167,7 +167,7 @@ TEST_CASE("Properties edits a reflected prop through its definition and marks th
             }
         }
     };
-    walk(properties.widget());
+    walk(details.widget());
     REQUIRE(positionX);
 
     const Rect field = ui.rectOf(positionX);
@@ -182,17 +182,17 @@ TEST_CASE("Properties edits a reflected prop through its definition and marks th
     CHECK(world.history.dirty());
 }
 
-TEST_CASE("Properties lists attributes, and rebuilds when one is added or removed") {
+TEST_CASE("Details lists attributes, and rebuilds when one is added or removed") {
     World world;
     Harness ui(nullptr);
-    Properties properties(world.selection, world.history, world.scene, ui.app);
+    Details details(world.selection, world.history, world.scene, ui.app);
     ui.app.setTheme(cinder::Dev::Panels::editorTheme());
-    ui.app.setRoot(properties.widget());
+    ui.app.setRoot(details.widget());
     ui.size = {320.0f, 500.0f};
     ui.frame();
 
     world.selection.select(world.node("Box").id());
-    properties.update();
+    details.update();
     ui.frame();
 
     const auto labelled = [&](const std::string& text) {
@@ -205,40 +205,40 @@ TEST_CASE("Properties lists attributes, and rebuilds when one is added or remove
             }
             for (int i = 0; i < widget->childCount(); ++i) walk(widget->childAt(i));
         };
-        walk(properties.widget().get());
+        walk(details.widget().get());
         return found;
     };
     CHECK(labelled("phase"));
     CHECK_FALSE(labelled("speed"));
 
     world.node("Box").setAttribute("speed", PropValue::number(4.0));
-    properties.update();
+    details.update();
     ui.frame();
     CHECK(labelled("speed"));
 
     world.node("Box").removeAttribute("phase");
-    properties.update();
+    details.update();
     ui.frame();
     CHECK_FALSE(labelled("phase"));
 
     world.selection.clear();
-    properties.update();
+    details.update();
     ui.frame();
     CHECK(labelled("Nothing selected"));
 }
 
-TEST_CASE("Escape in a Properties text field cancels instead of writing") {
+TEST_CASE("Escape in a Details text field cancels instead of writing") {
     World world;
     world.node("Box").setAttribute("tag", PropValue::text("hero"));
     world.history.reset();
     Harness ui(nullptr);
-    Properties properties(world.selection, world.history, world.scene, ui.app);
+    Details details(world.selection, world.history, world.scene, ui.app);
     ui.app.setTheme(cinder::Dev::Panels::editorTheme());
-    ui.app.setRoot(properties.widget());
+    ui.app.setRoot(details.widget());
     ui.size = {320.0f, 500.0f};
     ui.frame();
     world.selection.select(world.node("Box").id());
-    properties.update();
+    details.update();
     ui.frame();
 
     TextField* field = nullptr;
@@ -250,20 +250,113 @@ TEST_CASE("Escape in a Properties text field cancels instead of writing") {
         }
         for (int i = 0; i < widget->childCount(); ++i) walk(widget->childAt(i));
     };
-    walk(properties.widget().get());
+    walk(details.widget().get());
     REQUIRE(field != nullptr);
 
     const Rect rect = ui.app.grid().geometryOf(field).value_or(Geometry{}).rect();
     ui.click(rect.center().x, rect.center().y);
     ui.type(U"villain");
     ui.key(keys::ESCAPE);
-    properties.update();
+    details.update();
     ui.frame();
     world.history.settle(ui.app.isInteracting());
 
     REQUIRE(world.node("Box").attribute("tag") != nullptr);
     CHECK(world.node("Box").attribute("tag")->as<std::string>() == "hero");
     CHECK_FALSE(world.history.dirty());
+}
+
+TEST_CASE("the Outliner highlights the owner when a component is selected") {
+    World world;
+    Harness ui(nullptr);
+    Outliner outliner(world.selection, world.history, world.scene, ui.app);
+    ui.app.setTheme(cinder::Dev::Panels::editorTheme());
+    ui.app.setRoot(outliner.widget());
+    ui.size = {320.0f, 400.0f};
+    ui.frame();
+
+    Actor& box = world.node("Box");
+    world.selection.select(box.rootComponent()->id());
+    ui.frame();
+    CHECK(outliner.selectedActor() == box.id());
+    CHECK(outliner.tree()->isSelected(static_cast<ItemId>(box.id())));
+}
+
+namespace {
+
+bool hasLabel(Widget* widget, const std::string& text) {
+    if (widget == nullptr) return false;
+    if (auto* label = dynamic_cast<Label*>(widget); label != nullptr && label->text() == text) return true;
+    for (int i = 0; i < widget->childCount(); ++i) {
+        if (hasLabel(widget->childAt(i), text)) return true;
+    }
+    return false;
+}
+
+Button* buttonNamed(Widget* widget, const std::string& text) {
+    if (widget == nullptr) return nullptr;
+    if (auto* button = dynamic_cast<Button*>(widget); button != nullptr && hasLabel(button, text)) return button;
+    for (int i = 0; i < widget->childCount(); ++i) {
+        if (Button* found = buttonNamed(widget->childAt(i), text)) return found;
+    }
+    return nullptr;
+}
+
+}
+
+TEST_CASE("Details lists an actor's components and a click selects one") {
+    World world;
+    Actor& box = world.node("Box");
+    auto* extra = box.addComponent<cinder::Scene::SceneComponent>("Pivot");
+    Harness ui(nullptr);
+    Details details(world.selection, world.history, world.scene, ui.app);
+    ui.app.setTheme(cinder::Dev::Panels::editorTheme());
+    ui.app.setRoot(details.widget());
+    ui.size = {320.0f, 700.0f};
+    ui.frame();
+
+    world.selection.select(box.id());
+    details.update();
+    ui.frame();
+    CHECK(hasLabel(details.widget().get(), "Components"));
+    CHECK(hasLabel(details.widget().get(), "StaticMeshComponent"));
+    Button* pivot = buttonNamed(details.widget().get(), "Pivot  (SceneComponent)");
+    REQUIRE(pivot != nullptr);
+    CHECK(buttonNamed(details.widget().get(), "x") != nullptr);
+
+    const Rect rect = ui.app.grid().geometryOf(pivot).value_or(Geometry{}).rect();
+    ui.click(rect.center().x, rect.center().y);
+    CHECK(world.selection.id() == extra->id());
+    details.update();
+    ui.frame();
+    CHECK(hasLabel(details.widget().get(), "Pivot (SceneComponent)"));
+}
+
+TEST_CASE("Details refuses to remove a default component and removes an added one as one undo step") {
+    World world;
+    Actor& box = world.node("Box");
+    const int extra = box.addComponent<cinder::Scene::SceneComponent>("Pivot")->id();
+    world.history.reset();
+    Harness ui(nullptr);
+    Details details(world.selection, world.history, world.scene, ui.app);
+    ui.app.setTheme(cinder::Dev::Panels::editorTheme());
+    ui.app.setRoot(details.widget());
+    ui.size = {320.0f, 700.0f};
+    world.selection.select(box.id());
+    details.update();
+    ui.frame();
+
+    Button* remove = buttonNamed(details.widget().get(), "x");
+    REQUIRE(remove != nullptr);
+    const Rect rect = ui.app.grid().geometryOf(remove).value_or(Geometry{}).rect();
+    ui.click(rect.center().x, rect.center().y);
+    CHECK(world.scene.byId(extra) == nullptr);
+    CHECK(box.components().size() == 1);
+    world.history.settle(false);
+    REQUIRE(world.history.canUndo());
+
+    world.history.undo(world.selection);
+    CHECK(world.scene.byId(extra) != nullptr);
 }
 
 TEST_CASE("a modal dialog keeps every key from the global shortcuts") {

@@ -1,19 +1,19 @@
 #pragma once
 
 #include "Core/Module.hpp"
-#include "Nodes/Camera.hpp"
-#include "Nodes/Folder.hpp"
-#include "Nodes/Group.hpp"
-#include "Nodes/MeshPart.hpp"
-#include "Nodes/Sprite.hpp"
-#include "Physics/Body.hpp"
-#include "Physics/Collider.hpp"
+#include "Components/Actors.hpp"
+#include "Components/CameraComponent.hpp"
+#include "Components/SpriteComponent.hpp"
+#include "Components/StaticMeshComponent.hpp"
+#include "Physics/ColliderComponent.hpp"
+#include "Physics/RigidBodyComponent.hpp"
 #include "Physics/World.hpp"
 #include "Platform/Log.hpp"
+#include "Scene/Actor.hpp"
+#include "Scene/Component.hpp"
 #include "Scene/DrawList.hpp"
-#include "Scene/Node.hpp"
 #include "Scene/Scene.hpp"
-#include "Scene/Spatial.hpp"
+#include "Scene/SceneComponent.hpp"
 #include "Scene/Transform.hpp"
 
 #include <glm/glm.hpp>

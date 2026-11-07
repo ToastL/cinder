@@ -1,7 +1,7 @@
 #pragma once
 
 #include "Physics/Geometry.hpp"
-#include "Scene/Spatial.hpp"
+#include "Scene/SceneComponent.hpp"
 
 #include <glm/vec3.hpp>
 
@@ -9,21 +9,21 @@
 
 namespace cinder::Physics {
 
-class Collider final : public cinder::Scene::Spatial {
+class ColliderComponent final : public cinder::Scene::SceneComponent {
 public:
     Shape shape() const { return shape_; }
     const glm::vec3& size() const { return size_; }
     float friction() const { return friction_; }
     float restitution() const { return restitution_; }
 
-    Collider& setShape(Shape shape) { shape_ = shape; return *this; }
-    Collider& setSize(float x, float y, float z) { size_ = glm::vec3(x, y, z); return *this; }
-    Collider& setFriction(float friction) { friction_ = friction; return *this; }
-    Collider& setRestitution(float restitution) { restitution_ = restitution; return *this; }
+    ColliderComponent& setShape(Shape shape) { shape_ = shape; return *this; }
+    ColliderComponent& setSize(float x, float y, float z) { size_ = glm::vec3(x, y, z); return *this; }
+    ColliderComponent& setFriction(float friction) { friction_ = friction; return *this; }
+    ColliderComponent& setRestitution(float restitution) { restitution_ = restitution; return *this; }
 
     Geometry geometry();
 
-    CINDER_NODE(Collider, cinder::Scene::Spatial) {
+    CINDER_COMPONENT(ColliderComponent, cinder::Scene::SceneComponent) {
         CINDER_PROP(shape_);
         CINDER_PROP_R(size_, 0.0f, FLT_MAX);
         CINDER_PROP_R(friction_, 0.0f, FLT_MAX);

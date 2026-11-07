@@ -1,5 +1,4 @@
-#include "Nodes/Camera.hpp"
-#include "Nodes/MeshPart.hpp"
+#include "Components/Actors.hpp"
 #include "Core/Engine.hpp"
 #include "Core/GameLoop.hpp"
 #include "Dev/EditorShell.hpp"
@@ -9,10 +8,10 @@
 #include "Dev/Packager.hpp"
 #include "Dev/PlaySession.hpp"
 #include "Dev/Selection.hpp"
-#include "Dev/Panels/Explorer.hpp"
+#include "Dev/Panels/Outliner.hpp"
 #include "Dev/Panels/SceneView.hpp"
-#include "Physics/Body.hpp"
-#include "Physics/Collider.hpp"
+#include "Physics/ColliderComponent.hpp"
+#include "Physics/RigidBodyComponent.hpp"
 #include "Platform/Assets.hpp"
 #include "Platform/Files.hpp"
 #include "Platform/Glfw.hpp"
@@ -110,13 +109,13 @@ void exercise() {
     cinder::Core::ProjectConfig config("Cinder graphics smoke", 1100, 700, "", 60);
     cinder::Core::Engine engine(config);
     auto& scene = engine.scene();
-    auto* camera = scene.create<cinder::Nodes::Camera>(nullptr);
+    auto* camera = scene.spawn<cinder::Components::CameraActor>();
     camera->transform()->setPosition(0.0f, 3.0f, 10.0f);
-    auto* body = scene.create<cinder::Physics::Body>(nullptr);
+    auto* body = scene.spawn<cinder::Components::StaticMeshActor>();
     body->setName("Ball");
     body->transform()->setPosition(0.0f, 3.0f, 0.0f);
-    scene.create<cinder::Physics::Collider>(body);
-    scene.create<cinder::Nodes::MeshPart>(body);
+    body->addComponent<cinder::Physics::RigidBodyComponent>();
+    body->addComponent<cinder::Physics::ColliderComponent>();
     const int id = body->id();
 
     cinder::Dev::Packager packager(cinder::Platform::projectRoot(), {});
@@ -127,7 +126,7 @@ void exercise() {
     History& history = shell.history();
     cinder::UI::Application& app = shell.app();
     Panels::SceneView& view = shell.view();
-    Panels::Explorer& explorer = shell.explorer();
+    Panels::Outliner& outliner = shell.outliner();
     cinder::UI::TabManager& tabs = shell.tabs();
 
     cinder::Platform::Input& input = engine.input();
@@ -144,13 +143,13 @@ void exercise() {
     require(SceneCodec::save(scene) == initial, "Edit mode changed the scene");
     require(tabs.stackCount() == 4, "The editor did not dock its four panels");
 
-    const std::shared_ptr<cinder::UI::TableRow> row = explorer.tree()->rowFor(static_cast<cinder::UI::ItemId>(id));
-    require(row != nullptr, "The Explorer has no row for the body");
+    const std::shared_ptr<cinder::UI::TableRow> row = outliner.tree()->rowFor(static_cast<cinder::UI::ItemId>(id));
+    require(row != nullptr, "The Outliner has no row for the body");
     driver.move(centerOf(app, row));
     driver.press();
     driver.release();
     frames(2);
-    require(selection.id() == id, "Clicking the Explorer row did not select the node");
+    require(selection.id() == id, "Clicking the Outliner row did not select the actor");
 
     const GizmoView gizmo = gizmoView(engine.renderer().camera(), engine.renderer().camera().size());
     const auto placed = gizmoFor(*body->transform(), Tool::Move, Space::World, gizmo);
@@ -167,7 +166,7 @@ void exercise() {
     driver.release();
     frames(3);
     const std::string edited = SceneCodec::save(scene);
-    require(edited != initial, "Dragging the gizmo did not move the node");
+    require(edited != initial, "Dragging the gizmo did not move the actor");
     require(history.dirty(), "The gizmo drag was not recorded");
     require(history.canUndo(), "The gizmo drag left nothing to undo");
 
@@ -201,11 +200,11 @@ void exercise() {
         const std::string paused = SceneCodec::save(scene);
         frames(2);
         require(SceneCodec::save(scene) == paused, "Paused scene changed");
-        const float before = scene.byId(id)->transform()->position().y;
+        const float before = scene.actor(id)->transform()->position().y;
         session.step();
         frames(1);
         require(session.state() == PlaySession::State::Paused, "Step left paused mode");
-        require(scene.byId(id)->transform()->position().y < before, "Step did not simulate gravity");
+        require(scene.actor(id)->transform()->position().y < before, "Step did not simulate gravity");
         session.togglePause();
         frames(1);
         require(session.state() == PlaySession::State::Playing, "Resume did not start simulation");

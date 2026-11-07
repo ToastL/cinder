@@ -1,7 +1,7 @@
 #include "Dev/Manipulator.hpp"
 
 #include "Reflect/Reflect.hpp"
-#include "Scene/Node.hpp"
+#include "Scene/SceneComponent.hpp"
 #include "Scene/Scene.hpp"
 #include "Scene/Transform.hpp"
 
@@ -18,7 +18,6 @@
 namespace cinder::Dev {
 namespace {
 
-using cinder::Scene::Node;
 using cinder::Scene::Transform;
 using namespace gizmo;
 
@@ -56,16 +55,17 @@ void writeProp(Transform& transform, std::string_view name, const glm::vec3& val
 
 
 Transform* resolve(cinder::Scene::Scene& scene, int id) {
-    Node* node = scene.byId(id);
-    return node != nullptr && !node->destroyed() ? node->transform() : nullptr;
+    cinder::Scene::Component* component = scene.component(id);
+    cinder::Scene::SceneComponent* placed = component != nullptr && !component->destroyed() ? component->asSceneComponent() : nullptr;
+    return placed != nullptr ? &placed->transform() : nullptr;
 }
 
 
 }
 
-bool Manipulation::begin(Node& node, const Gizmo& gizmo, Handle handle, const GizmoView& view, glm::vec2 point) {
+bool Manipulation::begin(cinder::Scene::SceneComponent& target, const Gizmo& gizmo, Handle handle, const GizmoView& view, glm::vec2 point) {
     end();
-    Transform* transform = node.transform();
+    Transform* transform = &target.transform();
     if (transform == nullptr || !supports(gizmo.tool, handle)) return false;
 
     const glm::mat4 parent = parentWorld(*transform);
@@ -111,13 +111,13 @@ bool Manipulation::begin(Node& node, const Gizmo& gizmo, Handle handle, const Gi
         ready = true;
     }
 
-    if (ready) node_ = node.id();
+    if (ready) target_ = target.id();
     else end();
     return ready;
 }
 
 bool Manipulation::drag(cinder::Scene::Scene& scene, const GizmoView& view, glm::vec2 point, bool snap) {
-    Transform* transform = node_ ? resolve(scene, *node_) : nullptr;
+    Transform* transform = target_ ? resolve(scene, *target_) : nullptr;
     if (transform == nullptr) {
         end();
         return false;
@@ -193,7 +193,7 @@ bool Manipulation::drag(cinder::Scene::Scene& scene, const GizmoView& view, glm:
 }
 
 bool Manipulation::cancel(cinder::Scene::Scene& scene) {
-    Transform* transform = node_ ? resolve(scene, *node_) : nullptr;
+    Transform* transform = target_ ? resolve(scene, *target_) : nullptr;
     end();
     if (transform == nullptr) return false;
 
@@ -204,7 +204,7 @@ bool Manipulation::cancel(cinder::Scene::Scene& scene) {
 }
 
 void Manipulation::end() {
-    node_.reset();
+    target_.reset();
     handle_ = Handle::None;
 }
 

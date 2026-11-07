@@ -1,14 +1,14 @@
 #pragma once
 
-#include "Scene/Spatial.hpp"
+#include "Scene/SceneComponent.hpp"
 #include "Scene/View.hpp"
 
 #include <glm/vec2.hpp>
 #include <glm/vec4.hpp>
 
-namespace cinder::Nodes {
+namespace cinder::Components {
 
-class Camera final : public cinder::Scene::Spatial {
+class CameraComponent final : public cinder::Scene::SceneComponent {
 public:
     enum class Projection { Perspective, Orthographic };
 
@@ -20,15 +20,15 @@ public:
     const glm::vec4& clearColor() const { return clearColor_; }
     const glm::vec2& virtualSize() const { return virtualSize_; }
 
-    Camera& setProjection(Projection projection) { projection_ = projection; return *this; }
-    Camera& setFov(float degrees) { fov_ = degrees; return *this; }
-    Camera& setZoom(float zoom) { zoom_ = zoom; return *this; }
-    Camera& setClip(float nearClip, float farClip) { near_ = nearClip; far_ = farClip; return *this; }
-    Camera& setClearColor(float r, float g, float b, float a) {
+    CameraComponent& setProjection(Projection projection) { projection_ = projection; return *this; }
+    CameraComponent& setFov(float degrees) { fov_ = degrees; return *this; }
+    CameraComponent& setZoom(float zoom) { zoom_ = zoom; return *this; }
+    CameraComponent& setClip(float nearClip, float farClip) { near_ = nearClip; far_ = farClip; return *this; }
+    CameraComponent& setClearColor(float r, float g, float b, float a) {
         clearColor_ = glm::vec4(r, g, b, a);
         return *this;
     }
-    Camera& setVirtualSize(float width, float height) {
+    CameraComponent& setVirtualSize(float width, float height) {
         virtualSize_ = glm::vec2(width, height);
         return *this;
     }
@@ -37,7 +37,7 @@ public:
 
     void onRender(float alpha, cinder::Scene::DrawList& draws) override;
 
-    CINDER_NODE(Camera, cinder::Scene::Spatial) {
+    CINDER_COMPONENT(CameraComponent, cinder::Scene::SceneComponent) {
         CINDER_PROP(projection_);
         CINDER_PROP_S(fov_, 1.0f, 179.0f, 1.0f);
         CINDER_PROP(near_);
@@ -59,4 +59,4 @@ private:
 
 }
 
-CINDER_ENUM_NAMES(cinder::Nodes::Camera::Projection, "perspective", "orthographic")
+CINDER_ENUM_NAMES(cinder::Components::CameraComponent::Projection, "perspective", "orthographic")

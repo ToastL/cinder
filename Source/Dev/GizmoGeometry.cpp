@@ -1,7 +1,7 @@
 #include "Dev/GizmoGeometry.hpp"
 
 #include "Gfx/Pass/ViewCamera.hpp"
-#include "Scene/Node.hpp"
+#include "Scene/SceneComponent.hpp"
 #include "Scene/Transform.hpp"
 
 #include <glm/geometric.hpp>
@@ -20,7 +20,6 @@
 namespace cinder::Dev {
 namespace {
 
-using cinder::Scene::Node;
 using cinder::Scene::Transform;
 using namespace gizmo;
 
@@ -196,9 +195,8 @@ glm::vec3 ringPoint(const glm::vec3& center, const glm::vec3& normal, float radi
 }
 
 glm::mat4 parentWorld(Transform& transform) {
-    Node* node = transform.node();
-    Node* parent = node != nullptr ? node->parent() : nullptr;
-    Transform* above = parent != nullptr ? parent->transform() : nullptr;
+    cinder::Scene::SceneComponent* owner = transform.component();
+    Transform* above = owner != nullptr ? owner->parentTransform() : nullptr;
     return above != nullptr ? above->world() : glm::mat4(1.0f);
 }
 

@@ -1,11 +1,12 @@
-#include "Dev/Panels/Explorer.hpp"
+#include "Dev/Panels/Outliner.hpp"
 
 #include "Dev/History.hpp"
 #include "Dev/Selection.hpp"
 #include "Dev/Panels/EditorStyle.hpp"
 #include "Reflect/Reflect.hpp"
-#include "Scene/Node.hpp"
-#include "Scene/NodeTypes.hpp"
+#include "Scene/Actor.hpp"
+#include "Scene/ClassRegistry.hpp"
+#include "Scene/Component.hpp"
 #include "Scene/Scene.hpp"
 #include "UI/Framework/Application.hpp"
 #include "UI/Widgets/Border.hpp"
@@ -22,7 +23,7 @@
 namespace cinder::Dev::Panels {
 
 using namespace cinder::UI;
-using cinder::Scene::Node;
+using cinder::Scene::Actor;
 namespace keys = cinder::Platform::keys;
 
 namespace {
@@ -42,7 +43,7 @@ bool containsIgnoreCase(std::string_view text, std::string_view needle) {
 
 }
 
-Explorer::Explorer(Selection& selection, History& history, cinder::Scene::Scene& scene, Application& app)
+Outliner::Outliner(Selection& selection, History& history, cinder::Scene::Scene& scene, Application& app)
     : selection_(selection), history_(history), scene_(scene), app_(app) {
     auto tree = make<TreeView>()
             .assign(tree_)
@@ -50,36 +51,36 @@ Explorer::Explorer(Selection& selection, History& history, cinder::Scene::Scene&
             .onGetChildren([this](ItemId item) { return childrenOf(item); })
             .onGetParent([this](ItemId item) { return parentOf(item); })
             .onGenerateRow([this](ItemId item) { return rowFor(item); })
-            .isItemSelected([this](ItemId item) { return selection_.selected(static_cast<int>(item)); })
+            .isItemSelected([this](ItemId item) { return selectedActor() == static_cast<int>(item); })
             .onSelectionChanged([this](std::optional<ItemId> item, SelectInfo) {
                 if (item) selection_.select(static_cast<int>(*item));
                 else selection_.clear();
             })
             .onContextMenuOpening([this](std::optional<ItemId> item) { return contextMenu(item); })
             .onDragDetected([this](ItemId item) -> std::shared_ptr<DragDropOperation> {
-                Node* node = scene_.byId(static_cast<int>(item));
-                if (node == nullptr) return nullptr;
-                return std::make_shared<ItemDragDrop>(std::vector<ItemId>{item}, node->name());
+                Actor* actor = scene_.actor(static_cast<int>(item));
+                if (actor == nullptr) return nullptr;
+                return std::make_shared<ItemDragDrop>(std::vector<ItemId>{item}, actor->name());
             })
             .onCanAcceptDrop([this](const DragDropEvent& event, std::optional<ItemId> item,
                                     DropZone) -> std::optional<DropZone> {
                 const auto* carried = dynamic_cast<const ItemDragDrop*>(event.operation.get());
                 if (carried == nullptr || carried->items().empty()) return std::nullopt;
-                Node* dragged = scene_.byId(static_cast<int>(carried->items().front()));
-                Node* onto = item ? scene_.byId(static_cast<int>(*item)) : nullptr;
+                Actor* dragged = scene_.actor(static_cast<int>(carried->items().front()));
+                Actor* onto = item ? scene_.actor(static_cast<int>(*item)) : nullptr;
                 if (dragged == nullptr || dragged == onto || dragged->isAncestorOf(onto)) return std::nullopt;
-                if (onto == nullptr && dragged->parent() == nullptr) return std::nullopt;
+                if (onto == nullptr && dragged->attachParent() == nullptr) return std::nullopt;
                 return DropZone::Onto;
             })
             .onAcceptDrop([this](const DragDropEvent& event, std::optional<ItemId> item, DropZone) {
                 const auto* carried = dynamic_cast<const ItemDragDrop*>(event.operation.get());
                 if (carried == nullptr || carried->items().empty()) return;
-                reparent(static_cast<int>(carried->items().front()),
+                attach(static_cast<int>(carried->items().front()),
                          item ? std::optional<int>(static_cast<int>(*item)) : std::nullopt);
             })
             .onKeyDownHandler([this](const KeyEvent& event) {
                 if (event.key != keys::DELETE_KEY && event.key != keys::BACKSPACE) return false;
-                if (const std::optional<int> selected = selection_.id()) remove(*selected);
+                if (const std::optional<int> selected = selectedActor()) remove(*selected);
                 return true;
             });
 
@@ -92,9 +93,9 @@ Explorer::Explorer(Selection& selection, History& history, cinder::Scene::Scene&
                                        .hasDownArrow(false)
                                        .onGetMenuContent([this] {
                                            MenuBuilder menu;
-                                           addInsertEntries(menu, selection_.id());
+                                           addInsertEntries(menu, selectedActor());
                                            return menu.build();
-                                       })[make<Label>().text("+").toolTipText("Insert a node")]]
+                                       })[make<Label>().text("+").toolTipText("Add an actor")]]
                         + HorizontalBox::slot().fill(1.0f)
                               [make<TextBox>().hintText("Filter").onTextChanged([this](const std::string& text) {
                                   filter_ = text;
@@ -102,20 +103,31 @@ Explorer::Explorer(Selection& selection, History& history, cinder::Scene::Scene&
             + VerticalBox::slot().fill(1.0f)[tree];
 }
 
-bool Explorer::matches(const Node& node) const {
+std::optional<int> Outliner::selectedActor() const {
+    const std::optional<int> id = selection_.id();
+    if (!id) return std::nullopt;
+    const cinder::Scene::Object* object = scene_.byId(*id);
+    if (const auto* actor = dynamic_cast<const Actor*>(object)) return actor->id();
+    if (const auto* component = dynamic_cast<const cinder::Scene::Component*>(object)) {
+        if (component->owner() != nullptr) return component->owner()->id();
+    }
+    return std::nullopt;
+}
+
+bool Outliner::matches(const Actor& actor) const {
     if (filter_.empty()) return true;
-    return containsIgnoreCase(node.name(), filter_) || containsIgnoreCase(scene_.types().nameOf(node), filter_);
+    return containsIgnoreCase(actor.name(), filter_) || containsIgnoreCase(scene_.types().nameOf(actor), filter_);
 }
 
-void Explorer::gather(const Node& node, std::vector<ItemId>& out) const {
-    if (node.destroyed()) return;
-    if (matches(node)) out.push_back(static_cast<ItemId>(node.id()));
-    for (const Node* child : node.children()) gather(*child, out);
+void Outliner::gather(const Actor& actor, std::vector<ItemId>& out) const {
+    if (actor.destroyed()) return;
+    if (matches(actor)) out.push_back(static_cast<ItemId>(actor.id()));
+    for (const Actor* child : actor.attachedActors()) gather(*child, out);
 }
 
-std::vector<ItemId> Explorer::roots() const {
+std::vector<ItemId> Outliner::roots() const {
     std::vector<ItemId> items;
-    for (const Node* root : scene_.roots()) {
+    for (const Actor* root : scene_.roots()) {
         if (filter_.empty()) {
             if (!root->destroyed()) items.push_back(static_cast<ItemId>(root->id()));
         } else {
@@ -125,28 +137,28 @@ std::vector<ItemId> Explorer::roots() const {
     return items;
 }
 
-std::vector<ItemId> Explorer::childrenOf(ItemId item) const {
+std::vector<ItemId> Outliner::childrenOf(ItemId item) const {
     std::vector<ItemId> items;
     if (!filter_.empty()) return items;
-    const Node* node = scene_.byId(static_cast<int>(item));
-    if (node == nullptr) return items;
-    for (const Node* child : node->children()) {
+    const Actor* actor = scene_.actor(static_cast<int>(item));
+    if (actor == nullptr) return items;
+    for (const Actor* child : actor->attachedActors()) {
         if (!child->destroyed()) items.push_back(static_cast<ItemId>(child->id()));
     }
     return items;
 }
 
-std::optional<ItemId> Explorer::parentOf(ItemId item) const {
-    const Node* node = scene_.byId(static_cast<int>(item));
-    if (node == nullptr || node->parent() == nullptr) return std::nullopt;
-    return static_cast<ItemId>(node->parent()->id());
+std::optional<ItemId> Outliner::parentOf(ItemId item) const {
+    const Actor* actor = scene_.actor(static_cast<int>(item));
+    if (actor == nullptr || actor->attachParent() == nullptr) return std::nullopt;
+    return static_cast<ItemId>(actor->attachParent()->id());
 }
 
-std::shared_ptr<Widget> Explorer::rowFor(ItemId item) {
+std::shared_ptr<Widget> Outliner::rowFor(ItemId item) {
     const int id = static_cast<int>(item);
     const auto dimmed = [this, id] {
-        const Node* node = scene_.byId(id);
-        const bool lit = node != nullptr && (node->enabledInHierarchy() || selection_.selected(id));
+        const Actor* actor = scene_.actor(id);
+        const bool lit = actor != nullptr && (actor->enabledInHierarchy() || selectedActor() == id);
         const Theme& theme = Application::get().theme();
         return lit ? theme.color("Color.Foreground") : theme.color("Color.ForegroundDim");
     };
@@ -154,34 +166,34 @@ std::shared_ptr<Widget> Explorer::rowFor(ItemId item) {
            + HorizontalBox::slot().autoWidth().vAlign(VAlign::Center)
                  [make<Label>()
                           .text([this, id] {
-                              const Node* node = scene_.byId(id);
-                              return node != nullptr ? node->name() : std::string();
+                              const Actor* actor = scene_.actor(id);
+                              return actor != nullptr ? actor->name() : std::string();
                           })
                           .colorAndOpacity(Attribute<Color>(dimmed))]
            + HorizontalBox::slot().fill(1.0f).vAlign(VAlign::Center).padding(Margin(6.0f, 0.0f, 0.0f, 0.0f))
                  [make<Label>()
                           .text([this, id] {
-                              const Node* node = scene_.byId(id);
-                              if (node == nullptr) return std::string();
-                              const std::string detail(scene_.types().nameOf(*node));
-                              return detail == node->name() ? std::string() : detail;
+                              const Actor* actor = scene_.actor(id);
+                              if (actor == nullptr) return std::string();
+                              const std::string detail(scene_.types().nameOf(*actor));
+                              return detail == actor->name() ? std::string() : detail;
                           })
                           .textStyle("Label.Small")
                           .colorAndOpacity(themeColor("Color.ForegroundDim"))];
 }
 
-void Explorer::addInsertEntries(MenuBuilder& menu, std::optional<int> parent) {
+void Outliner::addInsertEntries(MenuBuilder& menu, std::optional<int> parent) {
     for (const auto& entry : scene_.types().registered()) {
-        if (!entry.factory) continue;
+        if (!entry.factory || entry.kind != cinder::Scene::ClassKind::Actor) continue;
         const std::string name = entry.name;
         menu.entry(name, [this, name, parent] { insert(name, parent); });
     }
 }
 
-std::shared_ptr<Widget> Explorer::contextMenu(std::optional<ItemId> item) {
+std::shared_ptr<Widget> Outliner::contextMenu(std::optional<ItemId> item) {
     const std::optional<int> id = item ? std::optional<int>(static_cast<int>(*item)) : std::nullopt;
     MenuBuilder menu;
-    menu.subMenu("Insert", [this, id](MenuBuilder& insertions) { addInsertEntries(insertions, id); });
+    menu.subMenu("Add Actor", [this, id](MenuBuilder& insertions) { addInsertEntries(insertions, id); });
     if (id) {
         menu.entry("Duplicate", [this, id] { duplicate(*id); })
                 .entry("Delete", [this, id] { remove(*id); });
@@ -189,43 +201,43 @@ std::shared_ptr<Widget> Explorer::contextMenu(std::optional<ItemId> item) {
     return menu.build();
 }
 
-void Explorer::insert(const std::string& className, std::optional<int> parent) {
-    history_.touch("Insert " + className, selection_.id());
-    Node* target = parent ? scene_.byId(*parent) : nullptr;
-    if (Node* node = scene_.create(className, target)) {
+void Outliner::insert(const std::string& className, std::optional<int> parent) {
+    history_.touch("Add " + className, selection_.id());
+    Actor* target = parent ? scene_.actor(*parent) : nullptr;
+    if (Actor* actor = scene_.spawn(className, target)) {
         if (target != nullptr) tree_->setExpanded(static_cast<ItemId>(target->id()), true);
-        selection_.select(node->id(), true);
+        selection_.select(actor->id(), true);
     }
 }
 
-void Explorer::duplicate(int id) {
-    Node* node = scene_.byId(id);
-    if (node == nullptr) return;
-    history_.touch("Duplicate " + node->name(), selection_.id());
-    if (Node* copy = scene_.clone(*node, node->parent())) selection_.select(copy->id(), true);
+void Outliner::duplicate(int id) {
+    Actor* actor = scene_.actor(id);
+    if (actor == nullptr) return;
+    history_.touch("Duplicate " + actor->name(), selection_.id());
+    if (Actor* copy = scene_.clone(*actor, actor->attachParent())) selection_.select(copy->id(), true);
 }
 
-void Explorer::remove(int id) {
-    Node* node = scene_.byId(id);
-    if (node == nullptr) return;
-    history_.touch("Delete " + node->name(), selection_.id());
-    scene_.destroyNow(node);
+void Outliner::remove(int id) {
+    Actor* actor = scene_.actor(id);
+    if (actor == nullptr) return;
+    history_.touch("Delete " + actor->name(), selection_.id());
+    scene_.destroyNow(actor);
     selection_.clear();
 }
 
-void Explorer::reparent(int id, std::optional<int> parent) {
-    Node* node = scene_.byId(id);
-    Node* target = parent ? scene_.byId(*parent) : nullptr;
-    if (node == nullptr || node == target || node->isAncestorOf(target)) return;
-    history_.touch("Reparent " + node->name(), selection_.id());
-    node->setParent(target);
+void Outliner::attach(int id, std::optional<int> parent) {
+    Actor* actor = scene_.actor(id);
+    Actor* target = parent ? scene_.actor(*parent) : nullptr;
+    if (actor == nullptr || actor == target || actor->isAncestorOf(target)) return;
+    history_.touch("Attach " + actor->name(), selection_.id());
+    actor->attachTo(target);
     if (target != nullptr) tree_->setExpanded(static_cast<ItemId>(target->id()), true);
     selection_.select(id, true);
 }
 
-void Explorer::update() {
+void Outliner::update() {
     if (!selection_.revealing()) return;
-    if (const std::optional<int> id = selection_.id()) tree_->reveal(static_cast<ItemId>(*id));
+    if (const std::optional<int> id = selectedActor()) tree_->reveal(static_cast<ItemId>(*id));
     selection_.revealed();
 }
 

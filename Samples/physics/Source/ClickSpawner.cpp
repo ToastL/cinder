@@ -2,29 +2,29 @@
 
 using namespace cinder;
 
-class ClickSpawner final : public Scene::Node {
+class ClickSpawner final : public Scene::Component {
 public:
-    CINDER_NODE(ClickSpawner, Scene::Node) { CINDER_PROP(lifetime_); }
+    CINDER_COMPONENT(ClickSpawner, Scene::Component) { CINDER_PROP(lifetime_); }
 
-    void onStart() override { Platform::logInfo("[game] click to drop a box\n"); }
+    void beginPlay() override { Platform::logInfo("[game] click to drop a box\n"); }
 
-    void onUpdate(float dt) override {
+    void tick(float dt) override {
         if (!Game::mousePressed("left")) return;
 
         Scene::Scene& world = Game::scene();
         const glm::vec2 at = Game::screenToWorld(Game::mousePosition());
 
-        auto* box = world.create<Physics::Body>(nullptr);
+        auto* box = world.spawn<Components::SpriteActor>();
         box->setName("Dropped");
-        box->setPlanar(true);
         box->transform()->setPosition(at.x, at.y, 0.0f);
-        world.create<Nodes::Sprite>(box)
-                ->setSize(1.0f, 1.0f)
+        box->sprite()
+                .setSize(1.0f, 1.0f)
                 .setColor(Game::random(0.4f, 1.0f), Game::random(0.4f, 1.0f), 0.9f, 1.0f);
-        world.create<Physics::Collider>(box);
+        box->addComponent<Physics::RigidBodyComponent>()->setPlanar(true);
+        box->addComponent<Physics::ColliderComponent>();
 
         const int id = box->id();
-        world.after(*box, lifetime_, [&world, id] { world.destroy(world.byId(id)); });
+        world.after(*box, lifetime_, [&world, id] { world.destroy(world.actor(id)); });
     }
 
 private:

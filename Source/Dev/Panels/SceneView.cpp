@@ -7,7 +7,8 @@
 #include "Dev/PlaySession.hpp"
 #include "Dev/Selection.hpp"
 #include "Dev/Panels/EditorStyle.hpp"
-#include "Scene/Node.hpp"
+#include "Scene/Actor.hpp"
+#include "Scene/SceneComponent.hpp"
 #include "Scene/Scene.hpp"
 #include "UI/Core/ElementList.hpp"
 #include "UI/Framework/Application.hpp"
@@ -185,7 +186,7 @@ void SceneView::tick(float deltaTime) {
         return;
     }
     if (!camera_.seeded()) {
-        const std::vector<cinder::Nodes::Camera*> cameras = sceneCameras(engine_.scene());
+        const std::vector<cinder::Components::CameraComponent*> cameras = sceneCameras(engine_.scene());
         camera_.seed(cameras.empty() ? nullptr : cameras.back(), extent_);
     }
     camera_.setViewSize(extent_);
@@ -217,9 +218,9 @@ void SceneView::tick(float deltaTime) {
 GizmoView SceneView::gizmoView() const { return Dev::gizmoView(camera_.camera(), extent_); }
 
 std::optional<Gizmo> SceneView::gizmo() const {
-    cinder::Scene::Node* selected = selection_.resolve(engine_.scene());
-    if (selected == nullptr || selected->transform() == nullptr) return std::nullopt;
-    return gizmoFor(*selected->transform(), tool_, space_, gizmoView());
+    cinder::Scene::SceneComponent* selected = selection_.placed(engine_.scene());
+    if (selected == nullptr) return std::nullopt;
+    return gizmoFor(selected->transform(), tool_, space_, gizmoView());
 }
 
 Handle SceneView::handleAt(glm::vec2 point) const {
@@ -232,13 +233,16 @@ Handle SceneView::handleAt(glm::vec2 point) const {
 
 std::string SceneView::label() const {
     if (!manipulation_.active()) return {};
-    cinder::Scene::Node* node = engine_.scene().byId(*manipulation_.node());
-    return node != nullptr ? std::string(verb(manipulation_.tool())) + " " + node->name() : std::string();
+    cinder::Scene::Component* target = engine_.scene().component(*manipulation_.target());
+    if (target == nullptr || target->owner() == nullptr) return {};
+    const cinder::Scene::SceneComponent* placed = target->asSceneComponent();
+    const std::string& name = placed != nullptr && placed->isRoot() ? target->owner()->name() : target->name();
+    return std::string(verb(manipulation_.tool())) + " " + name;
 }
 
 void SceneView::pickAt(glm::vec2 point) {
     const PickView view{camera_.camera().viewProjection(), point, extent_};
-    if (cinder::Scene::Node* node = pick(engine_.scene(), view)) selection_.select(node->id(), true);
+    if (cinder::Scene::Component* hit = pick(engine_.scene(), view)) selection_.select(hit->owner()->id(), true);
     else selection_.clear();
 }
 
@@ -252,7 +256,7 @@ int SceneView::paint(const Geometry& geometry, ElementList& list, int layer) {
     GizmoStrokes strokes;
     frustumStrokes(strokes, sceneCameras(scene), canvas);
     colliderStrokes(strokes, scene, canvas);
-    if (cinder::Scene::Node* selected = selection_.resolve(scene)) {
+    if (cinder::Scene::Object* selected = selection_.resolve(scene)) {
         selectionStrokes(strokes, *selected, canvas);
         if (const std::optional<Gizmo> found = gizmo()) {
             const Handle hot = manipulation_.active() ? manipulation_.handle() : hot_;
@@ -276,7 +280,7 @@ Reply SceneView::mouseDown(const Geometry& geometry, const PointerEvent& event) 
     picking_ = !event.alt();
     if (event.alt() || !camera_.seeded()) return reply;
 
-    cinder::Scene::Node* selected = selection_.resolve(engine_.scene());
+    cinder::Scene::SceneComponent* selected = selection_.placed(engine_.scene());
     const std::optional<Gizmo> found = gizmo();
     if (selected == nullptr || !found) return reply;
     const GizmoView view = gizmoView();

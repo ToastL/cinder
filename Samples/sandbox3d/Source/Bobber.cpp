@@ -4,15 +4,15 @@
 
 using namespace cinder;
 
-class Bobber final : public Scene::Node {
+class Bobber final : public Scene::Component {
 public:
-    CINDER_NODE(Bobber, Scene::Node) {
+    CINDER_COMPONENT(Bobber, Scene::Component) {
         CINDER_PROP(phase_);
         CINDER_PROP(rate_);
     }
 
-    void onUpdate(float dt) override {
-        Scene::Transform* box = parent() != nullptr ? parent()->transform() : nullptr;
+    void tick(float dt) override {
+        Scene::Transform* box = owner()->transform();
         if (box == nullptr) return;
         const float height = 1.0f + std::sin(static_cast<float>(Game::time()) * rate_ + phase_);
         box->setPosition(box->position().x, height * 0.5f, box->position().z);
