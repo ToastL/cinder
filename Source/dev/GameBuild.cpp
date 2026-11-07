@@ -46,4 +46,13 @@ std::vector<std::string> GameBuild::build(const std::string& target) const {
     return {cbt.string(), "build", target, "--config", config, "--backend", backend, "--output", output.string()};
 }
 
+bool hasGameSources(const std::filesystem::path& project) {
+    std::error_code error;
+    for (auto it = std::filesystem::recursive_directory_iterator(project / "Source", error);
+         !error && it != std::filesystem::recursive_directory_iterator(); it.increment(error)) {
+        if (it->is_regular_file() && it->path().extension() == ".cpp") return true;
+    }
+    return false;
+}
+
 }

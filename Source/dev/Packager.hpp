@@ -1,20 +1,12 @@
 #pragma once
 
+#include "dev/BackgroundProcess.hpp"
 #include "dev/Staging.hpp"
 
-#include <atomic>
-#include <cstdint>
-#include <deque>
 #include <filesystem>
-#include <mutex>
 #include <optional>
-#include <span>
 #include <string>
-#include <string_view>
-#include <thread>
 #include <vector>
-
-#include <sys/types.h>
 
 namespace cinder::dev {
 
@@ -44,7 +36,7 @@ public:
     Configuration configuration() const { return configuration_; }
     void setConfiguration(Configuration configuration) { configuration_ = configuration; }
 
-    bool busy() const { return running_.load(); }
+    bool busy() const { return job_.running(); }
     std::optional<Platform> current() const { return busy() ? current_ : std::nullopt; }
 
     bool start(Platform platform);
@@ -59,14 +51,9 @@ private:
     PackageTools tools_;
     std::string name_;
     Configuration configuration_ = Configuration::Development;
-    std::thread worker_;
-    pid_t pid_ = 0;
-    std::atomic<bool> cancelled_ = false;
-    std::atomic<bool> running_ = false;
+    BackgroundProcess job_;
+    bool cancelled_ = false;
     std::optional<Platform> current_;
-    std::mutex mutex_;
-    std::deque<std::string> lines_;
-    int status_ = 0;
     bool reported_ = true;
 };
 

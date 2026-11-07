@@ -1,18 +1,13 @@
 #pragma once
 
+#include "dev/BackgroundProcess.hpp"
 #include "dev/GameBuild.hpp"
 
-#include <atomic>
-#include <deque>
-#include <functional>
 #include <filesystem>
+#include <functional>
 #include <memory>
-#include <mutex>
 #include <optional>
 #include <string>
-#include <thread>
-
-#include <sys/types.h>
 
 namespace cinder::core { class GameModule; }
 namespace cinder::scene { class Scene; }
@@ -37,7 +32,7 @@ public:
 
     bool available() const { return build_.has_value(); }
     bool hasSources() const;
-    bool building() const { return building_.load(); }
+    bool building() const { return job_.running(); }
     bool reloadPending() const { return reloadPending_; }
     const BuildResult& lastResult() const { return last_; }
     const cinder::core::GameModule* module() const { return module_.get(); }
@@ -53,18 +48,13 @@ public:
 private:
     BuildResult run(const std::function<void(const std::string&)>& sink);
     bool swap();
-    void join();
 
     cinder::scene::Scene& scene_;
     std::filesystem::path project_;
     std::string name_;
     std::optional<GameBuild> build_;
     std::unique_ptr<cinder::core::GameModule> module_;
-    std::thread worker_;
-    std::atomic<bool> building_ = false;
-    std::mutex mutex_;
-    std::deque<std::string> lines_;
-    pid_t pid_ = 0;
+    BackgroundProcess job_;
     BuildResult pending_;
     BuildResult last_;
     bool reported_ = true;

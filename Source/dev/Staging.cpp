@@ -102,6 +102,14 @@ void strip(const std::filesystem::path& library) {
 #endif
 }
 
+void keepSymbolsAndStrip(const StageRequest& request, const std::filesystem::path& built,
+                         const std::filesystem::path& shipped) {
+    const std::filesystem::path symbols = request.project / "Saved" / "Symbols" / std::string(platformName(request.platform));
+    std::filesystem::create_directories(symbols);
+    std::filesystem::copy_file(built, symbols / built.filename(), std::filesystem::copy_options::overwrite_existing);
+    strip(shipped);
+}
+
 std::filesystem::path buildModule(const StageRequest& request, const std::string& name) {
     if (!request.build) throw std::runtime_error("the project has C++ in Source/ but cbt was not found next to the packager");
     const std::filesystem::path library = request.project / "Saved" / "Binaries"
@@ -182,13 +190,7 @@ void stage(const StageRequest& request) {
     runSteps("preBuildSteps", config.descriptor.preBuildSteps, request);
 
     std::optional<std::filesystem::path> library;
-    if (std::filesystem::is_directory(request.project / "Source")) {
-        bool hasCode = false;
-        for (const auto& entry : std::filesystem::recursive_directory_iterator(request.project / "Source")) {
-            if (entry.path().extension() == ".cpp") hasCode = true;
-        }
-        if (hasCode) library = buildModule(request, config.name);
-    }
+    if (hasGameSources(request.project)) library = buildModule(request, config.name);
 
     std::filesystem::remove_all(request.out);
     std::filesystem::create_directories(request.out / "Project");
@@ -196,12 +198,7 @@ void stage(const StageRequest& request) {
     const std::filesystem::path player = request.out / request.player.filename();
     std::filesystem::copy_file(request.player, player);
     std::filesystem::permissions(player, std::filesystem::status(request.player).permissions());
-    if (request.configuration == Configuration::Shipping) {
-        const std::filesystem::path symbols = request.project / "Saved" / "Symbols" / platform;
-        std::filesystem::create_directories(symbols);
-        std::filesystem::copy_file(request.player, symbols / player.filename(), std::filesystem::copy_options::overwrite_existing);
-        strip(player);
-    }
+    if (request.configuration == Configuration::Shipping) keepSymbolsAndStrip(request, request.player, player);
 
     copyMatching(request.shaderDir, request.out / "Engine" / "Shaders", shaderPatterns(targets), true);
     copyMatching(request.engineDir / "Content" / "Fonts", request.out / "Engine" / "Content" / "Fonts", {".ttf", ".txt"}, false);
@@ -218,12 +215,7 @@ void stage(const StageRequest& request) {
         std::filesystem::create_directories(binaries);
         const std::filesystem::path shipped = binaries / library->filename();
         std::filesystem::copy_file(*library, shipped);
-        if (request.configuration == Configuration::Shipping) {
-            const std::filesystem::path symbols = request.project / "Saved" / "Symbols" / platform;
-            std::filesystem::create_directories(symbols);
-            std::filesystem::copy_file(*library, symbols / library->filename(), std::filesystem::copy_options::overwrite_existing);
-            strip(shipped);
-        }
+        if (request.configuration == Configuration::Shipping) keepSymbolsAndStrip(request, *library, shipped);
     }
 
     runSteps("postBuildSteps", config.descriptor.postBuildSteps, request);

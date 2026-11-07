@@ -1,22 +1,14 @@
 #include "dev/Packager.hpp"
 
 #include "dev/Process.hpp"
-
 #include "platform/Assets.hpp"
 #include "platform/Log.hpp"
 
 #include <algorithm>
-#include <array>
-#include <csignal>
-#include <cstdio>
 #include <system_error>
 #include <utility>
 
-#include <sys/wait.h>
-#include <unistd.h>
-
 namespace cinder::dev {
-
 namespace {
 
 std::string projectName(const std::filesystem::path& project) {
@@ -41,10 +33,7 @@ Packager::Packager(std::filesystem::path project, std::vector<std::string> targe
     : project_(std::move(project)), targetPlatforms_(std::move(targetPlatforms)), tools_(std::move(tools)),
       name_(projectName(project_)) {}
 
-Packager::~Packager() {
-    cancel();
-    if (worker_.joinable()) worker_.join();
-}
+Packager::~Packager() { job_.cancel(); }
 
 bool Packager::targets(Platform platform) const {
     return targetPlatforms_.empty()
@@ -76,7 +65,7 @@ bool Packager::start(Platform platform) {
         cinder::platform::logError("[package] %s\n", unavailableReason(platform).c_str());
         return false;
     }
-    if (worker_.joinable()) worker_.join();
+    job_.join();
 
     const std::filesystem::path output = outputDir(platform);
     const std::vector<std::string> arguments = packageArguments(tools_, platform, configuration_, project_, output);
@@ -93,54 +82,34 @@ bool Packager::start(Platform platform) {
 
     current_ = platform;
     reported_ = false;
-    cancelled_.store(false);
-    pid_ = process->pid();
-    running_.store(true);
-    worker_ = std::thread([this, process = std::move(process)]() mutable {
-        std::string line;
-        while (process->readLine(line)) {
-            const std::lock_guard lock(mutex_);
-            lines_.push_back(line);
-        }
-        {
-            const std::lock_guard lock(mutex_);
-            pid_ = 0;
-        }
-        status_ = process->wait();
-        running_.store(false);
-    });
+    cancelled_ = false;
+    job_.start(std::move(process));
     return true;
 }
 
 void Packager::cancel() {
-    const std::lock_guard lock(mutex_);
-    if (pid_ <= 0) return;
-    cancelled_.store(true);
-    kill(-pid_, SIGTERM);
+    if (!busy()) return;
+    cancelled_ = true;
+    job_.cancel();
 }
 
 void Packager::update() {
-    std::deque<std::string> lines;
-    {
-        const std::lock_guard lock(mutex_);
-        lines.swap(lines_);
-    }
-    for (const std::string& line : lines) cinder::platform::logInfo("[package] %s\n", line.c_str());
+    for (const std::string& line : job_.takeLines()) cinder::platform::logInfo("[package] %s\n", line.c_str());
     if (!busy() && !reported_) finish();
 }
 
 void Packager::finish() {
-    if (worker_.joinable()) worker_.join();
+    job_.join();
     reported_ = true;
     update();
     const std::string platform(platformName(current_.value_or(hostPlatform())));
-    if (cancelled_.load()) {
+    if (cancelled_) {
         cinder::platform::logInfo("[package] %s build cancelled\n", platform.c_str());
-    } else if (status_ == 0) {
+    } else if (job_.status() == 0) {
         cinder::platform::logInfo("[package] %s build ready in %s\n", platform.c_str(),
                                   outputDir(current_.value_or(hostPlatform())).string().c_str());
     } else {
-        cinder::platform::logError("[package] %s build failed (exit %d)\n", platform.c_str(), status_);
+        cinder::platform::logError("[package] %s build failed (exit %d)\n", platform.c_str(), job_.status());
     }
 }
 

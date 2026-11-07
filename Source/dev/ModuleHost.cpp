@@ -6,12 +6,20 @@
 #include "scene/Scene.hpp"
 #include "serial/SceneCodec.hpp"
 
-#include <csignal>
 #include <functional>
 #include <system_error>
 #include <utility>
 
 namespace cinder::dev {
+namespace {
+
+void tally(BuildResult& result, const std::string& line) {
+    if (line.find("] compile ") != std::string::npos) result.compiled++;
+    if (line.find("] link ") != std::string::npos) result.linked = true;
+    if (line.find(": error:") != std::string::npos || line.find(": fatal error:") != std::string::npos) result.errors++;
+}
+
+}
 
 ModuleHost::ModuleHost(cinder::scene::Scene& scene, std::filesystem::path project, std::string name,
                        std::optional<GameBuild> build)
@@ -21,8 +29,8 @@ ModuleHost::ModuleHost(cinder::scene::Scene& scene, std::filesystem::path projec
 }
 
 ModuleHost::~ModuleHost() {
-    cancel();
-    join();
+    job_.cancel();
+    job_.join();
     if (module_) {
         scene_.clear();
         const std::filesystem::path loaded = module_->path();
@@ -36,14 +44,7 @@ std::filesystem::path ModuleHost::library() const {
     return project_ / "Saved" / "Binaries" / (name_ + std::string(cinder::core::GameModule::extension()));
 }
 
-bool ModuleHost::hasSources() const {
-    std::error_code error;
-    for (auto it = std::filesystem::recursive_directory_iterator(project_ / "Source", error);
-         !error && it != std::filesystem::recursive_directory_iterator(); it.increment(error)) {
-        if (it->is_regular_file() && it->path().extension() == ".cpp") return true;
-    }
-    return false;
-}
+bool ModuleHost::hasSources() const { return hasGameSources(project_); }
 
 std::string ModuleHost::status() const {
     if (building()) return "Building...";
@@ -53,14 +54,7 @@ std::string ModuleHost::status() const {
     return module_ != nullptr ? "Compiled" : "";
 }
 
-void ModuleHost::join() {
-    if (worker_.joinable()) worker_.join();
-}
-
-void ModuleHost::cancel() {
-    const std::lock_guard lock(mutex_);
-    if (pid_ > 0) kill(-pid_, SIGTERM);
-}
+void ModuleHost::cancel() { job_.cancel(); }
 
 BuildResult ModuleHost::run(const std::function<void(const std::string&)>& sink) {
     BuildResult result;
@@ -71,20 +65,10 @@ BuildResult ModuleHost::run(const std::function<void(const std::string&)>& sink)
         result.errors = 1;
         return result;
     }
-    {
-        const std::lock_guard lock(mutex_);
-        pid_ = process->pid();
-    }
     std::string line;
     while (process->readLine(line)) {
-        if (line.find("] compile ") != std::string::npos) result.compiled++;
-        if (line.find("] link ") != std::string::npos) result.linked = true;
-        if (line.find(": error:") != std::string::npos || line.find(": fatal error:") != std::string::npos) result.errors++;
+        tally(result, line);
         sink(line);
-    }
-    {
-        const std::lock_guard lock(mutex_);
-        pid_ = 0;
     }
     result.ok = process->wait() == 0;
     if (!result.ok && result.errors == 0) result.errors = 1;
@@ -93,7 +77,7 @@ BuildResult ModuleHost::run(const std::function<void(const std::string&)>& sink)
 
 bool ModuleHost::buildNow() {
     if (!build_ || building()) return false;
-    join();
+    job_.join();
     last_ = run([](const std::string& line) { cinder::platform::logInfo("[build] %s\n", line.c_str()); });
     if (!last_.ok || !std::filesystem::exists(library())) return false;
     if (module_ != nullptr && !last_.linked) return true;
@@ -102,38 +86,35 @@ bool ModuleHost::buildNow() {
 
 bool ModuleHost::requestBuild() {
     if (!build_ || building()) return false;
-    join();
-    building_.store(true);
+    job_.join();
+    std::string error;
+    std::unique_ptr<Process> process = Process::start(build_->game(project_), error);
+    if (process == nullptr) {
+        cinder::platform::logError("[build] %s\n", error.c_str());
+        last_ = BuildResult{false, false, 0, 1};
+        return false;
+    }
+    pending_ = BuildResult{};
     reported_ = false;
-    worker_ = std::thread([this] {
-        BuildResult result = run([this](const std::string& line) {
-            const std::lock_guard lock(mutex_);
-            lines_.push_back(line);
-        });
-        {
-            const std::lock_guard lock(mutex_);
-            pending_ = result;
-        }
-        building_.store(false);
-    });
+    job_.start(std::move(process));
     return true;
 }
 
 void ModuleHost::update() {
-    std::deque<std::string> lines;
-    {
-        const std::lock_guard lock(mutex_);
-        lines.swap(lines_);
-    }
-    for (const std::string& line : lines) cinder::platform::logInfo("[build] %s\n", line.c_str());
+    const auto drain = [this] {
+        for (const std::string& line : job_.takeLines()) {
+            tally(pending_, line);
+            cinder::platform::logInfo("[build] %s\n", line.c_str());
+        }
+    };
+    drain();
     if (building() || reported_) return;
-
-    join();
+    job_.join();
+    drain();
     reported_ = true;
-    {
-        const std::lock_guard lock(mutex_);
-        last_ = pending_;
-    }
+    pending_.ok = job_.status() == 0;
+    if (!pending_.ok && pending_.errors == 0) pending_.errors = 1;
+    last_ = pending_;
     if (last_.ok && (last_.linked || module_ == nullptr) && std::filesystem::exists(library())) {
         reloadPending_ = true;
     }

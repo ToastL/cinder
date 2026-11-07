@@ -21,4 +21,6 @@ struct GameBuild {
     std::vector<std::string> build(const std::string& target) const;
 };
 
+bool hasGameSources(const std::filesystem::path& project);
+
 }
