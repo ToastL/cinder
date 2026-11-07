@@ -1,5 +1,6 @@
 #include "CinderBuildTool/Build.hpp"
 
+#include "CinderBuildTool/Paths.hpp"
 #include "CinderBuildTool/Process.hpp"
 #include "CinderBuildTool/Registry.hpp"
 
@@ -15,11 +16,6 @@
 
 namespace cbt {
 namespace {
-
-bool isRuleFile(const std::filesystem::path& path) {
-    const std::string name = path.filename().string();
-    return name.ends_with(".Build.cpp") || name.ends_with(".Target.cpp");
-}
 
 bool isSource(const std::filesystem::path& path) {
     const std::string extension = path.extension().string();
@@ -39,24 +35,6 @@ std::string flat(const std::string& name) {
 }
 
 std::string inQuotes(const std::string& value) { return "\"" + value + "\""; }
-
-std::string findProgram(const std::string& name, const char* override, const std::vector<std::filesystem::path>& hints) {
-    if (const char* chosen = std::getenv(override); chosen != nullptr && *chosen != '\0') return chosen;
-    for (const std::filesystem::path& hint : hints) {
-        std::error_code error;
-        if (std::filesystem::is_regular_file(hint / name, error)) return (hint / name).string();
-    }
-    const char* path = std::getenv("PATH");
-    std::stringstream folders(path != nullptr ? path : "");
-    std::string folder;
-    while (std::getline(folders, folder, ':')) {
-        std::error_code error;
-        if (!folder.empty() && std::filesystem::is_regular_file(std::filesystem::path(folder) / name, error)) {
-            return (std::filesystem::path(folder) / name).string();
-        }
-    }
-    return {};
-}
 
 std::string jsonString(std::string_view value) {
     std::string out = "\"";
@@ -271,10 +249,7 @@ std::vector<std::string> Builder::compileFlags(const std::string& name, const Ta
 
 void Builder::planShaders(std::vector<Action>& actions, std::vector<std::filesystem::path>& outputs) {
     const std::filesystem::path out = binaries() / "Shaders";
-    const char* sdk = std::getenv("VULKAN_SDK");
-    const std::vector<std::filesystem::path> hints =
-            sdk != nullptr ? std::vector<std::filesystem::path>{std::filesystem::path(sdk) / "bin"} : std::vector<std::filesystem::path>{};
-    const std::string dxc = findProgram("dxc", "DXC", hints);
+    const std::string dxc = findTool("dxc", "DXC");
     if (dxc.empty()) throw std::runtime_error("dxc not found; install the LunarG Vulkan SDK, put dxc on PATH or set DXC");
     const auto has = [&](const char* format) {
         return std::find(options_.shaderFormats.begin(), options_.shaderFormats.end(), format) != options_.shaderFormats.end();
@@ -282,7 +257,7 @@ void Builder::planShaders(std::vector<Action>& actions, std::vector<std::filesys
     std::string spirvCross;
     bool metal = false;
     if (has("msl")) {
-        spirvCross = findProgram("spirv-cross", "SPIRV_CROSS", hints);
+        spirvCross = findTool("spirv-cross", "SPIRV_CROSS");
         if (spirvCross.empty()) throw std::runtime_error("spirv-cross not found, but msl shaders were asked for; put it on PATH or set SPIRV_CROSS");
         std::string error;
         std::unique_ptr<Process> probe = Process::start({"xcrun", "metal", "--version"}, error);

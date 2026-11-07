@@ -1,6 +1,7 @@
 #include "CinderBuildTool/Tests.hpp"
 
 #include "CinderBuildTool/Layers.hpp"
+#include "CinderBuildTool/Paths.hpp"
 #include "CinderBuildTool/Process.hpp"
 
 #include <algorithm>
@@ -63,22 +64,6 @@ bool run(const std::vector<std::string>& argv, std::string* captured = nullptr) 
     return process->wait() == 0;
 }
 
-std::string findOnPath(const std::string& name) {
-    const char* sdk = std::getenv("VULKAN_SDK");
-    if (sdk != nullptr && std::filesystem::is_regular_file(std::filesystem::path(sdk) / "bin" / name)) {
-        return (std::filesystem::path(sdk) / "bin" / name).string();
-    }
-    const char* path = std::getenv("PATH");
-    std::stringstream folders(path != nullptr ? path : "");
-    std::string folder;
-    while (std::getline(folders, folder, ':')) {
-        if (!folder.empty() && std::filesystem::is_regular_file(std::filesystem::path(folder) / name)) {
-            return (std::filesystem::path(folder) / name).string();
-        }
-    }
-    return {};
-}
-
 bool layers(Builder& builder) {
     const std::vector<std::string> errors = checkLayers(builder.root() / "Source", engineLayers(builder.root() / "Source"));
     for (const std::string& error : errors) std::printf("%s\n", error.c_str());
@@ -104,7 +89,7 @@ bool layerFixtures(Builder& builder) {
 
 bool shaders(Builder& builder) {
     const std::filesystem::path folder = builder.binaries() / "Shaders";
-    const std::string validator = findOnPath("spirv-val");
+    const std::string validator = findTool("spirv-val");
     const auto& formats = builder.shaderFormats();
     const auto has = [&](const char* format) { return std::find(formats.begin(), formats.end(), format) != formats.end(); };
     std::vector<std::string> problems;
