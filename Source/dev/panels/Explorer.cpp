@@ -2,6 +2,7 @@
 
 #include "dev/History.hpp"
 #include "dev/Selection.hpp"
+#include "dev/panels/EditorStyle.hpp"
 #include "reflect/Reflect.hpp"
 #include "scene/Node.hpp"
 #include "scene/NodeTypes.hpp"
@@ -87,10 +88,7 @@ Explorer::Explorer(Selection& selection, History& history, cinder::scene::Scene&
 
     widget_ = make<VerticalBox>()
             + VerticalBox::slot().autoHeight()
-                  [make<Border>()
-                           .brush([] { return Application::get().theme().get<Brush>("Brush.TitleBar"); })
-                           .padding(Margin(6.0f, 3.0f))
-                       [make<HorizontalBox>()
+                  [titleBar(make<HorizontalBox>()
                         + HorizontalBox::slot().autoWidth().padding(Margin(0.0f, 0.0f, 6.0f, 0.0f))
                               [make<ComboButton>()
                                        .buttonStyle("Button.Small")
@@ -103,7 +101,7 @@ Explorer::Explorer(Selection& selection, History& history, cinder::scene::Scene&
                         + HorizontalBox::slot().fill(1.0f)
                               [make<TextBox>().hintText("Filter").onTextChanged([this](const std::string& text) {
                                   filter_ = text;
-                              })]]]
+                              })], Margin(6.0f, 3.0f))]
             + VerticalBox::slot().fill(1.0f)[tree];
 }
 
@@ -172,9 +170,7 @@ std::shared_ptr<Widget> Explorer::rowFor(ItemId item) {
                               return detail == node->name() ? std::string() : detail;
                           })
                           .textStyle("Label.Small")
-                          .colorAndOpacity(Attribute<Color>([] {
-                              return Application::get().theme().color("Color.ForegroundDim");
-                          }))];
+                          .colorAndOpacity(themeColor("Color.ForegroundDim"))];
 }
 
 void Explorer::addInsertEntries(MenuBuilder& menu, std::optional<int> parent) {

@@ -1,5 +1,6 @@
 #include "dev/panels/Console.hpp"
 
+#include "dev/panels/EditorStyle.hpp"
 #include "ui/framework/Application.hpp"
 #include "ui/widgets/Border.hpp"
 #include "ui/widgets/BoxPanel.hpp"
@@ -24,10 +25,7 @@ Console::~Console() { cinder::platform::setLogSink(nullptr); }
 void Console::build() {
     widget_ = make<VerticalBox>()
         + VerticalBox::slot().autoHeight()
-              [make<Border>()
-                       .brush([] { return Application::get().theme().get<Brush>("Brush.TitleBar"); })
-                       .padding(Margin(6.0f, 2.0f))
-                   [make<HorizontalBox>()
+              [titleBar(make<HorizontalBox>()
                     + HorizontalBox::slot().autoWidth().padding(Margin(0.0f, 0.0f, 6.0f, 0.0f))
                           [make<Button>().text("Clear").buttonStyle("Button.Small").onClicked([this] {
                               clear();
@@ -37,9 +35,7 @@ void Console::build() {
                           [make<Label>()
                                    .text([this] { return std::to_string(count_) + (count_ == 1 ? " line" : " lines"); })
                                    .textStyle("Label.Small")
-                                   .colorAndOpacity(Attribute<Color>([] {
-                                       return Application::get().theme().color("Color.ForegroundDim");
-                                   }))]]]
+                                   .colorAndOpacity(themeColor("Color.ForegroundDim"))])]
         + VerticalBox::slot().fill(1.0f)
               [make<Border>()
                        .brush([] { return Application::get().theme().get<Brush>("Brush.Recessed"); })

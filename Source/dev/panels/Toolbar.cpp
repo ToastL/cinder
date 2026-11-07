@@ -5,6 +5,7 @@
 #include "dev/Packager.hpp"
 #include "dev/PlaySession.hpp"
 #include "dev/panels/Dialog.hpp"
+#include "dev/panels/EditorStyle.hpp"
 #include "platform/Log.hpp"
 #include "ui/framework/Application.hpp"
 #include "ui/widgets/Border.hpp"
@@ -193,7 +194,7 @@ void Toolbar::build() {
                             return std::string(label(session_.state())) + "  " + scene_.filename().string()
                                     + (history_.dirty() ? "*" : "");
                         })
-                        .colorAndOpacity(Attribute<Color>([] { return Application::get().theme().color("Color.ForegroundDim"); }))]];
+                        .colorAndOpacity(themeColor("Color.ForegroundDim"))]];
 
     const auto dismiss = [this] {
         prompting_ = Prompt::None;

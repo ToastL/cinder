@@ -460,12 +460,18 @@ void TreeView::onDragEnter(const Geometry&, const DragDropEvent&) {}
 
 void TreeView::onDragLeave(const DragDropEvent&) { drop_ = DropTarget{}; }
 
+std::pair<std::optional<ItemId>, DropZone> TreeView::zoneAt(const Geometry& geometry, glm::vec2 point) const {
+    float fraction = 0.5f;
+    const std::optional<ItemId> item = itemAtPoint(geometry, point, &fraction);
+    if (!item) return {item, DropZone::Onto};
+    if (fraction < DROP_EDGE) return {item, DropZone::Above};
+    if (fraction > 1.0f - DROP_EDGE) return {item, DropZone::Below};
+    return {item, DropZone::Onto};
+}
+
 Reply TreeView::onDragOver(const Geometry& geometry, const DragDropEvent& event) {
     if (!canDrop_) return Reply::unhandled();
-    float fraction = 0.5f;
-    const std::optional<ItemId> item = itemAtPoint(geometry, event.position, &fraction);
-    DropZone zone = DropZone::Onto;
-    if (item) zone = fraction < 0.3f ? DropZone::Above : (fraction > 0.7f ? DropZone::Below : DropZone::Onto);
+    const auto [item, zone] = zoneAt(geometry, event.position);
     const std::optional<DropZone> allowed = canDrop_(event, item, zone);
     drop_ = DropTarget{item, allowed.value_or(zone), allowed.has_value()};
     return allowed ? Reply::handled() : Reply::unhandled();
@@ -473,10 +479,7 @@ Reply TreeView::onDragOver(const Geometry& geometry, const DragDropEvent& event)
 
 Reply TreeView::onDrop(const Geometry& geometry, const DragDropEvent& event) {
     if (!canDrop_ || !acceptDrop_) return Reply::unhandled();
-    float fraction = 0.5f;
-    const std::optional<ItemId> item = itemAtPoint(geometry, event.position, &fraction);
-    DropZone zone = DropZone::Onto;
-    if (item) zone = fraction < 0.3f ? DropZone::Above : (fraction > 0.7f ? DropZone::Below : DropZone::Onto);
+    const auto [item, zone] = zoneAt(geometry, event.position);
     const std::optional<DropZone> allowed = canDrop_(event, item, zone);
     drop_ = DropTarget{};
     if (!allowed) return Reply::unhandled();

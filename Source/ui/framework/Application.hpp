@@ -77,6 +77,7 @@ public:
     std::uint32_t buttons() const { return buttons_; }
     std::uint8_t modifiers() const { return modifiers_; }
     bool keyHeld(int key) const;
+    bool modifierHeld(std::uint8_t modifier) const;
 
     void setMouseEnabled(bool enabled);
     bool mouseEnabled() const { return mouseEnabled_; }

@@ -2,6 +2,7 @@
 
 #include "dev/History.hpp"
 #include "dev/Selection.hpp"
+#include "dev/panels/EditorStyle.hpp"
 #include "reflect/Reflect.hpp"
 #include "scene/Attributes.hpp"
 #include "scene/Node.hpp"
@@ -122,9 +123,7 @@ void Properties::rebuild() {
     if (current == nullptr) {
         host_->setContent(make<Label>()
                                   .text("Nothing selected")
-                                  .colorAndOpacity(Attribute<Color>([] {
-                                      return Application::get().theme().color("Color.ForegroundDim");
-                                  })));
+                                  .colorAndOpacity(themeColor("Color.ForegroundDim")));
         return;
     }
     host_->setContent(body(*current));
@@ -276,9 +275,7 @@ std::shared_ptr<Widget> Properties::attributeEditor(int id, const std::string& n
     const PropValue value = valueOf();
 
     if (!cinder::scene::isAttributeValue(value)) {
-        return make<Label>().text("unsupported").colorAndOpacity(Attribute<Color>([] {
-            return Application::get().theme().color("Color.ForegroundDim");
-        }));
+        return make<Label>().text("unsupported").colorAndOpacity(themeColor("Color.ForegroundDim"));
     }
     if (value.is<bool>()) {
         return make<CheckBox>()
@@ -436,9 +433,7 @@ std::shared_ptr<Widget> Properties::body(Node& node) {
                   [make<Label>()
                            .text(type + "  #" + std::to_string(id))
                            .textStyle("Label.Small")
-                           .colorAndOpacity(Attribute<Color>([] {
-                               return Application::get().theme().color("Color.ForegroundDim");
-                           }))];
+                           .colorAndOpacity(themeColor("Color.ForegroundDim"))];
 
     if (node.transform() != nullptr) {
         column + VerticalBox::slot().autoHeight().padding(Margin(0.0f, 0.0f, 0.0f, 4.0f))

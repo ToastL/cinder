@@ -42,6 +42,16 @@ bool Application::keyHeld(int key) const {
     return key >= 0 && key < cinder::platform::keys::COUNT && keys_[static_cast<std::size_t>(key)];
 }
 
+bool Application::modifierHeld(std::uint8_t modifier) const {
+    namespace keys = cinder::platform::keys;
+    namespace modifiers = cinder::platform::modifiers;
+    const auto either = [this](int left, int right) { return keyHeld(left) || keyHeld(right); };
+    if ((modifier & modifiers::SHIFT) != 0 && either(keys::LEFT_SHIFT, keys::RIGHT_SHIFT)) return true;
+    if ((modifier & modifiers::CONTROL) != 0 && either(keys::LEFT_CONTROL, keys::RIGHT_CONTROL)) return true;
+    if ((modifier & modifiers::ALT) != 0 && either(keys::LEFT_ALT, keys::RIGHT_ALT)) return true;
+    return (modifier & modifiers::SUPER) != 0 && either(keys::LEFT_SUPER, keys::RIGHT_SUPER);
+}
+
 void Application::addCommands(std::shared_ptr<const CommandList> commands) {
     commands_.push_back(std::move(commands));
 }

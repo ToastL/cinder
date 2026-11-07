@@ -76,6 +76,7 @@ protected:
                 const PaintStyle& style, bool enabled) const override;
 
 private:
+    void startEditing();
     double constrain(double value) const;
     void write(double value);
     void committed(const std::string& text, TextCommit how);

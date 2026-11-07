@@ -28,6 +28,7 @@ namespace cinder::dev::panels {
 using namespace cinder::ui;
 namespace buttons = cinder::platform::buttons;
 namespace keys = cinder::platform::keys;
+namespace modifiers = cinder::platform::modifiers;
 
 namespace {
 
@@ -110,10 +111,7 @@ void SceneView::build() {
 
     widget_ = make<VerticalBox>()
         + VerticalBox::slot().autoHeight()
-              [make<Border>()
-                       .brush([] { return Application::get().theme().get<Brush>("Brush.TitleBar"); })
-                       .padding(Margin(6.0f, 2.0f))
-                   [make<HorizontalBox>()
+              [titleBar(make<HorizontalBox>()
                     + tool("Move", Tool::Move, "Move (1)")
                     + tool("Rotate", Tool::Rotate, "Rotate (2)")
                     + tool("Scale", Tool::Scale, "Scale (3)")
@@ -142,8 +140,8 @@ void SceneView::build() {
                                    .toolTipText("Hold Ctrl (Cmd on macOS) while dragging to snap")
                                    .isEnabled([this] { return editing(); })
                                    .colorAndOpacity(Attribute<Color>([this] {
-                                       return app_.theme().color(primaryHeld(app_) ? "Color.ForegroundBright" : "Color.ForegroundDim");
-                                   }))]]]
+                                       return app_.theme().color(app_.modifierHeld(modifiers::PRIMARY) ? "Color.ForegroundBright" : "Color.ForegroundDim");
+                                   }))])]
         + VerticalBox::slot().fill(1.0f)[make<Viewport>().assign(viewport_).client(std::make_shared<Client>(*this))];
 }
 
@@ -194,7 +192,7 @@ void SceneView::tick(float deltaTime) {
 
     const bool captured = viewport_->hasMouseCapture();
     const std::uint32_t held = app_.buttons();
-    const bool alt = app_.keyHeld(keys::LEFT_ALT) || app_.keyHeld(keys::RIGHT_ALT);
+    const bool alt = app_.modifierHeld(modifiers::ALT);
     const bool left = captured && !grabbed_ && isDown(held, buttons::LEFT);
     const bool right = captured && isDown(held, buttons::RIGHT);
     const bool middle = captured && isDown(held, buttons::MIDDLE);
@@ -203,13 +201,11 @@ void SceneView::tick(float deltaTime) {
     controls.looking = right || (left && !alt);
     if (controls.looking) controls.look = look_;
     if (middle || (left && alt)) controls.pan = look_;
-    const bool control = app_.keyHeld(keys::LEFT_CONTROL) || app_.keyHeld(keys::RIGHT_CONTROL);
-    const bool super = app_.keyHeld(keys::LEFT_SUPER) || app_.keyHeld(keys::RIGHT_SUPER);
-    if ((viewport_->hasFocus() || captured) && !control && !super) {
+    if ((viewport_->hasFocus() || captured) && !app_.modifierHeld(modifiers::CONTROL | modifiers::SUPER)) {
         controls.move = glm::vec3(axis(app_, keys::letter('a'), keys::letter('d')),
                                   axis(app_, keys::letter('q'), keys::letter('e')),
                                   axis(app_, keys::letter('s'), keys::letter('w')));
-        controls.fast = app_.keyHeld(keys::LEFT_SHIFT) || app_.keyHeld(keys::RIGHT_SHIFT);
+        controls.fast = app_.modifierHeld(modifiers::SHIFT);
     }
     if (captured || viewport_->isHovered()) controls.scroll = scroll_;
     camera_.update(controls, deltaTime);
@@ -298,7 +294,7 @@ Reply SceneView::mouseMove(const Geometry& geometry, const PointerEvent& event) 
     if (!viewport_->hasMouseCapture()) return Reply::unhandled();
     travel_ = std::max(travel_, glm::distance(event.position, pressed_));
     if (manipulation_.active()) {
-        if (event.isDown(buttons::LEFT) && manipulation_.drag(engine_.scene(), gizmoView(), point, primaryHeld(app_))) {
+        if (event.isDown(buttons::LEFT) && manipulation_.drag(engine_.scene(), gizmoView(), point, app_.modifierHeld(modifiers::PRIMARY))) {
             history_.touch(label(), selection_.id());
         }
         return Reply::handled();

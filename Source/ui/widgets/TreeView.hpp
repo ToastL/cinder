@@ -11,6 +11,7 @@
 #include <string>
 #include <unordered_map>
 #include <unordered_set>
+#include <utility>
 #include <vector>
 
 namespace cinder::ui {
@@ -87,6 +88,7 @@ public:
     using KeyHandler = std::function<bool(const KeyEvent&)>;
 
     static constexpr float WHEEL_STEP = 3.0f;
+    static constexpr float DROP_EDGE = 0.3f;
 
     struct Args : ::cinder::ui::Args<Args, TreeView> {
         UI_EVENT(Items, treeItemsSource)
@@ -114,6 +116,7 @@ public:
     void toggleExpansion(ItemId item);
     bool isSelected(ItemId item) const;
     std::size_t currentIndex() const;
+    std::pair<std::optional<ItemId>, DropZone> zoneAt(const Geometry& geometry, glm::vec2 point) const;
     std::vector<ItemId> selectedItems() const { return selected_; }
     void setSelection(std::optional<ItemId> item, SelectInfo how = SelectInfo::Direct);
     void clearSelection(SelectInfo how = SelectInfo::Direct);

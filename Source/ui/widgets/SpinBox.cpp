@@ -199,10 +199,14 @@ void SpinBox::write(double value) {
     if (onChanged_) onChanged_(value);
 }
 
-void SpinBox::beginEditing() {
+void SpinBox::startEditing() {
     editText_ = exactNumber(value(), integral_);
     field_->setText(editText_);
     editing_ = true;
+}
+
+void SpinBox::beginEditing() {
+    startEditing();
     if (Application* app = Application::current()) app->setFocus(field_, FocusCause::SetDirectly);
 }
 
@@ -235,9 +239,7 @@ void SpinBox::arrangeChildren(const Geometry& geometry, ArrangedChildren& out) c
 
 Reply SpinBox::onFocusReceived(const Geometry&, const FocusEvent& event) {
     if (event.cause != FocusCause::Navigation || editing_) return Reply::unhandled();
-    editText_ = exactNumber(value(), integral_);
-    field_->setText(editText_);
-    editing_ = true;
+    startEditing();
     return Reply::handled().setFocus(field_);
 }
 
@@ -277,9 +279,7 @@ Reply SpinBox::onMouseUp(const Geometry&, const PointerEvent& event) {
         if (onCommitted_) onCommitted_(value(), TextCommit::Enter);
         return Reply::handled().releaseMouseCapture();
     }
-    editText_ = exactNumber(value(), integral_);
-    field_->setText(editText_);
-    editing_ = true;
+    startEditing();
     return Reply::handled().releaseMouseCapture().setFocus(field_);
 }
 

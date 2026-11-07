@@ -1,8 +1,10 @@
 #include "dev/panels/EditorStyle.hpp"
 
-#include "platform/InputEvent.hpp"
 #include "ui/framework/Application.hpp"
+#include "ui/widgets/Border.hpp"
 #include "ui/widgets/DefaultTheme.hpp"
+
+#include <utility>
 
 namespace cinder::dev::panels {
 
@@ -36,13 +38,15 @@ cinder::ui::Theme editorTheme() {
     return theme;
 }
 
-bool primaryHeld(const cinder::ui::Application& app) {
-    namespace keys = cinder::platform::keys;
-#if defined(__APPLE__)
-    return app.keyHeld(keys::LEFT_SUPER) || app.keyHeld(keys::RIGHT_SUPER);
-#else
-    return app.keyHeld(keys::LEFT_CONTROL) || app.keyHeld(keys::RIGHT_CONTROL);
-#endif
+cinder::ui::Attribute<cinder::ui::Color> themeColor(std::string name) {
+    return cinder::ui::Attribute<cinder::ui::Color>(
+            [name = std::move(name)] { return cinder::ui::Application::get().theme().color(name); });
+}
+
+std::shared_ptr<cinder::ui::Widget> titleBar(std::shared_ptr<cinder::ui::Widget> content, cinder::ui::Margin padding) {
+    return cinder::ui::make<cinder::ui::Border>()
+            .brush([] { return cinder::ui::Application::get().theme().get<cinder::ui::Brush>("Brush.TitleBar"); })
+            .padding(padding)[std::move(content)];
 }
 
 }
