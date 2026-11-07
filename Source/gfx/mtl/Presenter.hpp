@@ -19,6 +19,13 @@ namespace cinder::platform { class Window; }
 namespace cinder::gfx::rhi {
 
 struct Frame {
+    Frame() = default;
+    ~Frame();
+    Frame(Frame&& other) noexcept;
+    Frame& operator=(Frame&& other) noexcept;
+    Frame(const Frame&) = delete;
+    Frame& operator=(const Frame&) = delete;
+
     std::uint32_t index = 0;
     std::uint32_t image = 0;
     Commands commands;

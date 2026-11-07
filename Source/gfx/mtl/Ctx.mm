@@ -17,6 +17,7 @@ Ctx::Ctx(cinder::platform::Window&) {
 }
 
 void Ctx::waitIdle() const {
+    const cinder::gfx::mtl::PoolScope pool;
     id<MTLCommandQueue> queue = cinder::gfx::mtl::bridge<id<MTLCommandQueue>>(queue_);
     id<MTLCommandBuffer> buffer = [queue commandBuffer];
     [buffer commit];

@@ -21,7 +21,7 @@ namespace {
 
 constexpr Format ALL[] = {
     Format::Undefined,       Format::BGRA8Srgb,       Format::BGRA8Unorm,
-    Format::RGBA8Srgb,       Format::ABGR8SrgbPack32, Format::R8Unorm,
+    Format::RGBA8Srgb,       Format::RGBA8Unorm,      Format::ABGR8SrgbPack32, Format::R8Unorm,
     Format::D32Sfloat,       Format::D32SfloatS8Uint, Format::D24UnormS8Uint,
 };
 

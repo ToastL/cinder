@@ -5,6 +5,7 @@
 #include "gfx/asset/Assets.hpp"
 #include "gfx/rhi/PipelineBuilder.hpp"
 #include "gfx/rhi/Backend.hpp"
+#include "platform/Assets.hpp"
 #include "platform/Log.hpp"
 #include "text/GlyphAtlas.hpp"
 #include "ui/core/ElementList.hpp"
@@ -120,7 +121,7 @@ void UiRenderer::resolveNames(const cinder::ui::ElementList& list) {
         cinder::gfx::rhi::TextureBinding set = assets_.get(0).binding();
         if (!failed_.contains(name)) {
             try {
-                set = assets_.get(assets_.load(name)).binding();
+                set = assets_.get(assets_.load(cinder::platform::contentPath(name).string())).binding();
             } catch (const std::exception& error) {
                 failed_.insert(name);
                 cinder::platform::logError("[ui] %s\n", error.what());

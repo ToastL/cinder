@@ -9,12 +9,46 @@
 #include "gfx/vk/Ctx.hpp"
 #include "gfx/vk/VkUtil.hpp"
 
+#include <utility>
 #include <vector>
 
 namespace cinder::gfx::rhi {
 
 using cinder::gfx::vk::check;
 namespace shaders = cinder::gfx::vk::shaders;
+
+namespace {
+
+class ModuleGuard {
+public:
+    ModuleGuard(VkDevice device, VkShaderModule module) : device_(device), module_(module) {}
+    ~ModuleGuard() { vkDestroyShaderModule(device_, module_, nullptr); }
+    ModuleGuard(const ModuleGuard&) = delete;
+    ModuleGuard& operator=(const ModuleGuard&) = delete;
+    VkShaderModule get() const { return module_; }
+
+private:
+    VkDevice device_;
+    VkShaderModule module_;
+};
+
+class LayoutGuard {
+public:
+    LayoutGuard(VkDevice device, VkPipelineLayout layout) : device_(device), layout_(layout) {}
+    ~LayoutGuard() {
+        if (layout_ != VK_NULL_HANDLE) vkDestroyPipelineLayout(device_, layout_, nullptr);
+    }
+    LayoutGuard(const LayoutGuard&) = delete;
+    LayoutGuard& operator=(const LayoutGuard&) = delete;
+    VkPipelineLayout get() const { return layout_; }
+    VkPipelineLayout release() { return std::exchange(layout_, VK_NULL_HANDLE); }
+
+private:
+    VkDevice device_;
+    VkPipelineLayout layout_;
+};
+
+}
 
 std::unique_ptr<GraphicsPipeline> createPipeline(const Presenter& presenter,
                                                  const PipelineDesc& desc) {
@@ -35,21 +69,21 @@ std::unique_ptr<GraphicsPipeline> createPipeline(const Presenter& presenter,
         layoutInfo.pPushConstantRanges = &push;
     }
 
-    VkPipelineLayout layout = VK_NULL_HANDLE;
-    check(vkCreatePipelineLayout(ctx.device(), &layoutInfo, nullptr, &layout),
-          "vkCreatePipelineLayout");
+    VkPipelineLayout created = VK_NULL_HANDLE;
+    check(vkCreatePipelineLayout(ctx.device(), &layoutInfo, nullptr, &created), "vkCreatePipelineLayout");
+    LayoutGuard layout(ctx.device(), created);
 
-    const VkShaderModule vertModule = shaders::fromFile(ctx, desc.program + ".vs");
-    const VkShaderModule fragModule = shaders::fromFile(ctx, desc.program + ".ps");
+    const ModuleGuard vertModule(ctx.device(), shaders::fromFile(ctx, desc.program + ".vs"));
+    const ModuleGuard fragModule(ctx.device(), shaders::fromFile(ctx, desc.program + ".ps"));
 
     VkPipelineShaderStageCreateInfo stages[2]{};
     stages[0].sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
     stages[0].stage = VK_SHADER_STAGE_VERTEX_BIT;
-    stages[0].module = vertModule;
+    stages[0].module = vertModule.get();
     stages[0].pName = "VSMain";
     stages[1].sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
     stages[1].stage = VK_SHADER_STAGE_FRAGMENT_BIT;
-    stages[1].module = fragModule;
+    stages[1].module = fragModule.get();
     stages[1].pName = "PSMain";
 
     VkVertexInputBindingDescription binding{};
@@ -93,7 +127,7 @@ std::unique_ptr<GraphicsPipeline> createPipeline(const Presenter& presenter,
     raster.rasterizerDiscardEnable = VK_FALSE;
     raster.polygonMode = VK_POLYGON_MODE_FILL;
     raster.lineWidth = 1.0f;
-    raster.cullMode = VK_CULL_MODE_NONE;
+    raster.cullMode = desc.cullBack ? VK_CULL_MODE_BACK_BIT : VK_CULL_MODE_NONE;
     raster.frontFace = toVk(desc.winding);
     raster.depthBiasEnable = VK_FALSE;
 
@@ -148,19 +182,14 @@ std::unique_ptr<GraphicsPipeline> createPipeline(const Presenter& presenter,
     info.pDepthStencilState = &depthStencil;
     info.pColorBlendState = &blend;
     info.pDynamicState = &dynamic;
-    info.layout = layout;
+    info.layout = layout.get();
     info.renderPass = presenter.renderPass(desc.pass);
     info.subpass = 0;
 
     VkPipeline handle = VK_NULL_HANDLE;
-    const VkResult result =
-            vkCreateGraphicsPipelines(ctx.device(), VK_NULL_HANDLE, 1, &info, nullptr, &handle);
-
-    vkDestroyShaderModule(ctx.device(), fragModule, nullptr);
-    vkDestroyShaderModule(ctx.device(), vertModule, nullptr);
-
-    check(result, "vkCreateGraphicsPipelines");
-    return std::make_unique<GraphicsPipeline>(ctx, layout, handle);
+    check(vkCreateGraphicsPipelines(ctx.device(), VK_NULL_HANDLE, 1, &info, nullptr, &handle),
+          "vkCreateGraphicsPipelines");
+    return std::make_unique<GraphicsPipeline>(ctx, layout.release(), handle);
 }
 
 std::unique_ptr<GraphicsPipeline> PipelineBuilder::build() {

@@ -9,6 +9,7 @@ enum class Format : std::uint8_t {
     BGRA8Srgb,
     BGRA8Unorm,
     RGBA8Srgb,
+    RGBA8Unorm,
     ABGR8SrgbPack32,
     R8Unorm,
     D32Sfloat,

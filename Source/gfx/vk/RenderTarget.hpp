@@ -24,6 +24,8 @@ public:
     TextureBinding binding() const { return binding_; }
     uint32_t width() const { return width_; }
     uint32_t height() const { return height_; }
+    bool rendered() const { return rendered_; }
+    void markRendered() const { rendered_ = true; }
 
 private:
     const cinder::gfx::rhi::Ctx& ctx_;
@@ -35,6 +37,7 @@ private:
     TextureBinding binding_;
     uint32_t width_ = 0;
     uint32_t height_ = 0;
+    mutable bool rendered_ = false;
 };
 
 }

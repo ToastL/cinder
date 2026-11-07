@@ -6,7 +6,30 @@
 #include <stdexcept>
 #include <string>
 
+extern "C" void* objc_autoreleasePoolPush(void);
+extern "C" void objc_autoreleasePoolPop(void* token);
+
 namespace cinder::gfx::mtl {
+
+class PoolScope {
+public:
+    PoolScope() : token_(objc_autoreleasePoolPush()) {}
+    ~PoolScope() {
+        if (token_ != nullptr) objc_autoreleasePoolPop(token_);
+    }
+
+    PoolScope(const PoolScope&) = delete;
+    PoolScope& operator=(const PoolScope&) = delete;
+
+    void* detach() {
+        void* token = token_;
+        token_ = nullptr;
+        return token;
+    }
+
+private:
+    void* token_ = nullptr;
+};
 
 inline void* retain(id object) { return (__bridge_retained void*)object; }
 

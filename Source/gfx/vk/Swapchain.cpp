@@ -7,8 +7,31 @@
 #include "platform/Window.hpp"
 
 #include <algorithm>
+#include <stdexcept>
+#include <vector>
 
 namespace cinder::gfx::vk {
+namespace {
+
+constexpr uint32_t UNDEFINED_EXTENT = 0xFFFFFFFF;
+
+VkSurfaceFormatKHR pickFormat(const std::vector<VkSurfaceFormatKHR>& formats) {
+    const VkFormat preferred[] = {VK_FORMAT_B8G8R8A8_SRGB, VK_FORMAT_R8G8B8A8_SRGB, VK_FORMAT_B8G8R8A8_UNORM,
+                                  VK_FORMAT_R8G8B8A8_UNORM};
+    for (const VkFormat wanted : preferred) {
+        for (const VkSurfaceFormatKHR& candidate : formats) {
+            if (candidate.format == wanted && candidate.colorSpace == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR) {
+                return candidate;
+            }
+        }
+    }
+    for (const VkSurfaceFormatKHR& candidate : formats) {
+        if (rhi::knownVk(candidate.format)) return candidate;
+    }
+    throw std::runtime_error("the surface offers no colour format the renderer supports");
+}
+
+}
 
 Swapchain::Swapchain(const rhi::Ctx& ctx, const cinder::platform::Window& window, VkImageUsageFlags extraUsage)
     : ctx_(ctx) {
@@ -17,34 +40,16 @@ Swapchain::Swapchain(const rhi::Ctx& ctx, const cinder::platform::Window& window
           "vkGetPhysicalDeviceSurfaceCapabilitiesKHR");
 
     uint32_t formatCount = 0;
-    vkGetPhysicalDeviceSurfaceFormatsKHR(ctx.physicalDevice(), ctx.surface(), &formatCount, nullptr);
+    check(vkGetPhysicalDeviceSurfaceFormatsKHR(ctx.physicalDevice(), ctx.surface(), &formatCount, nullptr),
+          "vkGetPhysicalDeviceSurfaceFormatsKHR");
     std::vector<VkSurfaceFormatKHR> formats(formatCount);
-    vkGetPhysicalDeviceSurfaceFormatsKHR(ctx.physicalDevice(), ctx.surface(), &formatCount,
-                                         formats.data());
+    check(vkGetPhysicalDeviceSurfaceFormatsKHR(ctx.physicalDevice(), ctx.surface(), &formatCount, formats.data()),
+          "vkGetPhysicalDeviceSurfaceFormatsKHR");
 
-    VkSurfaceFormatKHR chosen = formats.front();
-    for (const VkSurfaceFormatKHR& candidate : formats) {
-        if (candidate.format == VK_FORMAT_B8G8R8A8_SRGB
-                && candidate.colorSpace == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR) {
-            chosen = candidate;
-            break;
-        }
-    }
+    const VkSurfaceFormatKHR chosen = pickFormat(formats);
     format_ = chosen.format;
 
-    uint32_t modeCount = 0;
-    vkGetPhysicalDeviceSurfacePresentModesKHR(ctx.physicalDevice(), ctx.surface(), &modeCount,
-                                              nullptr);
-    std::vector<VkPresentModeKHR> modes(modeCount);
-    vkGetPhysicalDeviceSurfacePresentModesKHR(ctx.physicalDevice(), ctx.surface(), &modeCount,
-                                              modes.data());
-
-    VkPresentModeKHR presentMode = VK_PRESENT_MODE_FIFO_KHR;
-    for (VkPresentModeKHR mode : modes) {
-        if (mode == VK_PRESENT_MODE_MAILBOX_KHR) presentMode = mode;
-    }
-
-    if (caps.currentExtent.width != 0xFFFFFFFF) {
+    if (caps.currentExtent.width != UNDEFINED_EXTENT) {
         extent_ = caps.currentExtent;
     } else {
         extent_.width = std::clamp(static_cast<uint32_t>(window.width()),
@@ -64,10 +69,11 @@ Swapchain::Swapchain(const rhi::Ctx& ctx, const cinder::platform::Window& window
     info.imageColorSpace = chosen.colorSpace;
     info.imageExtent = extent_;
     info.imageArrayLayers = 1;
-    info.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | (extraUsage & caps.supportedUsageFlags);
+    usage_ = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | (extraUsage & caps.supportedUsageFlags);
+    info.imageUsage = usage_;
     info.preTransform = caps.currentTransform;
     info.compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
-    info.presentMode = presentMode;
+    info.presentMode = VK_PRESENT_MODE_FIFO_KHR;
     info.clipped = VK_TRUE;
     info.oldSwapchain = VK_NULL_HANDLE;
 
@@ -83,9 +89,9 @@ Swapchain::Swapchain(const rhi::Ctx& ctx, const cinder::platform::Window& window
     check(vkCreateSwapchainKHR(ctx.device(), &info, nullptr, &handle_), "vkCreateSwapchainKHR");
 
     uint32_t count = 0;
-    vkGetSwapchainImagesKHR(ctx.device(), handle_, &count, nullptr);
+    check(vkGetSwapchainImagesKHR(ctx.device(), handle_, &count, nullptr), "vkGetSwapchainImagesKHR");
     images_.resize(count);
-    vkGetSwapchainImagesKHR(ctx.device(), handle_, &count, images_.data());
+    check(vkGetSwapchainImagesKHR(ctx.device(), handle_, &count, images_.data()), "vkGetSwapchainImagesKHR");
 
     views_.reserve(count);
     for (VkImage image : images_) {

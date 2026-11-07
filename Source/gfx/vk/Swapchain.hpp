@@ -31,6 +31,7 @@ public:
     rhi::Format format() const;
     uint32_t width() const { return extent_.width; }
     uint32_t height() const { return extent_.height; }
+    VkImageUsageFlags usage() const { return usage_; }
 
 private:
     void destroyFramebuffers();
@@ -42,6 +43,7 @@ private:
     std::vector<VkFramebuffer> framebuffers_;
     VkFormat format_ = VK_FORMAT_UNDEFINED;
     VkExtent2D extent_{};
+    VkImageUsageFlags usage_ = 0;
 };
 
 }

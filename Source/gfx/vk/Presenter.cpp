@@ -95,7 +95,7 @@ std::optional<Frame> Presenter::begin() {
     sync_->claimImage(imageIndex);
 
     VkCommandBuffer cmd = commandBuffers_[sync_->frame()];
-    vkResetCommandBuffer(cmd, 0);
+    check(vkResetCommandBuffer(cmd, 0), "vkResetCommandBuffer");
 
     VkCommandBufferBeginInfo begin{};
     begin.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
@@ -111,6 +111,7 @@ std::optional<Frame> Presenter::begin() {
 
 void Presenter::beginScenePass(Frame& frame, const RenderTarget& target, float r, float g,
                                float b) {
+    target.markRendered();
     VkClearValue clears[2]{};
     clears[0].color = {{r, g, b, 1.0f}};
     clears[1].depthStencil = {1.0f, 0};
@@ -182,7 +183,6 @@ void Presenter::end(Frame& frame) {
         ctx_.waitIdle();
         writeCapture(windowCapture_, swapchain_->width(), swapchain_->height(),
                                   captureBuffer_->mapped(), swapchain_->format());
-        cinder::platform::logInfo("[capture] wrote %s\n", windowCapture_.c_str());
         windowCapture_.clear();
         captureRecorded_ = false;
     }
@@ -221,6 +221,10 @@ void Presenter::recreateSwapchain() {
 }
 
 void Presenter::captureTarget(const RenderTarget& target, const std::string& path) const {
+    if (!target.rendered()) {
+        cinder::platform::logError("[capture] %s skipped: the scene target has not been drawn yet\n", path.c_str());
+        return;
+    }
     const cinder::gfx::rhi::Ctx& ctx = ctx_;
     const Format format = swapchain_->format();
     ctx.waitIdle();
@@ -280,7 +284,7 @@ void Presenter::requestWindowCapture(const std::string& path) {
 }
 
 void Presenter::recordWindowCapture(VkCommandBuffer cmd, std::uint32_t imageIndex) {
-    if (windowCapture_.empty() || (swapchainUsage_ & VK_IMAGE_USAGE_TRANSFER_SRC_BIT) == 0) return;
+    if (windowCapture_.empty() || (swapchain_->usage() & VK_IMAGE_USAGE_TRANSFER_SRC_BIT) == 0) return;
 
     const std::uint32_t width = swapchain_->width();
     const std::uint32_t height = swapchain_->height();

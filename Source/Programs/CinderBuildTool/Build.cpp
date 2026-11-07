@@ -58,6 +58,28 @@ std::string findProgram(const std::string& name, const char* override, const std
     return {};
 }
 
+std::string jsonString(std::string_view value) {
+    std::string out = "\"";
+    for (const char c : value) {
+        switch (c) {
+            case '"': out += "\\\""; break;
+            case '\\': out += "\\\\"; break;
+            case '\n': out += "\\n"; break;
+            case '\r': out += "\\r"; break;
+            case '\t': out += "\\t"; break;
+            default:
+                if (static_cast<unsigned char>(c) < 0x20) {
+                    char escaped[8];
+                    std::snprintf(escaped, sizeof(escaped), "\\u%04x", static_cast<unsigned>(c));
+                    out += escaped;
+                } else {
+                    out.push_back(c);
+                }
+        }
+    }
+    return out + "\"";
+}
+
 bool writeIfChanged(const std::filesystem::path& path, const std::string& text) {
     std::ifstream in(path);
     std::stringstream current;
@@ -78,7 +100,11 @@ Builder::Builder(Toolchain toolchain, BuildOptions options) : toolchain_(std::mo
                                                                 : std::vector<std::string>{"spirv"};
     }
     if (options_.jobs <= 0) options_.jobs = static_cast<int>(std::max(1u, std::thread::hardware_concurrency()));
-    buildId_ = computeBuildId();
+}
+
+const std::string& Builder::buildId() const {
+    if (!buildId_) buildId_ = computeBuildId();
+    return *buildId_;
 }
 
 std::filesystem::path Builder::binaries() const {
@@ -89,8 +115,10 @@ std::filesystem::path Builder::intermediate() const {
     return options_.output / "Intermediate" / toolchain_.platform / options_.config;
 }
 
-TargetInfo Builder::info(const std::string& target) const {
-    return TargetInfo{target, toolchain_.platform, options_.config, options_.backend, ENGINE_VERSION, buildId_,
+TargetInfo Builder::info(const std::string& target) const { return info(target, buildId()); }
+
+TargetInfo Builder::info(const std::string& target, const std::string& id) const {
+    return TargetInfo{target, toolchain_.platform, options_.config, options_.backend, ENGINE_VERSION, id,
                       options_.root, binaries(), intermediate()};
 }
 
@@ -110,10 +138,17 @@ std::string Builder::computeBuildId() const {
     mix(toolchain_.identity);
 
     std::vector<std::filesystem::path> files;
-    for (const char* folder : {"Source"}) {
+    const std::filesystem::path source = options_.root / "Source";
+    const std::filesystem::path outsideAbi[] = {source / "dev", source / "editor", source / "packager",
+                                                source / "Programs"};
+    {
         std::error_code error;
-        for (auto it = std::filesystem::recursive_directory_iterator(options_.root / folder, error);
+        for (auto it = std::filesystem::recursive_directory_iterator(source, error);
              !error && it != std::filesystem::recursive_directory_iterator(); it.increment(error)) {
+            if (it->is_directory() && std::find(std::begin(outsideAbi), std::end(outsideAbi), it->path()) != std::end(outsideAbi)) {
+                it.disable_recursion_pending();
+                continue;
+            }
             const std::string extension = it->path().extension().string();
             if (it->is_regular_file() && (isSource(it->path()) || extension == ".hpp" || extension == ".h"
                                           || extension == ".hh" || extension == ".inl")) {
@@ -332,7 +367,7 @@ void Builder::planRules(const std::string& name, const TargetRules& target, cons
 
     std::vector<std::string> defines = target.defines_;
     if (game && std::none_of(defines.begin(), defines.end(), [](const std::string& d) { return d.starts_with("CINDER_MODULE_ABI="); })) {
-        defines.push_back("CINDER_MODULE_ABI=" + inQuotes(placement.id.empty() ? buildId_ : placement.id));
+        defines.push_back("CINDER_MODULE_ABI=" + inQuotes(placement.id.empty() ? buildId() : placement.id));
     }
 
     std::vector<std::filesystem::path> objects;
@@ -416,16 +451,9 @@ bool writeCompileCommands(const std::filesystem::path& file, const std::filesyst
         const auto found = std::find(action.command.begin(), action.command.end(), "-c");
         if (found == action.command.end() || found + 1 == action.command.end()) continue;
         std::string arguments;
-        for (const std::string& arg : action.command) {
-            std::string escaped;
-            for (const char c : arg) {
-                if (c == '"' || c == '\\') escaped.push_back('\\');
-                escaped.push_back(c);
-            }
-            arguments += (arguments.empty() ? "" : ", ") + inQuotes(escaped);
-        }
-        commands += std::string(commands.size() > 1 ? "," : "") + "\n\t{\"directory\": " + inQuotes(directory.string())
-                + ", \"file\": " + inQuotes(*(found + 1)) + ", \"arguments\": [" + arguments + "]}";
+        for (const std::string& arg : action.command) arguments += (arguments.empty() ? "" : ", ") + jsonString(arg);
+        commands += std::string(commands.size() > 1 ? "," : "") + "\n\t{\"directory\": " + jsonString(directory.string())
+                + ", \"file\": " + jsonString(*(found + 1)) + ", \"arguments\": [" + arguments + "]}";
     }
     return writeIfChanged(file, commands + "\n]\n");
 }
@@ -443,11 +471,18 @@ bool Builder::clean() {
 }
 
 bool Builder::buildGame(const std::filesystem::path& project, std::filesystem::path library) {
-    std::filesystem::path descriptor;
+    std::vector<std::filesystem::path> descriptors;
     for (const auto& entry : std::filesystem::directory_iterator(project)) {
-        if (entry.path().extension() == ".cinder") descriptor = entry.path();
+        if (entry.path().extension() == ".cinder" && entry.is_regular_file()) descriptors.push_back(entry.path());
     }
-    if (descriptor.empty()) throw std::runtime_error(project.string() + " is not a project: it has no .cinder file");
+    if (descriptors.empty()) throw std::runtime_error(project.string() + " is not a project: it has no .cinder file");
+    if (descriptors.size() > 1) {
+        std::sort(descriptors.begin(), descriptors.end());
+        std::string names;
+        for (const std::filesystem::path& path : descriptors) names += (names.empty() ? "" : ", ") + path.filename().string();
+        throw std::runtime_error(project.string() + " has more than one .cinder file: " + names);
+    }
+    const std::filesystem::path descriptor = descriptors.front();
     const std::string name = descriptor.stem().string();
 
     std::ifstream manifest(binaries() / "Engine.modules");
@@ -511,7 +546,7 @@ bool Builder::buildGame(const std::filesystem::path& project, std::filesystem::p
     target.type(TargetType::GameModule);
     for (const std::string& module : modules) target.modules_.push_back(module);
     std::vector<Action> actions;
-    planRules(name, target, info(name), actions, Placement{objects, library, entry, engineId});
+    planRules(name, target, info(name, engineId), actions, Placement{objects, library, entry, engineId});
 
     writeCompileCommands(project / "compile_commands.json", project, actions);
 
@@ -528,8 +563,8 @@ std::vector<Action> Builder::plan(const std::vector<std::string>& targets) {
         throw std::runtime_error("could not write the generated Backend.hpp");
     }
 
-    const std::string id = "namespace cinder::core {\n\nconst char* buildId() { return \"" + buildId_ + "\"; }\n\n}\n";
-    const std::string modules = "{\n\t\"buildId\": \"" + buildId_ + "\",\n\t\"version\": \"" + ENGINE_VERSION
+    const std::string id = "namespace cinder::core {\n\nconst char* buildId() { return \"" + buildId() + "\"; }\n\n}\n";
+    const std::string modules = "{\n\t\"buildId\": \"" + buildId() + "\",\n\t\"version\": \"" + ENGINE_VERSION
             + "\",\n\t\"config\": \"" + options_.config + "\",\n\t\"backend\": \"" + options_.backend + "\"\n}\n";
     if (!writeIfChanged(intermediate() / "Generated" / "BuildId.cpp", id) || !writeIfChanged(binaries() / "Engine.modules", modules)) {
         throw std::runtime_error("could not write the BuildId");

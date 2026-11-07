@@ -15,33 +15,15 @@
 
 #include <algorithm>
 #include <cstring>
+#include <utility>
 #include <vector>
-
-extern "C" void* objc_autoreleasePoolPush(void);
-extern "C" void objc_autoreleasePoolPop(void* token);
 
 namespace cinder::gfx::rhi {
 namespace {
 
+using cinder::gfx::mtl::PoolScope;
+
 constexpr NSUInteger COPY_ALIGNMENT = 256;
-
-class PoolScope {
-public:
-    PoolScope() : token_(objc_autoreleasePoolPush()) {}
-    ~PoolScope() { if (token_ != nullptr) objc_autoreleasePoolPop(token_); }
-
-    PoolScope(const PoolScope&) = delete;
-    PoolScope& operator=(const PoolScope&) = delete;
-
-    void* detach() {
-        void* token = token_;
-        token_ = nullptr;
-        return token;
-    }
-
-private:
-    void* token_ = nullptr;
-};
 
 NSUInteger alignedRowBytes(std::uint32_t width) {
     const NSUInteger bytes = static_cast<NSUInteger>(width) * 4;
@@ -65,17 +47,8 @@ id<MTLBuffer> encodeCapture(id<MTLDevice> device, id<MTLCommandBuffer> commandBu
     return buffer;
 }
 
-void writeBuffer(const std::string& path, id<MTLBuffer> buffer, std::uint32_t width,
-                 std::uint32_t height) {
-    const NSUInteger rowBytes = alignedRowBytes(width);
-    const std::size_t packedRow = static_cast<std::size_t>(width) * 4;
-    std::vector<std::uint8_t> pixels(packedRow * height);
-    const auto* source = static_cast<const std::uint8_t*>(buffer.contents);
-    for (std::uint32_t row = 0; row < height; ++row) {
-        std::memcpy(pixels.data() + static_cast<std::size_t>(row) * packedRow,
-                    source + static_cast<std::size_t>(row) * rowBytes, packedRow);
-    }
-    writeCapture(path, width, height, pixels.data(), Format::BGRA8Srgb);
+void writeBuffer(const std::string& path, id<MTLBuffer> buffer, std::uint32_t width, std::uint32_t height) {
+    writeCapture(path, width, height, buffer.contents, Format::BGRA8Srgb, alignedRowBytes(width));
 }
 
 }
@@ -118,6 +91,31 @@ void Presenter::resize() {
     pixelsPerPoint_ = window_.logicalWidth() > 0
             ? static_cast<float>(size.x) / static_cast<float>(window_.logicalWidth())
             : 1.0f;
+}
+
+Frame::~Frame() {
+    if (state && state->encoder != nullptr) cinder::gfx::mtl::release(state->encoder);
+    cinder::gfx::mtl::release(drawable);
+    cinder::gfx::mtl::release(commandBuffer);
+    if (pool != nullptr) objc_autoreleasePoolPop(pool);
+}
+
+Frame::Frame(Frame&& other) noexcept
+    : index(other.index), image(other.image), commands(other.commands), uploads(other.uploads),
+      state(std::move(other.state)), commandBuffer(std::exchange(other.commandBuffer, nullptr)),
+      drawable(std::exchange(other.drawable, nullptr)), pool(std::exchange(other.pool, nullptr)) {}
+
+Frame& Frame::operator=(Frame&& other) noexcept {
+    Frame moved(std::move(other));
+    std::swap(index, moved.index);
+    std::swap(image, moved.image);
+    std::swap(commands, moved.commands);
+    std::swap(uploads, moved.uploads);
+    std::swap(state, moved.state);
+    std::swap(commandBuffer, moved.commandBuffer);
+    std::swap(drawable, moved.drawable);
+    std::swap(pool, moved.pool);
+    return *this;
 }
 
 std::unique_ptr<RenderTarget> Presenter::createTarget(glm::uvec2 size) const {
@@ -221,7 +219,6 @@ void Presenter::end(Frame& frame) {
         [buffer waitUntilCompleted];
         const glm::uvec2 size = extent();
         writeBuffer(windowCapture_, captureBuffer, size.x, size.y);
-        cinder::platform::logInfo("[capture] wrote %s\n", windowCapture_.c_str());
         windowCapture_.clear();
     }
 

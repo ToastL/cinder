@@ -18,7 +18,8 @@ MeshPipeline::MeshPipeline(const cinder::gfx::rhi::Presenter& presenter) {
                         .attribute(2, cinder::gfx::rhi::VertexFormat::Float2, 6 * sizeof(float))
                         .attribute(3, cinder::gfx::rhi::VertexFormat::Float4, 8 * sizeof(float))
                         .depthTest()
-                        .frontFace(cinder::gfx::rhi::Winding::Clockwise)
+                        .frontFace(cinder::gfx::rhi::Winding::CounterClockwise)
+                        .cullBack()
                         .build();
 }
 

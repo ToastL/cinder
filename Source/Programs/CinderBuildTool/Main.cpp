@@ -1,12 +1,14 @@
 #include "CinderBuildTool/Build.hpp"
-#include "CinderBuildTool/Layers.hpp"
 #include "CinderBuildTool/Generate.hpp"
+#include "CinderBuildTool/Layers.hpp"
+#include "CinderBuildTool/Process.hpp"
 #include "CinderBuildTool/Registry.hpp"
 #include "CinderBuildTool/Tests.hpp"
 
 #include <cstdio>
 #include <cstdlib>
 #include <filesystem>
+#include <memory>
 #include <set>
 #include <string>
 #include <string_view>
@@ -80,8 +82,15 @@ void rebuildIfStale(char** argv) {
     std::fprintf(stderr, "cbt: rules or tool sources changed, rebuilding cbt\n");
     const std::string binaries = self.parent_path().parent_path().string();
     setenv("CINDER_BINARIES", binaries.c_str(), 1);
-    const std::string command = "/bin/bash '" + (ROOT / "Setup.sh").string() + "'";
-    if (std::system(command.c_str()) != 0) {
+    std::string failure;
+    std::unique_ptr<cbt::Process> setup = cbt::Process::start({"/bin/bash", (ROOT / "Setup.sh").string()}, failure);
+    if (setup == nullptr) {
+        std::fprintf(stderr, "cbt: %s\n", failure.c_str());
+        std::exit(1);
+    }
+    std::string line;
+    while (setup->readLine(line)) std::fprintf(stderr, "%s\n", line.c_str());
+    if (setup->wait() != 0) {
         std::fprintf(stderr, "cbt: rebuilding cbt failed\n");
         std::exit(1);
     }

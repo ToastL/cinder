@@ -45,6 +45,7 @@ id<MTLLibrary> library(id<MTLDevice> device, const std::string& program,
 
 std::unique_ptr<GraphicsPipeline> createPipeline(const Presenter& presenter,
                                                  const PipelineDesc& desc) {
+    const cinder::gfx::mtl::PoolScope pool;
     id<MTLDevice> device = cinder::gfx::mtl::bridge<id<MTLDevice>>(presenter.ctx().device());
     id<MTLLibrary> vertexLibrary = library(device, desc.program, "vs");
     id<MTLLibrary> fragmentLibrary = library(device, desc.program, "ps");
@@ -73,8 +74,9 @@ std::unique_ptr<GraphicsPipeline> createPipeline(const Presenter& presenter,
         pipeline.vertexDescriptor = vertices;
     }
 
-    if (desc.pass == PassKind::Scene && (desc.depthTest || desc.depthWrite)) {
-        pipeline.depthAttachmentPixelFormat = MTLPixelFormatDepth32Float;
+    if (desc.pass == PassKind::Scene) {
+        pipeline.depthAttachmentPixelFormat = static_cast<MTLPixelFormat>(
+                cinder::gfx::mtl::pixelFormat(presenter.ctx().depthFormat()));
     }
 
     MTLRenderPipelineColorAttachmentDescriptor* color = pipeline.colorAttachments[0];
@@ -106,7 +108,7 @@ std::unique_ptr<GraphicsPipeline> createPipeline(const Presenter& presenter,
 
     return std::make_unique<GraphicsPipeline>(
             cinder::gfx::mtl::retain(state), depthHandle, desc.pushConstantBytes,
-            desc.pushConstantStages, desc.winding);
+            desc.pushConstantStages, desc.winding, desc.cullBack);
 }
 
 std::unique_ptr<GraphicsPipeline> PipelineBuilder::build() {

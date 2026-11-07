@@ -12,5 +12,6 @@ VkShaderStageFlags toVk(ShaderStages stages);
 VkFrontFace toVk(Winding winding);
 VkBufferUsageFlags toVk(BufferUsage usage);
 Format fromVk(VkFormat format);
+bool knownVk(VkFormat format);
 
 }

@@ -24,9 +24,9 @@ constexpr const char* VALIDATION_LAYER = "VK_LAYER_KHRONOS_validation";
 
 std::vector<std::string> instanceExtensions() {
     uint32_t count = 0;
-    vkEnumerateInstanceExtensionProperties(nullptr, &count, nullptr);
+    check(vkEnumerateInstanceExtensionProperties(nullptr, &count, nullptr), "vkEnumerateInstanceExtensionProperties");
     std::vector<VkExtensionProperties> properties(count);
-    vkEnumerateInstanceExtensionProperties(nullptr, &count, properties.data());
+    check(vkEnumerateInstanceExtensionProperties(nullptr, &count, properties.data()), "vkEnumerateInstanceExtensionProperties");
 
     std::vector<std::string> names;
     names.reserve(count);
@@ -36,9 +36,9 @@ std::vector<std::string> instanceExtensions() {
 
 std::vector<std::string> deviceExtensions(VkPhysicalDevice device) {
     uint32_t count = 0;
-    vkEnumerateDeviceExtensionProperties(device, nullptr, &count, nullptr);
+    check(vkEnumerateDeviceExtensionProperties(device, nullptr, &count, nullptr), "vkEnumerateDeviceExtensionProperties");
     std::vector<VkExtensionProperties> properties(count);
-    vkEnumerateDeviceExtensionProperties(device, nullptr, &count, properties.data());
+    check(vkEnumerateDeviceExtensionProperties(device, nullptr, &count, properties.data()), "vkEnumerateDeviceExtensionProperties");
 
     std::vector<std::string> names;
     names.reserve(count);
@@ -55,11 +55,11 @@ bool has(const std::vector<std::string>& names, std::string_view name) {
 
 bool layerAvailable(const char* name) {
     uint32_t count = 0;
-    vkEnumerateInstanceLayerProperties(&count, nullptr);
+    check(vkEnumerateInstanceLayerProperties(&count, nullptr), "vkEnumerateInstanceLayerProperties");
     if (count == 0) return false;
 
     std::vector<VkLayerProperties> properties(count);
-    vkEnumerateInstanceLayerProperties(&count, properties.data());
+    check(vkEnumerateInstanceLayerProperties(&count, properties.data()), "vkEnumerateInstanceLayerProperties");
     for (const VkLayerProperties& property : properties) {
         if (std::strcmp(property.layerName, name) == 0) return true;
     }
@@ -146,7 +146,11 @@ void Ctx::createInstance() {
             validation_ = false;
             info.enabledLayerCount = 0;
             info.ppEnabledLayerNames = nullptr;
-            info.enabledExtensionCount = static_cast<uint32_t>(names.size() - 1);
+            std::erase_if(names, [](const char* name) {
+                return std::strcmp(name, VK_EXT_DEBUG_UTILS_EXTENSION_NAME) == 0;
+            });
+            info.enabledExtensionCount = static_cast<uint32_t>(names.size());
+            info.ppEnabledExtensionNames = names.data();
         }
     }
 
@@ -211,7 +215,7 @@ bool Ctx::findQueueFamilies(VkPhysicalDevice candidate) {
             graphicsFamily_ = static_cast<int>(i);
         }
         VkBool32 supportsPresent = VK_FALSE;
-        vkGetPhysicalDeviceSurfaceSupportKHR(candidate, i, surface_, &supportsPresent);
+        check(vkGetPhysicalDeviceSurfaceSupportKHR(candidate, i, surface_, &supportsPresent), "vkGetPhysicalDeviceSurfaceSupportKHR");
         if (supportsPresent == VK_TRUE && presentFamily_ < 0) {
             presentFamily_ = static_cast<int>(i);
         }
@@ -299,7 +303,10 @@ void Ctx::createAllocator() {
     check(vmaCreateAllocator(&info, &allocator_), "vmaCreateAllocator");
 }
 
-void Ctx::waitIdle() const { vkDeviceWaitIdle(device_); }
+void Ctx::waitIdle() const {
+    const VkResult result = vkDeviceWaitIdle(device_);
+    if (result != VK_SUCCESS) cinder::platform::logError("[vk] vkDeviceWaitIdle failed (%d)\n", static_cast<int>(result));
+}
 
 VkCommandBuffer Ctx::beginSingleTime() const {
     VkCommandBufferAllocateInfo alloc{};
@@ -327,7 +334,7 @@ void Ctx::endSingleTime(VkCommandBuffer cmd) const {
     submit.pCommandBuffers = &cmd;
 
     check(vkQueueSubmit(graphicsQueue_, 1, &submit, VK_NULL_HANDLE), "vkQueueSubmit");
-    vkQueueWaitIdle(graphicsQueue_);
+    check(vkQueueWaitIdle(graphicsQueue_), "vkQueueWaitIdle");
     vkFreeCommandBuffers(device_, commandPool_, 1, &cmd);
 }
 

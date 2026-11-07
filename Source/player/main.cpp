@@ -33,8 +33,8 @@ int main(int argc, char** argv) {
 
         const cinder::platform::GlfwSession glfw;
         {
-            Engine engine(config);
             std::unique_ptr<cinder::core::GameModule> module;
+            Engine engine(config);
             if (const auto library = cinder::core::GameModule::locate(root, config.name)) {
                 std::string error;
                 module = cinder::core::GameModule::open(*library, engine.types(), error);

@@ -22,6 +22,7 @@ public:
     PipelineBuilder& alphaBlend();
     PipelineBuilder& premultipliedBlend();
     PipelineBuilder& frontFace(Winding winding);
+    PipelineBuilder& cullBack();
 
     std::unique_ptr<GraphicsPipeline> build();
 

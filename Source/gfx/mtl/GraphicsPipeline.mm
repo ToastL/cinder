@@ -13,10 +13,10 @@ namespace cinder::gfx::rhi {
 
 GraphicsPipeline::GraphicsPipeline(void* pipeline, void* depthState,
                                    std::uint32_t pushConstantBytes,
-                                   ShaderStages pushConstantStages, Winding winding)
+                                   ShaderStages pushConstantStages, Winding winding, bool cullBack)
     : pipeline_(pipeline), depthState_(depthState),
       pushConstantBytes_((pushConstantBytes + 15u) & ~15u),
-      pushConstantStages_(pushConstantStages), winding_(winding) {}
+      pushConstantStages_(pushConstantStages), winding_(winding), cullBack_(cullBack) {}
 
 void GraphicsPipeline::bind(Commands cmd) const {
     auto& state = unwrap(cmd);
@@ -31,6 +31,7 @@ void GraphicsPipeline::bind(Commands cmd) const {
     [encoder setFrontFacingWinding:winding_ == Winding::Clockwise
                                           ? MTLWindingClockwise
                                           : MTLWindingCounterClockwise];
+    [encoder setCullMode:cullBack_ ? MTLCullModeBack : MTLCullModeNone];
     state.pushConstantBytes = pushConstantBytes_;
     if (pushConstantBytes_ > state.pushConstants.size()) {
         throw std::runtime_error("Metal push constant block exceeds 4096 bytes");

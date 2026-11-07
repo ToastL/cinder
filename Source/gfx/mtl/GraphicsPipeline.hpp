@@ -14,7 +14,7 @@ public:
     static constexpr std::uint32_t MATRIX_BYTES = 16 * sizeof(float);
 
     GraphicsPipeline(void* pipeline, void* depthState, std::uint32_t pushConstantBytes,
-                     ShaderStages pushConstantStages, Winding winding);
+                     ShaderStages pushConstantStages, Winding winding, bool cullBack);
     ~GraphicsPipeline();
 
     GraphicsPipeline(const GraphicsPipeline&) = delete;
@@ -33,6 +33,7 @@ private:
     std::uint32_t pushConstantBytes_ = 0;
     ShaderStages pushConstantStages_ = ShaderStages::Vertex;
     Winding winding_ = Winding::CounterClockwise;
+    bool cullBack_ = false;
 };
 
 }

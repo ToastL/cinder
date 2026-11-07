@@ -1,5 +1,6 @@
 #include "gfx/mtl/GlyphPages.hpp"
 
+#include "gfx/mtl/Commands.hpp"
 #include "gfx/mtl/Ctx.hpp"
 #include "gfx/mtl/GpuBuffer.hpp"
 #include "gfx/mtl/MetalUtil.hpp"
@@ -34,17 +35,30 @@ void GlyphPages::forgetUploads() {
     for (Page& value : pages_) value.uploaded = false;
 }
 
-void GlyphPages::upload(Uploads, const GpuBuffer& staging,
-                        const std::vector<GlyphRegion>& regions) {
-    const auto* source = static_cast<const std::uint8_t*>(staging.mapped());
+void GlyphPages::upload(Uploads cmd, const GpuBuffer& staging, const std::vector<GlyphRegion>& regions) {
+    if (regions.empty()) return;
+    id<MTLCommandBuffer> buffer = cinder::gfx::mtl::bridge<id<MTLCommandBuffer>>(cinder::gfx::rhi::unwrap(cmd));
+    id<MTLBuffer> source = cinder::gfx::mtl::bridge<id<MTLBuffer>>(staging.handle());
+    id<MTLBlitCommandEncoder> blit = [buffer blitCommandEncoder];
+    if (blit == nil) throw cinder::gfx::mtl::error("Could not begin Metal glyph upload");
     for (const GlyphRegion& region : regions) {
         Page& target = page(region.page);
-        id<MTLTexture> texture = cinder::gfx::mtl::bridge<id<MTLTexture>>(target.texture);
-        [texture replaceRegion:MTLRegionMake2D(region.x, region.y, region.width, region.height)
-                    mipmapLevel:0 withBytes:source + region.offset
-                    bytesPerRow:static_cast<NSUInteger>(region.width)];
         target.uploaded = true;
+        if (region.width <= 0 || region.height <= 0) continue;
+        const auto width = static_cast<NSUInteger>(region.width);
+        const auto height = static_cast<NSUInteger>(region.height);
+        id<MTLTexture> texture = cinder::gfx::mtl::bridge<id<MTLTexture>>(target.texture);
+        [blit copyFromBuffer:source
+                   sourceOffset:static_cast<NSUInteger>(region.offset)
+              sourceBytesPerRow:width
+            sourceBytesPerImage:width * height
+                     sourceSize:MTLSizeMake(width, height, 1)
+                      toTexture:texture
+               destinationSlice:0
+               destinationLevel:0
+              destinationOrigin:MTLOriginMake(static_cast<NSUInteger>(region.x), static_cast<NSUInteger>(region.y), 0)];
     }
+    [blit endEncoding];
 }
 
 GlyphPages::~GlyphPages() {

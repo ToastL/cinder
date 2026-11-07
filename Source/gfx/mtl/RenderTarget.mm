@@ -10,6 +10,7 @@ namespace cinder::gfx::rhi {
 RenderTarget::RenderTarget(const Ctx& ctx, Format format, std::uint32_t width,
                            std::uint32_t height)
     : width_(width), height_(height) {
+    const cinder::gfx::mtl::PoolScope pool;
     id<MTLDevice> device = cinder::gfx::mtl::bridge<id<MTLDevice>>(ctx.device());
 
     MTLTextureDescriptor* colorDesc = [MTLTextureDescriptor
@@ -22,7 +23,8 @@ RenderTarget::RenderTarget(const Ctx& ctx, Format format, std::uint32_t width,
     if (color == nil) throw cinder::gfx::mtl::error("Could not create Metal render target");
 
     MTLTextureDescriptor* depthDesc = [MTLTextureDescriptor
-            texture2DDescriptorWithPixelFormat:MTLPixelFormatDepth32Float
+            texture2DDescriptorWithPixelFormat:static_cast<MTLPixelFormat>(
+                                                       cinder::gfx::mtl::pixelFormat(ctx.depthFormat()))
                                          width:width height:height mipmapped:NO];
     depthDesc.storageMode = MTLStorageModePrivate;
     depthDesc.usage = MTLTextureUsageRenderTarget;

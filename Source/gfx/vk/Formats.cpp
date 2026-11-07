@@ -15,6 +15,7 @@ constexpr Pair TABLE[] = {
     {Format::BGRA8Srgb, VK_FORMAT_B8G8R8A8_SRGB},
     {Format::BGRA8Unorm, VK_FORMAT_B8G8R8A8_UNORM},
     {Format::RGBA8Srgb, VK_FORMAT_R8G8B8A8_SRGB},
+    {Format::RGBA8Unorm, VK_FORMAT_R8G8B8A8_UNORM},
     {Format::ABGR8SrgbPack32, VK_FORMAT_A8B8G8R8_SRGB_PACK32},
     {Format::R8Unorm, VK_FORMAT_R8_UNORM},
     {Format::D32Sfloat, VK_FORMAT_D32_SFLOAT},
@@ -29,6 +30,13 @@ VkFormat toVk(Format format) {
         if (pair.format == format) return pair.vk;
     }
     return VK_FORMAT_UNDEFINED;
+}
+
+bool knownVk(VkFormat format) {
+    for (const Pair& pair : TABLE) {
+        if (pair.vk == format && pair.format != Format::Undefined) return true;
+    }
+    return false;
 }
 
 Format fromVk(VkFormat format) {

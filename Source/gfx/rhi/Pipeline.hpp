@@ -28,6 +28,7 @@ struct PipelineDesc {
     bool blend = false;
     bool premultiplied = false;
     Winding winding = Winding::CounterClockwise;
+    bool cullBack = false;
 };
 
 std::unique_ptr<GraphicsPipeline> createPipeline(const Presenter& presenter,

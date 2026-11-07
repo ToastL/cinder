@@ -56,17 +56,18 @@ void FrameSync::resize(uint32_t imageCount) {
 }
 
 void FrameSync::waitForFrame() const {
-    vkWaitForFences(ctx_.device(), 1, &inFlight_[frame_], VK_TRUE,
-                    std::numeric_limits<uint64_t>::max());
+    check(vkWaitForFences(ctx_.device(), 1, &inFlight_[frame_], VK_TRUE, std::numeric_limits<uint64_t>::max()),
+          "vkWaitForFences");
 }
 
 void FrameSync::claimImage(uint32_t imageIndex) {
     if (imagesInFlight_[imageIndex] != VK_NULL_HANDLE) {
-        vkWaitForFences(ctx_.device(), 1, &imagesInFlight_[imageIndex], VK_TRUE,
-                        std::numeric_limits<uint64_t>::max());
+        check(vkWaitForFences(ctx_.device(), 1, &imagesInFlight_[imageIndex], VK_TRUE,
+                              std::numeric_limits<uint64_t>::max()),
+              "vkWaitForFences");
     }
     imagesInFlight_[imageIndex] = inFlight_[frame_];
-    vkResetFences(ctx_.device(), 1, &inFlight_[frame_]);
+    check(vkResetFences(ctx_.device(), 1, &inFlight_[frame_]), "vkResetFences");
 }
 
 void FrameSync::advance() { frame_ = (frame_ + 1) % framesInFlight_; }

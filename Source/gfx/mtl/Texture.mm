@@ -14,6 +14,7 @@ namespace cinder::gfx::rhi {
 Texture::Texture(const Ctx& ctx, const unsigned char* pixels, std::uint32_t width,
                  std::uint32_t height)
     : width_(width), height_(height) {
+    const cinder::gfx::mtl::PoolScope pool;
     id<MTLDevice> device = cinder::gfx::mtl::bridge<id<MTLDevice>>(ctx.device());
     MTLTextureDescriptor* desc = [MTLTextureDescriptor
             texture2DDescriptorWithPixelFormat:MTLPixelFormatRGBA8Unorm_sRGB

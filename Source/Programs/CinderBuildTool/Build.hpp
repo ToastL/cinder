@@ -6,6 +6,7 @@
 
 #include <filesystem>
 #include <map>
+#include <optional>
 #include <set>
 #include <string>
 #include <vector>
@@ -40,7 +41,7 @@ public:
     const std::string& platform() const { return toolchain_.platform; }
     bool buildGame(const std::filesystem::path& project, std::filesystem::path library);
     TargetInfo info(const std::string& target) const;
-    const std::string& id() const { return buildId_; }
+    const std::string& id() const { return buildId(); }
     std::filesystem::path binaries() const;
     std::filesystem::path intermediate() const;
     const std::filesystem::path& root() const { return options_.root; }
@@ -69,13 +70,14 @@ private:
     std::vector<std::string> compileFlags(const std::string& name, const TargetInfo& info, bool positionIndependent,
                                           const std::vector<std::string>& extraDefines);
     void planShaders(std::vector<Action>& actions, std::vector<std::filesystem::path>& outputs);
-    std::string buildId() const { return buildId_; }
+    const std::string& buildId() const;
     std::string computeBuildId() const;
+    TargetInfo info(const std::string& target, const std::string& id) const;
     std::vector<std::string> configFlags() const;
 
     Toolchain toolchain_;
     BuildOptions options_;
-    std::string buildId_;
+    mutable std::optional<std::string> buildId_;
     std::map<std::string, Module> modules_;
     std::set<std::string> shaderPlanned_;
 };

@@ -59,4 +59,9 @@ PipelineBuilder& PipelineBuilder::frontFace(Winding winding) {
     return *this;
 }
 
+PipelineBuilder& PipelineBuilder::cullBack() {
+    desc_.cullBack = true;
+    return *this;
+}
+
 }
