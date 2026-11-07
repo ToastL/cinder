@@ -425,3 +425,35 @@ TEST_CASE("a colour block opens a picker whose square sets saturation and value,
     ui.click(20.0f, 20.0f);
     CHECK_FALSE(block->isPickerOpen());
 }
+
+TEST_CASE("an open combo dropdown closes when its combo box is destroyed") {
+    std::string chosen = "box";
+    std::shared_ptr<ComboBox> combo;
+    Harness ui(at({10.0f, 10.0f}, {120.0f, 24.0f},
+                  make<ComboBox>()
+                          .assign(combo)
+                          .options(std::vector<std::string>{"box", "sphere"})
+                          .selectedOption([&] { return chosen; })
+                          .onSelectionChanged([&](const std::string& option) { chosen = option; })));
+    ui.click(50.0f, 20.0f);
+    REQUIRE(ui.app.hasPopups());
+    ui.frame();
+
+    combo.reset();
+    ui.app.setRoot(nullptr);
+    CHECK_FALSE(ui.app.hasPopups());
+    ui.frame();
+}
+
+TEST_CASE("a menu entry bound to a command keeps the command alive") {
+    auto commands = std::make_shared<CommandList>();
+    int runs = 0;
+    MenuBuilder builder;
+    {
+        auto command = std::make_shared<Command>(Command{"go", "Go", "Go", Shortcut{}});
+        commands->map(command, CommandAction{[&] { ++runs; }, {}, {}});
+        builder.command(commands, command);
+    }
+    builder.items()[0].action();
+    CHECK(runs == 1);
+}

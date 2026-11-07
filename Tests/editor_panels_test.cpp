@@ -5,6 +5,7 @@
 #include "components/Builtins.hpp"
 #include "dev/History.hpp"
 #include "dev/Selection.hpp"
+#include "dev/panels/Dialog.hpp"
 #include "dev/panels/EditorStyle.hpp"
 #include "dev/panels/Explorer.hpp"
 #include "dev/panels/Properties.hpp"
@@ -13,6 +14,7 @@
 #include "scene/PropValue.hpp"
 #include "scene/Scene.hpp"
 #include "scene/Transform.hpp"
+#include "ui/framework/Commands.hpp"
 #include "ui/widgets/Label.hpp"
 #include "ui/widgets/SpinBox.hpp"
 #include "ui/widgets/TextField.hpp"
@@ -227,4 +229,72 @@ TEST_CASE("Properties lists attributes, and rebuilds when one is added or remove
     properties.update();
     ui.frame();
     CHECK(labelled("Nothing selected"));
+}
+
+TEST_CASE("Escape in a Properties text field cancels instead of writing") {
+    World world;
+    world.node("Box").setAttribute("tag", PropValue::text("hero"));
+    world.history.reset();
+    Harness ui(nullptr);
+    Properties properties(world.selection, world.history, world.scene, ui.app);
+    ui.app.setTheme(cinder::dev::panels::editorTheme());
+    ui.app.setRoot(properties.widget());
+    ui.size = {320.0f, 500.0f};
+    ui.frame();
+    world.selection.select(world.node("Box").id());
+    properties.update();
+    ui.frame();
+
+    TextField* field = nullptr;
+    std::function<void(Widget*)> walk = [&](Widget* widget) {
+        if (widget == nullptr || field != nullptr) return;
+        if (auto* text = dynamic_cast<TextField*>(widget); text != nullptr && text->text() == "hero") {
+            field = text;
+            return;
+        }
+        for (int i = 0; i < widget->childCount(); ++i) walk(widget->childAt(i));
+    };
+    walk(properties.widget().get());
+    REQUIRE(field != nullptr);
+
+    const Rect rect = ui.app.grid().geometryOf(field).value_or(Geometry{}).rect();
+    ui.click(rect.center().x, rect.center().y);
+    ui.type(U"villain");
+    ui.key(keys::ESCAPE);
+    properties.update();
+    ui.frame();
+    world.history.settle(ui.app.isInteracting());
+
+    REQUIRE(world.node("Box").attribute("tag") != nullptr);
+    CHECK(world.node("Box").attribute("tag")->as<std::string>() == "hero");
+    CHECK_FALSE(world.history.dirty());
+}
+
+TEST_CASE("a modal dialog keeps every key from the global shortcuts") {
+    int shortcuts = 0;
+    int confirmed = 0;
+    int cancelled = 0;
+    std::shared_ptr<cinder::dev::panels::Dialog> dialog =
+            make<cinder::dev::panels::Dialog>()
+                    .title("Unsaved Changes")
+                    .message("Save?")
+                    .choices({cinder::dev::panels::DialogChoice{"Save", [&] { ++confirmed; }, true}})
+                    .onCancel([&] { ++cancelled; });
+    Harness ui(dialog);
+    ui.app.setTheme(cinder::dev::panels::editorTheme());
+    auto commands = std::make_shared<CommandList>();
+    auto play = std::make_shared<Command>(Command{"Play", "Play", "", Shortcut::primary(keys::letter('p'))});
+    commands->map(play, CommandAction{[&] { ++shortcuts; }, {}, {}});
+    ui.app.addCommands(commands);
+    ui.frame();
+    ui.app.setFocus(dialog);
+
+    ui.key(keys::letter('p'), cinder::platform::modifiers::PRIMARY);
+    ui.key(keys::TAB);
+    CHECK(shortcuts == 0);
+    CHECK(ui.app.focused() == dialog);
+    ui.key(keys::ENTER);
+    CHECK(confirmed == 1);
+    ui.key(keys::ESCAPE);
+    CHECK(cancelled == 1);
 }

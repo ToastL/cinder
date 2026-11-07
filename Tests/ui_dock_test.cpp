@@ -169,3 +169,21 @@ TEST_CASE("the only tab of a stack cannot split that stack, and a cancelled drag
     CHECK(editor.manager.stackCount() == 2);
     CHECK(editor.manager.tabsIn(editor.stackOf("Explorer")) == std::vector<std::string>{"Console", "Explorer"});
 }
+
+TEST_CASE("closing every tab leaves a layout a tab can be reopened into") {
+    TabManager manager;
+    manager.registerTab("Console", "Console", [] { return make<Probe>(); });
+    manager.registerTab("Explorer", "Explorer", [] { return make<Probe>(); });
+    std::shared_ptr<Widget> area = manager.restore(TabManager::split(
+            Orientation::Vertical,
+            {TabManager::split(Orientation::Horizontal, {TabManager::stack({"Console"}, 1.0f)}),
+             TabManager::stack({"Explorer"}, 1.0f)}));
+    Harness ui(area);
+    manager.closeTab("Console");
+    manager.closeTab("Explorer");
+    CHECK_FALSE(manager.isOpen("Console"));
+    CHECK(manager.layout().kind == LayoutNode::Kind::Stack);
+
+    manager.openTab("Console");
+    CHECK(manager.isOpen("Console"));
+}
