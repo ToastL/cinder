@@ -116,11 +116,11 @@ std::optional<float> hitSprite(const Ray& ray, const glm::mat4& world, glm::vec2
     const float facing = glm::dot(ray.direction, unit);
     if (std::abs(facing) < PARALLEL) return std::nullopt;
 
-    const glm::vec3 centre(world[3]);
-    const float distance = glm::dot(centre - ray.origin, unit) / facing;
+    const glm::vec3 center(world[3]);
+    const float distance = glm::dot(center - ray.origin, unit) / facing;
     if (distance < 0.0f) return std::nullopt;
 
-    const glm::vec3 offset = ray.origin + ray.direction * distance - centre;
+    const glm::vec3 offset = ray.origin + ray.direction * distance - center;
     const float shear = glm::dot(across, up);
     const float alongAcross = glm::dot(offset, across);
     const float alongUp = glm::dot(offset, up);

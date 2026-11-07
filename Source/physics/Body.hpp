@@ -52,7 +52,7 @@ public:
     Body& applyForce(const glm::vec3& force, const glm::vec3& point);
     Body& applyTorque(const glm::vec3& torque);
 
-    glm::vec3 centre();
+    glm::vec3 center();
 
     CINDER_NODE(Body, cinder::scene::Spatial) {
         CINDER_PROP(motion_);

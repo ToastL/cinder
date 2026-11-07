@@ -113,7 +113,7 @@ TEST_CASE("a tab dropped in the middle of another stack joins it") {
     const Rect scene = ui.rectOf(top);
 
     dragTab(ui, explorer, scene, scene.size() * 0.5f);
-    CHECK(top->hoveredSide() == std::optional<DockSide>(DockSide::Centre));
+    CHECK(top->hoveredSide() == std::optional<DockSide>(DockSide::Center));
     ui.release();
     ui.frame();
     CHECK(editor.manager.stackCount() == 2);

@@ -255,7 +255,7 @@ TEST_CASE("each ring turns one Euler angle, about that ring's axis") {
     }
 }
 
-TEST_CASE("a ring facing the camera from off-centre can be grabbed all the way round") {
+TEST_CASE("a ring facing the camera from off-center can be grabbed all the way round") {
     World world;
     Node* box = world.add("MeshPart", glm::vec3(2.5f, 0.0f, 0.0f));
     const Gizmo gizmo = world.gizmo(*box, Tool::Rotate);
@@ -302,10 +302,10 @@ TEST_CASE("an axis scale changes one component and a uniform scale all three") {
     drag.end();
 
     box->transform()->setScale(1.0f, 2.0f, 3.0f);
-    const glm::vec2 centre = world.screen(gizmo.pivot);
-    CHECK(hitHandle(shapes(gizmo, world.view()), world.view(), centre) == Handle::Uniform);
-    REQUIRE(drag.begin(*box, gizmo, Handle::Uniform, world.view(), centre));
-    REQUIRE(drag.drag(world.scene, world.view(), centre + glm::vec2(cinder::dev::GIZMO_POINTS * 0.5f, 0.0f), false));
+    const glm::vec2 center = world.screen(gizmo.pivot);
+    CHECK(hitHandle(shapes(gizmo, world.view()), world.view(), center) == Handle::Uniform);
+    REQUIRE(drag.begin(*box, gizmo, Handle::Uniform, world.view(), center));
+    REQUIRE(drag.drag(world.scene, world.view(), center + glm::vec2(cinder::dev::GIZMO_POINTS * 0.5f, 0.0f), false));
     CHECK(box->transform()->scale().x == doctest::Approx(1.5f));
     CHECK(box->transform()->scale().y == doctest::Approx(3.0f));
     CHECK(box->transform()->scale().z == doctest::Approx(4.5f));

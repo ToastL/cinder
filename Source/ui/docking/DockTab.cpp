@@ -92,10 +92,10 @@ int DockTab::onPaint(const PaintArgs&, const Geometry& geometry, ElementList& li
     }
     if (closable()) {
         const Rect close = closeRect(geometry);
-        const glm::vec2 centre = close.center();
+        const glm::vec2 center = close.center();
         const float arm = dock.closeSize * 0.5f * geometry.scale;
-        const std::array<glm::vec2, 2> first = {centre - glm::vec2(arm), centre + glm::vec2(arm)};
-        const std::array<glm::vec2, 2> second = {centre + glm::vec2(arm, -arm), centre + glm::vec2(-arm, arm)};
+        const std::array<glm::vec2, 2> first = {center - glm::vec2(arm), center + glm::vec2(arm)};
+        const std::array<glm::vec2, 2> second = {center + glm::vec2(arm, -arm), center + glm::vec2(-arm, arm)};
         const Color mark = isHovered() ? style.apply(dock.labelActive) : color;
         list.lines(layer + 2, first, mark, 1.4f * geometry.scale);
         list.lines(layer + 2, second, mark, 1.4f * geometry.scale);
@@ -145,14 +145,14 @@ void TabStack::build() {
 std::optional<DockSide> TabStack::sideAt(const Geometry& geometry, glm::vec2 point, const DragDropEvent& event) const {
     if (dynamic_cast<const TabDragDrop*>(event.operation.get()) == nullptr) return std::nullopt;
     const glm::vec2 local = geometry.local(point);
-    if (local.y <= look().barHeight) return DockSide::Centre;
+    if (local.y <= look().barHeight) return DockSide::Center;
     const glm::vec2 unit = local / glm::max(geometry.size, glm::vec2(1.0f));
     const float left = unit.x;
     const float right = 1.0f - unit.x;
     const float top = unit.y;
     const float bottom = 1.0f - unit.y;
     const float nearest = std::min({left, right, top, bottom});
-    if (nearest > EDGE) return DockSide::Centre;
+    if (nearest > EDGE) return DockSide::Center;
     if (nearest == left) return DockSide::Left;
     if (nearest == right) return DockSide::Right;
     if (nearest == top) return DockSide::Top;
@@ -192,7 +192,7 @@ int TabStack::onPaint(const PaintArgs& args, const Geometry& geometry, ElementLi
         case DockSide::Right: target.min.x = rect.min.x + rect.width() * 0.5f; break;
         case DockSide::Top: target.max.y = rect.min.y + rect.height() * 0.5f; break;
         case DockSide::Bottom: target.min.y = rect.min.y + rect.height() * 0.5f; break;
-        case DockSide::Centre: break;
+        case DockSide::Center: break;
     }
     list.box(highest + 1, target,
              BoxStyle{style.apply(dock.dropFill), style.apply(dock.dropOutline), 2.0f * geometry.scale, glm::vec4(2.0f)});

@@ -17,7 +17,7 @@ class MenuBuilder;
 class Splitter;
 class TabStack;
 
-enum class DockSide : std::uint8_t { Centre, Left, Right, Top, Bottom };
+enum class DockSide : std::uint8_t { Center, Left, Right, Top, Bottom };
 
 struct TabSpawner {
     std::string id;

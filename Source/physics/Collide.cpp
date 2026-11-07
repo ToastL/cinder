@@ -256,7 +256,7 @@ bool faceContact(const Geometry& a, const Geometry& b, const glm::vec3& normal, 
     return true;
 }
 
-glm::vec3 edgeCentre(const Geometry& box, const glm::vec3& direction, int along) {
+glm::vec3 edgeCenter(const Geometry& box, const glm::vec3& direction, int along) {
     glm::vec3 point = box.center;
     for (int i = 0; i < 3; ++i) {
         if (i == along) continue;
@@ -268,12 +268,12 @@ glm::vec3 edgeCentre(const Geometry& box, const glm::vec3& direction, int along)
 
 bool edgeContact(const Geometry& a, const Geometry& b, const glm::vec3& normal, int axisA, int axisB,
                  float depth, Manifold& out) {
-    const glm::vec3 centreA = edgeCentre(a, normal, axisA);
-    const glm::vec3 centreB = edgeCentre(b, -normal, axisB);
+    const glm::vec3 centerA = edgeCenter(a, normal, axisA);
+    const glm::vec3 centerB = edgeCenter(b, -normal, axisB);
     const glm::vec3 alongA = a.axes[axisA];
     const glm::vec3 alongB = b.axes[axisB];
 
-    const glm::vec3 between = centreB - centreA;
+    const glm::vec3 between = centerB - centerA;
     const float cosine = glm::dot(alongA, alongB);
     const float denominator = 1.0f - cosine * cosine;
     if (denominator < PARALLEL) return false;
@@ -285,8 +285,8 @@ bool edgeContact(const Geometry& a, const Geometry& b, const glm::vec3& normal, 
     const float slideB = std::clamp((cosine * projectedA - projectedB) / denominator,
                                     -b.halfExtents[axisB], b.halfExtents[axisB]);
 
-    const glm::vec3 pointA = centreA + alongA * slideA;
-    const glm::vec3 pointB = centreB + alongB * slideB;
+    const glm::vec3 pointA = centerA + alongA * slideA;
+    const glm::vec3 pointB = centerB + alongB * slideB;
 
     out.normal = normal;
     out.points[0] = {(pointA + pointB) * 0.5f, depth, EDGE_FEATURE + axisA * 3 + axisB};

@@ -52,11 +52,11 @@ void paintChecker(ElementList& list, int layer, const Rect& rect, const ColorPic
     list.popClip();
 }
 
-void paintRing(ElementList& list, int layer, glm::vec2 centre, float radius, Color inner, Color outer) {
+void paintRing(ElementList& list, int layer, glm::vec2 center, float radius, Color inner, Color outer) {
     std::array<glm::vec2, MARKER_POINTS> points;
     for (int i = 0; i < MARKER_POINTS; ++i) {
         const float angle = glm::radians(360.0f * static_cast<float>(i) / MARKER_POINTS);
-        points[static_cast<std::size_t>(i)] = centre + glm::vec2(std::cos(angle), std::sin(angle)) * radius;
+        points[static_cast<std::size_t>(i)] = center + glm::vec2(std::cos(angle), std::sin(angle)) * radius;
     }
     list.lines(layer, points, outer, 3.0f, true);
     list.lines(layer + 1, points, inner, 1.5f, true);

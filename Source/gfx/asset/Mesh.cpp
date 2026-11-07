@@ -147,7 +147,7 @@ Mesh Mesh::capsule(const Ctx& ctx, float r, float g, float b) {
                                 (static_cast<float>(half) + static_cast<float>(ring) / RINGS);
             const float ny = std::cos(polar);
             const float radial = std::sin(polar);
-            const float centre = half == 0 ? HALF : -HALF;
+            const float center = half == 0 ? HALF : -HALF;
             const float v = 1.0f - static_cast<float>(row) / (ROWS - 1);
 
             for (int segment = 0; segment <= SEGMENTS; ++segment) {
@@ -155,7 +155,7 @@ Mesh Mesh::capsule(const Ctx& ctx, float r, float g, float b) {
                 const float azimuth = glm::two_pi<float>() * u;
                 const float nx = radial * std::cos(azimuth);
                 const float nz = radial * std::sin(azimuth);
-                vertices.insert(vertices.end(), {nx * RADIUS, ny * RADIUS + centre, nz * RADIUS, nx, ny,
+                vertices.insert(vertices.end(), {nx * RADIUS, ny * RADIUS + center, nz * RADIUS, nx, ny,
                                                  nz, u, v, r, g, b, 1.0f});
             }
             ++row;

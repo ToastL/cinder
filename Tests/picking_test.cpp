@@ -64,10 +64,10 @@ struct World {
 
 TEST_CASE("a ray through the view starts on the near plane and points into the screen") {
     World world;
-    const Ray centre = rayThrough(world.camera.viewProjection(), CENTRE, SIZE);
-    CHECK(centre.origin.z == doctest::Approx(-0.1f));
-    CHECK(centre.direction.x == doctest::Approx(0.0f));
-    CHECK(centre.direction.z == doctest::Approx(-1.0f));
+    const Ray center = rayThrough(world.camera.viewProjection(), CENTRE, SIZE);
+    CHECK(center.origin.z == doctest::Approx(-0.1f));
+    CHECK(center.direction.x == doctest::Approx(0.0f));
+    CHECK(center.direction.z == doctest::Approx(-1.0f));
 
     const Ray top = rayThrough(world.camera.viewProjection(), glm::vec2(CENTRE.x, 0.0f), SIZE);
     CHECK(top.direction.y > 0.0f);

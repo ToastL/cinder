@@ -22,7 +22,7 @@ public:
     Reply onMouseDown(const Geometry& geometry, const PointerEvent& event) override;
     Reply onMouseDoubleClick(const Geometry& geometry, const PointerEvent& event) override;
 
-    static void paintArrow(ElementList& list, int layer, glm::vec2 centre, float size, bool expanded, Color color);
+    static void paintArrow(ElementList& list, int layer, glm::vec2 center, float size, bool expanded, Color color);
 
 protected:
     glm::vec2 computeDesiredSize(float layoutScale) const override { return glm::vec2(size_); }

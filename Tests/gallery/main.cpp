@@ -92,10 +92,10 @@ protected:
         }
 
         std::vector<glm::vec2> circle;
-        const glm::vec2 centre = origin + glm::vec2(360.0f, 105.0f);
+        const glm::vec2 center = origin + glm::vec2(360.0f, 105.0f);
         for (int i = 0; i < 48; ++i) {
             const float angle = glm::radians(static_cast<float>(i) * 7.5f);
-            circle.push_back(centre + glm::vec2(std::cos(angle), std::sin(angle)) * 40.0f);
+            circle.push_back(center + glm::vec2(std::cos(angle), std::sin(angle)) * 40.0f);
         }
         list.lines(layer, circle, theme.color("Color.Warning"), 1.5f, true);
 

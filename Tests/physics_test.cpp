@@ -127,7 +127,7 @@ TEST_CASE("a sphere collider fits the largest side of its scaled size") {
     CHECK(sphere.radius == doctest::Approx(1.5f));
 }
 
-TEST_CASE("overlapping spheres touch along the line between their centres") {
+TEST_CASE("overlapping spheres touch along the line between their centers") {
     Manifold manifold;
     REQUIRE(cinder::physics::collide(sphereAt(glm::vec3(0.0f), 1.0f), sphereAt(glm::vec3(1.5f, 0.0f, 0.0f), 1.0f),
                                      manifold));
@@ -165,7 +165,7 @@ TEST_CASE("a sphere near a box corner touches along the line to the corner") {
     checkVec(manifold.points[0].position, glm::vec3(1.0f, 1.0f, 0.0f));
 }
 
-TEST_CASE("a sphere whose centre is inside a box leaves through the nearest face") {
+TEST_CASE("a sphere whose center is inside a box leaves through the nearest face") {
     Manifold manifold;
     const Geometry ball = sphereAt(glm::vec3(0.2f, 0.0f, -0.9f), 0.25f);
     const Geometry box = boxAt(glm::vec3(0.0f), glm::vec3(1.0f));
@@ -387,7 +387,7 @@ TEST_CASE("a body under a rotated parent keeps its world pose when written back"
     checkVec(worldOf(body), before + glm::vec3(0.0f, 1.0f, 0.0f), 1e-3);
 }
 
-TEST_CASE("a spinning body turns about its centre of mass") {
+TEST_CASE("a spinning body turns about its center of mass") {
     Fixture f;
     f.world.setGravity(glm::vec3(0.0f));
     Body* body = f.scene.create<Body>(nullptr);
@@ -580,7 +580,7 @@ TEST_CASE("an impulse changes velocity by impulse over mass") {
     CHECK(body->velocity().x == doctest::Approx(2.0f));
 }
 
-TEST_CASE("an impulse off the centre of mass adds spin") {
+TEST_CASE("an impulse off the center of mass adds spin") {
     Fixture f;
     f.world.setGravity(glm::vec3(0.0f));
     Body* ball = f.ball(0.0f, 0.0f, 0.0f);
@@ -764,9 +764,9 @@ TEST_CASE("the broadphase finds every overlapping pair") {
 
     std::vector<cinder::physics::Bounds> boxes;
     for (int i = 0; i < 300; ++i) {
-        const glm::vec3 centre(next(), next(), next());
+        const glm::vec3 center(next(), next(), next());
         const glm::vec3 half(0.2f + next() * 0.02f, 0.2f + next() * 0.02f, 0.2f + next() * 0.02f);
-        boxes.push_back({centre - half, centre + half});
+        boxes.push_back({center - half, center + half});
     }
 
     std::set<std::pair<int, int>> expected;

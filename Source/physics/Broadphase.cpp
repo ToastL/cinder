@@ -13,7 +13,7 @@ Bounds merged(const Bounds& a, const Bounds& b) {
     return {glm::min(a.min, b.min), glm::max(a.max, b.max)};
 }
 
-glm::vec3 centreOf(const Bounds& bounds) { return (bounds.min + bounds.max) * 0.5f; }
+glm::vec3 centerOf(const Bounds& bounds) { return (bounds.min + bounds.max) * 0.5f; }
 
 }
 
@@ -46,8 +46,8 @@ int Broadphase::split(const std::vector<Bounds>& bounds, int first, int last) {
 
     std::nth_element(order_.begin() + first, order_.begin() + middle, order_.begin() + last,
                      [&bounds, axis](int a, int b) {
-                         const float left = centreOf(bounds[static_cast<std::size_t>(a)])[axis];
-                         const float right = centreOf(bounds[static_cast<std::size_t>(b)])[axis];
+                         const float left = centerOf(bounds[static_cast<std::size_t>(a)])[axis];
+                         const float right = centerOf(bounds[static_cast<std::size_t>(b)])[axis];
                          return left != right ? left < right : a < b;
                      });
 

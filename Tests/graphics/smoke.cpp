@@ -94,7 +94,7 @@ private:
     glm::vec2 cursor_{0.0f};
 };
 
-glm::vec2 centreOf(const cinder::ui::Application& app, const std::shared_ptr<cinder::ui::Widget>& widget) {
+glm::vec2 centerOf(const cinder::ui::Application& app, const std::shared_ptr<cinder::ui::Widget>& widget) {
     const cinder::ui::Geometry geometry = app.grid().geometryOf(widget.get()).value_or(cinder::ui::Geometry{});
     require(geometry.size.x > 0.0f && geometry.size.y > 0.0f, "Widget was not painted");
     return geometry.rect().center();
@@ -146,7 +146,7 @@ void exercise() {
 
     const std::shared_ptr<cinder::ui::TableRow> row = explorer.tree()->rowFor(static_cast<cinder::ui::ItemId>(id));
     require(row != nullptr, "The Explorer has no row for the body");
-    driver.move(centreOf(app, row));
+    driver.move(centerOf(app, row));
     driver.press();
     driver.release();
     frames(2);
@@ -217,12 +217,12 @@ void exercise() {
 
     const std::shared_ptr<cinder::ui::TabStack> stack = tabs.stackWidget(tabs.stackOf("Console"));
     require(stack != nullptr, "The docked layout lost the console's stack");
-    const glm::vec2 consoleTab = centreOf(app, stack->tabWidget("Console"));
+    const glm::vec2 consoleTab = centerOf(app, stack->tabWidget("Console"));
     driver.move(consoleTab);
     driver.press();
     driver.move(consoleTab + glm::vec2(14.0f, 6.0f));
     frames(1);
-    driver.move(centreOf(app, view.viewport()));
+    driver.move(centerOf(app, view.viewport()));
     frames(1);
     driver.release();
     frames(2);

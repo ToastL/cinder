@@ -17,9 +17,9 @@ namespace cinder::game {
 namespace {
 
 glm::mat4 placed(glm::vec2 position, glm::vec2 size, float rotation) {
-    const glm::mat4 centred = glm::translate(
+    const glm::mat4 centered = glm::translate(
             glm::mat4(1.0f), glm::vec3(position.x + size.x * 0.5f, position.y + size.y * 0.5f, 0.0f));
-    return glm::rotate(centred, rotation, glm::vec3(0.0f, 0.0f, 1.0f));
+    return glm::rotate(centered, rotation, glm::vec3(0.0f, 0.0f, 1.0f));
 }
 
 cinder::platform::Input& input() { return engine().input(); }

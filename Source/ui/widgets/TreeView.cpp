@@ -112,10 +112,10 @@ int TableRow::onPaint(const PaintArgs& args, const Geometry& geometry, ElementLi
     }
 
     if (hasChildren_ && look.indent > 0.0f) {
-        const glm::vec2 centre = geometry.absolute({(static_cast<float>(depth_) + 0.5f) * look.indent, geometry.size.y * 0.5f});
+        const glm::vec2 center = geometry.absolute({(static_cast<float>(depth_) + 0.5f) * look.indent, geometry.size.y * 0.5f});
         Color arrow = style.apply(style.foreground);
         if (!isHovered()) arrow.a *= 0.75f;
-        ExpanderArrow::paintArrow(list, layer + 1, centre, 9.0f * geometry.scale, tree_->isExpanded(item_), arrow);
+        ExpanderArrow::paintArrow(list, layer + 1, center, 9.0f * geometry.scale, tree_->isExpanded(item_), arrow);
     }
 
     const int highest = paintChildren(args, geometry, list, layer + 1, style, enabled);

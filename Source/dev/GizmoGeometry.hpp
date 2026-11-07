@@ -64,7 +64,7 @@ struct Plane {
 
 const Plane* planeOf(Handle handle);
 glm::vec3 unit(const glm::vec3& vector);
-glm::vec3 ringPoint(const glm::vec3& centre, const glm::vec3& normal, float radius, float angle);
+glm::vec3 ringPoint(const glm::vec3& center, const glm::vec3& normal, float radius, float angle);
 glm::mat4 parentWorld(cinder::scene::Transform& transform);
 bool inFront(const glm::vec3& point, const Gizmo& gizmo, const glm::vec3& normal, const glm::vec3& toEye);
 

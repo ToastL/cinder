@@ -46,6 +46,7 @@ constexpr int COUNT = 8;
 namespace keys {
 
 constexpr int SPACE = 32;
+constexpr int GRAVE_ACCENT = 96;
 constexpr int APOSTROPHE = 39;
 constexpr int COMMA = 44;
 constexpr int MINUS = 45;

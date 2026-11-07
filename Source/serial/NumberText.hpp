@@ -10,7 +10,7 @@ namespace cinder::serial {
 
 std::string integerText(std::int64_t value);
 std::string realText(double value);
-std::string number(float value);
+std::string floatText(float value);
 std::string vectorText(std::span<const float> values);
 
 std::optional<std::int64_t> parseInteger(std::string_view text);

@@ -19,7 +19,7 @@ std::string realText(double value) {
     return std::string(buffer, end);
 }
 
-std::string number(float value) {
+std::string floatText(float value) {
     if (!std::isfinite(value)) {
         cinder::platform::logError("[serial] non-finite value written as 0\n");
         return "0";
@@ -41,7 +41,7 @@ std::string vectorText(std::span<const float> values) {
     std::string joined;
     for (float value : values) {
         if (!joined.empty()) joined.push_back(' ');
-        joined += number(value);
+        joined += floatText(value);
     }
     return joined;
 }

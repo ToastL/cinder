@@ -27,16 +27,16 @@ Reply ExpanderArrow::onMouseDoubleClick(const Geometry& geometry, const PointerE
     return onMouseDown(geometry, event);
 }
 
-void ExpanderArrow::paintArrow(ElementList& list, int layer, glm::vec2 centre, float size, bool expanded, Color color) {
+void ExpanderArrow::paintArrow(ElementList& list, int layer, glm::vec2 center, float size, bool expanded, Color color) {
     const float half = size * 0.5f;
     const float depth = size * 0.35f;
     std::array<glm::vec2, 3> points;
     if (expanded) {
-        points = {centre + glm::vec2(-half * 0.8f, -depth * 0.6f), centre + glm::vec2(half * 0.8f, -depth * 0.6f),
-                  centre + glm::vec2(0.0f, depth * 1.1f)};
+        points = {center + glm::vec2(-half * 0.8f, -depth * 0.6f), center + glm::vec2(half * 0.8f, -depth * 0.6f),
+                  center + glm::vec2(0.0f, depth * 1.1f)};
     } else {
-        points = {centre + glm::vec2(-depth * 0.6f, -half * 0.8f), centre + glm::vec2(depth * 1.1f, 0.0f),
-                  centre + glm::vec2(-depth * 0.6f, half * 0.8f)};
+        points = {center + glm::vec2(-depth * 0.6f, -half * 0.8f), center + glm::vec2(depth * 1.1f, 0.0f),
+                  center + glm::vec2(-depth * 0.6f, half * 0.8f)};
     }
     list.polygon(layer, points, color);
 }
@@ -46,8 +46,8 @@ int ExpanderArrow::onPaint(const PaintArgs&, const Geometry& geometry, ElementLi
     Color color = style.apply(style.foreground);
     if (!isHovered()) color.a *= 0.75f;
     if (!enabled) color.a *= 0.4f;
-    const glm::vec2 centre = geometry.absolute(geometry.size * 0.5f);
-    paintArrow(list, layer, centre, size_ * geometry.scale, expanded_.get(), color);
+    const glm::vec2 center = geometry.absolute(geometry.size * 0.5f);
+    paintArrow(list, layer, center, size_ * geometry.scale, expanded_.get(), color);
     return layer;
 }
 

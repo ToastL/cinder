@@ -241,9 +241,9 @@ void TabManager::dock(const std::string& tab, int stackId, DockSide side) {
     LayoutNode* target = findNode(root_, stackId);
     if (target == nullptr || target->kind != LayoutNode::Kind::Stack || spawner(tab) == nullptr) return;
     const bool alone = target->tabs.size() == 1 && target->tabs.front() == tab;
-    if (alone && side != DockSide::Centre) return;
+    if (alone && side != DockSide::Center) return;
     detach(root_, tab);
-    if (side == DockSide::Centre) {
+    if (side == DockSide::Center) {
         target->tabs.push_back(tab);
         target->active = tab;
     } else {

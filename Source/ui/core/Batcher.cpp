@@ -54,13 +54,13 @@ public:
         const glm::vec4 shape(half, std::min(box.style.borderWidth, limit), static_cast<float>(UiMode::Box));
 
         const Rect outer = rect.inset(-feather_);
-        const glm::vec2 centre = rect.center();
+        const glm::vec2 center = rect.center();
         UiVertex vertex;
         vertex.color = box.style.fill.vec();
         vertex.border = box.style.border.vec();
         vertex.shape = shape;
         vertex.radii = radii;
-        quad(element, outer, vertex, [&](glm::vec2 corner, glm::vec2) { return corner - centre; });
+        quad(element, outer, vertex, [&](glm::vec2 corner, glm::vec2) { return corner - center; });
     }
 
     void image(const Element& element, const ImageElement& image) {

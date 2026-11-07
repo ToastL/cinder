@@ -242,6 +242,39 @@ Reply TextField::onMouseUp(const Geometry&, const PointerEvent& event) {
     return Reply::handled().releaseMouseCapture();
 }
 
+Reply TextField::chord(const KeyEvent& event) {
+    const bool readOnly = readOnly_.get();
+    if (event.key == keys::letter('a')) {
+        anchor_ = 0;
+        caret_ = buffer_.size();
+        return Reply::handled();
+    }
+    if (event.key == keys::letter('c')) {
+        if (hasSelection()) Application::get().platform().setClipboard(selectedText());
+        return Reply::handled();
+    }
+    if (event.key == keys::letter('x')) {
+        if (hasSelection()) {
+            Application::get().platform().setClipboard(selectedText());
+            if (!readOnly) replaceSelection("", Edit::Other);
+        }
+        return Reply::handled();
+    }
+    if (event.key == keys::letter('v')) {
+        if (!readOnly) replaceSelection(singleLine(Application::get().platform().clipboard()), Edit::Other);
+        return Reply::handled();
+    }
+    if (event.key == keys::letter('z')) {
+        if (!readOnly) event.shift() ? redo() : undo();
+        return Reply::handled();
+    }
+    if (event.key == keys::letter('y')) {
+        if (!readOnly) redo();
+        return Reply::handled();
+    }
+    return Reply::unhandled();
+}
+
 Reply TextField::onKeyDown(const Geometry&, const KeyEvent& event) {
     if (!hasFocus()) return Reply::unhandled();
     if (onKey_ && onKey_(event)) return Reply::handled();
@@ -300,39 +333,9 @@ Reply TextField::onKeyDown(const Geometry&, const KeyEvent& event) {
             break;
     }
 
-    if (event.primary()) {
-        if (event.key == keys::letter('a')) {
-            anchor_ = 0;
-            caret_ = buffer_.size();
-            return Reply::handled();
-        }
-        if (event.key == keys::letter('c')) {
-            if (hasSelection()) Application::get().platform().setClipboard(selectedText());
-            return Reply::handled();
-        }
-        if (event.key == keys::letter('x')) {
-            if (hasSelection()) {
-                Application::get().platform().setClipboard(selectedText());
-                if (!readOnly) replaceSelection("", Edit::Other);
-            }
-            return Reply::handled();
-        }
-        if (event.key == keys::letter('v')) {
-            if (!readOnly) replaceSelection(singleLine(Application::get().platform().clipboard()), Edit::Other);
-            return Reply::handled();
-        }
-        if (event.key == keys::letter('z')) {
-            if (!readOnly) event.shift() ? redo() : undo();
-            return Reply::handled();
-        }
-        if (event.key == keys::letter('y')) {
-            if (!readOnly) redo();
-            return Reply::handled();
-        }
-        return Reply::unhandled();
-    }
+    if (event.primary()) return chord(event);
 
-    const bool printable = (event.key >= keys::SPACE && event.key <= 96) || event.key == keys::INSERT;
+    const bool printable = (event.key >= keys::SPACE && event.key <= keys::GRAVE_ACCENT) || event.key == keys::INSERT;
     return printable && !event.control() ? Reply::handled() : Reply::unhandled();
 }
 

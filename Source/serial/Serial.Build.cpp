@@ -2,4 +2,5 @@
 
 CINDER_MODULE("serial", [](cbt::ModuleRules& m, const cbt::TargetInfo&) {
     m.publicDependencies({"scene"});
+    m.privateDependencies({"platform"});
 });

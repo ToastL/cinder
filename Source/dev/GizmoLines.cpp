@@ -140,15 +140,15 @@ void outline(GizmoStrokes& out, const GizmoCanvas& canvas, const glm::mat4& worl
     }
 }
 
-void ball(GizmoStrokes& out, const GizmoCanvas& canvas, const glm::mat3& axes, const glm::vec3& centre,
+void ball(GizmoStrokes& out, const GizmoCanvas& canvas, const glm::mat3& axes, const glm::vec3& center,
           float radius, glm::u8vec4 color) {
     for (int axis = 0; axis < 3; ++axis) {
         const glm::vec3 u = axes[axis] * radius;
         const glm::vec3 v = axes[(axis + 1) % 3] * radius;
-        glm::vec3 previous = centre + u;
+        glm::vec3 previous = center + u;
         for (int i = 1; i <= CIRCLE_SEGMENTS; ++i) {
             const float angle = glm::two_pi<float>() * static_cast<float>(i) / CIRCLE_SEGMENTS;
-            const glm::vec3 next = centre + u * std::cos(angle) + v * std::sin(angle);
+            const glm::vec3 next = center + u * std::cos(angle) + v * std::sin(angle);
             segment(out, canvas, previous, next, color);
             previous = next;
         }

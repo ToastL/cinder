@@ -117,10 +117,10 @@ TEST_CASE("a screen point lands where its ray meets the z = 0 plane") {
     camera.setView(view);
     camera.setViewSize(200.0f, 100.0f);
 
-    const glm::vec3 centre = camera.screenToWorld(100.0f, 50.0f);
-    CHECK(centre.x == doctest::Approx(5.0f));
-    CHECK(centre.y == doctest::Approx(7.0f));
-    CHECK(centre.z == doctest::Approx(0.0f).epsilon(1e-3));
+    const glm::vec3 center = camera.screenToWorld(100.0f, 50.0f);
+    CHECK(center.x == doctest::Approx(5.0f));
+    CHECK(center.y == doctest::Approx(7.0f));
+    CHECK(center.z == doctest::Approx(0.0f).epsilon(1e-3));
 
     const glm::vec3 topLeft = camera.screenToWorld(0.0f, 0.0f);
     CHECK(topLeft.x == doctest::Approx(-95.0f));

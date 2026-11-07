@@ -104,7 +104,7 @@ bool longEnough(const GizmoView& view, const glm::vec3& from, const glm::vec3& t
     return a && b && glm::distance(*a, *b) >= MIN_AXIS_POINTS;
 }
 
-HandleShape centre(Handle handle, const Gizmo& gizmo, const GizmoView& view) {
+HandleShape center(Handle handle, const Gizmo& gizmo, const GizmoView& view) {
     const float half = CENTRE_POINTS * gizmo.length / GIZMO_POINTS;
     const glm::vec3 right = unit(glm::vec3(view.camera[0])) * half;
     const glm::vec3 up = unit(glm::vec3(view.camera[1])) * half;
@@ -189,10 +189,10 @@ glm::vec3 unit(const glm::vec3& vector) {
     return length > DEGENERATE ? vector / length : glm::vec3(0.0f);
 }
 
-glm::vec3 ringPoint(const glm::vec3& centre, const glm::vec3& normal, float radius, float angle) {
+glm::vec3 ringPoint(const glm::vec3& center, const glm::vec3& normal, float radius, float angle) {
     const glm::vec3 u = perpendicular(normal);
     const glm::vec3 v = glm::cross(normal, u);
-    return centre + (u * std::cos(angle) + v * std::sin(angle)) * radius;
+    return center + (u * std::cos(angle) + v * std::sin(angle)) * radius;
 }
 
 glm::mat4 parentWorld(Transform& transform) {
@@ -251,7 +251,7 @@ std::vector<HandleShape> shapes(const Gizmo& gizmo, const GizmoView& view) {
     std::vector<HandleShape> out;
     switch (gizmo.tool) {
         case Tool::Move:
-            out.push_back(centre(Handle::View, gizmo, view));
+            out.push_back(center(Handle::View, gizmo, view));
             planeHandles(out, gizmo, toEye);
             axisHandles(out, gizmo, view, toEye, Tip::Arrow);
             break;
@@ -259,7 +259,7 @@ std::vector<HandleShape> shapes(const Gizmo& gizmo, const GizmoView& view) {
             for (int i = 0; i < 3; ++i) ring(out, AXES[i], gizmo, gizmo.axes[i], toEye);
             break;
         case Tool::Scale:
-            out.push_back(centre(Handle::Uniform, gizmo, view));
+            out.push_back(center(Handle::Uniform, gizmo, view));
             axisHandles(out, gizmo, view, toEye, Tip::Box);
             break;
     }

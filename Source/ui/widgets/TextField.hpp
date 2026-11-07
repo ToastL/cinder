@@ -63,6 +63,7 @@ protected:
                 const PaintStyle& style, bool enabled) const override;
 
 private:
+    Reply chord(const KeyEvent& event);
     struct State {
         std::string text;
         std::size_t caret = 0;

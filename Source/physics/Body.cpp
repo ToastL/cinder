@@ -6,7 +6,7 @@
 
 namespace cinder::physics {
 
-glm::vec3 Body::centre() {
+glm::vec3 Body::center() {
     return simulated_ ? center_ : glm::vec3(transform()->world()[3]);
 }
 
@@ -23,7 +23,7 @@ Body& Body::applyImpulse(const glm::vec3& impulse) {
 
 Body& Body::applyImpulse(const glm::vec3& impulse, const glm::vec3& point) {
     impulse_ += impulse;
-    angularImpulse_ += glm::cross(point - centre(), impulse);
+    angularImpulse_ += glm::cross(point - center(), impulse);
     return wake();
 }
 
@@ -34,7 +34,7 @@ Body& Body::applyForce(const glm::vec3& force) {
 
 Body& Body::applyForce(const glm::vec3& force, const glm::vec3& point) {
     force_ += force;
-    torque_ += glm::cross(point - centre(), force);
+    torque_ += glm::cross(point - center(), force);
     return wake();
 }
 
