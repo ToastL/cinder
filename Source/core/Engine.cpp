@@ -1,6 +1,6 @@
 #include "core/Engine.hpp"
 
-#include "components/Builtins.hpp"
+#include "nodes/Builtins.hpp"
 #include "physics/Nodes.hpp"
 #include "serial/SceneCodec.hpp"
 
@@ -18,7 +18,7 @@ Engine::Engine(const ProjectConfig& config)
       input_(window_),
       ctx_(window_),
       renderer_(ctx_, window_) {
-    cinder::components::registerBuiltins(types_);
+    cinder::nodes::registerBuiltins(types_);
     cinder::physics::registerNodes(types_);
     physics_.setGravity(config.gravity);
     active = this;

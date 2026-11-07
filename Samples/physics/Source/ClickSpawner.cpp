@@ -18,7 +18,7 @@ public:
         box->setName("Dropped");
         box->setPlanar(true);
         box->transform()->setPosition(at.x, at.y, 0.0f);
-        world.create<components::Sprite>(box)
+        world.create<nodes::Sprite>(box)
                 ->setSize(1.0f, 1.0f)
                 .setColor(game::random(0.4f, 1.0f), game::random(0.4f, 1.0f), 0.9f, 1.0f);
         world.create<physics::Collider>(box);

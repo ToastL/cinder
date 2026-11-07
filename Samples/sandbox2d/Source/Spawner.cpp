@@ -18,7 +18,7 @@ public:
         const glm::vec2 at = game::screenToWorld(game::mousePosition());
         const float size = game::random(minSize_, maxSize_);
 
-        auto* box = world.create<components::Sprite>(nullptr);
+        auto* box = world.create<nodes::Sprite>(nullptr);
         box->setName("Box");
         box->transform()->setPosition(at.x, at.y, 0.0f);
         box->setSize(size, size);

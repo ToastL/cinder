@@ -1,13 +1,13 @@
-#include "components/Builtins.hpp"
+#include "nodes/Builtins.hpp"
 
-#include "components/Camera.hpp"
-#include "components/Folder.hpp"
-#include "components/Group.hpp"
-#include "components/MeshPart.hpp"
-#include "components/Sprite.hpp"
+#include "nodes/Camera.hpp"
+#include "nodes/Folder.hpp"
+#include "nodes/Group.hpp"
+#include "nodes/MeshPart.hpp"
+#include "nodes/Sprite.hpp"
 #include "scene/NodeTypes.hpp"
 
-namespace cinder::components {
+namespace cinder::nodes {
 
 void registerBuiltins(cinder::scene::NodeTypes& types) {
     types.add<Group>("Group");

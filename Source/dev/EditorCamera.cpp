@@ -1,6 +1,6 @@
 #include "dev/EditorCamera.hpp"
 
-#include "components/Camera.hpp"
+#include "nodes/Camera.hpp"
 
 #include <glm/geometric.hpp>
 #include <glm/gtc/matrix_transform.hpp>
@@ -24,7 +24,7 @@ constexpr float PAN_SECONDS_PER_POINT = 0.004f;
 
 }
 
-void EditorCamera::seed(cinder::components::Camera* camera, glm::vec2 viewSize) {
+void EditorCamera::seed(cinder::nodes::Camera* camera, glm::vec2 viewSize) {
     seeded_ = true;
     camera_.setViewSize(viewSize.x, viewSize.y);
     if (camera != nullptr) {

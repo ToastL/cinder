@@ -1,8 +1,8 @@
 #pragma once
 
-#include "components/Builtins.hpp"
 #include "dev/History.hpp"
 #include "dev/Selection.hpp"
+#include "nodes/Builtins.hpp"
 #include "scene/NodeTypes.hpp"
 #include "scene/Scene.hpp"
 
@@ -25,7 +25,7 @@ struct SceneFixture {
     cinder::scene::NodeTypes types;
     cinder::scene::Scene scene{types};
 
-    SceneFixture() { cinder::components::registerBuiltins(types); }
+    SceneFixture() { cinder::nodes::registerBuiltins(types); }
 };
 
 struct EditorFixture : SceneFixture {

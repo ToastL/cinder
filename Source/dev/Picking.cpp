@@ -1,8 +1,8 @@
 #include "dev/Picking.hpp"
 
-#include "components/Camera.hpp"
-#include "components/MeshPart.hpp"
-#include "components/Sprite.hpp"
+#include "nodes/Camera.hpp"
+#include "nodes/MeshPart.hpp"
+#include "nodes/Sprite.hpp"
 #include "scene/Node.hpp"
 #include "scene/Scene.hpp"
 #include "scene/Transform.hpp"
@@ -19,9 +19,9 @@
 namespace cinder::dev {
 namespace {
 
-using cinder::components::Camera;
-using cinder::components::MeshPart;
-using cinder::components::Sprite;
+using cinder::nodes::Camera;
+using cinder::nodes::MeshPart;
+using cinder::nodes::Sprite;
 using cinder::scene::Node;
 
 constexpr float HALF_EXTENT = 0.5f;

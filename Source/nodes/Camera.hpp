@@ -6,7 +6,7 @@
 #include <glm/vec2.hpp>
 #include <glm/vec4.hpp>
 
-namespace cinder::components {
+namespace cinder::nodes {
 
 class Camera final : public cinder::scene::Spatial {
 public:
@@ -59,4 +59,4 @@ private:
 
 }
 
-CINDER_ENUM_NAMES(cinder::components::Camera::Projection, "perspective", "orthographic")
+CINDER_ENUM_NAMES(cinder::nodes::Camera::Projection, "perspective", "orthographic")

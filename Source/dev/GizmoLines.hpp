@@ -8,7 +8,7 @@
 
 #include <vector>
 
-namespace cinder::components { class Camera; }
+namespace cinder::nodes { class Camera; }
 
 namespace cinder::scene {
 class Node;
@@ -34,9 +34,9 @@ struct GizmoStroke {
 
 using GizmoStrokes = std::vector<GizmoStroke>;
 
-std::vector<cinder::components::Camera*> sceneCameras(cinder::scene::Scene& scene);
+std::vector<cinder::nodes::Camera*> sceneCameras(cinder::scene::Scene& scene);
 
-void frustumStrokes(GizmoStrokes& out, const std::vector<cinder::components::Camera*>& cameras,
+void frustumStrokes(GizmoStrokes& out, const std::vector<cinder::nodes::Camera*>& cameras,
                     const GizmoCanvas& canvas);
 void colliderStrokes(GizmoStrokes& out, cinder::scene::Scene& scene, const GizmoCanvas& canvas);
 void selectionStrokes(GizmoStrokes& out, cinder::scene::Node& node, const GizmoCanvas& canvas);

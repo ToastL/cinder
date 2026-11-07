@@ -2,9 +2,9 @@
 
 #include "test_support.hpp"
 
-#include "components/Builtins.hpp"
 #include "dev/History.hpp"
 #include "dev/Selection.hpp"
+#include "nodes/Builtins.hpp"
 #include "scene/Node.hpp"
 #include "scene/NodeTypes.hpp"
 #include "scene/Scene.hpp"

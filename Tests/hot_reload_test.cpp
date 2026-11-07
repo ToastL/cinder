@@ -2,10 +2,10 @@
 
 #include "test_support.hpp"
 
-#include "components/Builtins.hpp"
 #include "core/GameModule.hpp"
-#include "dev/ModuleHost.hpp"
 #include "dev/GameBuild.hpp"
+#include "dev/ModuleHost.hpp"
+#include "nodes/Builtins.hpp"
 #include "platform/Files.hpp"
 #include "scene/Node.hpp"
 #include "scene/NodeTypes.hpp"
@@ -69,7 +69,7 @@ TEST_CASE("hot reload: a project's C++ builds, loads, swaps and survives a broke
     write(source, hopper("p.x += step_;"));
 
     NodeTypes types;
-    cinder::components::registerBuiltins(types);
+    cinder::nodes::registerBuiltins(types);
     Scene scene(types);
     {
         ModuleHost host(scene, project, "Game", build);

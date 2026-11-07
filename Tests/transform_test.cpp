@@ -1,7 +1,7 @@
 #include <doctest/doctest.h>
 
-#include "components/Folder.hpp"
-#include "components/Group.hpp"
+#include "nodes/Folder.hpp"
+#include "nodes/Group.hpp"
 #include "scene/Node.hpp"
 #include "scene/NodeTypes.hpp"
 #include "scene/Scene.hpp"
@@ -21,7 +21,7 @@ struct Fixture {
     Scene scene{types};
 
     Node* spawn(const char* name, Node* parent = nullptr) {
-        Node* node = scene.create<cinder::components::Group>(parent);
+        Node* node = scene.create<cinder::nodes::Group>(parent);
         node->setName(name);
         return node;
     }
@@ -148,7 +148,7 @@ TEST_CASE("a folder breaks the transform chain") {
     Fixture f;
     Node* group = f.spawn("group");
     group->transform()->setPosition(10, 0, 0);
-    Node* folder = f.scene.create<cinder::components::Folder>(group);
+    Node* folder = f.scene.create<cinder::nodes::Folder>(group);
     Node* child = f.spawn("child", folder);
     child->transform()->setPosition(0, 1, 0);
 

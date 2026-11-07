@@ -2,7 +2,7 @@
 
 #include "scene/Node.hpp"
 
-namespace cinder::components {
+namespace cinder::nodes {
 
 class Folder final : public cinder::scene::Node {
 public:

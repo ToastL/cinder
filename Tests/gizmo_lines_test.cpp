@@ -1,9 +1,9 @@
 #include <doctest/doctest.h>
 
-#include "components/Builtins.hpp"
-#include "components/Camera.hpp"
 #include "dev/GizmoLines.hpp"
 #include "gfx/pass/ViewCamera.hpp"
+#include "nodes/Builtins.hpp"
+#include "nodes/Camera.hpp"
 #include "scene/Node.hpp"
 #include "scene/NodeTypes.hpp"
 #include "scene/Scene.hpp"
@@ -16,7 +16,7 @@
 #include <optional>
 #include <string_view>
 
-using cinder::components::Camera;
+using cinder::nodes::Camera;
 using cinder::dev::GizmoCanvas;
 using cinder::dev::GizmoStroke;
 using cinder::dev::GizmoStrokes;
@@ -38,7 +38,7 @@ struct World {
     cinder::gfx::pass::ViewCamera camera;
 
     World() {
-        cinder::components::registerBuiltins(types);
+        cinder::nodes::registerBuiltins(types);
         cinder::scene::View view;
         view.world = glm::inverse(glm::lookAt(glm::vec3(0.0f, 0.0f, 10.0f), glm::vec3(0.0f), glm::vec3(0.0f, 1.0f, 0.0f)));
         view.fovDegrees = 60.0f;

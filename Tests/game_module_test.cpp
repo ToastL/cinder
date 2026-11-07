@@ -1,7 +1,7 @@
 #include <doctest/doctest.h>
 
-#include "components/Builtins.hpp"
 #include "core/GameModule.hpp"
+#include "nodes/Builtins.hpp"
 #include "scene/Node.hpp"
 #include "scene/NodeTypes.hpp"
 #include "scene/PropValue.hpp"
@@ -36,7 +36,7 @@ nodes {
 
 TEST_CASE("a game module registers its classes, runs them, and unloads cleanly") {
     NodeTypes types;
-    cinder::components::registerBuiltins(types);
+    cinder::nodes::registerBuiltins(types);
     Scene scene(types);
 
     std::string error;

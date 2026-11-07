@@ -1,8 +1,8 @@
 #include <doctest/doctest.h>
 
-#include "components/Builtins.hpp"
-#include "components/Group.hpp"
-#include "components/Sprite.hpp"
+#include "nodes/Builtins.hpp"
+#include "nodes/Group.hpp"
+#include "nodes/Sprite.hpp"
 #include "scene/Attributes.hpp"
 #include "scene/DrawList.hpp"
 #include "scene/Node.hpp"
@@ -248,7 +248,7 @@ TEST_CASE("clear does not reissue ids") {
 
 TEST_CASE("an unregistered node is named Node, a registered one after its class") {
     Fixture f;
-    cinder::components::registerBuiltins(f.types);
+    cinder::nodes::registerBuiltins(f.types);
 
     CHECK(f.scene.create<Counter>(nullptr)->name() == "Node");
     CHECK(f.scene.create("Group", nullptr)->name() == "Group");
@@ -257,12 +257,12 @@ TEST_CASE("an unregistered node is named Node, a registered one after its class"
 
 TEST_CASE("clone copies props, transform, attributes and children with fresh ids") {
     Fixture f;
-    cinder::components::registerBuiltins(f.types);
+    cinder::nodes::registerBuiltins(f.types);
     Node* box = f.scene.create("Group", nullptr);
     box->setName("Box");
     box->transform()->setPosition(1, 2, 3);
     box->setAttribute("hp", PropValue::integer(3));
-    f.scene.create<cinder::components::Sprite>(box)->setSize(5, 7);
+    f.scene.create<cinder::nodes::Sprite>(box)->setSize(5, 7);
 
     Node* copy = f.scene.clone(*box, nullptr);
     REQUIRE(copy != nullptr);
@@ -272,7 +272,7 @@ TEST_CASE("clone copies props, transform, attributes and children with fresh ids
     CHECK(copy->attribute("hp")->as<std::int64_t>() == 3);
     REQUIRE(copy->children().size() == 1);
 
-    auto* sprite = dynamic_cast<cinder::components::Sprite*>(copy->children()[0]);
+    auto* sprite = dynamic_cast<cinder::nodes::Sprite*>(copy->children()[0]);
     REQUIRE(sprite != nullptr);
     CHECK(sprite != box->children()[0]);
     CHECK(sprite->size().y == doctest::Approx(7));

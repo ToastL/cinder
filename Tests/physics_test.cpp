@@ -1,7 +1,7 @@
 #include <doctest/doctest.h>
 
-#include "components/Builtins.hpp"
-#include "components/Group.hpp"
+#include "nodes/Builtins.hpp"
+#include "nodes/Group.hpp"
 #include "physics/Body.hpp"
 #include "physics/Broadphase.hpp"
 #include "physics/Collide.hpp"
@@ -46,7 +46,7 @@ struct Fixture {
     World world{scene};
 
     Fixture() {
-        cinder::components::registerBuiltins(types);
+        cinder::nodes::registerBuiltins(types);
         cinder::physics::registerNodes(types);
     }
 
@@ -231,8 +231,8 @@ TEST_CASE("written rotations compose back into the orientation they came from") 
 
     NodeTypes types;
     Scene scene{types};
-    cinder::components::registerBuiltins(types);
-    Node* node = scene.create<cinder::components::Group>(nullptr);
+    cinder::nodes::registerBuiltins(types);
+    Node* node = scene.create<cinder::nodes::Group>(nullptr);
 
     for (const glm::quat& orientation : orientations) {
         const glm::vec3 rotation = cinder::physics::rotationOf(orientation);
@@ -362,7 +362,7 @@ TEST_CASE("writing a body's position teleports it and keeps its velocity") {
 TEST_CASE("moving a body's parent carries the body with it") {
     Fixture f;
     f.world.setGravity(glm::vec3(0.0f));
-    Node* group = f.scene.create<cinder::components::Group>(nullptr);
+    Node* group = f.scene.create<cinder::nodes::Group>(nullptr);
     Body* body = f.scene.create<Body>(group);
     body->transform()->setPosition(0.0f, 5.0f, 0.0f);
     body->setVelocity(1.0f, 0.0f, 0.0f);
@@ -376,7 +376,7 @@ TEST_CASE("moving a body's parent carries the body with it") {
 TEST_CASE("a body under a rotated parent keeps its world pose when written back") {
     Fixture f;
     f.world.setGravity(glm::vec3(0.0f));
-    Node* group = f.scene.create<cinder::components::Group>(nullptr);
+    Node* group = f.scene.create<cinder::nodes::Group>(nullptr);
     group->transform()->setPosition(1.0f, 2.0f, 3.0f).setRotation(0.4f, 1.1f, -0.3f);
     Body* body = f.scene.create<Body>(group);
 
@@ -421,7 +421,7 @@ TEST_CASE("disabled bodies and colliders take no part in the step") {
     Fixture f;
     Collider* floor = f.floor();
     Body* body = f.ball(0.0f, 3.0f, 0.0f);
-    Node* group = f.scene.create<cinder::components::Group>(nullptr);
+    Node* group = f.scene.create<cinder::nodes::Group>(nullptr);
     Body* hidden = f.ball(5.0f, 3.0f, 0.0f, group);
     group->setEnabled(false);
     floor->setEnabled(false);
@@ -880,7 +880,7 @@ TEST_CASE("touches reach both nodes' hooks and any connected listener") {
     Fixture f;
     Collider* floor = f.floor();
     Body* ball = f.ball(0.0f, 3.0f, 0.0f);
-    Node* watcher = f.scene.create<cinder::components::Group>(nullptr);
+    Node* watcher = f.scene.create<cinder::nodes::Group>(nullptr);
 
     std::vector<int> touched;
     std::vector<int> ended;

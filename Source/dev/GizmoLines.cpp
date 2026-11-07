@@ -1,9 +1,9 @@
 #include "dev/GizmoLines.hpp"
 
-#include "components/Camera.hpp"
-#include "components/MeshPart.hpp"
-#include "components/Sprite.hpp"
 #include "gfx/pass/ViewCamera.hpp"
+#include "nodes/Camera.hpp"
+#include "nodes/MeshPart.hpp"
+#include "nodes/Sprite.hpp"
 #include "physics/Collider.hpp"
 #include "scene/Node.hpp"
 #include "scene/Scene.hpp"
@@ -22,7 +22,7 @@
 
 namespace cinder::dev {
 
-using cinder::components::Camera;
+using cinder::nodes::Camera;
 
 namespace {
 
@@ -276,9 +276,9 @@ void colliderStrokes(GizmoStrokes& out, cinder::scene::Scene& scene, const Gizmo
 }
 
 void selectionStrokes(GizmoStrokes& out, cinder::scene::Node& node, const GizmoCanvas& canvas) {
-    if (auto* part = dynamic_cast<cinder::components::MeshPart*>(&node)) {
+    if (auto* part = dynamic_cast<cinder::nodes::MeshPart*>(&node)) {
         box(out, canvas, part->transform()->world(), SELECTED);
-    } else if (auto* sprite = dynamic_cast<cinder::components::Sprite*>(&node)) {
+    } else if (auto* sprite = dynamic_cast<cinder::nodes::Sprite*>(&node)) {
         outline(out, canvas, sprite->transform()->world(), sprite->size());
     } else if (auto* camera = dynamic_cast<Camera*>(&node)) {
         frustum(out, canvas, *camera, SELECTED, SELECTED_SIGHT);

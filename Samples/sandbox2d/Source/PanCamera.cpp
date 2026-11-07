@@ -9,7 +9,7 @@ public:
     void onStart() override { platform::logInfo("[game] wasd/arrows pan, scroll zooms, click spawns\n"); }
 
     void onUpdate(float dt) override {
-        auto* camera = dynamic_cast<components::Camera*>(parent());
+        auto* camera = dynamic_cast<nodes::Camera*>(parent());
         if (camera == nullptr) return;
         if (game::keyPressed("escape")) game::quit();
 

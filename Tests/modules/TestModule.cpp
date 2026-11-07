@@ -4,7 +4,7 @@ class TestTicker final : public cinder::scene::Node {
 public:
     CINDER_NODE(TestTicker, cinder::scene::Node) { CINDER_PROP(step_); }
 
-    void onStart() override { scene()->create<cinder::components::Group>(this)->setName("Made"); }
+    void onStart() override { scene()->create<cinder::nodes::Group>(this)->setName("Made"); }
 
     void onUpdate(float dt) override {
         count_ += step_;

@@ -1,10 +1,10 @@
 #include <doctest/doctest.h>
 
-#include "components/Builtins.hpp"
-#include "components/Camera.hpp"
-#include "components/Group.hpp"
-#include "components/MeshPart.hpp"
-#include "components/Sprite.hpp"
+#include "nodes/Builtins.hpp"
+#include "nodes/Camera.hpp"
+#include "nodes/Group.hpp"
+#include "nodes/MeshPart.hpp"
+#include "nodes/Sprite.hpp"
 #include "scene/Node.hpp"
 #include "scene/NodeTypes.hpp"
 #include "scene/Placeholder.hpp"
@@ -17,10 +17,10 @@
 #include <stdexcept>
 #include <string>
 
-using cinder::components::Camera;
-using cinder::components::Group;
-using cinder::components::MeshPart;
-using cinder::components::Sprite;
+using cinder::nodes::Camera;
+using cinder::nodes::Group;
+using cinder::nodes::MeshPart;
+using cinder::nodes::Sprite;
 using cinder::scene::Node;
 using cinder::scene::NodeTypes;
 using cinder::scene::PropSeq;
@@ -41,7 +41,7 @@ struct Fixture {
     NodeTypes types;
     Scene scene{types};
 
-    Fixture() { cinder::components::registerBuiltins(types); }
+    Fixture() { cinder::nodes::registerBuiltins(types); }
 
     void populate() {
         Camera* camera = place<Camera>(scene, 7, nullptr, nullptr);

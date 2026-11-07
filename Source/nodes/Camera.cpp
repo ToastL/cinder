@@ -1,8 +1,8 @@
-#include "components/Camera.hpp"
+#include "nodes/Camera.hpp"
 
 #include "scene/DrawList.hpp"
 
-namespace cinder::components {
+namespace cinder::nodes {
 
 cinder::scene::View Camera::view() {
     cinder::scene::View view;

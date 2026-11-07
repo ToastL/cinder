@@ -1,9 +1,9 @@
 #include <doctest/doctest.h>
 
-#include "components/Builtins.hpp"
 #include "dev/History.hpp"
 #include "dev/Manipulator.hpp"
 #include "gfx/pass/ViewCamera.hpp"
+#include "nodes/Builtins.hpp"
 #include "scene/Node.hpp"
 #include "scene/NodeTypes.hpp"
 #include "scene/Scene.hpp"
@@ -46,7 +46,7 @@ struct World {
     cinder::gfx::pass::ViewCamera camera;
 
     World() {
-        cinder::components::registerBuiltins(types);
+        cinder::nodes::registerBuiltins(types);
         lookFrom(glm::vec3(0.0f, 0.0f, 10.0f), glm::vec3(0.0f));
     }
 

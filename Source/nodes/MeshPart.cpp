@@ -1,8 +1,8 @@
-#include "components/MeshPart.hpp"
+#include "nodes/MeshPart.hpp"
 
 #include "scene/DrawList.hpp"
 
-namespace cinder::components {
+namespace cinder::nodes {
 
 void MeshPart::onRender(float alpha, cinder::scene::DrawList& draws) {
     if (meshHandle_ < 0) meshHandle_ = draws.meshHandle(mesh_);

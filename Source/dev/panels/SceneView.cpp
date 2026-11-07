@@ -185,7 +185,7 @@ void SceneView::tick(float deltaTime) {
         return;
     }
     if (!camera_.seeded()) {
-        const std::vector<cinder::components::Camera*> cameras = sceneCameras(engine_.scene());
+        const std::vector<cinder::nodes::Camera*> cameras = sceneCameras(engine_.scene());
         camera_.seed(cameras.empty() ? nullptr : cameras.back(), extent_);
     }
     camera_.setViewSize(extent_);

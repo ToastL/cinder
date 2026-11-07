@@ -1,9 +1,9 @@
 #include <doctest/doctest.h>
 
-#include "components/Builtins.hpp"
-#include "components/Camera.hpp"
-#include "components/Group.hpp"
-#include "components/Sprite.hpp"
+#include "nodes/Builtins.hpp"
+#include "nodes/Camera.hpp"
+#include "nodes/Group.hpp"
+#include "nodes/Sprite.hpp"
 #include "scene/Node.hpp"
 #include "scene/NodeTypes.hpp"
 #include "scene/Scene.hpp"
@@ -14,9 +14,9 @@
 #include <memory>
 #include <string>
 
-using cinder::components::Camera;
-using cinder::components::Group;
-using cinder::components::Sprite;
+using cinder::nodes::Camera;
+using cinder::nodes::Group;
+using cinder::nodes::Sprite;
 using cinder::scene::Node;
 using cinder::scene::NodeTypes;
 using cinder::scene::Scene;
@@ -35,7 +35,7 @@ struct Fixture {
     Scene scene{types};
 
     Fixture() {
-        cinder::components::registerBuiltins(types);
+        cinder::nodes::registerBuiltins(types);
         types.add<Tally>("Tally");
     }
 };

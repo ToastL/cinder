@@ -1,8 +1,8 @@
-#include "components/Sprite.hpp"
+#include "nodes/Sprite.hpp"
 
 #include "scene/DrawList.hpp"
 
-namespace cinder::components {
+namespace cinder::nodes {
 
 void Sprite::onRender(float alpha, cinder::scene::DrawList& draws) {
     if (textureHandle_ < 0) textureHandle_ = draws.textureHandle(texture_);

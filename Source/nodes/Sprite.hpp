@@ -8,7 +8,7 @@
 #include <string>
 #include <utility>
 
-namespace cinder::components {
+namespace cinder::nodes {
 
 class Sprite final : public cinder::scene::Spatial, public cinder::reflect::PropSink {
 public:

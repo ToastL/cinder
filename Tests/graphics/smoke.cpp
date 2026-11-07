@@ -1,5 +1,5 @@
-#include "components/Camera.hpp"
-#include "components/MeshPart.hpp"
+#include "nodes/Camera.hpp"
+#include "nodes/MeshPart.hpp"
 #include "core/Engine.hpp"
 #include "core/GameLoop.hpp"
 #include "dev/EditorShell.hpp"
@@ -110,13 +110,13 @@ void exercise() {
     cinder::core::ProjectConfig config("Cinder graphics smoke", 1100, 700, "", 60);
     cinder::core::Engine engine(config);
     auto& scene = engine.scene();
-    auto* camera = scene.create<cinder::components::Camera>(nullptr);
+    auto* camera = scene.create<cinder::nodes::Camera>(nullptr);
     camera->transform()->setPosition(0.0f, 3.0f, 10.0f);
     auto* body = scene.create<cinder::physics::Body>(nullptr);
     body->setName("Ball");
     body->transform()->setPosition(0.0f, 3.0f, 0.0f);
     scene.create<cinder::physics::Collider>(body);
-    scene.create<cinder::components::MeshPart>(body);
+    scene.create<cinder::nodes::MeshPart>(body);
     const int id = body->id();
 
     cinder::dev::Packager packager(cinder::platform::projectRoot(), {});

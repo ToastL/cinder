@@ -28,7 +28,7 @@ public:
         scene::Scene& world = game::scene();
         check("parent", parent() != nullptr && parent()->name() == "SelfTest");
 
-        auto* a = world.create<components::Group>(nullptr);
+        auto* a = world.create<nodes::Group>(nullptr);
         check("create", a != nullptr && world.types().nameOf(*a) == "Group" && a->name() == "Group");
         a->setName("Renamed");
         check("find by name", world.find("Renamed") == a);
@@ -44,12 +44,12 @@ public:
         kid->setParent(nullptr);
         check("reparent to root", kid->parent() == nullptr);
 
-        auto* sprite = world.create<components::Sprite>(a);
+        auto* sprite = world.create<nodes::Sprite>(a);
         const reflect::PropDef* texture = propOf(*sprite, "texture");
         texture->writeText(sprite->propTarget(), "none.png");
         check("string prop through reflection", texture->readText(sprite->propTarget()) == "none.png");
 
-        auto* camera = world.create<components::Camera>(a);
+        auto* camera = world.create<nodes::Camera>(a);
         const reflect::PropDef* fov = propOf(*camera, "fov");
         const float wide = 500.0f;
         fov->write(camera->propTarget(), &wide);
@@ -59,9 +59,9 @@ public:
         propOf(*camera, "projection")->writeText(camera->propTarget(), "orthographic");
         check("enum prop", propOf(*camera, "projection")->readText(camera->propTarget()) == "orthographic");
 
-        auto* holder = world.create<components::Group>(nullptr);
+        auto* holder = world.create<nodes::Group>(nullptr);
         holder->transform()->setPosition(10.0f, 0.0f, 0.0f);
-        auto* inner = world.create<components::Group>(world.create<components::Folder>(holder));
+        auto* inner = world.create<nodes::Group>(world.create<nodes::Folder>(holder));
         inner->transform()->setPosition(0.0f, 1.0f, 0.0f);
         check("folder breaks the chain", inner->transform()->worldPosition() == glm::vec3(0.0f, 1.0f, 0.0f));
 
@@ -82,21 +82,21 @@ public:
 
         world.connect(*a, scene::Signal::ChildAdded, *this,
                       [this](const scene::SignalArgs& args) { added_ = args.other->id(); });
-        scene::Node* temp = world.create<components::Group>(a);
+        scene::Node* temp = world.create<nodes::Group>(a);
         check("child added", added_ == temp->id());
         world.connect(*temp, scene::Signal::Destroying, *this, [this](const scene::SignalArgs&) { destroyed_ = true; });
         world.destroy(temp);
 
-        spinner_ = world.create<components::Group>(nullptr)->id();
+        spinner_ = world.create<nodes::Group>(nullptr)->id();
         world.every(*this, 0.0, [this] { ticks_++; });
         world.after(*this, 0.1, [this] { waited_ = true; });
 
-        auto* spawned = world.create<components::Group>(nullptr);
+        auto* spawned = world.create<nodes::Group>(nullptr);
         spawned->setName("Spawned");
         spawned->setAttribute("mark", scene::PropValue::integer(7));
         check("a module class by name", world.create("Marker", spawned) != nullptr);
 
-        scene::Node* ticker = world.create("Ticker", world.create<components::Group>(nullptr));
+        scene::Node* ticker = world.create("Ticker", world.create<nodes::Group>(nullptr));
         const int tickerOwner = ticker->parent()->id();
         world.after(*this, 0.1, [this, &world, tickerOwner] {
             world.destroy(world.byId(tickerOwner));

@@ -7,7 +7,7 @@
 #include <glm/vec2.hpp>
 #include <glm/vec3.hpp>
 
-namespace cinder::components { class Camera; }
+namespace cinder::nodes { class Camera; }
 
 namespace cinder::dev {
 
@@ -23,7 +23,7 @@ public:
     };
 
     bool seeded() const { return seeded_; }
-    void seed(cinder::components::Camera* camera, glm::vec2 viewSize);
+    void seed(cinder::nodes::Camera* camera, glm::vec2 viewSize);
 
     void setViewSize(glm::vec2 size) { camera_.setViewSize(size.x, size.y); }
     void update(const Controls& controls, float dt);

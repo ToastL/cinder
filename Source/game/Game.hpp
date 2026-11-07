@@ -1,11 +1,11 @@
 #pragma once
 
-#include "components/Camera.hpp"
-#include "components/Folder.hpp"
-#include "components/Group.hpp"
-#include "components/MeshPart.hpp"
-#include "components/Sprite.hpp"
 #include "core/Module.hpp"
+#include "nodes/Camera.hpp"
+#include "nodes/Folder.hpp"
+#include "nodes/Group.hpp"
+#include "nodes/MeshPart.hpp"
+#include "nodes/Sprite.hpp"
 #include "physics/Body.hpp"
 #include "physics/Collider.hpp"
 #include "physics/World.hpp"

@@ -1,9 +1,9 @@
 #include <doctest/doctest.h>
 
-#include "components/Builtins.hpp"
-#include "components/Camera.hpp"
 #include "dev/EditorCamera.hpp"
 #include "gfx/pass/ViewCamera.hpp"
+#include "nodes/Builtins.hpp"
+#include "nodes/Camera.hpp"
 #include "scene/NodeTypes.hpp"
 #include "scene/Scene.hpp"
 #include "scene/Transform.hpp"
@@ -15,7 +15,7 @@
 #include <cmath>
 #include <cstddef>
 
-using cinder::components::Camera;
+using cinder::nodes::Camera;
 using cinder::dev::EditorCamera;
 using cinder::gfx::pass::ViewCamera;
 using cinder::scene::NodeTypes;
@@ -31,7 +31,7 @@ struct World {
     Camera* camera = nullptr;
 
     World() {
-        cinder::components::registerBuiltins(types);
+        cinder::nodes::registerBuiltins(types);
         camera = scene.create<Camera>(nullptr);
         camera->transform()->setPosition(10.0f, 20.0f, 30.0f);
         camera->transform()->setRotation(glm::radians(-20.0f), glm::radians(35.0f), 0.0f);

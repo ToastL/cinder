@@ -2,7 +2,7 @@
 
 #include "scene/Spatial.hpp"
 
-namespace cinder::components {
+namespace cinder::nodes {
 
 class Group final : public cinder::scene::Spatial {
 public:

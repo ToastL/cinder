@@ -4,13 +4,13 @@
 
 #include "ui_harness.hpp"
 
-#include "components/Builtins.hpp"
 #include "dev/History.hpp"
 #include "dev/Selection.hpp"
 #include "dev/panels/Dialog.hpp"
 #include "dev/panels/EditorStyle.hpp"
 #include "dev/panels/Explorer.hpp"
 #include "dev/panels/Properties.hpp"
+#include "nodes/Builtins.hpp"
 #include "scene/Node.hpp"
 #include "scene/NodeTypes.hpp"
 #include "scene/PropValue.hpp"

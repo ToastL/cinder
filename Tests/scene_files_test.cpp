@@ -1,7 +1,7 @@
 #include <doctest/doctest.h>
 
-#include "components/Builtins.hpp"
 #include "core/ProjectConfig.hpp"
+#include "nodes/Builtins.hpp"
 #include "physics/Nodes.hpp"
 #include "scene/NodeTypes.hpp"
 #include "scene/Scene.hpp"
@@ -71,7 +71,7 @@ TEST_CASE("every shipped project descriptor and config is canonical") {
 
 TEST_CASE("every shipped scene is canonical") {
     NodeTypes types;
-    cinder::components::registerBuiltins(types);
+    cinder::nodes::registerBuiltins(types);
     cinder::physics::registerNodes(types);
     Scene scene{types};
 

@@ -34,7 +34,7 @@ private:
         ball->transform()->setPosition(at.x, at.y, at.z);
         ball->transform()->setScale(0.8f);
         ball->setDamping(0.2f, ball->angularDamping());
-        world.create<components::MeshPart>(ball)->setMesh("sphere");
+        world.create<nodes::MeshPart>(ball)->setMesh("sphere");
         world.create<physics::Collider>(ball)->setShape(physics::Shape::Sphere).setRestitution(0.5f);
 
         const int id = ball->id();

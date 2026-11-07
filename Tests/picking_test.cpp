@@ -1,10 +1,10 @@
 #include <doctest/doctest.h>
 
-#include "components/Builtins.hpp"
-#include "components/Camera.hpp"
-#include "components/Sprite.hpp"
 #include "dev/Picking.hpp"
 #include "gfx/pass/ViewCamera.hpp"
+#include "nodes/Builtins.hpp"
+#include "nodes/Camera.hpp"
+#include "nodes/Sprite.hpp"
 #include "scene/Node.hpp"
 #include "scene/NodeTypes.hpp"
 #include "scene/Scene.hpp"
@@ -18,8 +18,8 @@
 #include <optional>
 #include <string_view>
 
-using cinder::components::Camera;
-using cinder::components::Sprite;
+using cinder::nodes::Camera;
+using cinder::nodes::Sprite;
 using cinder::dev::PickView;
 using cinder::dev::Ray;
 using cinder::dev::hitCube;
@@ -40,7 +40,7 @@ struct World {
     cinder::gfx::pass::ViewCamera camera;
 
     World() {
-        cinder::components::registerBuiltins(types);
+        cinder::nodes::registerBuiltins(types);
         cinder::scene::View view;
         view.fovDegrees = 60.0f;
         view.nearClip = 0.1f;
