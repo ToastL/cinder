@@ -3,6 +3,7 @@
 #include "reflect/Reflect.hpp"
 
 #include <clocale>
+#include <limits>
 #include <string>
 #include <vector>
 
@@ -182,4 +183,26 @@ TEST_CASE("a color prop carries its hint and is not clamped") {
     const float hdr[] = {4, 0.5f, 0, 1};
     tint.write(&s, hdr);
     CHECK(s.tint.r == doctest::Approx(4));
+}
+
+TEST_CASE("an int prop saturates a float that is out of range") {
+    Fixture f;
+    const float huge[] = {1.0e20f};
+    prop("count").write(&f, huge);
+    CHECK(f.count == std::numeric_limits<int>::max());
+    const float tiny[] = {-1.0e20f};
+    prop("count").write(&f, tiny);
+    CHECK(f.count == std::numeric_limits<int>::min());
+    const float nan[] = {std::numeric_limits<float>::quiet_NaN()};
+    prop("count").write(&f, nan);
+    CHECK(f.count == 0);
+}
+
+TEST_CASE("an int prop reads and writes exactly through its integer path") {
+    Fixture f;
+    prop("count").writeInt(&f, 16777217);
+    CHECK(prop("count").readInt(&f) == 16777217);
+    CHECK(f.changes == 1);
+    CHECK_THROWS(prop("label").readInt(&f));
+    CHECK_THROWS(prop("count").readText(&f));
 }

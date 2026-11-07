@@ -48,7 +48,7 @@ void History::save(const std::filesystem::path& path) {
     if (enabled_ && pending_) commit();
     if (path.has_parent_path()) std::filesystem::create_directories(path.parent_path());
 
-    cinder::platform::writeTextFile(path, current_, true);
+    cinder::platform::writeTextFile(path, current_);
 
     saved_ = current_;
     dirty_ = false;

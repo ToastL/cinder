@@ -1,6 +1,7 @@
 #pragma once
 
 #include <functional>
+#include <limits>
 #include <memory>
 #include <optional>
 #include <string>
@@ -27,6 +28,8 @@ using TimerHandler = std::function<void()>;
 
 class Scene {
 public:
+    static constexpr int MAX_ID = std::numeric_limits<int>::max() - 1;
+
     explicit Scene(NodeTypes& types);
     ~Scene();
 
@@ -76,7 +79,7 @@ private:
     void startPending();
     void flushDestroy();
     void markDestroyed(Node& node);
-    void teardown(Node& node, bool notify);
+    void teardown(Node& node, bool clearing);
     void unqueueStart(Node* node);
     void hook(Node& node, Signal signal, const SignalArgs& args);
     int schedule(Node& owner, double seconds, bool repeat, TimerHandler handler);

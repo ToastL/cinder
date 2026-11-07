@@ -1,9 +1,25 @@
 #include "core/LaunchOptions.hpp"
 
-#include <cstdlib>
+#include "platform/Log.hpp"
+
+#include <charconv>
 #include <string_view>
 
 namespace cinder::core {
+namespace {
+
+template <class T>
+T numberArgument(std::string_view flag, std::string_view text, T fallback) {
+    T value{};
+    const char* end = text.data() + text.size();
+    auto [at, error] = std::from_chars(text.data(), end, value);
+    if (error == std::errc{} && at == end && !text.empty()) return value;
+    cinder::platform::logError("%.*s expects a number, not '%.*s'\n", static_cast<int>(flag.size()), flag.data(),
+                               static_cast<int>(text.size()), text.data());
+    return fallback;
+}
+
+}
 
 LaunchOptions LaunchOptions::parse(int argc, const char* const* argv, LaunchTarget target) {
     LaunchOptions options;
@@ -13,7 +29,7 @@ LaunchOptions LaunchOptions::parse(int argc, const char* const* argv, LaunchTarg
         const std::string_view argument = argv[i];
         const bool hasValue = i + 1 < argc;
         if (argument == "--frames" && hasValue) {
-            options.frameLimit = std::atoi(argv[++i]);
+            options.frameLimit = numberArgument(argument, argv[++i], options.frameLimit);
         } else if (!gallery && argument == "--capture" && hasValue) {
             options.capture = argv[++i];
         } else if ((editor || gallery) && argument == "--capture-window" && hasValue) {
@@ -25,7 +41,7 @@ LaunchOptions LaunchOptions::parse(int argc, const char* const* argv, LaunchTarg
         } else if (editor && argument == "--play") {
             options.play = true;
         } else if (gallery && argument == "--text-gamma" && hasValue) {
-            options.textGamma = static_cast<float>(std::atof(argv[++i]));
+            if (const float gamma = numberArgument(argument, argv[++i], -1.0f); gamma >= 0.0f) options.textGamma = gamma;
         } else if (gallery && argument == "--lowdpi") {
             options.lowDpi = true;
         } else if (!gallery && (argument.empty() || argument.front() != '-') && options.project.empty()) {

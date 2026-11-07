@@ -7,7 +7,6 @@
 namespace cinder::platform {
 
 std::string readTextFile(const std::filesystem::path& path);
-void writeTextFile(const std::filesystem::path& path, std::string_view text,
-                   bool verifyCompletion = false);
+void writeTextFile(const std::filesystem::path& path, std::string_view text);
 
 }

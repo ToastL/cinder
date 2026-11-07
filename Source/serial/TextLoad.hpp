@@ -36,7 +36,7 @@ public:
 private:
     struct Field {
         std::vector<std::string> tokens;
-        bool quoted = false;
+        std::vector<bool> quoted;
     };
 
     struct Node {
@@ -53,7 +53,7 @@ private:
     const Field* field(std::string_view name) const;
     static cinder::scene::PropRec rec(const Node& node);
     static const Node& emptyNode();
-    static void body(Node& into, const std::vector<std::string>& lines, std::size_t& at);
+    static bool body(Node& into, const std::vector<std::string>& lines, std::size_t& at, bool nested);
 
     std::unique_ptr<Node> root_;
     std::vector<const Node*> stack_;

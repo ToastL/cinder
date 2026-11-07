@@ -32,6 +32,8 @@ Node* Scene::insert(std::unique_ptr<Node> owned, Node* parent, std::optional<int
         throw std::runtime_error("a parent must belong to the same scene");
     }
 
+    if (id && (*id < 1 || *id > MAX_ID)) throw std::runtime_error("node id " + std::to_string(*id) + " is out of range");
+    if (!id && nextId_ > MAX_ID) throw std::runtime_error("the scene has run out of node ids");
     const int assigned = id.value_or(nextId_);
     if (nodes_.count(assigned) != 0) {
         throw std::runtime_error("node id " + std::to_string(assigned) + " is taken");
@@ -59,12 +61,13 @@ Node* Scene::create(std::string_view className, Node* parent) {
 }
 
 Node* Scene::clone(const Node& source, Node* parent) {
-    std::unique_ptr<Node> copy = types_.create(types_.nameOf(source));
-    if (copy == nullptr) {
-        const auto* placeholder = dynamic_cast<const Placeholder*>(&source);
-        if (placeholder == nullptr) return nullptr;
+    std::unique_ptr<Node> copy;
+    if (const auto* placeholder = dynamic_cast<const Placeholder*>(&source)) {
         copy = std::make_unique<Placeholder>(placeholder->className(), placeholder->fields());
+    } else {
+        copy = types_.create(types_.nameOf(source));
     }
+    if (copy == nullptr) return nullptr;
 
     cinder::reflect::copyProps(source.propList(), source.propTarget(), copy->propTarget());
     if (source.transform() != nullptr && copy->transform() != nullptr) {
@@ -136,7 +139,7 @@ void Scene::destroyNow(Node* node) {
     if (node == nullptr || byId(node->id_) != node) return;
     markDestroyed(*node);
     detach(*node);
-    teardown(*node, true);
+    teardown(*node, false);
 }
 
 void Scene::flushDestroy() {
@@ -144,7 +147,7 @@ void Scene::flushDestroy() {
         Node* node = byId(pendingDestroy_[i]);
         if (node == nullptr) continue;
         detach(*node);
-        teardown(*node, true);
+        teardown(*node, false);
     }
     pendingDestroy_.clear();
 }
@@ -154,22 +157,22 @@ void Scene::markDestroyed(Node& node) {
     for (Node* child : node.children_) markDestroyed(*child);
 }
 
-void Scene::teardown(Node& node, bool notify) {
-    if (notify) emit(node, Signal::Destroying);
+void Scene::teardown(Node& node, bool clearing) {
+    if (!clearing) emit(node, Signal::Destroying);
 
     const std::vector<Node*> children = node.children_;
-    for (std::size_t i = children.size(); i-- > 0;) teardown(*children[i], notify);
+    for (std::size_t i = children.size(); i-- > 0;) teardown(*children[i], clearing);
     node.children_.clear();
 
-    unqueueStart(&node);
+    if (!clearing) unqueueStart(&node);
     if (node.started_) node.onDestroy();
-    dropHandlers(node.id_);
+    if (!clearing) dropHandlers(node.id_);
     nodes_.erase(node.id_);
 }
 
 void Scene::clear() {
     const std::vector<Node*> roots = roots_;
-    for (std::size_t i = roots.size(); i-- > 0;) teardown(*roots[i], false);
+    for (std::size_t i = roots.size(); i-- > 0;) teardown(*roots[i], true);
     roots_.clear();
     nodes_.clear();
     pendingStart_.clear();

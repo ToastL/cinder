@@ -4,7 +4,10 @@
 #include "reflect/PropDef.hpp"
 #include "reflect/PropType.hpp"
 
+#include <algorithm>
 #include <cfloat>
+#include <cmath>
+#include <limits>
 #include <string>
 #include <type_traits>
 #include <utility>
@@ -12,6 +15,13 @@
 namespace cinder::reflect {
 
 std::string deriveLabel(std::string_view field);
+
+inline int saturatedInt(float value) {
+    if (std::isnan(value)) return 0;
+    const double clamped = std::clamp(static_cast<double>(value), static_cast<double>(std::numeric_limits<int>::min()),
+                                      static_cast<double>(std::numeric_limits<int>::max()));
+    return static_cast<int>(clamped);
+}
 
 template <class Target>
 PropSink* sinkOf(void* target) {
@@ -37,7 +47,7 @@ public:
         static_assert(!std::is_const_v<std::remove_reference_t<Ref>>,
                       "a const prop cannot be written");
         static_assert(IsPropType<Field>::value,
-                      "unsupported @Prop type");
+                      "unsupported CINDER_PROP type");
 
         constexpr PropType kind = PropTypeOf<Field>::value;
 
@@ -65,8 +75,10 @@ public:
                 o[0] = static_cast<float>(static_cast<const Target*>(p)->*Member);
             };
             def.writeNum_ = [](void* p, const float* v) {
-                static_cast<Target*>(p)->*Member = static_cast<int>(v[0]);
+                static_cast<Target*>(p)->*Member = saturatedInt(v[0]);
             };
+            def.readInt_ = [](const void* p) { return static_cast<const Target*>(p)->*Member; };
+            def.writeInt_ = [](void* p, int v) { static_cast<Target*>(p)->*Member = v; };
         } else if constexpr (inPlace(kind)) {
             def.readNum_ = [](const void* p, float* o) {
                 const Field& value = static_cast<const Target*>(p)->*Member;

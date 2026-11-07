@@ -2,6 +2,9 @@
 
 #include "reflect/Reflect.hpp"
 
+#include <cstdint>
+#include <limits>
+
 #include <glm/mat4x4.hpp>
 #include <glm/vec3.hpp>
 
@@ -59,8 +62,8 @@ private:
 
     bool localDirty_ = true;
     bool worldDirty_ = true;
-    int version_ = 0;
-    int parentVersion_ = -1;
+    std::uint64_t version_ = 0;
+    std::uint64_t parentVersion_ = std::numeric_limits<std::uint64_t>::max();
 };
 
 }

@@ -13,6 +13,9 @@ void copyProps(const PropList& defs, const void* from, void* to) {
             case PropType::Bool:
                 def.writeBool(to, def.readBool(from));
                 break;
+            case PropType::Int:
+                def.writeInt(to, def.readInt(from));
+                break;
             case PropType::String:
             case PropType::Enum:
                 def.writeText(to, def.readText(from));
@@ -41,16 +44,36 @@ void PropDef::write(void* target, const float* values) const {
     notify(target);
 }
 
-bool PropDef::readBool(const void* target) const { return readFlag_(target); }
+int PropDef::readInt(const void* target) const {
+    if (readInt_ == nullptr) throw std::runtime_error(std::string(name_) + " is not an integer");
+    return readInt_(target);
+}
+
+void PropDef::writeInt(void* target, int value) const {
+    if (writeInt_ == nullptr) throw std::runtime_error(std::string(name_) + " is not an integer");
+    const double clamped = std::clamp(static_cast<double>(value), static_cast<double>(min_), static_cast<double>(max_));
+    writeInt_(target, static_cast<int>(clamped));
+    notify(target);
+}
+
+bool PropDef::readBool(const void* target) const {
+    if (readFlag_ == nullptr) throw std::runtime_error(std::string(name_) + " is not a bool");
+    return readFlag_(target);
+}
 
 void PropDef::writeBool(void* target, bool value) const {
+    if (writeFlag_ == nullptr) throw std::runtime_error(std::string(name_) + " is not a bool");
     writeFlag_(target, value);
     notify(target);
 }
 
-std::string_view PropDef::readText(const void* target) const { return readStr_(target); }
+std::string_view PropDef::readText(const void* target) const {
+    if (readStr_ == nullptr) throw std::runtime_error(std::string(name_) + " is not text");
+    return readStr_(target);
+}
 
 void PropDef::writeText(void* target, std::string_view value) const {
+    if (writeStr_ == nullptr) throw std::runtime_error(std::string(name_) + " is not text");
     if (writeStr_(target, value)) notify(target);
 }
 

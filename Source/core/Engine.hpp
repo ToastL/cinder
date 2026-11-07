@@ -47,7 +47,6 @@ public:
     cinder::scene::NodeTypes& types() { return types_; }
 
 private:
-    void reset();
 
     cinder::platform::Window window_;
     cinder::platform::Input input_;

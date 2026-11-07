@@ -46,4 +46,21 @@ std::string vectorText(std::span<const float> values) {
     return joined;
 }
 
+namespace {
+
+template <class T>
+std::optional<T> parsed(std::string_view text) {
+    T out{};
+    const char* end = text.data() + text.size();
+    auto [at, error] = std::from_chars(text.data(), end, out);
+    if (error != std::errc{} || at != end || text.empty()) return std::nullopt;
+    return out;
+}
+
+}
+
+std::optional<std::int64_t> parseInteger(std::string_view text) { return parsed<std::int64_t>(text); }
+std::optional<double> parseReal(std::string_view text) { return parsed<double>(text); }
+std::optional<float> parseFloat(std::string_view text) { return parsed<float>(text); }
+
 }

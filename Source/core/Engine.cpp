@@ -28,17 +28,9 @@ bool Engine::running() const { return !quit_ && !window_.shouldClose(); }
 
 bool Engine::minimized() const { return window_.isMinimized(); }
 
-void Engine::reset() { scene_.clear(); }
+void Engine::loadScene(const std::string& source) { cinder::serial::SceneCodec::load(source, scene_); }
 
-void Engine::loadScene(const std::string& source) {
-    reset();
-    cinder::serial::SceneCodec::load(source, scene_);
-}
-
-void Engine::openScene(const std::filesystem::path& path) {
-    reset();
-    cinder::serial::SceneCodec::loadFromFile(path, scene_);
-}
+void Engine::openScene(const std::filesystem::path& path) { cinder::serial::SceneCodec::loadFromFile(path, scene_); }
 
 void Engine::saveScene(const std::filesystem::path& path) {
     if (path.has_parent_path()) std::filesystem::create_directories(path.parent_path());

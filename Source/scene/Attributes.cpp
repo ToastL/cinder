@@ -42,6 +42,7 @@ bool isAttributeValue(const PropValue& value) {
 }
 
 bool sameAttribute(const PropValue& a, const PropValue& b) {
+    if (a.is<std::int64_t>() && b.is<std::int64_t>()) return a.as<std::int64_t>() == b.as<std::int64_t>();
     if (isNumber(a) && isNumber(b)) return numberOf(a) == numberOf(b);
     if (a.is<std::string>() && b.is<std::string>()) return a.as<std::string>() == b.as<std::string>();
     if (a.is<bool>() && b.is<bool>()) return a.as<bool>() == b.as<bool>();

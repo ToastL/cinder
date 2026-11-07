@@ -32,6 +32,8 @@ public:
 
     void read(const void* target, float* out) const;
     void write(void* target, const float* values) const;
+    int readInt(const void* target) const;
+    void writeInt(void* target, int value) const;
 
     bool readBool(const void* target) const;
     void writeBool(void* target, bool value) const;
@@ -57,6 +59,8 @@ private:
 
     void (*readNum_)(const void*, float*) = nullptr;
     void (*writeNum_)(void*, const float*) = nullptr;
+    int (*readInt_)(const void*) = nullptr;
+    void (*writeInt_)(void*, int) = nullptr;
     bool (*readFlag_)(const void*) = nullptr;
     void (*writeFlag_)(void*, bool) = nullptr;
     std::string_view (*readStr_)(const void*) = nullptr;

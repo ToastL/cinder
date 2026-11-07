@@ -142,7 +142,8 @@ void SceneCodec::node(Archive& ar, Node* existing, std::string_view type, Node* 
 
 Node* SceneCodec::insert(std::unique_ptr<Node> node, int id, Node* parent) {
     std::optional<int> wanted;
-    if (id != NO_ID && scene_.byId(id) == nullptr) wanted = id;
+    if (id != NO_ID && (id < 1 || id > Scene::MAX_ID)) cinder::platform::logError("[serial] node id %d is out of range\n", id);
+    else if (id != NO_ID && scene_.byId(id) == nullptr) wanted = id;
     else if (id != NO_ID) cinder::platform::logError("[serial] duplicate node id %d\n", id);
     return scene_.insert(std::move(node), parent, wanted);
 }
@@ -156,6 +157,11 @@ void SceneCodec::emit(Archive& ar, const std::vector<cinder::reflect::PropDef>& 
             case cinder::reflect::PropType::Bool: {
                 const bool value = ar.flag(key, def.readBool(target), def.readBool(base));
                 if (ar.loading()) def.writeBool(target, value);
+                break;
+            }
+            case cinder::reflect::PropType::Int: {
+                const int value = ar.integer(key, def.readInt(target), def.readInt(base));
+                if (ar.loading()) def.writeInt(target, value);
                 break;
             }
             case cinder::reflect::PropType::String:
