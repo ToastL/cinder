@@ -4,32 +4,17 @@
 #include "core/GameLoop.hpp"
 #include "core/LaunchOptions.hpp"
 #include "core/ProjectConfig.hpp"
-#include "dev/History.hpp"
+#include "dev/EditorShell.hpp"
+#include "dev/GameBuild.hpp"
 #include "dev/ModuleHost.hpp"
 #include "dev/Packager.hpp"
-#include "dev/PlaySession.hpp"
-#include "dev/Selection.hpp"
-#include "dev/GameBuild.hpp"
-#include "dev/panels/Console.hpp"
-#include "dev/panels/EditorStyle.hpp"
-#include "dev/panels/Explorer.hpp"
-#include "dev/panels/Properties.hpp"
-#include "dev/panels/Layout.hpp"
-#include "dev/panels/SceneView.hpp"
-#include "dev/panels/Toolbar.hpp"
 #include "platform/Assets.hpp"
 #include "platform/InputScript.hpp"
 #include "platform/Log.hpp"
-#include "text/FontSet.hpp"
-#include "ui/docking/TabManager.hpp"
-#include "ui/core/ElementList.hpp"
-#include "ui/framework/Application.hpp"
-#include "ui/framework/WindowPlatform.hpp"
 
 #include <filesystem>
 #include <optional>
 #include <string>
-#include <vector>
 
 using cinder::core::Engine;
 using cinder::core::GameLoop;
@@ -39,22 +24,12 @@ namespace cinder::dev {
 void runEditor(const core::ProjectConfig& config, const core::LaunchOptions& options) {
     const std::filesystem::path scenePath = cinder::platform::contentPath(config.startScene);
     Engine engine(config);
-    PlaySession session(engine);
-    Selection selection;
-    History history(engine.scene());
     Packager packager(cinder::platform::projectRoot(), config.descriptor.targetPlatforms);
-
-    const cinder::text::FontSet fonts = cinder::text::FontSet::engineDefault();
-    cinder::ui::WindowPlatform platform(engine.window());
-    cinder::ui::Application app(platform, fonts, cinder::dev::panels::editorTheme());
     ModuleHost modules(engine.scene(), cinder::platform::projectRoot(), config.name, GameBuild::locate());
-    cinder::dev::panels::Toolbar toolbar(session, history, selection, packager, modules, scenePath, app);
-    cinder::dev::panels::SceneView view(session, selection, history, engine, app);
-    cinder::dev::panels::Explorer explorer(selection, history, engine.scene(), app);
-    cinder::dev::panels::Properties properties(selection, history, engine.scene(), app);
-    cinder::dev::panels::Console console(app);
-    cinder::ui::TabManager tabs;
-    app.setRoot(cinder::dev::panels::editorLayout(toolbar, view, explorer, properties, console, tabs));
+    EditorShell shell(engine, modules, packager, scenePath);
+    PlaySession& session = shell.session();
+    History& history = shell.history();
+    panels::Toolbar& toolbar = shell.toolbar();
 
     cinder::platform::Input& input = engine.input();
     input.setRecording(true);
@@ -63,18 +38,6 @@ void runEditor(const core::ProjectConfig& config, const core::LaunchOptions& opt
         steps = cinder::platform::InputScript::load(options.inputScript);
         input.setIgnoreSystem(true);
     }
-
-    engine.renderer().setUiPaint([&](cinder::ui::ElementList& list) {
-        const std::vector<cinder::platform::InputEvent> events = input.takeEvents();
-        app.processEvents(events);
-        toolbar.update();
-        view.update();
-        explorer.update();
-        properties.update();
-        console.update();
-        app.paint(list);
-        view.afterPaint();
-    });
 
     if (!modules.available()) {
         cinder::platform::logError("[build] game C++ is unavailable: cbt was not found next to the editor\n");
@@ -111,18 +74,13 @@ void runEditor(const core::ProjectConfig& config, const core::LaunchOptions& opt
         const bool last = options.frameLimit > 0 && frames + 1 >= options.frameLimit;
         if (last && !options.windowCapture.empty()) engine.renderer().requestWindowCapture(options.windowCapture);
         modules.update();
-        if (modules.reloadPending() && session.state() == PlaySession::State::Edit && !app.isInteracting() && !app.hasPopups()
-            && modules.reload()) {
-            properties.rebuild();
-        }
+        shell.applyPendingReload();
         session.tick(loop);
         ++frames;
         if (last) break;
     }
 
     if (!options.capture.empty()) engine.renderer().capture(options.capture);
-    engine.renderer().setUiPaint(nullptr);
-    app.setRoot(nullptr);
 }
 
 }

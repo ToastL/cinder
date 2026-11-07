@@ -2,19 +2,15 @@
 #include "components/MeshPart.hpp"
 #include "core/Engine.hpp"
 #include "core/GameLoop.hpp"
+#include "dev/EditorShell.hpp"
 #include "dev/History.hpp"
 #include "dev/Manipulator.hpp"
 #include "dev/ModuleHost.hpp"
 #include "dev/Packager.hpp"
 #include "dev/PlaySession.hpp"
 #include "dev/Selection.hpp"
-#include "dev/panels/Console.hpp"
-#include "dev/panels/EditorStyle.hpp"
 #include "dev/panels/Explorer.hpp"
-#include "dev/panels/Layout.hpp"
-#include "dev/panels/Properties.hpp"
 #include "dev/panels/SceneView.hpp"
-#include "dev/panels/Toolbar.hpp"
 #include "physics/Body.hpp"
 #include "physics/Collider.hpp"
 #include "platform/Assets.hpp"
@@ -22,12 +18,9 @@
 #include "platform/Glfw.hpp"
 #include "platform/InputEvent.hpp"
 #include "serial/SceneCodec.hpp"
-#include "text/FontSet.hpp"
-#include "ui/core/ElementList.hpp"
 #include "ui/docking/DockTab.hpp"
 #include "ui/docking/TabManager.hpp"
 #include "ui/framework/Application.hpp"
-#include "ui/framework/WindowPlatform.hpp"
 #include "ui/widgets/TreeView.hpp"
 
 #include <GLFW/glfw3.h>
@@ -126,35 +119,19 @@ void exercise() {
     scene.create<cinder::components::MeshPart>(body);
     const int id = body->id();
 
-    PlaySession session(engine);
-    Selection selection;
-    History history(scene);
     cinder::dev::Packager packager(cinder::platform::projectRoot(), {});
-    const cinder::text::FontSet fonts = cinder::text::FontSet::engineDefault();
-    cinder::ui::WindowPlatform platform(engine.window());
-    cinder::ui::Application app(platform, fonts, panels::editorTheme());
     cinder::dev::ModuleHost modules(scene, cinder::platform::projectRoot(), "Smoke", std::nullopt);
-    panels::Toolbar toolbar(session, history, selection, packager, modules, output / "saved.scene", app);
-    panels::SceneView view(session, selection, history, engine, app);
-    panels::Explorer explorer(selection, history, scene, app);
-    panels::Properties properties(selection, history, scene, app);
-    panels::Console console(app);
-    cinder::ui::TabManager tabs;
-    app.setRoot(panels::editorLayout(toolbar, view, explorer, properties, console, tabs));
+    EditorShell shell(engine, modules, packager, output / "saved.scene");
+    PlaySession& session = shell.session();
+    Selection& selection = shell.selection();
+    History& history = shell.history();
+    cinder::ui::Application& app = shell.app();
+    panels::SceneView& view = shell.view();
+    panels::Explorer& explorer = shell.explorer();
+    cinder::ui::TabManager& tabs = shell.tabs();
 
     cinder::platform::Input& input = engine.input();
     Driver driver(input);
-    engine.renderer().setUiPaint([&](cinder::ui::ElementList& list) {
-        const std::vector<InputEvent> events = input.takeEvents();
-        app.processEvents(events);
-        toolbar.update();
-        view.update();
-        explorer.update();
-        properties.update();
-        console.update();
-        app.paint(list);
-        view.afterPaint();
-    });
 
     cinder::core::GameLoop loop(60);
     const auto frames = [&](int count) {
