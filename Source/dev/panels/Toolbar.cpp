@@ -109,43 +109,7 @@ void Toolbar::build() {
         return command->description + "  " + command->shortcut.label();
     };
 
-    const std::shared_ptr<const CommandList> list = commands_;
-    std::shared_ptr<Widget> menus = make<MenuBar>()
-            .menu("File", [list](MenuBuilder& menu) { menu.command(list, SAVE).command(list, BUILD); })
-            .menu("Edit", [list](MenuBuilder& menu) { menu.command(list, UNDO).command(list, REDO); })
-            .menu("Window", [this](MenuBuilder& menu) {
-                if (windowMenu_) windowMenu_(menu);
-            })
-            .menu("Play", [this, list](MenuBuilder& menu) {
-                menu.entry([this] { return std::string(editing() ? "Play" : "Stop"); }, [list] { list->execute(*PLAY); },
-                           PLAY->shortcut.label())
-                        .entry([this] { return std::string(session_.state() == PlaySession::State::Paused ? "Resume" : "Pause"); },
-                               [list] { list->execute(*PAUSE); }, PAUSE->shortcut.label())
-                        .enabledIf([this] { return !editing(); })
-                        .command(list, STEP);
-            })
-            .menu("Platforms", [this](MenuBuilder& menu) {
-                menu.heading("Configuration");
-                for (const Configuration configuration : {Configuration::Development, Configuration::Shipping}) {
-                    menu.check(std::string(configurationName(configuration)),
-                               [this, configuration] { packager_.setConfiguration(configuration); },
-                               [this, configuration] { return packager_.configuration() == configuration; });
-                }
-                menu.separator();
-                menu.heading("Package Project");
-                for (const Platform platform : platforms()) {
-                    const std::string name(platformName(platform));
-                    menu.entry([this, platform, name] {
-                        if (packager_.current() == platform) return name + " (packaging...)";
-                        return packager_.canPackage(platform) ? name : name + " (unavailable)";
-                    }, [this, platform] { requestPackage(platform); })
-                            .enabledIf([this, platform] {
-                                return editing() && packager_.canPackage(platform) && !packager_.busy();
-                            });
-                    const std::string reason = packager_.unavailableReason(platform);
-                    menu.toolTip(reason.empty() ? "Package into " + packager_.outputDir(platform).string() : reason);
-                }
-            });
+    std::shared_ptr<Widget> menus = buildMenus();
 
     widget_ = make<Border>()
             .brush([] { return Application::get().theme().get<Brush>("Brush.Toolbar"); })
@@ -197,6 +161,50 @@ void Toolbar::build() {
                         })
                         .colorAndOpacity(themeColor("Color.ForegroundDim"))]];
 
+    buildPrompts();
+}
+
+std::shared_ptr<Widget> Toolbar::buildMenus() {
+    const std::shared_ptr<const CommandList> list = commands_;
+    return make<MenuBar>()
+            .menu("File", [list](MenuBuilder& menu) { menu.command(list, SAVE).command(list, BUILD); })
+            .menu("Edit", [list](MenuBuilder& menu) { menu.command(list, UNDO).command(list, REDO); })
+            .menu("Window", [this](MenuBuilder& menu) {
+                if (windowMenu_) windowMenu_(menu);
+            })
+            .menu("Play", [this, list](MenuBuilder& menu) {
+                menu.entry([this] { return std::string(editing() ? "Play" : "Stop"); }, [list] { list->execute(*PLAY); },
+                           PLAY->shortcut.label())
+                        .entry([this] { return std::string(session_.state() == PlaySession::State::Paused ? "Resume" : "Pause"); },
+                               [list] { list->execute(*PAUSE); }, PAUSE->shortcut.label())
+                        .enabledIf([this] { return !editing(); })
+                        .command(list, STEP);
+            })
+            .menu("Platforms", [this](MenuBuilder& menu) {
+                menu.heading("Configuration");
+                for (const Configuration configuration : {Configuration::Development, Configuration::Shipping}) {
+                    menu.check(std::string(configurationName(configuration)),
+                               [this, configuration] { packager_.setConfiguration(configuration); },
+                               [this, configuration] { return packager_.configuration() == configuration; });
+                }
+                menu.separator();
+                menu.heading("Package Project");
+                for (const Platform platform : platforms()) {
+                    const std::string name(platformName(platform));
+                    menu.entry([this, platform, name] {
+                        if (packager_.current() == platform) return name + " (packaging...)";
+                        return packager_.canPackage(platform) ? name : name + " (unavailable)";
+                    }, [this, platform] { requestPackage(platform); })
+                            .enabledIf([this, platform] {
+                                return editing() && packager_.canPackage(platform) && !packager_.busy();
+                            });
+                    const std::string reason = packager_.unavailableReason(platform);
+                    menu.toolTip(reason.empty() ? "Package into " + packager_.outputDir(platform).string() : reason);
+                }
+            });
+}
+
+void Toolbar::buildPrompts() {
     const auto dismiss = [this] {
         prompting_ = Prompt::None;
         packageAfterPrompt_.reset();

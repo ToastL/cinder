@@ -46,6 +46,8 @@ namespace {
 
 constexpr float LABEL_FILL = 0.4f;
 constexpr float VALUE_FILL = 0.6f;
+constexpr float DEFAULT_STEP = 0.1f;
+constexpr const char* DEGREES = "\xC2\xB0";
 constexpr double ATTRIBUTE_STEP = 0.1;
 const std::vector<std::string> KINDS = {"Number", "String", "Boolean", "Vector2", "Vector3", "Vector4"};
 
@@ -139,8 +141,39 @@ std::shared_ptr<Widget> Properties::row(std::string label, std::shared_ptr<Widge
     return line;
 }
 
+std::shared_ptr<Widget> Properties::colorEditorFor(const PropDef& def, Target target) {
+    const PropDef* prop = &def;
+    const int arity = def.arity();
+    return make<HorizontalBox>()
+           + HorizontalBox::slot().autoWidth().vAlign(VAlign::Center)
+                 [make<ColorBlock>()
+                          .color([prop, target, arity] {
+                              void* at = target();
+                              float values[4]{0.0f, 0.0f, 0.0f, 1.0f};
+                              if (at != nullptr) prop->read(at, values);
+                              return Color{values[0], values[1], values[2], arity == 4 ? values[3] : 1.0f};
+                          })
+                          .useAlpha(arity == 4)
+                          .opensPicker(true)
+                          .size(glm::vec2(64.0f, 18.0f))
+                          .onColorChanged(writing(target, [prop, arity](void* at, Color color) {
+                              float values[4]{color.r, color.g, color.b, color.a};
+                              if (arity == 3) {
+                                  float current[4]{};
+                                  prop->read(at, current);
+                                  values[3] = current[3];
+                              }
+                              prop->write(at, values);
+                          }))]
+           + HorizontalBox::slot().fill(1.0f)[make<Spacer>()];
+}
+
 std::shared_ptr<Widget> Properties::editorFor(const PropDef& def, Target target) {
     const PropDef* prop = &def;
+    const auto text = [prop, target] {
+        void* at = target();
+        return at != nullptr ? std::string(prop->readText(at)) : std::string();
+    };
     switch (def.type()) {
         case PropType::Bool:
             return make<CheckBox>()
@@ -148,40 +181,21 @@ std::shared_ptr<Widget> Properties::editorFor(const PropDef& def, Target target)
                         void* at = target();
                         return at != nullptr && prop->readBool(at);
                     })
-                    .onCheckStateChanged([this, prop, target](bool value) {
-                        if (void* at = target()) {
-                            prop->writeBool(at, value);
-                            touched();
-                        }
-                    });
+                    .onCheckStateChanged(writing(target, [prop](void* at, bool value) { prop->writeBool(at, value); }));
         case PropType::String:
-            return make<TextBox>()
-                    .text([prop, target] {
-                        void* at = target();
-                        return at != nullptr ? std::string(prop->readText(at)) : std::string();
-                    })
-                    .onTextCommitted([this, prop, target](const std::string& text, TextCommit how) {
-                        if (how == TextCommit::Cleared) return;
-                        if (void* at = target()) {
-                            prop->writeText(at, text);
-                            touched();
-                        }
+            return make<TextBox>().text(text).onTextCommitted(
+                    [write = writing(target, [prop](void* at, const std::string& value) { prop->writeText(at, value); })](
+                            const std::string& value, TextCommit how) {
+                        if (how != TextCommit::Cleared) write(value);
                     });
         case PropType::Enum: {
             std::vector<std::string> options;
             for (const std::string_view option : def.options()) options.emplace_back(option);
             return make<ComboBox>()
                     .options(std::move(options))
-                    .selectedOption([prop, target] {
-                        void* at = target();
-                        return at != nullptr ? std::string(prop->readText(at)) : std::string();
-                    })
-                    .onSelectionChanged([this, prop, target](const std::string& option) {
-                        if (void* at = target()) {
-                            prop->writeText(at, option);
-                            touched();
-                        }
-                    });
+                    .selectedOption(text)
+                    .onSelectionChanged(
+                            writing(target, [prop](void* at, const std::string& option) { prop->writeText(at, option); }));
         }
         case PropType::Int:
         case PropType::Float:
@@ -191,62 +205,26 @@ std::shared_ptr<Widget> Properties::editorFor(const PropDef& def, Target target)
                         return at != nullptr ? componentOf(*prop, at, 0) : 0.0;
                     })
                     .integral(def.type() == PropType::Int)
-                    .step(def.step() > 0.0f ? def.step() : 0.1f)
+                    .step(def.step() > 0.0f ? def.step() : DEFAULT_STEP)
                     .minValue(lowerBound(def))
                     .maxValue(upperBound(def))
-                    .units(def.hint() == PropHint::Angle ? "\xC2\xB0" : "")
-                    .onValueChanged([this, prop, target](double value) {
-                        if (void* at = target()) {
-                            writeComponent(*prop, at, 0, value);
-                            touched();
-                        }
-                    });
-        default: {
-            if (def.hint() == PropHint::Color) {
-                const int arity = def.arity();
-                return make<HorizontalBox>()
-                       + HorizontalBox::slot().autoWidth().vAlign(VAlign::Center)
-                             [make<ColorBlock>()
-                                      .color([prop, target, arity] {
-                                          void* at = target();
-                                          float values[4]{0.0f, 0.0f, 0.0f, 1.0f};
-                                          if (at != nullptr) prop->read(at, values);
-                                          return Color{values[0], values[1], values[2], arity == 4 ? values[3] : 1.0f};
-                                      })
-                                      .useAlpha(arity == 4)
-                                      .opensPicker(true)
-                                      .size(glm::vec2(64.0f, 18.0f))
-                                      .onColorChanged([this, prop, target, arity](Color color) {
-                                          void* at = target();
-                                          if (at == nullptr) return;
-                                          float values[4]{color.r, color.g, color.b, color.a};
-                                          if (arity == 3) {
-                                              float current[4]{};
-                                              prop->read(at, current);
-                                              values[3] = current[3];
-                                          }
-                                          prop->write(at, values);
-                                          touched();
-                                      })]
-                       + HorizontalBox::slot().fill(1.0f)[make<Spacer>()];
-            }
+                    .units(def.hint() == PropHint::Angle ? DEGREES : "")
+                    .onValueChanged(writing(target, [prop](void* at, double value) { writeComponent(*prop, at, 0, value); }));
+        default:
+            if (def.hint() == PropHint::Color) return colorEditorFor(def, target);
             return make<VectorInputBox>()
                     .components(def.arity())
                     .value([prop, target](int index) {
                         void* at = target();
                         return at != nullptr ? componentOf(*prop, at, index) : 0.0;
                     })
-                    .step(def.step() > 0.0f ? def.step() : 0.1f)
-                    .units(def.hint() == PropHint::Angle ? "\xC2\xB0" : "")
+                    .step(def.step() > 0.0f ? def.step() : DEFAULT_STEP)
+                    .units(def.hint() == PropHint::Angle ? DEGREES : "")
                     .minValue(lowerBound(def))
                     .maxValue(upperBound(def))
-                    .onComponentChanged([this, prop, target](int index, double value) {
-                        if (void* at = target()) {
-                            writeComponent(*prop, at, index, value);
-                            touched();
-                        }
-                    });
-        }
+                    .onComponentChanged(writing(target, [prop](void* at, int index, double value) {
+                        writeComponent(*prop, at, index, value);
+                    }));
     }
 }
 

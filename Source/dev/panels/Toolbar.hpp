@@ -62,6 +62,8 @@ private:
     void confirmClose();
     void bind();
     void build();
+    std::shared_ptr<cinder::ui::Widget> buildMenus();
+    void buildPrompts();
 
     PlaySession& session_;
     History& history_;

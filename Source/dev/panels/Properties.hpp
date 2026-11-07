@@ -7,6 +7,7 @@
 #include <memory>
 #include <optional>
 #include <string>
+#include <utility>
 #include <vector>
 
 namespace cinder::scene {
@@ -49,6 +50,17 @@ private:
     std::shared_ptr<cinder::ui::Widget> row(std::string label, std::shared_ptr<cinder::ui::Widget> editor,
                                             std::shared_ptr<cinder::ui::Widget> trailing = nullptr);
     std::shared_ptr<cinder::ui::Widget> editorFor(const cinder::reflect::PropDef& def, Target target);
+    std::shared_ptr<cinder::ui::Widget> colorEditorFor(const cinder::reflect::PropDef& def, Target target);
+
+    template <class Write>
+    auto writing(Target target, Write write) {
+        return [this, target = std::move(target), write](auto&&... args) {
+            if (void* at = target()) {
+                write(at, std::forward<decltype(args)>(args)...);
+                touched();
+            }
+        };
+    }
     std::shared_ptr<cinder::ui::Widget> attributesSection(int id);
     std::shared_ptr<cinder::ui::Widget> attributeEditor(int id, const std::string& name);
     std::shared_ptr<cinder::ui::Widget> addAttributePopup(int id);
