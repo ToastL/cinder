@@ -900,3 +900,31 @@ TEST_CASE("touches reach both nodes' hooks and any connected listener") {
     f.run(150);
     CHECK(touched.size() == 2);
 }
+
+TEST_CASE("body setters clamp the way their props do") {
+    Body body;
+    body.setMass(0.0f).setDamping(-1.0f, -2.0f);
+    CHECK(body.mass() == Body::MIN_MASS);
+    CHECK(body.linearDamping() == 0.0f);
+    CHECK(body.angularDamping() == 0.0f);
+}
+
+TEST_CASE("contact keys never alias across large node ids") {
+    const cinder::physics::ContactKey low{1, 2, 0};
+    const cinder::physics::ContactKey high{1 + (1 << 22), 2, 0};
+    CHECK_FALSE(low == high);
+}
+
+TEST_CASE("every clipped contact point of a box pair has its own feature id") {
+    for (const float turn : {0.0f, 0.3f, 0.785f, 1.1f}) {
+        const glm::mat4 world = glm::rotate(glm::translate(glm::mat4(1.0f), glm::vec3(0.1f, 0.95f, -0.05f)), turn,
+                                            glm::vec3(0.0f, 1.0f, 0.0f));
+        const Geometry above = cinder::physics::geometryOf(Shape::Box, glm::vec3(1.0f), world);
+        const Geometry below = boxAt(glm::vec3(0.0f), glm::vec3(1.0f));
+        Manifold manifold;
+        REQUIRE(cinder::physics::collide(below, above, manifold));
+        std::set<int> features;
+        for (int i = 0; i < manifold.count; ++i) features.insert(manifold.points[static_cast<std::size_t>(i)].feature);
+        CHECK(static_cast<int>(features.size()) == manifold.count);
+    }
+}

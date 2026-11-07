@@ -164,7 +164,7 @@ Polygon clipTo(const Polygon& polygon, const glm::vec3& origin, const glm::vec3&
         if (outside <= 0.0f) out.add(from, polygon.features[here]);
         if (outside * beyond < 0.0f) {
             out.add(from + (to - from) * (outside / (outside - beyond)),
-                    CLIP_FEATURE + plane * 4 + i);
+                    CLIP_FEATURE + plane * MAX_CLIPPED + i);
         }
     }
     return out;

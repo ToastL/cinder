@@ -34,8 +34,8 @@ public:
 
     double mouseX() const { return mouseX_ - originX_; }
     double mouseY() const { return mouseY_ - originY_; }
-    double mouseDeltaX() const { return mouseX_ - lastMouseX_; }
-    double mouseDeltaY() const { return mouseY_ - lastMouseY_; }
+    double mouseDeltaX() const { return mouseSuppressed_ ? 0.0 : mouseX_ - lastMouseX_; }
+    double mouseDeltaY() const { return mouseSuppressed_ ? 0.0 : mouseY_ - lastMouseY_; }
     double scrollX() const { return mouseSuppressed_ ? 0.0 : scrollX_; }
     double scrollY() const { return mouseSuppressed_ ? 0.0 : scrollY_; }
 

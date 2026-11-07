@@ -80,7 +80,7 @@ Explorer::Explorer(Selection& selection, History& history, cinder::scene::Scene&
                          item ? std::optional<int>(static_cast<int>(*item)) : std::nullopt);
             })
             .onKeyDownHandler([this](const KeyEvent& event) {
-                if (event.key != keys::DELETE && event.key != keys::BACKSPACE) return false;
+                if (event.key != keys::DELETE_KEY && event.key != keys::BACKSPACE) return false;
                 if (const std::optional<int> selected = selection_.id()) remove(*selected);
                 return true;
             });

@@ -24,7 +24,7 @@ void ContactSolver::begin(std::span<BodyState> states) {
     contacts_.clear();
 }
 
-void ContactSolver::add(int a, int b, std::uint64_t key, const glm::vec3& normal,
+void ContactSolver::add(int a, int b, const ContactKey& key, const glm::vec3& normal,
                         const ContactPoint& point, float friction, float restitution, float dt) {
     const BodyState& first = states_[static_cast<std::size_t>(a)];
     const BodyState& second = states_[static_cast<std::size_t>(b)];

@@ -22,11 +22,9 @@ using cinder::scene::Transform;
 
 namespace {
 
-std::uint64_t contactKey(int a, int b, int feature) {
-    return (static_cast<std::uint64_t>(a & 0x3FFFFF) << 42) |
-           (static_cast<std::uint64_t>(b & 0x3FFFFF) << 20) |
-           static_cast<std::uint64_t>(feature & 0xFFFFF);
-}
+ContactKey contactKey(int a, int b, int feature) { return ContactKey{a, b, feature}; }
+
+bool finite(const glm::vec3& v) { return std::isfinite(v.x) && std::isfinite(v.y) && std::isfinite(v.z); }
 
 }
 
@@ -44,6 +42,9 @@ void World::step(float dt) {
         proxy.geometry = proxy.collider->geometry();
         proxy.bounds = boundsOf(proxy.geometry);
     }
+    std::erase_if(proxies_, [](const Proxy& proxy) {
+        return !finite(proxy.bounds.min) || !finite(proxy.bounds.max);
+    });
     weigh();
     for (std::size_t i = 1; i < states_.size(); ++i) accelerate(states_[i], dt);
     solver_.begin(states_);

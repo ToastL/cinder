@@ -5,7 +5,6 @@
 #include "gfx/pass/MeshPass.hpp"
 #include "gfx/pass/SpritePass.hpp"
 #include "platform/Assets.hpp"
-#include "platform/Glfw.hpp"
 #include "platform/Input.hpp"
 
 #include <glm/gtc/matrix_transform.hpp>
@@ -42,7 +41,7 @@ cinder::scene::Scene& scene() { return engine().scene(); }
 
 cinder::physics::World& world() { return engine().physics(); }
 
-double time() { return cinder::platform::Glfw::time(); }
+double time() { return scene().time(); }
 
 void quit() { engine().quit(); }
 

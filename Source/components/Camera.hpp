@@ -23,7 +23,7 @@ public:
     Camera& setProjection(Projection projection) { projection_ = projection; return *this; }
     Camera& setFov(float degrees) { fov_ = degrees; return *this; }
     Camera& setZoom(float zoom) { zoom_ = zoom; return *this; }
-    Camera& setClip(float near, float far) { near_ = near; far_ = far; return *this; }
+    Camera& setClip(float nearClip, float farClip) { near_ = nearClip; far_ = farClip; return *this; }
     Camera& setClearColor(float r, float g, float b, float a) {
         clearColor_ = glm::vec4(r, g, b, a);
         return *this;

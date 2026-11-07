@@ -7,12 +7,15 @@
 #include <glm/mat4x4.hpp>
 #include <glm/vec3.hpp>
 
+#include <algorithm>
 #include <cfloat>
 
 namespace cinder::physics {
 
 class Body final : public cinder::scene::Spatial {
 public:
+    static constexpr float MIN_MASS = 0.001f;
+
     enum class Motion { Static, Kinematic, Dynamic };
 
     Motion motion() const { return motion_; }
@@ -27,11 +30,11 @@ public:
     float sleepTimer() const { return sleepTimer_; }
 
     Body& setMotion(Motion motion) { motion_ = motion; return *this; }
-    Body& setMass(float mass) { mass_ = mass; return *this; }
+    Body& setMass(float mass) { mass_ = std::max(mass, MIN_MASS); return *this; }
     Body& setGravityScale(float scale) { gravityScale_ = scale; return *this; }
     Body& setDamping(float linear, float angular) {
-        linearDamping_ = linear;
-        angularDamping_ = angular;
+        linearDamping_ = std::max(linear, 0.0f);
+        angularDamping_ = std::max(angular, 0.0f);
         return *this;
     }
     Body& setVelocity(float x, float y, float z) { velocity_ = glm::vec3(x, y, z); return *this; }
@@ -53,7 +56,7 @@ public:
 
     CINDER_NODE(Body, cinder::scene::Spatial) {
         CINDER_PROP(motion_);
-        CINDER_PROP_R(mass_, 0.001f, FLT_MAX);
+        CINDER_PROP_R(mass_, MIN_MASS, FLT_MAX);
         CINDER_PROP(gravityScale_);
         CINDER_PROP_R(linearDamping_, 0.0f, FLT_MAX);
         CINDER_PROP_R(angularDamping_, 0.0f, FLT_MAX);

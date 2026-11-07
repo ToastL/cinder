@@ -18,7 +18,7 @@ std::string keyName(int key) {
         case keys::ENTER: return "Enter";
         case keys::TAB: return "Tab";
         case keys::BACKSPACE: return "Backspace";
-        case keys::DELETE: return "Delete";
+        case keys::DELETE_KEY: return "Delete";
         case keys::LEFT: return "Left";
         case keys::RIGHT: return "Right";
         case keys::UP: return "Up";

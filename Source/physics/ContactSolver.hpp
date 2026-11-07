@@ -1,6 +1,7 @@
 #pragma once
 
 #include "physics/BodyState.hpp"
+#include "physics/ContactKey.hpp"
 
 #include <array>
 #include <cstdint>
@@ -20,7 +21,7 @@ public:
     static constexpr float BOUNCE_THRESHOLD = 1.0f;
 
     struct Contact {
-        std::uint64_t key = 0;
+        ContactKey key;
         int a = 0;
         int b = 0;
         glm::vec3 normal{0.0f};
@@ -38,7 +39,7 @@ public:
     };
 
     void begin(std::span<BodyState> states);
-    void add(int a, int b, std::uint64_t key, const glm::vec3& normal,
+    void add(int a, int b, const ContactKey& key, const glm::vec3& normal,
              const ContactPoint& point, float friction, float restitution, float dt);
     void warmStart();
     void solve();
@@ -62,8 +63,8 @@ private:
 
     std::span<BodyState> states_;
     std::vector<Contact> contacts_;
-    std::unordered_map<std::uint64_t, Impulses> cached_;
-    std::unordered_map<std::uint64_t, Impulses> carried_;
+    std::unordered_map<ContactKey, Impulses, ContactKeyHash> cached_;
+    std::unordered_map<ContactKey, Impulses, ContactKeyHash> carried_;
 };
 
 }

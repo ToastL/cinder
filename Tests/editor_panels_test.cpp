@@ -76,7 +76,7 @@ TEST_CASE("the Explorer lists the tree, selects a row and deletes the selection 
     CHECK(tree->isSelected(box));
     CHECK(ui.app.focused() == tree);
 
-    ui.key(keys::DELETE);
+    ui.key(keys::DELETE_KEY);
     ui.frame();
     CHECK(world.scene.find("Box") == nullptr);
     CHECK_FALSE(world.selection.id().has_value());

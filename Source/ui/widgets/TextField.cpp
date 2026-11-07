@@ -273,7 +273,7 @@ Reply TextField::onKeyDown(const Geometry&, const KeyEvent& event) {
             if (hasSelection()) replaceSelection("", Edit::Deleting);
             else erase(line ? 0 : (word ? utf8::previousWord(buffer_, caret_) : utf8::previousBoundary(buffer_, caret_)), caret_);
             return Reply::handled();
-        case keys::DELETE:
+        case keys::DELETE_KEY:
             if (readOnly) return Reply::handled();
             if (hasSelection()) replaceSelection("", Edit::Deleting);
             else erase(caret_, word ? utf8::nextWord(buffer_, caret_) : utf8::nextBoundary(buffer_, caret_));

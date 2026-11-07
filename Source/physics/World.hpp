@@ -62,7 +62,7 @@ private:
     };
 
     struct Touch {
-        std::uint64_t key = 0;
+        ContactKey key;
         int a = 0;
         int b = 0;
     };
@@ -96,8 +96,8 @@ private:
     std::vector<char> nudged_;
     std::vector<Touch> touching_;
     std::vector<Touch> touched_;
-    std::unordered_set<std::uint64_t> current_;
-    std::unordered_set<std::uint64_t> previous_;
+    std::unordered_set<ContactKey, ContactKeyHash> current_;
+    std::unordered_set<ContactKey, ContactKeyHash> previous_;
 };
 
 }

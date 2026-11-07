@@ -112,10 +112,10 @@ TEST_CASE("backspace and delete remove characters, words and selections") {
     f.ui.key(keys::BACKSPACE, WORD);
     CHECK(f.field->text() == "one ");
     f.ui.key(keys::HOME);
-    f.ui.key(keys::DELETE);
+    f.ui.key(keys::DELETE_KEY);
     CHECK(f.field->text() == "ne ");
     f.ui.key(keys::letter('a'), modifiers::PRIMARY);
-    f.ui.key(keys::DELETE);
+    f.ui.key(keys::DELETE_KEY);
     CHECK(f.field->text().empty());
 }
 
