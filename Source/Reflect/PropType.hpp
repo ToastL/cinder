@@ -9,7 +9,7 @@
 
 namespace cinder::Reflect {
 
-enum class PropType { Float, Int, Vec2, Vec3, Vec4, Bool, String, Enum };
+enum class PropType { Float, Int, Vec2, Vec3, Vec4, Bool, String, Enum, Ref };
 
 enum class PropHint { None, Color, Angle };
 
@@ -28,6 +28,10 @@ constexpr bool inPlace(PropType type) {
     return type == PropType::Vec2 || type == PropType::Vec3 || type == PropType::Vec4;
 }
 
+struct RefBase {
+    int id = 0;
+};
+
 template <class T, class = void>
 struct PropTypeOf {};
 
@@ -42,6 +46,11 @@ template <> struct PropTypeOf<glm::vec4>   { static constexpr PropType value = P
 template <class T>
 struct PropTypeOf<T, std::enable_if_t<std::is_enum_v<T>>> {
     static constexpr PropType value = PropType::Enum;
+};
+
+template <class T>
+struct PropTypeOf<T, std::enable_if_t<std::is_base_of_v<RefBase, T>>> {
+    static constexpr PropType value = PropType::Ref;
 };
 
 template <class T, class = void>

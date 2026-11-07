@@ -22,7 +22,7 @@ undoable, and an unsaved scene is marked and guarded on close. A physics engine 
 started: bodies and colliders as components, spheres and boxes, friction, and a sequential-impulse solver
 with warm starting that stacks crates and never runs in Edit mode; boxes, spheres and capsules meet
 through a bounding volume tree, settled islands fall asleep, and game code pushes bodies around, casts rays
-and hears about contacts, with a `planar` body making a 2D scene physical. 372 headless test cases, a
+and hears about contacts, with a `planar` body making a 2D scene physical. 385 headless test cases, a
 hot-reload test that compiles real C++, and a C++ selftest project.
 
 Foundations, the scene model, game code in C++, serialization and the Edit/Play split are
@@ -50,7 +50,10 @@ view, the editor camera, the Outliner, Details, picking, undo and transform gizm
       and remove, and the selected component's transform and props with a widget per `PropType` and
       `PropHint` (spin boxes, vector boxes, enum combos, colour pickers), and its attributes with add
       and remove. An edit during Play fires the game's changed signals.
-- [ ] Details: an asset-reference widget for texture and mesh names, and an actor-reference widget
+- [x] Details: an actor-reference widget — a combo of the objects a `Ref` accepts, a Pick eyedropper
+      that takes the next Scene view or Outliner click, and Go to select the target
+- [ ] Details: a filter in the reference menu, and an id or path beside duplicate names
+- [ ] Details: an asset-reference widget for texture and mesh names
 - [ ] Details: rename, reorder and reattach components by dragging, and set the root
 - [x] **Gizmos** — `Dev/Manipulator` moves along world or local axes and planes, rotates on gimbal
       rings that each turn one Euler angle, and scales along local axes or uniformly; ⌘ snaps and
@@ -230,9 +233,9 @@ includes `Scene`, `Reflect` or `Gfx` — the reflection-driven Details panel liv
 
 ## Serialization — what is left
 
-- [ ] Actor references — a prop type holding an actor or component id, set by dragging an actor from
-      the Outliner into Details. `Reflect` is a leaf and cannot include `Scene`, so the prop stores the id and
-      `Scene` resolves it.
+- [x] Actor references — `Scene::Ref<T>`, a prop holding an actor or component id that `get` resolves
+      on every call; saved only while it resolves, fixed up after a load, remapped by `clone`
+- [ ] Attributes that name an actor — an attribute holds numbers, strings, bools and small vectors
 - [ ] Prefabs — a saved actor that can be instanced, with per-instance overrides: Unreal's Blueprint
       class without the graph. `Scene::clone` already copies an actor, its components and its attached
       actors generically, and the archetype delta is the override model.
@@ -350,8 +353,8 @@ includes `Scene`, `Reflect` or `Gfx` — the reflection-driven Details panel liv
 - [ ] **Half the project descriptor is read by nothing.** `modules`, `plugins`,
       `additionalRootDirectories`, `additionalPluginDirectories` and `disableEnginePluginsByDefault`
       are parsed, checked and saved; they wait for a plugin system.
-- [ ] **An attribute cannot name an actor** — it holds numbers, strings, bools and small vectors. An actor
-      reference needs *Actor references*.
+- [ ] **A reference inside a placeholder is raw text.** An unknown-class object keeps its fields
+      verbatim, so a `Ref` stored in one is neither checked on save nor remapped by a load or a clone.
 - [ ] **A disabled actor's timers still fire.** `enabled` skips an actor's tick and render, but
       `Scene::after`/`every` only check that the owner exists.
 - [ ] **Runtime meshes cannot be named in a scene** — `StaticMeshComponent.mesh` names a primitive, and

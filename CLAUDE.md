@@ -444,7 +444,9 @@ was dropped on 2026-11-07.
 - **`Scene/Scene`** owns every actor by id. `insert` takes an actor, an optional id and optional ids for
   its components — the codec's path — `spawn` builds one by class name, `addComponent` adds a component
   by class name, and `clone` copies an actor, its components, their attachments and the actors attached
-  to it through the registry, with fresh ids. An object inserted without a name takes its class name.
+  to it through the registry, with fresh ids. A `Ref` in the copies that names an object inside the
+  copied subtree is pointed at that object's copy, and one naming anything outside is left alone, so a
+  duplicated turret aims its own barrel. An object inserted without a name takes its class name.
 
 Lifecycle rules that are easy to lose:
 
@@ -534,6 +536,16 @@ its line number before anything is cleared, numbers are parsed with `from_chars`
 logged and falls back to the default, and an id outside `1..Scene::MAX_ID`, or taken, is replaced with a
 fresh one. A value an attribute cannot hold is logged and dropped. `VERSION` and `OLDEST` are both 5:
 the node-tree format is not read, and the repo's scenes were converted once.
+
+**A reference is an integer field**, `target 82`, delta-encoded against the class default, which is
+always 0. Save writes it only while it resolves to a live object its field accepts, so a reference to a
+deleted actor disappears on the next commit and a stale id can never land on a later actor that took the
+same number. Load does not write references during the walk: it records each one with the id it names
+in the file and maps every object's file id to the object it became, then sets them all once the walk
+is done — which is what makes forward references work and what follows an object whose id was out of
+range to its fresh one. On a duplicate id the object that kept it wins, and an id that names nothing in
+the file loads as 0. A placeholder's raw fields are copied verbatim, so a reference inside an
+unknown-class object is neither checked nor remapped.
 
 ## Edit mode and Play mode
 
@@ -1122,13 +1134,24 @@ selected scene component when there is one; then the edited component's Transfor
 selected component, or the root when the actor itself is selected — and the actor's attributes, each
 section an `ExpandableArea` of name | value rows. The widget comes from the `PropType` and the
 `PropHint`: a `SpinBox` for numbers, a `VectorInputBox` for vectors, a `CheckBox`, a `TextBox`, a
-`ComboBox` filled from `PropDef::options()` for enums, and a `ColorBlock` that opens a picker for
-`CINDER_PROP_COLOR`. Every write goes through `PropDef`, so clamping, in-place vector writes and
+`ComboBox` filled from `PropDef::options()` for enums, a `ColorBlock` that opens a picker for
+`CINDER_PROP_COLOR`, and for a `Ref` a reference field. Every write goes through `PropDef`, so clamping, in-place vector writes and
 `propChanged` behave exactly as they do from the serializer. `step` is the drag speed; bounds are
 applied only when the prop declares them, and a spin box never rounds a value to the three decimals it
 shows. `CINDER_PROP_ANGLE` — `Transform.rotation` — is dragged in degrees and written back in radians,
 so game code and scene files never see degrees. Text commits on Enter or focus loss, not per keystroke,
 so a texture path does not try to load every prefix of itself.
+
+A **reference field** is a combo showing the target's name — `Actor › Component` for a component — or
+None, a **Pick** eyedropper and a **Go** button that selects the target with `reveal`. The combo's menu
+lists None and every object in tree order that `PropDef::accepts`, with the current one checked. Pick arms
+`Dev/ReferencePick`, which `Selection` owns so every panel already has it: while it is armed, a click in
+the Scene view and a click on an Outliner row are offered to it instead of selecting — the component
+hit, then its actor, then the actor's other components, so an actor field takes the actor and a
+component field the component — and the selection never moves. The Scene view shows a crosshair; a miss
+in the Scene view or empty space in the Outliner cancels, and so do Esc (the toolbar's `Cancel Pick`
+command), any change of selection, leaving Edit mode and `Details::rebuild`, which matters after a hot
+reload because the armed callback holds a `PropDef` from the old library. The menu has no filter yet.
 
 The panel holds the selected **id** and nothing else, and rebuilds its rows only when the selection,
 the actor's components or its attribute names change, so a drag is not fighting a fresh widget tree
@@ -1227,7 +1250,8 @@ as free-form data on any actor.
 
 - **The scene** is plain C++: `Scene::spawn<T>(parent)` and `spawn("Class", parent)`, `addComponent`,
   `clone`, `find`, `byId`, `actor`, `component`, `destroy`, `Actor::attachTo`, `findAttached`,
-  `findComponent<T>()`, `addComponent<T>()`, attributes, and each class's own setters.
+  `findComponent<T>()`, `addComponent<T>()`, attributes, and each class's own setters. A
+  `Scene::Ref<T>` prop names another actor or component, set in Details, and `get(*scene())` resolves it.
 - **`Game/Game.hpp`** declares free functions over the running engine, found through
   `Engine::current()`: `time`, `quit`, `keyDown`/`keyPressed`/`keyReleased`, `mouseDown`/`Pressed`/
   `Released`, `mousePosition`, `mouseDelta`, `scroll`, `setCursorLocked`, `loadTexture`, `textureSize`,
@@ -1336,6 +1360,15 @@ CINDER_COMPONENT(CameraComponent, cinder::Scene::SceneComponent) {
 marks a `vec3`/`vec4` as a colour through `PropHint`, and `CINDER_PROP_ANGLE` marks radians to show in
 degrees. Only Details reads the step and the hint; neither changes how a prop is written or saved, and
 neither a colour nor an angle is clamped.
+
+**A reference is a prop too.** `Scene::Ref<T>` holds an actor's or a component's id and nothing else, and
+`CINDER_PROP(target_)` declares it like any field. `Reflect` is a leaf and cannot name `Scene`, so it
+knows a reference only as `PropType::Ref` — any type derived from `Reflect::RefBase` — read and written
+as an `int` through `readInt`/`writeInt`, plus `PropDef::accepts(const void*)`, which takes an `Object*`
+and runs the field's `dynamic_cast` to `T`. `ref.get(scene)` looks the id up on every call and returns
+null when it is 0, gone, marked destroyed or not a `T`, so a reference never dangles: deleting the
+target, Stop and a hot reload all just change what the lookup finds. `Scene::forEachRef` visits an
+object's reference props.
 
 `props<T>()` builds the list once into a function-local static and a `PropChain` recursion emits the
 base class's props first, so `Object::enabled` is always the first prop of every class —

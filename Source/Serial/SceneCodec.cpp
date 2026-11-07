@@ -71,7 +71,9 @@ void SceneCodec::load(const std::string& source, Scene& scene) {
     }
 
     scene.clear();
-    SceneCodec(scene).walk(archive);
+    SceneCodec codec(scene);
+    codec.walk(archive);
+    codec.resolveRefs();
 }
 
 void SceneCodec::saveToFile(const std::filesystem::path& path, Scene& scene) {
@@ -174,6 +176,8 @@ void SceneCodec::actor(Archive& ar, Actor* existing, std::string_view type, Acto
         target->arrange(pending.order);
         target->loadAttributes(accepted(attributes, id == NO_ID ? 0 : id));
         target = scene_.insert(std::move(created), parent, wanted, pending.hints);
+        if (id != NO_ID) fileIds_.emplace(id, target);
+        for (const auto& [component, fileId] : pending.fileIds) fileIds_.emplace(fileId, component);
     }
 
     actors(ar, target->attachedActors(), target);
@@ -254,6 +258,7 @@ void SceneCodec::component(Archive& ar, Actor& owner, Component* existing, std::
     if (ar.loading()) {
         target->setName(name);
         pending.order.push_back(target);
+        if (id != NO_ID) pending.fileIds.emplace_back(target, id);
         if (usable(id, pending)) {
             pending.hints.push_back({target, id});
             pending.claimed.insert(id);
@@ -275,6 +280,21 @@ void SceneCodec::component(Archive& ar, Actor& owner, Component* existing, std::
     if (placed != nullptr) components(ar, owner, placed, pending);
 }
 
+int SceneCodec::savedRef(const cinder::Reflect::PropDef& def, int id) const {
+    const cinder::Scene::Object* object = scene_.byId(id);
+    if (object == nullptr || object->destroyed() || !def.accepts(object)) return 0;
+    return id;
+}
+
+void SceneCodec::resolveRefs() {
+    for (const LoadedRef& ref : loadedRefs_) {
+        auto found = fileIds_.find(ref.fileId);
+        const cinder::Scene::Object* object = found == fileIds_.end() ? nullptr : found->second;
+        ref.def->writeInt(ref.target, object != nullptr && ref.def->accepts(object) ? object->id() : 0);
+    }
+    loadedRefs_.clear();
+}
+
 void SceneCodec::emit(Archive& ar, const std::vector<cinder::Reflect::PropDef>& defs,
                       void* target, const void* base) {
     for (const cinder::Reflect::PropDef& def : defs) {
@@ -289,6 +309,12 @@ void SceneCodec::emit(Archive& ar, const std::vector<cinder::Reflect::PropDef>& 
             case cinder::Reflect::PropType::Int: {
                 const int value = ar.integer(key, def.readInt(target), def.readInt(base));
                 if (ar.loading()) def.writeInt(target, value);
+                break;
+            }
+            case cinder::Reflect::PropType::Ref: {
+                const int saved = ar.loading() ? 0 : savedRef(def, def.readInt(target));
+                const int value = ar.integer(key, saved, 0);
+                if (ar.loading()) loadedRefs_.push_back({&def, target, value});
                 break;
             }
             case cinder::Reflect::PropType::String:

@@ -4,10 +4,12 @@
 #include "Scene/Transform.hpp"
 
 #include <filesystem>
+#include <map>
 #include <memory>
 #include <set>
 #include <string>
 #include <string_view>
+#include <utility>
 #include <vector>
 
 namespace cinder::Reflect { class PropDef; }
@@ -16,6 +18,7 @@ namespace cinder::Scene {
 class Actor;
 class ClassRegistry;
 class Component;
+class Object;
 class SceneComponent;
 }
 
@@ -40,6 +43,7 @@ private:
         std::vector<cinder::Scene::Component*> order;
         std::vector<cinder::Scene::IdHint> hints;
         std::set<int> claimed;
+        std::vector<std::pair<cinder::Scene::Component*, int>> fileIds;
     };
 
     explicit SceneCodec(cinder::Scene::Scene& scene);
@@ -54,6 +58,14 @@ private:
     void emit(Archive& ar, const std::vector<cinder::Reflect::PropDef>& defs,
               void* target, const void* base);
     void report(std::string_view kind, std::string_view type);
+    int savedRef(const cinder::Reflect::PropDef& def, int id) const;
+    void resolveRefs();
+
+    struct LoadedRef {
+        const cinder::Reflect::PropDef* def = nullptr;
+        void* target = nullptr;
+        int fileId = 0;
+    };
 
     cinder::Scene::Scene& scene_;
     cinder::Scene::ClassRegistry& types_;
@@ -61,6 +73,8 @@ private:
     float values_[4]{};
     float fallback_[4]{};
     std::set<std::string, std::less<>> reported_;
+    std::vector<LoadedRef> loadedRefs_;
+    std::map<int, cinder::Scene::Object*> fileIds_;
 };
 
 }

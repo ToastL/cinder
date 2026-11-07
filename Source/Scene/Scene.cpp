@@ -5,6 +5,7 @@
 #include "Scene/Component.hpp"
 #include "Scene/DrawList.hpp"
 #include "Scene/Placeholder.hpp"
+#include "Scene/Ref.hpp"
 #include "Scene/SceneComponent.hpp"
 #include "Scene/Transform.hpp"
 
@@ -124,6 +125,18 @@ Component* Scene::addComponent(Actor& actor, std::string_view className, SceneCo
 }
 
 Actor* Scene::clone(const Actor& source, Actor* parent) {
+    std::unordered_map<int, Object*> copies;
+    Actor* actor = cloneTree(source, parent, copies);
+    for (const auto& [from, copy] : copies) {
+        forEachRef(*copy, [&](const cinder::Reflect::PropDef& def, void* target) {
+            auto found = copies.find(def.readInt(target));
+            if (found != copies.end()) def.writeInt(target, found->second->id());
+        });
+    }
+    return actor;
+}
+
+Actor* Scene::cloneTree(const Actor& source, Actor* parent, std::unordered_map<int, Object*>& copies) {
     std::unique_ptr<Actor> copy;
     if (const auto* placeholder = dynamic_cast<const ActorPlaceholder*>(&source)) {
         copy = std::make_unique<ActorPlaceholder>(placeholder->className(), placeholder->fields());
@@ -174,8 +187,10 @@ Actor* Scene::clone(const Actor& source, Actor* parent) {
 
     const std::vector<Actor*> children = source.children_;
     Actor* actor = insert(std::move(copy), parent);
+    copies.emplace(source.id(), actor);
+    for (const auto& [from, to] : matched) copies.emplace(from->id(), to);
     for (Actor* child : children) {
-        if (!child->destroyed_) clone(*child, actor);
+        if (!child->destroyed_) cloneTree(*child, actor, copies);
     }
     return actor;
 }

@@ -4,6 +4,7 @@
 #include "Dev/ModuleHost.hpp"
 #include "Dev/Packager.hpp"
 #include "Dev/PlaySession.hpp"
+#include "Dev/Selection.hpp"
 #include "Dev/Panels/Dialog.hpp"
 #include "Dev/Panels/EditorStyle.hpp"
 #include "Platform/Log.hpp"
@@ -37,6 +38,8 @@ const std::shared_ptr<const Command> PAUSE =
         command("Pause", "Pause or resume the game", Shortcut::primary(keys::letter('p'), modifiers::SHIFT));
 const std::shared_ptr<const Command> STEP =
         command("Step", "Run one fixed update", Shortcut::primary(keys::letter('p'), modifiers::ALT));
+const std::shared_ptr<const Command> CANCEL_PICK =
+        command("Cancel Pick", "Stop picking a reference", Shortcut{keys::ESCAPE, 0});
 const std::shared_ptr<const Command> SAVE = command("Save", "Save the scene", Shortcut::primary(keys::letter('s')));
 const std::shared_ptr<const Command> UNDO = command("Undo", "Undo the last edit", Shortcut::primary(keys::letter('z')));
 const std::shared_ptr<const Command> REDO =
@@ -82,6 +85,8 @@ void Toolbar::bind() {
     commands_->map(PLAY, CommandAction{[this] { session_.togglePlay(); }, {}, {}});
     commands_->map(PAUSE, CommandAction{[this] { session_.togglePause(); }, [this] { return !editing(); }, {}});
     commands_->map(STEP, CommandAction{[this] { session_.step(); }, [this] { return !editing(); }, {}});
+    commands_->map(CANCEL_PICK, CommandAction{[this] { selection_.pick().cancel(); },
+                                              [this] { return selection_.pick().armed(); }, {}});
     commands_->map(SAVE, CommandAction{[this] { write(); }, [this] { return editing(); }, {}});
     commands_->map(UNDO, CommandAction{[this] { history_.undo(selection_); },
                                        [this] { return editing() && !app_.isInteracting(); }, {}});
@@ -261,6 +266,7 @@ void Toolbar::buildPrompts() {
 void Toolbar::update() {
     packager_.update();
     history_.setEnabled(editing());
+    if (!editing()) selection_.pick().cancel();
     history_.settle(app_.isInteracting());
     if (focusPrompt_) {
         app_.setFocus(prompting_ == Prompt::Packaging ? packagingPrompt_ : unsavedPrompt_);

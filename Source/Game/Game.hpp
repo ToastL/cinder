@@ -12,6 +12,7 @@
 #include "Scene/Actor.hpp"
 #include "Scene/Component.hpp"
 #include "Scene/DrawList.hpp"
+#include "Scene/Ref.hpp"
 #include "Scene/Scene.hpp"
 #include "Scene/SceneComponent.hpp"
 #include "Scene/Transform.hpp"

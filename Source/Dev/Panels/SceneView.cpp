@@ -148,6 +148,9 @@ void SceneView::build() {
 
 void SceneView::update() {
     app_.setMouseEnabled(!engine_.input().cursorLocked());
+    viewport_->setCursor(editing() && selection_.pick().armed()
+                                 ? std::optional(cinder::Platform::CursorShape::Crosshair)
+                                 : std::nullopt);
     const bool playing = session_.state() == PlaySession::State::Playing;
     if (playing && !playing_) app_.setFocus(viewport_);
     playing_ = playing;
@@ -242,7 +245,13 @@ std::string SceneView::label() const {
 
 void SceneView::pickAt(glm::vec2 point) {
     const PickView view{camera_.camera().viewProjection(), point, extent_};
-    if (cinder::Scene::Component* hit = pick(engine_.scene(), view)) selection_.select(hit->owner()->id(), true);
+    cinder::Scene::Component* hit = pick(engine_.scene(), view);
+    if (selection_.pick().armed()) {
+        if (hit == nullptr) selection_.pick().cancel();
+        else selection_.pick().offer(*hit->owner(), hit);
+        return;
+    }
+    if (hit != nullptr) selection_.select(hit->owner()->id(), true);
     else selection_.clear();
 }
 

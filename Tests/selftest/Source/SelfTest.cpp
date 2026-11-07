@@ -99,7 +99,10 @@ public:
         Scene::Actor* temp = group(world, a);
         check("child added", added_ == temp->id());
         world.connect(*temp, Scene::Signal::Destroying, *this, [this](const Scene::SignalArgs&) { destroyed_ = true; });
+        Scene::Ref<Scene::Actor> tempRef(temp);
+        check("a reference resolves", tempRef.get(world) == temp);
         world.destroy(temp);
+        check("a reference to a destroyed actor is empty", tempRef.get(world) == nullptr);
 
         spinner_ = group(world, nullptr)->id();
         world.every(*this, 0.0, [this] { ticks_++; });
@@ -108,7 +111,12 @@ public:
         Scene::Actor* spawned = group(world, nullptr);
         spawned->setName("Spawned");
         spawned->setAttribute("mark", Scene::PropValue::integer(7));
-        check("a module class by name", world.addComponent(*spawned, "Marker") != nullptr);
+        auto* marker = dynamic_cast<Marker*>(world.addComponent(*spawned, "Marker"));
+        check("a module class by name", marker != nullptr);
+        Scene::Ref<Marker> markerRef(marker);
+        Scene::Ref<Components::SpriteComponent> wrongRef;
+        wrongRef.id = marker != nullptr ? marker->id() : 0;
+        check("a reference to a module class", markerRef.get(world) == marker && wrongRef.get(world) == nullptr);
 
         Scene::Actor* tickerOwner = group(world, nullptr);
         world.addComponent(*tickerOwner, "Ticker");

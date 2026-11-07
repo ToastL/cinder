@@ -14,6 +14,7 @@ void copyProps(const PropList& defs, const void* from, void* to) {
                 def.writeBool(to, def.readBool(from));
                 break;
             case PropType::Int:
+            case PropType::Ref:
                 def.writeInt(to, def.readInt(from));
                 break;
             case PropType::String:
@@ -75,6 +76,10 @@ std::string_view PropDef::readText(const void* target) const {
 void PropDef::writeText(void* target, std::string_view value) const {
     if (writeStr_ == nullptr) throw std::runtime_error(std::string(name_) + " is not text");
     if (writeStr_(target, value)) notify(target);
+}
+
+bool PropDef::accepts(const void* object) const {
+    return accepts_ != nullptr && object != nullptr && accepts_(object);
 }
 
 void PropDef::notify(void* target) const {

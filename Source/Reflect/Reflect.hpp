@@ -41,10 +41,10 @@ public:
     void add(std::string_view name,
              float min = -FLT_MAX, float max = FLT_MAX, float step = 0.1f,
              PropHint hint = PropHint::None) {
-        using Ref = decltype(std::declval<Target&>().*Member);
-        using Field = std::remove_cvref_t<Ref>;
+        using Access = decltype(std::declval<Target&>().*Member);
+        using Field = std::remove_cvref_t<Access>;
 
-        static_assert(!std::is_const_v<std::remove_reference_t<Ref>>,
+        static_assert(!std::is_const_v<std::remove_reference_t<Access>>,
                       "a const prop cannot be written");
         static_assert(IsPropType<Field>::value,
                       "unsupported CINDER_PROP type");
@@ -88,6 +88,10 @@ public:
                 Field& value = static_cast<Target*>(p)->*Member;
                 for (int i = 0; i < Field::length(); ++i) value[i] = v[i];
             };
+        } else if constexpr (kind == PropType::Ref) {
+            def.readInt_ = [](const void* p) { return (static_cast<const Target*>(p)->*Member).id; };
+            def.writeInt_ = [](void* p, int v) { (static_cast<Target*>(p)->*Member).id = v; };
+            def.accepts_ = &Field::accepts;
         } else if constexpr (kind == PropType::Bool) {
             def.readFlag_ = [](const void* p) { return static_cast<const Target*>(p)->*Member; };
             def.writeFlag_ = [](void* p, bool v) { static_cast<Target*>(p)->*Member = v; };

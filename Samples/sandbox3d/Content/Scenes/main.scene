@@ -1449,7 +1449,7 @@ actors {
     }
     StaticMeshActor {
         id 82
-        name "Box"
+        name "Target"
         components {
             StaticMeshComponent {
                 id 327
@@ -1462,6 +1462,21 @@ actors {
             Bobber {
                 id 245
                 phase 8
+            }
+        }
+    }
+    StaticMeshActor {
+        id 328
+        name "Pointer"
+        components {
+            StaticMeshComponent {
+                id 329
+                position 0 4 0
+                scale 0.2 0.2 2
+            }
+            LookAt {
+                id 330
+                target 82
             }
         }
     }

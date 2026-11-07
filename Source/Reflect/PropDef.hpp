@@ -41,6 +41,8 @@ public:
     std::string_view readText(const void* target) const;
     void writeText(void* target, std::string_view value) const;
 
+    bool accepts(const void* object) const;
+
 private:
     template <class>
     friend class PropBuilder;
@@ -65,6 +67,7 @@ private:
     void (*writeFlag_)(void*, bool) = nullptr;
     std::string_view (*readStr_)(const void*) = nullptr;
     bool (*writeStr_)(void*, std::string_view) = nullptr;
+    bool (*accepts_)(const void*) = nullptr;
     PropSink* (*sink_)(void*) = nullptr;
 };
 

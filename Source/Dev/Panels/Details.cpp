@@ -31,6 +31,7 @@
 
 #include <cfloat>
 #include <cstdint>
+#include <functional>
 
 namespace cinder::Dev::Panels {
 
@@ -147,6 +148,7 @@ void Details::update() {
 }
 
 void Details::rebuild() {
+    selection_.pick().cancel();
     Actor* current = actor();
     if (current == nullptr) {
         host_->setContent(make<Label>()
@@ -194,6 +196,94 @@ std::shared_ptr<Widget> Details::colorEditorFor(const PropDef& def, Target targe
            + HorizontalBox::slot().fill(1.0f)[make<Spacer>()];
 }
 
+cinder::Scene::Object* Details::referenced(const PropDef& def, Target target) const {
+    void* at = target();
+    if (at == nullptr) return nullptr;
+    cinder::Scene::Object* object = scene_.byId(def.readInt(at));
+    if (object == nullptr || object->destroyed() || !def.accepts(object)) return nullptr;
+    return object;
+}
+
+std::string Details::referenceLabel(const cinder::Scene::Object* object) const {
+    if (object == nullptr) return "None";
+    if (const auto* component = dynamic_cast<const Component*>(object)) {
+        if (component->owner() != nullptr) return component->owner()->name() + " \xE2\x80\xBA " + component->name();
+    }
+    return object->name();
+}
+
+std::shared_ptr<Widget> Details::refEditorFor(const PropDef& def, Target target) {
+    const PropDef* prop = &def;
+    const auto key = std::make_shared<char>();
+    const auto assign = writing(target, [prop](void* at, int id) { prop->writeInt(at, id); });
+
+    const auto current = [prop, target] {
+        void* at = target();
+        return at != nullptr ? prop->readInt(at) : 0;
+    };
+    auto menu = [this, prop, assign, current] {
+        MenuBuilder builder;
+        builder.check("None", [assign] { assign(0); }, [current] { return current() == 0; });
+        std::vector<const cinder::Scene::Object*> found;
+        const std::function<void(const Actor&)> walk = [&](const Actor& actor) {
+            if (actor.destroyed()) return;
+            if (prop->accepts(static_cast<const cinder::Scene::Object*>(&actor))) found.push_back(&actor);
+            for (const Component* component : actor.components()) {
+                if (!component->destroyed() && prop->accepts(static_cast<const cinder::Scene::Object*>(component))) {
+                    found.push_back(component);
+                }
+            }
+            for (const Actor* child : actor.attachedActors()) walk(*child);
+        };
+        for (const Actor* root : scene_.roots()) walk(*root);
+        if (!found.empty()) builder.separator();
+        for (const cinder::Scene::Object* object : found) {
+            const int id = object->id();
+            builder.check(referenceLabel(object), [assign, id] { assign(id); }, [current, id] { return current() == id; });
+        }
+        return builder.build();
+    };
+
+    auto pick = [this, prop, key, assign] {
+        ReferencePick& pick = selection_.pick();
+        if (pick.armedBy(key.get())) {
+            pick.cancel();
+            return Reply::handled();
+        }
+        pick.arm(key.get(), [prop, assign](cinder::Scene::Object& object) {
+            if (!prop->accepts(static_cast<const cinder::Scene::Object*>(&object))) return false;
+            assign(object.id());
+            return true;
+        });
+        return Reply::handled();
+    };
+
+    auto browse = [this, prop, target] {
+        if (cinder::Scene::Object* object = referenced(*prop, target)) selection_.select(object->id(), true);
+        return Reply::handled();
+    };
+
+    return make<HorizontalBox>()
+           + HorizontalBox::slot().fill(1.0f).vAlign(VAlign::Center)
+                 [make<ComboButton>().onGetMenuContent(menu)
+                          [make<Label>().text([this, prop, target] { return referenceLabel(referenced(*prop, target)); })]]
+           + HorizontalBox::slot().autoWidth().vAlign(VAlign::Center).padding(Margin(4.0f, 0.0f, 0.0f, 0.0f))
+                 [make<Button>()
+                          .text("Pick")
+                          .buttonStyle([this, key] {
+                              return selection_.pick().armedBy(key.get()) ? std::string("Button.Primary")
+                                                                          : std::string("Button");
+                          })
+                          .toolTipText("Pick in the Scene view or the Outliner")
+                          .onClicked(pick)]
+           + HorizontalBox::slot().autoWidth().vAlign(VAlign::Center).padding(Margin(4.0f, 0.0f, 0.0f, 0.0f))
+                 [make<Button>()
+                          .text("Go")
+                          .isEnabled([this, prop, target] { return referenced(*prop, target) != nullptr; })
+                          .toolTipText("Select the referenced object")
+                          .onClicked(browse)];
+}
+
 std::shared_ptr<Widget> Details::editorFor(const PropDef& def, Target target) {
     const PropDef* prop = &def;
     const auto text = [prop, target] {
@@ -223,6 +313,8 @@ std::shared_ptr<Widget> Details::editorFor(const PropDef& def, Target target) {
                     .onSelectionChanged(
                             writing(target, [prop](void* at, const std::string& option) { prop->writeText(at, option); }));
         }
+        case PropType::Ref:
+            return refEditorFor(def, target);
         case PropType::Int:
         case PropType::Float:
             return make<SpinBox>()

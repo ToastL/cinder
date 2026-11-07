@@ -53,6 +53,12 @@ Outliner::Outliner(Selection& selection, History& history, cinder::Scene::Scene&
             .onGenerateRow([this](ItemId item) { return rowFor(item); })
             .isItemSelected([this](ItemId item) { return selectedActor() == static_cast<int>(item); })
             .onSelectionChanged([this](std::optional<ItemId> item, SelectInfo) {
+                if (selection_.pick().armed()) {
+                    Actor* offered = item ? scene_.actor(static_cast<int>(*item)) : nullptr;
+                    if (offered == nullptr) selection_.pick().cancel();
+                    else selection_.pick().offer(*offered);
+                    return;
+                }
                 if (item) selection_.select(static_cast<int>(*item));
                 else selection_.clear();
             })

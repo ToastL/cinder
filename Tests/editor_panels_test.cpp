@@ -15,10 +15,14 @@
 #include "Scene/SceneComponent.hpp"
 #include "UI/Widgets/Button.hpp"
 #include "Scene/PropValue.hpp"
+#include "Scene/Ref.hpp"
 #include "Scene/Scene.hpp"
 #include "Scene/Transform.hpp"
 #include "UI/Framework/Commands.hpp"
+#include "UI/Widgets/BoxPanel.hpp"
+#include "UI/Widgets/ComboBox.hpp"
 #include "UI/Widgets/Label.hpp"
+#include "UI/Widgets/Menu.hpp"
 #include "UI/Widgets/SpinBox.hpp"
 #include "UI/Widgets/TextField.hpp"
 #include "UI/Widgets/TreeView.hpp"
@@ -386,4 +390,140 @@ TEST_CASE("a modal dialog keeps every key from the global shortcuts") {
     CHECK(confirmed == 1);
     ui.key(keys::ESCAPE);
     CHECK(cancelled == 1);
+}
+
+namespace {
+
+struct Aim final : cinder::Scene::Component {
+    cinder::Scene::Ref<Actor> target_;
+    CINDER_COMPONENT(Aim, cinder::Scene::Component) { CINDER_PROP(target_); }
+};
+
+struct AimWorld : World {
+    Aim* aim = nullptr;
+
+    AimWorld() {
+        types.add<Aim>("Aim");
+        aim = static_cast<Aim*>(scene.addComponent(node("Box"), "Aim"));
+        history.reset();
+    }
+};
+
+Menu* openMenuBelow(Harness& ui, ComboButton* combo) {
+    const Rect rect = ui.app.grid().geometryOf(combo).value_or(Geometry{}).rect();
+    ui.click(rect.center().x, rect.center().y);
+    ui.frame();
+    for (float y = rect.max.y + 1.0f; y < rect.max.y + 60.0f; y += 2.0f) {
+        for (const PathEntry& entry : ui.app.grid().pathAt({rect.center().x, y})) {
+            if (auto* menu = dynamic_cast<Menu*>(entry.widget.get())) return menu;
+        }
+    }
+    return nullptr;
+}
+
+ComboButton* comboShowing(Widget* widget, const std::string& text) {
+    if (widget == nullptr) return nullptr;
+    if (auto* combo = dynamic_cast<ComboButton*>(widget); combo != nullptr && hasLabel(combo, text)) return combo;
+    for (int i = 0; i < widget->childCount(); ++i) {
+        if (ComboButton* found = comboShowing(widget->childAt(i), text)) return found;
+    }
+    return nullptr;
+}
+
+int rowLabelled(Menu& menu, const std::string& text) {
+    for (int i = 0; i < menu.rowCount(); ++i) {
+        if (menu.item(i).label.get() == text) return i;
+    }
+    return -1;
+}
+
+}
+
+TEST_CASE("a reference field lists the objects it accepts and writes the choice as one undo step") {
+    AimWorld world;
+    Harness ui(nullptr);
+    Details details(world.selection, world.history, world.scene, ui.app);
+    ui.app.setTheme(cinder::Dev::Panels::editorTheme());
+    ui.app.setRoot(details.widget());
+    ui.size = {360.0f, 900.0f};
+    world.selection.select(world.aim->id());
+    details.update();
+    ui.frame();
+
+    CHECK(hasLabel(details.widget().get(), "None"));
+    auto* combo = comboShowing(details.widget().get(), "None");
+    REQUIRE(combo != nullptr);
+    Menu* menu = openMenuBelow(ui, combo);
+    REQUIRE(menu != nullptr);
+    CHECK(rowLabelled(*menu, "None") >= 0);
+    CHECK(rowLabelled(*menu, "Box") >= 0);
+    CHECK(rowLabelled(*menu, "Flag") >= 0);
+    CHECK(rowLabelled(*menu, "Box \xE2\x80\xBA Aim") < 0);
+
+    menu->activate(rowLabelled(*menu, "Flag"));
+    ui.frame();
+    CHECK(world.aim->target_.get(world.scene) == &world.node("Flag"));
+    CHECK(world.selection.id() == world.aim->id());
+    CHECK(hasLabel(details.widget().get(), "Flag"));
+    world.history.settle(false);
+    REQUIRE(world.history.canUndo());
+
+    world.history.undo(world.selection);
+    auto* restored = world.node("Box").findComponent<Aim>();
+    REQUIRE(restored != nullptr);
+    CHECK(restored->target_.id == 0);
+}
+
+TEST_CASE("the eyedropper takes the next Outliner click without changing the selection") {
+    AimWorld world;
+    Harness ui(nullptr);
+    Details details(world.selection, world.history, world.scene, ui.app);
+    Outliner outliner(world.selection, world.history, world.scene, ui.app);
+    ui.app.setTheme(cinder::Dev::Panels::editorTheme());
+    ui.app.setRoot(make<HorizontalBox>()
+                   + HorizontalBox::slot().fill(1.0f)[outliner.widget()]
+                   + HorizontalBox::slot().fill(1.0f)[details.widget()]);
+    ui.size = {720.0f, 900.0f};
+    world.selection.select(world.aim->id());
+    details.update();
+    ui.frame();
+
+    Button* pick = buttonNamed(details.widget().get(), "Pick");
+    REQUIRE(pick != nullptr);
+    Rect rect = ui.app.grid().geometryOf(pick).value_or(Geometry{}).rect();
+    ui.click(rect.center().x, rect.center().y);
+    CHECK(world.selection.pick().armed());
+
+    const auto props = static_cast<ItemId>(world.node("Props").id());
+    rect = ui.rectOf(outliner.tree()->rowFor(props));
+    ui.click(rect.center().x, rect.center().y);
+    ui.frame();
+    CHECK_FALSE(world.selection.pick().armed());
+    CHECK(world.aim->target_.get(world.scene) == &world.node("Props"));
+    CHECK(world.selection.id() == world.aim->id());
+
+    rect = ui.app.grid().geometryOf(pick).value_or(Geometry{}).rect();
+    ui.click(rect.center().x, rect.center().y);
+    CHECK(world.selection.pick().armed());
+    ui.click(rect.center().x, rect.center().y);
+    CHECK_FALSE(world.selection.pick().armed());
+
+    ui.click(rect.center().x, rect.center().y);
+    world.selection.select(world.node("Box").id());
+    CHECK_FALSE(world.selection.pick().armed());
+}
+
+TEST_CASE("an armed pick skips what it cannot take and tries the actor's components") {
+    AimWorld world;
+    int taken = 0;
+    world.selection.pick().arm(&taken, [&](cinder::Scene::Object& object) {
+        if (dynamic_cast<Aim*>(&object) == nullptr) return false;
+        taken = object.id();
+        return true;
+    });
+    CHECK_FALSE(world.selection.pick().offer(world.node("Flag")));
+    CHECK(world.selection.pick().armedBy(&taken));
+    CHECK(world.selection.pick().offer(world.node("Box")));
+    CHECK(taken == world.aim->id());
+    CHECK_FALSE(world.selection.pick().armed());
 }

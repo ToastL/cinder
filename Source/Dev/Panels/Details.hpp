@@ -57,6 +57,9 @@ private:
                                             std::shared_ptr<cinder::UI::Widget> trailing = nullptr);
     std::shared_ptr<cinder::UI::Widget> editorFor(const cinder::Reflect::PropDef& def, Target target);
     std::shared_ptr<cinder::UI::Widget> colorEditorFor(const cinder::Reflect::PropDef& def, Target target);
+    std::shared_ptr<cinder::UI::Widget> refEditorFor(const cinder::Reflect::PropDef& def, Target target);
+    cinder::Scene::Object* referenced(const cinder::Reflect::PropDef& def, Target target) const;
+    std::string referenceLabel(const cinder::Scene::Object* object) const;
 
     template <class Write>
     auto writing(Target target, Write write) {

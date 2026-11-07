@@ -92,6 +92,7 @@ public:
     double time() const { return time_; }
 
 private:
+    Actor* cloneTree(const Actor& source, Actor* parent, std::unordered_map<int, Object*>& copies);
     void enroll(Object& object, std::optional<int> id);
     void attach(Actor& actor, Actor* parent);
     void detach(Actor& actor);
