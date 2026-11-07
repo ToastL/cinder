@@ -10,7 +10,6 @@ namespace cinder::core {
 namespace {
 
 using AbiFn = const char* (*)();
-using RegisterFn = void (*)(cinder::core::Registrar&);
 
 }
 
@@ -64,11 +63,11 @@ std::unique_ptr<GameModule> GameModule::open(const std::filesystem::path& librar
         dlclose(handle);
         return nullptr;
     }
-    return std::unique_ptr<GameModule>(new GameModule(handle, library, types));
+    return std::unique_ptr<GameModule>(new GameModule(handle, enlist, library, types));
 }
 
-GameModule::GameModule(void* handle, std::filesystem::path path, cinder::scene::NodeTypes& types)
-    : handle_(handle), path_(std::move(path)), types_(types) {}
+GameModule::GameModule(void* handle, RegisterFn enlist, std::filesystem::path path, cinder::scene::NodeTypes& types)
+    : handle_(handle), register_(enlist), path_(std::move(path)), types_(types) {}
 
 GameModule::~GameModule() {
     for (const std::string& name : classes_) types_.remove(name);
@@ -78,7 +77,7 @@ GameModule::~GameModule() {
 void GameModule::enlist() {
     if (!classes_.empty()) return;
     cinder::core::Registrar registrar(types_);
-    reinterpret_cast<RegisterFn>(dlsym(handle_, "cinder_module_register"))(registrar);
+    register_(registrar);
     classes_ = registrar.added();
     for (const std::string& name : registrar.refused()) {
         cinder::platform::logError("[module] %s: class %s is already registered, skipped\n",

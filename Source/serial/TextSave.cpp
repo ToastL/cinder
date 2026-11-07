@@ -62,30 +62,10 @@ void TextSave::leaveArray() {
     if (count > 0) leaveRecord();
 }
 
-int TextSave::integer(std::string_view name, int value, int fallback) {
-    if (value != fallback) {
-        field(name, integerText(value));
-    }
-    return value;
-}
-
-bool TextSave::flag(std::string_view name, bool value, bool fallback) {
-    if (value != fallback) field(name, value ? "true" : "false");
-    return value;
-}
-
 std::string TextSave::text(std::string_view name, std::string_view value,
                            std::string_view fallback) {
     if (value != fallback) field(name, quoted(value));
     return std::string(value);
-}
-
-void TextSave::vector(std::string_view name, float* values, const float* fallback, int arity) {
-    bool same = true;
-    for (int i = 0; i < arity; ++i) same = same && values[i] == fallback[i];
-    if (same) return;
-
-    field(name, vectorText({values, static_cast<std::size_t>(arity)}));
 }
 
 cinder::scene::PropRec TextSave::bag(std::string_view name, const cinder::scene::PropRec& values) {

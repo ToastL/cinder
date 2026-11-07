@@ -2,6 +2,8 @@
 
 #include "platform/Files.hpp"
 #include "platform/Input.hpp"
+#include "platform/Strings.hpp"
+#include "platform/Utf8.hpp"
 
 #include <algorithm>
 #include <charconv>
@@ -13,14 +15,8 @@ namespace cinder::platform {
 
 namespace {
 
-std::string_view trim(std::string_view text) {
-    while (!text.empty() && (text.front() == ' ' || text.front() == '\t')) text.remove_prefix(1);
-    while (!text.empty() && (text.back() == ' ' || text.back() == '\t' || text.back() == '\r')) text.remove_suffix(1);
-    return text;
-}
-
 std::string_view word(std::string_view& text) {
-    text = trim(text);
+    text = trimmed(text);
     const std::size_t end = std::min(text.find_first_of(" \t"), text.size());
     const std::string_view result = text.substr(0, end);
     text.remove_prefix(end);
@@ -36,17 +32,6 @@ T number(std::string_view text, int line) {
                                  + "\" is not a number");
     }
     return value;
-}
-
-char32_t decode(std::string_view text, std::size_t& offset) {
-    const auto lead = static_cast<unsigned char>(text[offset]);
-    int length = lead >= 0xF0 ? 4 : lead >= 0xE0 ? 3 : lead >= 0xC0 ? 2 : 1;
-    std::uint32_t value = length == 1 ? lead : lead & (0xFFu >> (length + 1));
-    for (int i = 1; i < length && offset + static_cast<std::size_t>(i) < text.size(); ++i) {
-        value = (value << 6) | (static_cast<unsigned char>(text[offset + static_cast<std::size_t>(i)]) & 0x3Fu);
-    }
-    offset += static_cast<std::size_t>(length);
-    return static_cast<char32_t>(value);
 }
 
 }
@@ -65,7 +50,7 @@ InputScript InputScript::parse(std::string_view text) {
     std::size_t start = 0;
     while (start <= text.size()) {
         const std::size_t end = std::min(text.find('\n', start), text.size());
-        std::string_view line = trim(text.substr(start, end - start));
+        std::string_view line = trimmed(text.substr(start, end - start));
         start = end + 1;
         ++lineNumber;
         if (line.empty() || line.front() == '#') continue;
@@ -115,14 +100,14 @@ InputScript InputScript::parse(std::string_view text) {
             push(InputEventType::KeyDown, code);
             push(InputEventType::KeyUp, code);
         } else if (verb == "type") {
-            const std::string_view typed = trim(line);
-            for (std::size_t offset = 0; offset < typed.size();) push(InputEventType::Char, 0)->character = decode(typed, offset);
+            const std::string_view typed = trimmed(line);
+            for (std::size_t offset = 0; offset < typed.size();) push(InputEventType::Char, 0)->character = decodeUtf8(typed, offset);
         } else if (verb == "scroll") {
             const float x = number<float>(word(line), lineNumber);
             const float y = number<float>(word(line), lineNumber);
             push(InputEventType::Wheel, 0)->wheel = {x, y};
         } else if (verb == "capture") {
-            script.captures_.push_back(Capture{frame, std::string(trim(line))});
+            script.captures_.push_back(Capture{frame, std::string(trimmed(line))});
         } else if (verb == "close") {
             script.closes_.push_back(frame);
         } else if (verb == "quit") {

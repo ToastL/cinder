@@ -1,5 +1,7 @@
 #include "serial/Json.hpp"
 
+#include "platform/Utf8.hpp"
+
 #include <charconv>
 #include <stdexcept>
 #include <utility>
@@ -12,24 +14,6 @@ using cinder::scene::PropSeq;
 using cinder::scene::PropValue;
 
 constexpr int MAX_DEPTH = 64;
-
-void appendUtf8(std::string& out, char32_t code) {
-    if (code < 0x80) {
-        out.push_back(static_cast<char>(code));
-    } else if (code < 0x800) {
-        out.push_back(static_cast<char>(0xC0 | (code >> 6)));
-        out.push_back(static_cast<char>(0x80 | (code & 0x3F)));
-    } else if (code < 0x10000) {
-        out.push_back(static_cast<char>(0xE0 | (code >> 12)));
-        out.push_back(static_cast<char>(0x80 | ((code >> 6) & 0x3F)));
-        out.push_back(static_cast<char>(0x80 | (code & 0x3F)));
-    } else {
-        out.push_back(static_cast<char>(0xF0 | (code >> 18)));
-        out.push_back(static_cast<char>(0x80 | ((code >> 12) & 0x3F)));
-        out.push_back(static_cast<char>(0x80 | ((code >> 6) & 0x3F)));
-        out.push_back(static_cast<char>(0x80 | (code & 0x3F)));
-    }
-}
 
 class Parser {
 public:
@@ -176,7 +160,7 @@ private:
                 case 't': out.push_back('\t'); break;
                 case 'u':
                     at_++;
-                    appendUtf8(out, codepoint());
+                    cinder::platform::appendUtf8(out, codepoint());
                     continue;
                 default: fail("unknown escape");
             }

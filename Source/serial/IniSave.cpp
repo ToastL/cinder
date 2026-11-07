@@ -1,7 +1,6 @@
 #include "serial/IniSave.hpp"
 
 #include "platform/Log.hpp"
-#include "serial/NumberText.hpp"
 
 #include <stdexcept>
 
@@ -37,30 +36,10 @@ void IniSave::leaveItem() { unsupported("arrays"); }
 
 void IniSave::leaveArray() { unsupported("arrays"); }
 
-int IniSave::integer(std::string_view name, int value, int fallback) {
-    if (value != fallback) {
-        field(name, integerText(value));
-    }
-    return value;
-}
-
-bool IniSave::flag(std::string_view name, bool value, bool fallback) {
-    if (value != fallback) field(name, value ? "true" : "false");
-    return value;
-}
-
 std::string IniSave::text(std::string_view name, std::string_view value,
                           std::string_view fallback) {
     if (value != fallback) field(name, value);
     return std::string(value);
-}
-
-void IniSave::vector(std::string_view name, float* values, const float* fallback, int arity) {
-    bool same = true;
-    for (int i = 0; i < arity; ++i) same = same && values[i] == fallback[i];
-    if (same) return;
-
-    field(name, vectorText({values, static_cast<std::size_t>(arity)}));
 }
 
 cinder::scene::RawFields IniSave::raw(const cinder::scene::RawFields& values) {

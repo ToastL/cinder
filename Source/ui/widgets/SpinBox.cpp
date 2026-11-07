@@ -1,5 +1,6 @@
 #include "ui/widgets/SpinBox.hpp"
 
+#include "platform/Strings.hpp"
 #include "ui/core/ElementList.hpp"
 #include "ui/framework/Application.hpp"
 #include "ui/widgets/TextField.hpp"
@@ -105,16 +106,10 @@ private:
     int factors_ = 0;
 };
 
-std::string_view trimmed(std::string_view text) {
-    while (!text.empty() && (text.front() == ' ' || text.front() == '\t')) text.remove_prefix(1);
-    while (!text.empty() && (text.back() == ' ' || text.back() == '\t')) text.remove_suffix(1);
-    return text;
-}
-
 }
 
 std::optional<double> evaluateNumber(std::string_view text) {
-    text = trimmed(text);
+    text = cinder::platform::trimmed(text);
     if (text.empty()) return std::nullopt;
     const std::optional<double> value = Expression(text).parse();
     if (!value || !std::isfinite(*value)) return std::nullopt;
@@ -213,7 +208,7 @@ void SpinBox::beginEditing() {
 void SpinBox::committed(const std::string& text, TextCommit how) {
     editing_ = false;
     if (how == TextCommit::Cleared || text == editText_) return;
-    std::string_view typed = trimmed(text);
+    std::string_view typed = cinder::platform::trimmed(text);
     if (!units_.empty() && typed.size() >= units_.size() && typed.substr(typed.size() - units_.size()) == units_) {
         typed.remove_suffix(units_.size());
     }

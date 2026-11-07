@@ -1,19 +1,15 @@
 #include "serial/IniLoad.hpp"
 
 #include "platform/Log.hpp"
+#include "platform/Strings.hpp"
 
-#include <cctype>
 #include <charconv>
 #include <stdexcept>
 
 namespace cinder::serial {
 namespace {
 
-std::string_view trimmed(std::string_view text) {
-    while (!text.empty() && std::isspace(static_cast<unsigned char>(text.front()))) text.remove_prefix(1);
-    while (!text.empty() && std::isspace(static_cast<unsigned char>(text.back()))) text.remove_suffix(1);
-    return text;
-}
+using cinder::platform::trimmed;
 
 [[noreturn]] void unsupported(const char* what) {
     throw std::logic_error(std::string("INI has no ") + what);
@@ -125,7 +121,7 @@ void IniLoad::vector(std::string_view name, float* values, const float* fallback
     for (int i = 0; i < arity; ++i) {
         rest = trimmed(rest);
         std::size_t split = 0;
-        while (split < rest.size() && !std::isspace(static_cast<unsigned char>(rest[split]))) split++;
+        while (split < rest.size() && !cinder::platform::isBlank(rest[split])) split++;
         const std::string_view token = rest.substr(0, split);
         rest.remove_prefix(split);
 

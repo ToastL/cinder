@@ -50,9 +50,7 @@ Font::~Font() {
 }
 
 std::unique_ptr<Font> Font::load(const std::filesystem::path& path) {
-    const std::string text = cinder::platform::readTextFile(path);
-    std::vector<std::uint8_t> bytes(text.size());
-    std::memcpy(bytes.data(), text.data(), text.size());
+    std::vector<std::uint8_t> bytes = cinder::platform::readBinaryFile(path);
     try {
         return std::make_unique<Font>(std::move(bytes));
     } catch (const std::runtime_error& error) {

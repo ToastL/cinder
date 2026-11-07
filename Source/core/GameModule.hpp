@@ -11,6 +11,8 @@ namespace cinder::scene { class NodeTypes; }
 
 namespace cinder::core {
 
+class Registrar;
+
 const char* buildId();
 
 class GameModule {
@@ -32,9 +34,12 @@ public:
     const std::vector<std::string>& classes() const { return classes_; }
 
 private:
-    GameModule(void* handle, std::filesystem::path path, cinder::scene::NodeTypes& types);
+    using RegisterFn = void (*)(Registrar&);
+
+    GameModule(void* handle, RegisterFn enlist, std::filesystem::path path, cinder::scene::NodeTypes& types);
 
     void* handle_;
+    RegisterFn register_;
     std::filesystem::path path_;
     cinder::scene::NodeTypes& types_;
     std::vector<std::string> classes_;

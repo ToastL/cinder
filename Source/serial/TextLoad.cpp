@@ -1,10 +1,10 @@
 #include "serial/TextLoad.hpp"
 
 #include "platform/Log.hpp"
+#include "platform/Strings.hpp"
 #include "serial/NumberText.hpp"
 #include "serial/TextSave.hpp"
 
-#include <cctype>
 #include <cmath>
 #include <limits>
 #include <stdexcept>
@@ -17,14 +17,6 @@ struct Token {
     bool quoted = false;
 };
 
-std::string trimmed(std::string_view line) {
-    std::size_t begin = 0;
-    std::size_t end = line.size();
-    while (begin < end && std::isspace(static_cast<unsigned char>(line[begin]))) begin++;
-    while (end > begin && std::isspace(static_cast<unsigned char>(line[end - 1]))) end--;
-    return std::string(line.substr(begin, end - begin));
-}
-
 bool isDigit(char c) { return c >= '0' && c <= '9'; }
 
 std::vector<Token> tokenize(const std::string& line) {
@@ -33,14 +25,14 @@ std::vector<Token> tokenize(const std::string& line) {
 
     while (i < line.size()) {
         const char c = line[i];
-        if (std::isspace(static_cast<unsigned char>(c))) {
+        if (cinder::platform::isBlank(c)) {
             i++;
             continue;
         }
 
         if (c != '"') {
             const std::size_t start = i;
-            while (i < line.size() && !std::isspace(static_cast<unsigned char>(line[i]))) i++;
+            while (i < line.size() && !cinder::platform::isBlank(line[i])) i++;
             out.push_back(Token{line.substr(start, i - start), false});
             continue;
         }
@@ -154,7 +146,7 @@ TextLoad TextLoad::parse(const std::string& source) {
 
 bool TextLoad::body(Node& into, const std::vector<std::string>& lines, std::size_t& at, bool nested) {
     while (at < lines.size()) {
-        const std::string line = trimmed(lines[at]);
+        const std::string line(cinder::platform::trimmed(lines[at]));
         at++;
         if (line.empty()) continue;
         if (line == "}") {
