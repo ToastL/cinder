@@ -1,10 +1,10 @@
 #pragma once
 
-#include "game/Game.hpp"
+#include "Game/Game.hpp"
 
-class Riser final : public cinder::scene::Node {
+class Riser final : public cinder::Scene::Node {
 public:
-    CINDER_NODE(Riser, cinder::scene::Node) { CINDER_PROP(speed_); }
+    CINDER_NODE(Riser, cinder::Scene::Node) { CINDER_PROP(speed_); }
 
     Riser& setSpeed(float speed) {
         speed_ = speed;
@@ -12,7 +12,7 @@ public:
     }
 
     void onUpdate(float dt) override {
-        if (cinder::scene::Transform* box = parent() != nullptr ? parent()->transform() : nullptr) {
+        if (cinder::Scene::Transform* box = parent() != nullptr ? parent()->transform() : nullptr) {
             box->translate(0.0f, speed_ * dt, 0.0f);
         }
     }

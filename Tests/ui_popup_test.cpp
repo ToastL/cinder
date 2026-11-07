@@ -2,15 +2,15 @@
 
 #include "ui_harness.hpp"
 
-#include "ui/widgets/BoxPanel.hpp"
-#include "ui/widgets/Button.hpp"
-#include "ui/widgets/Canvas.hpp"
+#include "UI/Widgets/BoxPanel.hpp"
+#include "UI/Widgets/Button.hpp"
+#include "UI/Widgets/Canvas.hpp"
 
-using namespace cinder::ui;
+using namespace cinder::UI;
 using uitest::Harness;
 using uitest::Probe;
 using uitest::count;
-namespace keys = cinder::platform::keys;
+namespace keys = cinder::Platform::keys;
 
 namespace {
 

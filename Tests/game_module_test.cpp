@@ -1,21 +1,21 @@
 #include <doctest/doctest.h>
 
-#include "components/Builtins.hpp"
-#include "core/GameModule.hpp"
-#include "scene/Node.hpp"
-#include "scene/NodeTypes.hpp"
-#include "scene/PropValue.hpp"
-#include "scene/Scene.hpp"
-#include "scene/Transform.hpp"
-#include "serial/SceneCodec.hpp"
+#include "Core/GameModule.hpp"
+#include "Nodes/Builtins.hpp"
+#include "Scene/Node.hpp"
+#include "Scene/NodeTypes.hpp"
+#include "Scene/PropValue.hpp"
+#include "Scene/Scene.hpp"
+#include "Scene/Transform.hpp"
+#include "Serial/SceneCodec.hpp"
 
 #include <string>
 #include <vector>
 
-using cinder::core::GameModule;
-using cinder::scene::NodeTypes;
-using cinder::scene::Scene;
-using cinder::serial::SceneCodec;
+using cinder::Core::GameModule;
+using cinder::Scene::NodeTypes;
+using cinder::Scene::Scene;
+using cinder::Serial::SceneCodec;
 
 namespace {
 
@@ -36,7 +36,7 @@ nodes {
 
 TEST_CASE("a game module registers its classes, runs them, and unloads cleanly") {
     NodeTypes types;
-    cinder::components::registerBuiltins(types);
+    cinder::Nodes::registerBuiltins(types);
     Scene scene(types);
 
     std::string error;
@@ -54,7 +54,7 @@ TEST_CASE("a game module registers its classes, runs them, and unloads cleanly")
     REQUIRE(scene.byId(1)->findFirstChild("Made") != nullptr);
     CHECK(types.nameOf(*scene.byId(1)->findFirstChild("Made")) == "Group");
     scene.destroyNow(scene.byId(1)->findFirstChild("Made"));
-    const cinder::scene::PropValue* count = scene.byId(1)->attribute("count");
+    const cinder::Scene::PropValue* count = scene.byId(1)->attribute("count");
     REQUIRE(count != nullptr);
     CHECK(count->as<double>() == doctest::Approx(4.0));
     CHECK(scene.byId(2)->transform()->position().x == doctest::Approx(3.0f));

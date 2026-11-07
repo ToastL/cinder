@@ -1,5 +1,7 @@
 #include "CinderBuildTool/Generate.hpp"
 
+#include "CinderBuildTool/Paths.hpp"
+
 #include <algorithm>
 #include <cstdint>
 #include <cstdlib>
@@ -177,9 +179,7 @@ bool generateCompileCommands(Builder& builder, const std::vector<std::string>& t
         std::error_code error;
         for (auto it = std::filesystem::recursive_directory_iterator(builder.root() / folder, error);
              !error && it != std::filesystem::recursive_directory_iterator(); it.increment(error)) {
-            const std::string name = it->path().filename().string();
-            const bool rule = name.ends_with(".Build.cpp") || name.ends_with(".Target.cpp");
-            if (it->is_regular_file() && (rule || (it->path().parent_path() == programs / "CinderBuildTool" && it->path().extension() == ".cpp"))) {
+            if (it->is_regular_file() && (isRuleFile(it->path()) || (it->path().parent_path() == programs / "CinderBuildTool" && it->path().extension() == ".cpp"))) {
                 tool.push_back(it->path());
             }
         }

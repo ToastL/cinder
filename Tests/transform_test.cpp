@@ -1,18 +1,18 @@
 #include <doctest/doctest.h>
 
-#include "components/Folder.hpp"
-#include "components/Group.hpp"
-#include "scene/Node.hpp"
-#include "scene/NodeTypes.hpp"
-#include "scene/Scene.hpp"
-#include "scene/Transform.hpp"
+#include "Nodes/Folder.hpp"
+#include "Nodes/Group.hpp"
+#include "Scene/Node.hpp"
+#include "Scene/NodeTypes.hpp"
+#include "Scene/Scene.hpp"
+#include "Scene/Transform.hpp"
 
 #include <glm/gtc/constants.hpp>
 
-using cinder::scene::Node;
-using cinder::scene::NodeTypes;
-using cinder::scene::Scene;
-using cinder::scene::Transform;
+using cinder::Scene::Node;
+using cinder::Scene::NodeTypes;
+using cinder::Scene::Scene;
+using cinder::Scene::Transform;
 
 namespace {
 
@@ -21,7 +21,7 @@ struct Fixture {
     Scene scene{types};
 
     Node* spawn(const char* name, Node* parent = nullptr) {
-        Node* node = scene.create<cinder::components::Group>(parent);
+        Node* node = scene.create<cinder::Nodes::Group>(parent);
         node->setName(name);
         return node;
     }
@@ -119,7 +119,7 @@ TEST_CASE("writing position through a prop dirties the world matrix") {
     Node* e = f.spawn("e");
     checkWorld(e, 0, 0, 0);
 
-    for (const cinder::reflect::PropDef& prop : cinder::reflect::props<Transform>()) {
+    for (const cinder::Reflect::PropDef& prop : cinder::Reflect::props<Transform>()) {
         if (prop.name() != "position") continue;
         const float values[] = {5, 0, 0};
         prop.write(e->transform(), values);
@@ -137,7 +137,7 @@ TEST_CASE("reparenting into its own subtree is rejected") {
 }
 
 TEST_CASE("transform props are position, rotation, scale in order") {
-    const cinder::reflect::PropList& props = cinder::reflect::props<Transform>();
+    const cinder::Reflect::PropList& props = cinder::Reflect::props<Transform>();
     REQUIRE(props.size() == 3);
     CHECK(props[0].name() == "position");
     CHECK(props[1].name() == "rotation");
@@ -148,7 +148,7 @@ TEST_CASE("a folder breaks the transform chain") {
     Fixture f;
     Node* group = f.spawn("group");
     group->transform()->setPosition(10, 0, 0);
-    Node* folder = f.scene.create<cinder::components::Folder>(group);
+    Node* folder = f.scene.create<cinder::Nodes::Folder>(group);
     Node* child = f.spawn("child", folder);
     child->transform()->setPosition(0, 1, 0);
 
@@ -165,9 +165,9 @@ TEST_CASE("rotate turns a node from where it already points") {
 }
 
 TEST_CASE("rotation is declared as an angle, so the editor shows it in degrees") {
-    const cinder::reflect::PropList& defs = cinder::reflect::props<cinder::scene::Transform>();
+    const cinder::Reflect::PropList& defs = cinder::Reflect::props<cinder::Scene::Transform>();
     REQUIRE(defs.size() == 3);
-    CHECK(defs[0].hint() == cinder::reflect::PropHint::None);
+    CHECK(defs[0].hint() == cinder::Reflect::PropHint::None);
     CHECK(defs[1].name() == "rotation");
-    CHECK(defs[1].hint() == cinder::reflect::PropHint::Angle);
+    CHECK(defs[1].hint() == cinder::Reflect::PropHint::Angle);
 }

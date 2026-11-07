@@ -1,0 +1,37 @@
+#pragma once
+
+#include "Gfx/RHI/Format.hpp"
+#include "Gfx/RHI/Handles.hpp"
+
+#include <cstdint>
+
+namespace cinder::Gfx::RHI {
+
+class Ctx;
+
+class GpuBuffer {
+public:
+    GpuBuffer(const Ctx& ctx, std::uint64_t size, BufferUsage usage);
+    ~GpuBuffer();
+
+    GpuBuffer(const GpuBuffer&) = delete;
+    GpuBuffer& operator=(const GpuBuffer&) = delete;
+    GpuBuffer(GpuBuffer&& other) noexcept;
+    GpuBuffer& operator=(GpuBuffer&& other) noexcept;
+
+    void bindVertex(Commands cmd) const;
+    void bindIndex(Commands cmd) const;
+
+    void* handle() const { return handle_; }
+    void* mapped() const { return mapped_; }
+    std::uint64_t size() const { return size_; }
+
+private:
+    void release();
+
+    void* handle_ = nullptr;
+    void* mapped_ = nullptr;
+    std::uint64_t size_ = 0;
+};
+
+}

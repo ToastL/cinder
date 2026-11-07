@@ -1,15 +1,15 @@
 #include <doctest/doctest.h>
 
-#include "platform/Log.hpp"
-#include "serial/IniLoad.hpp"
-#include "serial/IniSave.hpp"
+#include "Platform/Log.hpp"
+#include "Serial/IniLoad.hpp"
+#include "Serial/IniSave.hpp"
 
 #include <clocale>
 #include <stdexcept>
 #include <string>
 
-using cinder::serial::IniLoad;
-using cinder::serial::IniSave;
+using cinder::Serial::IniLoad;
+using cinder::Serial::IniSave;
 
 namespace {
 
@@ -17,10 +17,10 @@ struct Errors {
     int count = 0;
 
     Errors() {
-        cinder::platform::setLogSink([this](cinder::platform::LogLevel, std::string_view) { count++; });
+        cinder::Platform::setLogSink([this](cinder::Platform::LogLevel, std::string_view) { count++; });
     }
 
-    ~Errors() { cinder::platform::setLogSink(nullptr); }
+    ~Errors() { cinder::Platform::setLogSink(nullptr); }
 
     Errors(const Errors&) = delete;
     Errors& operator=(const Errors&) = delete;

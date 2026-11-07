@@ -1,6 +1,7 @@
 #include "CinderBuildTool/Tests.hpp"
 
 #include "CinderBuildTool/Layers.hpp"
+#include "CinderBuildTool/Paths.hpp"
 #include "CinderBuildTool/Process.hpp"
 
 #include <algorithm>
@@ -21,31 +22,31 @@ struct Fixture {
 };
 
 const Fixture FIXTURES[] = {
-    {"allowed", "core/Example.cpp", "#include \"scene/Scene.hpp\"\n#include <vector>\n", true},
-    {"ui_up", "ui/core/Example.cpp", "#include \"scene/Scene.hpp\"\n", false},
-    {"ui_down", "ui/widgets/Example.cpp", "#include \"ui/core/Widget.hpp\"\n#include \"text/Font.hpp\"\n", true},
-    {"ui_sideways", "ui/core/Example.cpp", "#include \"ui/widgets/Button.hpp\"\n", false},
-    {"ui_flat", "ui/Example.cpp", "#include <vector>\n", false},
-    {"renderer_ui", "gfx/Example.cpp", "#include \"ui/core/ElementList.hpp\"\n", true},
-    {"renderer_widgets", "gfx/Example.cpp", "#include \"ui/widgets/Button.hpp\"\n", false},
-    {"text_leaf", "text/Example.cpp", "#include \"gfx/Renderer.hpp\"\n", false},
-    {"upward", "scene/Example.cpp", "#include \"core/Engine.hpp\"\n", false},
-    {"renderer_parent", "gfx/vk/Example.cpp", "#include \"gfx/Renderer.hpp\"\n", false},
-    {"runtime_editor", "core/Example.cpp", "#include \"dev/History.hpp\"\n", false},
-    {"relative", "scene/Example.cpp", "#include \"../core/Engine.hpp\"\n", false},
-    {"rhi_is_a_leaf", "gfx/rhi/Example.cpp", "#include \"gfx/vk/VkCtx.hpp\"\n", false},
-    {"rhi_no_scene", "gfx/rhi/Example.cpp", "#include \"scene/Scene.hpp\"\n", false},
-    {"backend_on_rhi", "gfx/vk/Example.cpp", "#include \"gfx/rhi/Handles.hpp\"\n", true},
-    {"pass_on_rhi", "gfx/pass/Example.cpp", "#include \"gfx/rhi/Commands.hpp\"\n", true},
-    {"backend_leak_gfx", "gfx/Example.cpp", "#include \"gfx/vk/Ctx.hpp\"\n", false},
-    {"backend_leak_pass", "gfx/pass/Example.cpp", "#include \"gfx/vk/Ctx.hpp\"\n", false},
-    {"backend_leak_asset", "gfx/asset/Example.cpp", "#include \"gfx/vk/Ctx.hpp\"\n", false},
-    {"backend_leak_core", "core/Example.cpp", "#include \"gfx/vk/Ctx.hpp\"\n", false},
-    {"backends_are_blind", "gfx/mtl/Example.cpp", "#include \"gfx/vk/Ctx.hpp\"\n", false},
-    {"metal_on_rhi", "gfx/mtl/Example.cpp", "#include \"gfx/rhi/Handles.hpp\"\n", true},
+    {"allowed", "Core/Example.cpp", "#include \"Scene/Scene.hpp\"\n#include <vector>\n", true},
+    {"ui_up", "UI/Core/Example.cpp", "#include \"Scene/Scene.hpp\"\n", false},
+    {"ui_down", "UI/Widgets/Example.cpp", "#include \"UI/Core/Widget.hpp\"\n#include \"Text/Font.hpp\"\n", true},
+    {"ui_sideways", "UI/Core/Example.cpp", "#include \"UI/Widgets/Button.hpp\"\n", false},
+    {"ui_flat", "UI/Example.cpp", "#include <vector>\n", false},
+    {"renderer_ui", "Gfx/Example.cpp", "#include \"UI/Core/ElementList.hpp\"\n", true},
+    {"renderer_widgets", "Gfx/Example.cpp", "#include \"UI/Widgets/Button.hpp\"\n", false},
+    {"text_leaf", "Text/Example.cpp", "#include \"Gfx/Renderer.hpp\"\n", false},
+    {"upward", "Scene/Example.cpp", "#include \"Core/Engine.hpp\"\n", false},
+    {"renderer_parent", "Gfx/VK/Example.cpp", "#include \"Gfx/Renderer.hpp\"\n", false},
+    {"runtime_editor", "Core/Example.cpp", "#include \"Dev/History.hpp\"\n", false},
+    {"relative", "Scene/Example.cpp", "#include \"../Core/Engine.hpp\"\n", false},
+    {"rhi_is_a_leaf", "Gfx/RHI/Example.cpp", "#include \"Gfx/VK/VkCtx.hpp\"\n", false},
+    {"rhi_no_scene", "Gfx/RHI/Example.cpp", "#include \"Scene/Scene.hpp\"\n", false},
+    {"backend_on_rhi", "Gfx/VK/Example.cpp", "#include \"Gfx/RHI/Handles.hpp\"\n", true},
+    {"pass_on_rhi", "Gfx/Pass/Example.cpp", "#include \"Gfx/RHI/Commands.hpp\"\n", true},
+    {"backend_leak_gfx", "Gfx/Example.cpp", "#include \"Gfx/VK/Ctx.hpp\"\n", false},
+    {"backend_leak_pass", "Gfx/Pass/Example.cpp", "#include \"Gfx/VK/Ctx.hpp\"\n", false},
+    {"backend_leak_asset", "Gfx/Asset/Example.cpp", "#include \"Gfx/VK/Ctx.hpp\"\n", false},
+    {"backend_leak_core", "Core/Example.cpp", "#include \"Gfx/VK/Ctx.hpp\"\n", false},
+    {"backends_are_blind", "Gfx/MTL/Example.cpp", "#include \"Gfx/VK/Ctx.hpp\"\n", false},
+    {"metal_on_rhi", "Gfx/MTL/Example.cpp", "#include \"Gfx/RHI/Handles.hpp\"\n", true},
     {"unknown", "unknown/Example.cpp", "#include <vector>\n", false},
-    {"metal_implementation_on_rhi", "gfx/mtl/Example.mm", "#include \"gfx/rhi/Handles.hpp\"\n", true},
-    {"metal_implementation_upward", "gfx/mtl/Example.mm", "#include \"core/Engine.hpp\"\n", false},
+    {"metal_implementation_on_rhi", "Gfx/MTL/Example.mm", "#include \"Gfx/RHI/Handles.hpp\"\n", true},
+    {"metal_implementation_upward", "Gfx/MTL/Example.mm", "#include \"Core/Engine.hpp\"\n", false},
 };
 
 bool run(const std::vector<std::string>& argv, std::string* captured = nullptr) {
@@ -61,22 +62,6 @@ bool run(const std::vector<std::string>& argv, std::string* captured = nullptr) 
         else std::printf("%s\n", line.c_str());
     }
     return process->wait() == 0;
-}
-
-std::string findOnPath(const std::string& name) {
-    const char* sdk = std::getenv("VULKAN_SDK");
-    if (sdk != nullptr && std::filesystem::is_regular_file(std::filesystem::path(sdk) / "bin" / name)) {
-        return (std::filesystem::path(sdk) / "bin" / name).string();
-    }
-    const char* path = std::getenv("PATH");
-    std::stringstream folders(path != nullptr ? path : "");
-    std::string folder;
-    while (std::getline(folders, folder, ':')) {
-        if (!folder.empty() && std::filesystem::is_regular_file(std::filesystem::path(folder) / name)) {
-            return (std::filesystem::path(folder) / name).string();
-        }
-    }
-    return {};
 }
 
 bool layers(Builder& builder) {
@@ -104,7 +89,7 @@ bool layerFixtures(Builder& builder) {
 
 bool shaders(Builder& builder) {
     const std::filesystem::path folder = builder.binaries() / "Shaders";
-    const std::string validator = findOnPath("spirv-val");
+    const std::string validator = findTool("spirv-val");
     const auto& formats = builder.shaderFormats();
     const auto has = [&](const char* format) { return std::find(formats.begin(), formats.end(), format) != formats.end(); };
     std::vector<std::string> problems;
@@ -147,7 +132,7 @@ bool shipping(Builder& builder) {
     if (!run({"nm", "-a", (builder.binaries() / "player").string()}, &symbols)) return false;
     std::transform(symbols.begin(), symbols.end(), symbols.begin(), [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
     if (symbols.find("cinder3dev") != std::string::npos) {
-        std::printf("player contains cinder::dev symbols: the engine/dev split is broken\n");
+        std::printf("player contains cinder::Dev symbols: the engine/dev split is broken\n");
         return false;
     }
     return true;

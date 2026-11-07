@@ -1,8 +1,10 @@
 #include <doctest/doctest.h>
 
-#include "core/ProjectConfig.hpp"
-#include "core/ProjectDescriptor.hpp"
-#include "platform/Log.hpp"
+#include "test_support.hpp"
+
+#include "Core/ProjectConfig.hpp"
+#include "Core/ProjectDescriptor.hpp"
+#include "Platform/Log.hpp"
 
 #include <filesystem>
 #include <fstream>
@@ -10,20 +12,15 @@
 #include <string>
 #include <vector>
 
-using cinder::core::ProjectConfig;
-using cinder::core::ProjectDescriptor;
+using cinder::Core::ProjectConfig;
+using cinder::Core::ProjectDescriptor;
 
 namespace {
 
 const std::string MINIMAL = "{ \"fileVersion\": 1 }";
 
 struct Folder {
-    std::filesystem::path root = std::filesystem::temp_directory_path() / "cinder_project_test";
-
-    Folder() {
-        std::filesystem::remove_all(root);
-        std::filesystem::create_directories(root);
-    }
+    std::filesystem::path root = testing::uniqueTempDir("cinder_project_test");
 
     ~Folder() { std::filesystem::remove_all(root); }
 
@@ -38,10 +35,10 @@ struct Sink {
     int lines = 0;
 
     Sink() {
-        cinder::platform::setLogSink([this](cinder::platform::LogLevel, std::string_view) { lines++; });
+        cinder::Platform::setLogSink([this](cinder::Platform::LogLevel, std::string_view) { lines++; });
     }
 
-    ~Sink() { cinder::platform::setLogSink(nullptr); }
+    ~Sink() { cinder::Platform::setLogSink(nullptr); }
 
     Sink(const Sink&) = delete;
     Sink& operator=(const Sink&) = delete;

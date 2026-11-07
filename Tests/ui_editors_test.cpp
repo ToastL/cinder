@@ -1,25 +1,26 @@
 #include <doctest/doctest.h>
 
+#include "UI/Widgets/MenuBar.hpp"
 #include "ui_harness.hpp"
 
-#include "ui/framework/Commands.hpp"
-#include "ui/widgets/Canvas.hpp"
-#include "ui/widgets/ColorPicker.hpp"
-#include "ui/widgets/ComboBox.hpp"
-#include "ui/widgets/ExpandableArea.hpp"
-#include "ui/widgets/Menu.hpp"
-#include "ui/widgets/SpinBox.hpp"
-#include "ui/widgets/TextField.hpp"
-#include "ui/widgets/VectorInputBox.hpp"
+#include "UI/Framework/Commands.hpp"
+#include "UI/Widgets/Canvas.hpp"
+#include "UI/Widgets/ColorPicker.hpp"
+#include "UI/Widgets/ComboBox.hpp"
+#include "UI/Widgets/ExpandableArea.hpp"
+#include "UI/Widgets/Menu.hpp"
+#include "UI/Widgets/SpinBox.hpp"
+#include "UI/Widgets/TextField.hpp"
+#include "UI/Widgets/VectorInputBox.hpp"
 
 #include <glm/geometric.hpp>
 
-using namespace cinder::ui;
+using namespace cinder::UI;
 using uitest::Harness;
 using uitest::Probe;
 using uitest::count;
-namespace keys = cinder::platform::keys;
-namespace modifiers = cinder::platform::modifiers;
+namespace keys = cinder::Platform::keys;
+namespace modifiers = cinder::Platform::modifiers;
 
 namespace {
 
@@ -304,7 +305,7 @@ TEST_CASE("a menu entry bound to a command shows its shortcut and runs through t
     bool allowed = true;
     commands->map(command, CommandAction{[&] { ++runs; }, [&] { return allowed; }, {}});
     MenuBuilder builder;
-    builder.command(commands, *command);
+    builder.command(commands, command);
     REQUIRE(builder.items().size() == 1);
     CHECK(builder.items()[0].shortcut == command->shortcut.label());
     CHECK(builder.items()[0].label.get() == "Save");
@@ -424,4 +425,36 @@ TEST_CASE("a colour block opens a picker whose square sets saturation and value,
     ui.platform.advance(1.0);
     ui.click(20.0f, 20.0f);
     CHECK_FALSE(block->isPickerOpen());
+}
+
+TEST_CASE("an open combo dropdown closes when its combo box is destroyed") {
+    std::string chosen = "box";
+    std::shared_ptr<ComboBox> combo;
+    Harness ui(at({10.0f, 10.0f}, {120.0f, 24.0f},
+                  make<ComboBox>()
+                          .assign(combo)
+                          .options(std::vector<std::string>{"box", "sphere"})
+                          .selectedOption([&] { return chosen; })
+                          .onSelectionChanged([&](const std::string& option) { chosen = option; })));
+    ui.click(50.0f, 20.0f);
+    REQUIRE(ui.app.hasPopups());
+    ui.frame();
+
+    combo.reset();
+    ui.app.setRoot(nullptr);
+    CHECK_FALSE(ui.app.hasPopups());
+    ui.frame();
+}
+
+TEST_CASE("a menu entry bound to a command keeps the command alive") {
+    auto commands = std::make_shared<CommandList>();
+    int runs = 0;
+    MenuBuilder builder;
+    {
+        auto command = std::make_shared<Command>(Command{"go", "Go", "Go", Shortcut{}});
+        commands->map(command, CommandAction{[&] { ++runs; }, {}, {}});
+        builder.command(commands, command);
+    }
+    builder.items()[0].action();
+    CHECK(runs == 1);
 }

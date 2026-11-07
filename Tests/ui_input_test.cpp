@@ -2,21 +2,21 @@
 
 #include "ui_harness.hpp"
 
-#include "ui/framework/Commands.hpp"
-#include "ui/widgets/Border.hpp"
-#include "ui/widgets/BoxPanel.hpp"
-#include "ui/widgets/Button.hpp"
-#include "ui/widgets/Canvas.hpp"
-#include "ui/widgets/Splitter.hpp"
-#include "ui/widgets/TextField.hpp"
+#include "UI/Framework/Commands.hpp"
+#include "UI/Widgets/Border.hpp"
+#include "UI/Widgets/BoxPanel.hpp"
+#include "UI/Widgets/Button.hpp"
+#include "UI/Widgets/Canvas.hpp"
+#include "UI/Widgets/Splitter.hpp"
+#include "UI/Widgets/TextField.hpp"
 
-using namespace cinder::ui;
-using cinder::platform::CursorShape;
+using namespace cinder::UI;
+using cinder::Platform::CursorShape;
 using uitest::Harness;
 using uitest::Probe;
 using uitest::count;
-namespace keys = cinder::platform::keys;
-namespace modifiers = cinder::platform::modifiers;
+namespace keys = cinder::Platform::keys;
+namespace modifiers = cinder::Platform::modifiers;
 
 namespace {
 

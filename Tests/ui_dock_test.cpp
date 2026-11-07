@@ -2,14 +2,14 @@
 
 #include "ui_harness.hpp"
 
-#include "ui/docking/DockTab.hpp"
-#include "ui/docking/TabManager.hpp"
-#include "ui/widgets/Menu.hpp"
+#include "UI/Docking/DockTab.hpp"
+#include "UI/Docking/TabManager.hpp"
+#include "UI/Widgets/Menu.hpp"
 
 #include <string>
 #include <vector>
 
-using namespace cinder::ui;
+using namespace cinder::UI;
 using uitest::Harness;
 using uitest::Probe;
 
@@ -113,7 +113,7 @@ TEST_CASE("a tab dropped in the middle of another stack joins it") {
     const Rect scene = ui.rectOf(top);
 
     dragTab(ui, explorer, scene, scene.size() * 0.5f);
-    CHECK(top->hoveredSide() == std::optional<DockSide>(DockSide::Centre));
+    CHECK(top->hoveredSide() == std::optional<DockSide>(DockSide::Center));
     ui.release();
     ui.frame();
     CHECK(editor.manager.stackCount() == 2);
@@ -163,9 +163,27 @@ TEST_CASE("the only tab of a stack cannot split that stack, and a cancelled drag
     const Rect explorer = ui.rectOf(bottom->tabWidget("Explorer"));
     ui.platform.advance(1.0);
     dragTab(ui, explorer, scene, scene.size() * 0.5f);
-    ui.key(cinder::platform::keys::ESCAPE);
+    ui.key(cinder::Platform::keys::ESCAPE);
     ui.release();
     ui.frame();
     CHECK(editor.manager.stackCount() == 2);
     CHECK(editor.manager.tabsIn(editor.stackOf("Explorer")) == std::vector<std::string>{"Console", "Explorer"});
+}
+
+TEST_CASE("closing every tab leaves a layout a tab can be reopened into") {
+    TabManager manager;
+    manager.registerTab("Console", "Console", [] { return make<Probe>(); });
+    manager.registerTab("Explorer", "Explorer", [] { return make<Probe>(); });
+    std::shared_ptr<Widget> area = manager.restore(TabManager::split(
+            Orientation::Vertical,
+            {TabManager::split(Orientation::Horizontal, {TabManager::stack({"Console"}, 1.0f)}),
+             TabManager::stack({"Explorer"}, 1.0f)}));
+    Harness ui(area);
+    manager.closeTab("Console");
+    manager.closeTab("Explorer");
+    CHECK_FALSE(manager.isOpen("Console"));
+    CHECK(manager.layout().kind == LayoutNode::Kind::Stack);
+
+    manager.openTab("Console");
+    CHECK(manager.isOpen("Console"));
 }

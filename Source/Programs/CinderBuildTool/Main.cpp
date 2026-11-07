@@ -1,12 +1,15 @@
 #include "CinderBuildTool/Build.hpp"
-#include "CinderBuildTool/Layers.hpp"
 #include "CinderBuildTool/Generate.hpp"
+#include "CinderBuildTool/Layers.hpp"
+#include "CinderBuildTool/Paths.hpp"
+#include "CinderBuildTool/Process.hpp"
 #include "CinderBuildTool/Registry.hpp"
 #include "CinderBuildTool/Tests.hpp"
 
 #include <cstdio>
 #include <cstdlib>
 #include <filesystem>
+#include <memory>
 #include <set>
 #include <string>
 #include <string_view>
@@ -35,18 +38,13 @@ std::filesystem::path executable() {
     return {};
 }
 
-bool isRuleFile(const std::filesystem::path& path) {
-    const std::string name = path.filename().string();
-    return name.ends_with(".Build.cpp") || name.ends_with(".Target.cpp");
-}
-
 std::set<std::filesystem::path> ruleFilesOnDisk() {
     std::set<std::filesystem::path> out;
     for (const char* folder : {"Source", "Tests"}) {
         std::error_code error;
         for (auto it = std::filesystem::recursive_directory_iterator(ROOT / folder, error);
              !error && it != std::filesystem::recursive_directory_iterator(); it.increment(error)) {
-            if (it->is_regular_file() && isRuleFile(it->path())) out.insert(std::filesystem::weakly_canonical(it->path()));
+            if (it->is_regular_file() && cbt::isRuleFile(it->path())) out.insert(std::filesystem::weakly_canonical(it->path()));
         }
     }
     return out;
@@ -80,8 +78,15 @@ void rebuildIfStale(char** argv) {
     std::fprintf(stderr, "cbt: rules or tool sources changed, rebuilding cbt\n");
     const std::string binaries = self.parent_path().parent_path().string();
     setenv("CINDER_BINARIES", binaries.c_str(), 1);
-    const std::string command = "/bin/bash '" + (ROOT / "Setup.sh").string() + "'";
-    if (std::system(command.c_str()) != 0) {
+    std::string failure;
+    std::unique_ptr<cbt::Process> setup = cbt::Process::start({"/bin/bash", (ROOT / "Setup.sh").string()}, failure);
+    if (setup == nullptr) {
+        std::fprintf(stderr, "cbt: %s\n", failure.c_str());
+        std::exit(1);
+    }
+    std::string line;
+    while (setup->readLine(line)) std::fprintf(stderr, "%s\n", line.c_str());
+    if (setup->wait() != 0) {
         std::fprintf(stderr, "cbt: rebuilding cbt failed\n");
         std::exit(1);
     }

@@ -1,12 +1,12 @@
 #pragma once
 
-#include "platform/InputEvent.hpp"
-#include "text/FontSet.hpp"
-#include "ui/core/Args.hpp"
-#include "ui/core/ElementList.hpp"
-#include "ui/framework/Application.hpp"
-#include "ui/framework/PlatformHooks.hpp"
-#include "ui/widgets/DefaultTheme.hpp"
+#include "Platform/InputEvent.hpp"
+#include "Text/FontSet.hpp"
+#include "UI/Core/Args.hpp"
+#include "UI/Core/ElementList.hpp"
+#include "UI/Framework/Application.hpp"
+#include "UI/Framework/PlatformHooks.hpp"
+#include "UI/Widgets/DefaultTheme.hpp"
 
 #include <functional>
 #include <memory>
@@ -15,23 +15,23 @@
 
 namespace uitest {
 
-using cinder::platform::InputEvent;
-using cinder::platform::InputEventType;
+using cinder::Platform::InputEvent;
+using cinder::Platform::InputEventType;
 
-inline const cinder::text::FontSet& fonts() {
-    static const cinder::text::FontSet set = cinder::text::FontSet::engineDefault();
+inline const cinder::Text::FontSet& fonts() {
+    static const cinder::Text::FontSet set = cinder::Text::FontSet::engineDefault();
     return set;
 }
 
 struct Harness {
-    cinder::ui::HeadlessPlatform platform;
-    cinder::ui::Application app{platform, fonts(), cinder::ui::defaultTheme()};
-    cinder::ui::ElementList list;
+    cinder::UI::HeadlessPlatform platform;
+    cinder::UI::Application app{platform, fonts(), cinder::UI::defaultTheme()};
+    cinder::UI::ElementList list;
     glm::vec2 size{400.0f, 300.0f};
     glm::vec2 cursor{0.0f};
     std::uint8_t mods = 0;
 
-    explicit Harness(std::shared_ptr<cinder::ui::Widget> root = nullptr) {
+    explicit Harness(std::shared_ptr<cinder::UI::Widget> root = nullptr) {
         if (root) app.setRoot(std::move(root));
         frame();
     }
@@ -56,7 +56,7 @@ struct Harness {
         send(event);
     }
 
-    void press(int button = cinder::platform::buttons::LEFT) {
+    void press(int button = cinder::Platform::buttons::LEFT) {
         InputEvent event;
         event.type = InputEventType::MouseDown;
         event.code = button;
@@ -64,7 +64,7 @@ struct Harness {
         send(event);
     }
 
-    void release(int button = cinder::platform::buttons::LEFT) {
+    void release(int button = cinder::Platform::buttons::LEFT) {
         InputEvent event;
         event.type = InputEventType::MouseUp;
         event.code = button;
@@ -72,7 +72,7 @@ struct Harness {
         send(event);
     }
 
-    void click(float x, float y, int button = cinder::platform::buttons::LEFT) {
+    void click(float x, float y, int button = cinder::Platform::buttons::LEFT) {
         move(x, y);
         press(button);
         release(button);
@@ -109,20 +109,20 @@ struct Harness {
         send(event);
     }
 
-    cinder::ui::Geometry geometryOf(const std::shared_ptr<cinder::ui::Widget>& widget) const {
-        return app.grid().geometryOf(widget.get()).value_or(cinder::ui::Geometry{});
+    cinder::UI::Geometry geometryOf(const std::shared_ptr<cinder::UI::Widget>& widget) const {
+        return app.grid().geometryOf(widget.get()).value_or(cinder::UI::Geometry{});
     }
 
-    cinder::ui::Rect rectOf(const std::shared_ptr<cinder::ui::Widget>& widget) const {
+    cinder::UI::Rect rectOf(const std::shared_ptr<cinder::UI::Widget>& widget) const {
         return geometryOf(widget).rect();
     }
 
-    bool painted(const std::shared_ptr<cinder::ui::Widget>& widget) const { return app.grid().contains(widget.get()); }
+    bool painted(const std::shared_ptr<cinder::UI::Widget>& widget) const { return app.grid().contains(widget.get()); }
 };
 
-class Probe : public cinder::ui::LeafWidget {
+class Probe : public cinder::UI::LeafWidget {
 public:
-    struct Args : ::cinder::ui::Args<Args, Probe> {
+    struct Args : ::cinder::UI::Args<Args, Probe> {
         UI_ARG(glm::vec2, size, glm::vec2(20.0f))
         UI_ARG(bool, handles, true)
         UI_ARG(bool, focusable)
@@ -137,45 +137,45 @@ public:
     std::vector<std::string> log;
     bool handles_ = true;
 
-    cinder::ui::Reply onMouseDown(const cinder::ui::Geometry&, const cinder::ui::PointerEvent&) override {
+    cinder::UI::Reply onMouseDown(const cinder::UI::Geometry&, const cinder::UI::PointerEvent&) override {
         log.push_back("down");
         return reply();
     }
-    cinder::ui::Reply onMouseUp(const cinder::ui::Geometry&, const cinder::ui::PointerEvent&) override {
+    cinder::UI::Reply onMouseUp(const cinder::UI::Geometry&, const cinder::UI::PointerEvent&) override {
         log.push_back("up");
         return reply();
     }
-    cinder::ui::Reply onMouseDoubleClick(const cinder::ui::Geometry&, const cinder::ui::PointerEvent&) override {
+    cinder::UI::Reply onMouseDoubleClick(const cinder::UI::Geometry&, const cinder::UI::PointerEvent&) override {
         log.push_back("double");
         return reply();
     }
-    cinder::ui::Reply onMouseWheel(const cinder::ui::Geometry&, const cinder::ui::PointerEvent&) override {
+    cinder::UI::Reply onMouseWheel(const cinder::UI::Geometry&, const cinder::UI::PointerEvent&) override {
         log.push_back("wheel");
         return reply();
     }
-    cinder::ui::Reply onKeyDown(const cinder::ui::Geometry&, const cinder::ui::KeyEvent&) override {
+    cinder::UI::Reply onKeyDown(const cinder::UI::Geometry&, const cinder::UI::KeyEvent&) override {
         log.push_back("key");
         return reply();
     }
-    cinder::ui::Reply onDragDetected(const cinder::ui::Geometry&, const cinder::ui::PointerEvent&) override {
+    cinder::UI::Reply onDragDetected(const cinder::UI::Geometry&, const cinder::UI::PointerEvent&) override {
         log.push_back("drag");
         return reply();
     }
-    void onMouseEnter(const cinder::ui::Geometry&, const cinder::ui::PointerEvent&) override { log.push_back("enter"); }
-    void onMouseLeave(const cinder::ui::PointerEvent&) override { log.push_back("leave"); }
-    void onFocusLost(const cinder::ui::FocusEvent&) override { log.push_back("blur"); }
+    void onMouseEnter(const cinder::UI::Geometry&, const cinder::UI::PointerEvent&) override { log.push_back("enter"); }
+    void onMouseLeave(const cinder::UI::PointerEvent&) override { log.push_back("leave"); }
+    void onFocusLost(const cinder::UI::FocusEvent&) override { log.push_back("blur"); }
     bool supportsKeyboardFocus() const override { return focusable_; }
 
 protected:
     glm::vec2 computeDesiredSize(float) const override { return size_; }
-    int onPaint(const cinder::ui::PaintArgs&, const cinder::ui::Geometry&, cinder::ui::ElementList&, int layer,
-                const cinder::ui::PaintStyle&, bool) const override {
+    int onPaint(const cinder::UI::PaintArgs&, const cinder::UI::Geometry&, cinder::UI::ElementList&, int layer,
+                const cinder::UI::PaintStyle&, bool) const override {
         return layer;
     }
 
 private:
-    cinder::ui::Reply reply() const {
-        return handles_ ? cinder::ui::Reply::handled() : cinder::ui::Reply::unhandled();
+    cinder::UI::Reply reply() const {
+        return handles_ ? cinder::UI::Reply::handled() : cinder::UI::Reply::unhandled();
     }
 
     glm::vec2 size_{20.0f};

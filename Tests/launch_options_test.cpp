@@ -1,11 +1,11 @@
-#include "core/LaunchOptions.hpp"
+#include "Core/LaunchOptions.hpp"
 
 #include <doctest/doctest.h>
 
 #include <initializer_list>
 
-using cinder::core::LaunchOptions;
-using cinder::core::LaunchTarget;
+using cinder::Core::LaunchOptions;
+using cinder::Core::LaunchTarget;
 
 namespace {
 LaunchOptions parse(std::initializer_list<const char*> args, LaunchTarget target = LaunchTarget::Editor) {
@@ -26,12 +26,12 @@ TEST_CASE("launch options preserve project and capture arguments") {
     CHECK(options.play);
 }
 
-TEST_CASE("launch options retain permissive legacy parsing") {
+TEST_CASE("launch options reject malformed numbers and keep permissive flag parsing") {
     CHECK(parse({"editor", "first", "second"}).project == "first");
     CHECK(parse({"editor", "--unknown", "game"}).project == "game");
     CHECK(parse({"editor", "--frames"}).frameLimit == 0);
     CHECK(parse({"editor", "--frames", "invalid"}).frameLimit == 0);
-    CHECK(parse({"editor", "--frames", "12suffix"}).frameLimit == 12);
+    CHECK(parse({"editor", "--frames", "12suffix"}).frameLimit == 0);
     CHECK(parse({"editor", "--frames", "-4"}).frameLimit == -4);
     CHECK(parse({"editor", "--frames", "2", "--frames", "9"}).frameLimit == 9);
     CHECK(parse({"editor", "--scene", "--play"}).scene == "--play");

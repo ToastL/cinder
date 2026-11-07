@@ -2,15 +2,15 @@
 
 #include "ui_harness.hpp"
 
-#include "ui/widgets/Border.hpp"
-#include "ui/widgets/BoxPanel.hpp"
-#include "ui/widgets/Canvas.hpp"
-#include "ui/widgets/Label.hpp"
-#include "ui/widgets/ScrollBox.hpp"
-#include "ui/widgets/SizeBox.hpp"
-#include "ui/widgets/Splitter.hpp"
+#include "UI/Widgets/Border.hpp"
+#include "UI/Widgets/BoxPanel.hpp"
+#include "UI/Widgets/Canvas.hpp"
+#include "UI/Widgets/Label.hpp"
+#include "UI/Widgets/ScrollBox.hpp"
+#include "UI/Widgets/SizeBox.hpp"
+#include "UI/Widgets/Splitter.hpp"
 
-using namespace cinder::ui;
+using namespace cinder::UI;
 using uitest::Harness;
 using uitest::Probe;
 
@@ -79,17 +79,17 @@ TEST_CASE("a border pads its content and a scaler scales it") {
 }
 
 TEST_CASE("a canvas places anchored slots, point and stretched") {
-    std::shared_ptr<Probe> centred;
+    std::shared_ptr<Probe> centered;
     std::shared_ptr<Probe> stretched;
     std::shared_ptr<Probe> sized;
     Harness ui(make<Canvas>()
                + Canvas::slot().anchors({0.5f, 0.5f}).alignment({0.5f, 0.5f}).offset(Margin(0.0f, 0.0f, 80.0f, 20.0f))
-                         [make<Probe>().assign(centred)]
+                         [make<Probe>().assign(centered)]
                + Canvas::slot().anchors({0.0f, 1.0f}, {1.0f, 1.0f}).offset(Margin(10.0f, -30.0f, 10.0f, 20.0f))
                          [make<Probe>().assign(stretched)]
                + Canvas::slot().anchors({1.0f, 0.0f}).alignment({1.0f, 0.0f}).autoSize(true)
                          [make<Probe>().assign(sized).size({30.0f, 12.0f})]);
-    CHECK(ui.rectOf(centred) == Rect::fromSize({160.0f, 140.0f}, {80.0f, 20.0f}));
+    CHECK(ui.rectOf(centered) == Rect::fromSize({160.0f, 140.0f}, {80.0f, 20.0f}));
     CHECK(ui.rectOf(stretched) == Rect::fromSize({10.0f, 270.0f}, {380.0f, 20.0f}));
     CHECK(ui.rectOf(sized) == Rect::fromSize({370.0f, 0.0f}, {30.0f, 12.0f}));
 }

@@ -1,27 +1,27 @@
 #include <doctest/doctest.h>
 
-#include "gfx/rhi/Format.hpp"
+#include "Gfx/RHI/Format.hpp"
 #if defined(CINDER_BACKEND_VK)
-#include "gfx/vk/Formats.hpp"
+#include "Gfx/VK/Formats.hpp"
 #elif defined(CINDER_BACKEND_MTL)
-#include "gfx/mtl/Formats.hpp"
+#include "Gfx/MTL/Formats.hpp"
 #endif
 
-using cinder::gfx::rhi::Format;
-using cinder::gfx::rhi::isBgra;
-using cinder::gfx::rhi::isDepth;
-using cinder::gfx::rhi::isSrgb;
+using cinder::Gfx::RHI::Format;
+using cinder::Gfx::RHI::isBgra;
+using cinder::Gfx::RHI::isDepth;
+using cinder::Gfx::RHI::isSrgb;
 #if defined(CINDER_BACKEND_VK)
-using cinder::gfx::rhi::fromVk;
-using cinder::gfx::rhi::toVk;
+using cinder::Gfx::RHI::fromVk;
+using cinder::Gfx::RHI::toVk;
 #endif
-using cinder::gfx::rhi::VertexFormat;
+using cinder::Gfx::RHI::VertexFormat;
 
 namespace {
 
 constexpr Format ALL[] = {
     Format::Undefined,       Format::BGRA8Srgb,       Format::BGRA8Unorm,
-    Format::RGBA8Srgb,       Format::ABGR8SrgbPack32, Format::R8Unorm,
+    Format::RGBA8Srgb,       Format::RGBA8Unorm,      Format::ABGR8SrgbPack32, Format::R8Unorm,
     Format::D32Sfloat,       Format::D32SfloatS8Uint, Format::D24UnormS8Uint,
 };
 
@@ -36,7 +36,7 @@ TEST_CASE("every format round-trips through Vulkan") {
 #elif defined(CINDER_BACKEND_MTL)
 TEST_CASE("every concrete format maps to a Metal pixel format") {
     for (Format format : ALL) {
-        const std::uint64_t mapped = cinder::gfx::mtl::pixelFormat(format);
+        const std::uint64_t mapped = cinder::Gfx::MTL::pixelFormat(format);
         CHECK((mapped != 0) == (format != Format::Undefined));
     }
 }
@@ -91,8 +91,8 @@ TEST_CASE("vertex formats map to the sizes the pipelines declare") {
 }
 #elif defined(CINDER_BACKEND_MTL)
 TEST_CASE("vertex formats map to concrete Metal formats") {
-    CHECK(cinder::gfx::mtl::vertexFormat(VertexFormat::Float2) != 0);
-    CHECK(cinder::gfx::mtl::vertexFormat(VertexFormat::Float3) != 0);
-    CHECK(cinder::gfx::mtl::vertexFormat(VertexFormat::Float4) != 0);
+    CHECK(cinder::Gfx::MTL::vertexFormat(VertexFormat::Float2) != 0);
+    CHECK(cinder::Gfx::MTL::vertexFormat(VertexFormat::Float3) != 0);
+    CHECK(cinder::Gfx::MTL::vertexFormat(VertexFormat::Float4) != 0);
 }
 #endif

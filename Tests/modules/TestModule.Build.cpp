@@ -2,5 +2,5 @@
 
 
 CINDER_MODULE("test_module", [](cbt::ModuleRules& m, const cbt::TargetInfo&) {
-    m.publicDependencies({"game"});
+    m.publicDependencies({"Game"});
 });

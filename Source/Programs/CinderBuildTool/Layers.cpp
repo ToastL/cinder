@@ -28,11 +28,11 @@ void closure(const std::string& name, const std::map<std::string, std::set<std::
     }
 }
 
-}
-
 bool outside(const std::string& relative) {
     return relative == "ThirdParty" || relative == "Programs" || relative.starts_with("ThirdParty/")
            || relative.starts_with("Programs/");
+}
+
 }
 
 LayerGraph engineLayers(const std::filesystem::path& sourceRoot) {

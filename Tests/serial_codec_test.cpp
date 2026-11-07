@@ -1,31 +1,32 @@
 #include <doctest/doctest.h>
 
-#include "components/Builtins.hpp"
-#include "components/Camera.hpp"
-#include "components/Group.hpp"
-#include "components/MeshPart.hpp"
-#include "components/Sprite.hpp"
-#include "scene/Node.hpp"
-#include "scene/NodeTypes.hpp"
-#include "scene/PropValue.hpp"
-#include "scene/Scene.hpp"
-#include "serial/SceneCodec.hpp"
+#include "Nodes/Builtins.hpp"
+#include "Nodes/Camera.hpp"
+#include "Nodes/Group.hpp"
+#include "Nodes/MeshPart.hpp"
+#include "Nodes/Sprite.hpp"
+#include "Scene/Node.hpp"
+#include "Scene/NodeTypes.hpp"
+#include "Scene/Placeholder.hpp"
+#include "Scene/PropValue.hpp"
+#include "Scene/Scene.hpp"
+#include "Serial/SceneCodec.hpp"
 
 #include <cstdint>
 #include <memory>
 #include <stdexcept>
 #include <string>
 
-using cinder::components::Camera;
-using cinder::components::Group;
-using cinder::components::MeshPart;
-using cinder::components::Sprite;
-using cinder::scene::Node;
-using cinder::scene::NodeTypes;
-using cinder::scene::PropSeq;
-using cinder::scene::PropValue;
-using cinder::scene::Scene;
-using cinder::serial::SceneCodec;
+using cinder::Nodes::Camera;
+using cinder::Nodes::Group;
+using cinder::Nodes::MeshPart;
+using cinder::Nodes::Sprite;
+using cinder::Scene::Node;
+using cinder::Scene::NodeTypes;
+using cinder::Scene::PropSeq;
+using cinder::Scene::PropValue;
+using cinder::Scene::Scene;
+using cinder::Serial::SceneCodec;
 
 namespace {
 
@@ -40,7 +41,7 @@ struct Fixture {
     NodeTypes types;
     Scene scene{types};
 
-    Fixture() { cinder::components::registerBuiltins(types); }
+    Fixture() { cinder::Nodes::registerBuiltins(types); }
 
     void populate() {
         Camera* camera = place<Camera>(scene, 7, nullptr, nullptr);
@@ -350,4 +351,82 @@ nodes {
     REQUIRE(copy != nullptr);
     CHECK(f.types.nameOf(*copy) == "Turret");
     CHECK(copy->children().size() == 1);
+}
+
+TEST_CASE("a node named with a lone brace does not open a block") {
+    Fixture f;
+    place<Group>(f.scene, 3, "{", nullptr);
+    place<Group>(f.scene, 4, "after", nullptr);
+    const std::string text = SceneCodec::save(f.scene);
+
+    Fixture g;
+    SceneCodec::load(text, g.scene);
+    CHECK(g.scene.roots().size() == 2);
+    REQUIRE(g.scene.byId(3) != nullptr);
+    CHECK(g.scene.byId(3)->name() == "{");
+    CHECK(SceneCodec::save(g.scene) == text);
+}
+
+TEST_CASE("unbalanced braces are rejected and leave the scene intact") {
+    Fixture f;
+    f.populate();
+    CHECK_THROWS_AS(SceneCodec::load("version 4\nnodes {\n    Group {\n        id 1\n    }\n", f.scene), std::runtime_error);
+    CHECK_THROWS_AS(SceneCodec::load("version 4\n}\nnodes {\n}\n", f.scene), std::runtime_error);
+    CHECK(f.scene.roots().size() == 2);
+}
+
+TEST_CASE("malformed numbers fall back instead of throwing or truncating") {
+    Fixture f;
+    SceneCodec::load("version 4\nnodes {\n    Group {\n        id 1e20\n        position 1 two 3x\n    }\n}\n", f.scene);
+    REQUIRE(f.scene.roots().size() == 1);
+    const Node* group = f.scene.roots()[0];
+    CHECK(group->id() >= 1);
+    CHECK(group->transform()->position().x == 1.0f);
+    CHECK(group->transform()->position().y == 0.0f);
+    CHECK(group->transform()->position().z == 0.0f);
+}
+
+TEST_CASE("a subnormal value survives a round trip") {
+    Fixture f;
+    Group* group = place<Group>(f.scene, 2, "Tiny", nullptr);
+    group->transform()->setPosition(1.0e-40f, 0.0f, 0.0f);
+    const std::string text = SceneCodec::save(f.scene);
+
+    Fixture g;
+    SceneCodec::load(text, g.scene);
+    REQUIRE(g.scene.byId(2) != nullptr);
+    CHECK(g.scene.byId(2)->transform()->position().x == 1.0e-40f);
+}
+
+TEST_CASE("a placeholder keeps the quoting of every token in a field") {
+    const std::string text = R"(version 4
+nodes {
+    Turret {
+        id 4
+        label 1 "a b" plain "c"
+    }
+}
+)";
+    Fixture f;
+    SceneCodec::load(text, f.scene);
+    CHECK(SceneCodec::save(f.scene) == text);
+}
+
+TEST_CASE("a placeholder is cloned as a placeholder") {
+    const std::string text = "version 4\nnodes {\n    Turret {\n        id 4\n        range 3\n    }\n}\n";
+    Fixture f;
+    SceneCodec::load(text, f.scene);
+    Node* turret = f.scene.byId(4);
+    REQUIRE(turret != nullptr);
+    Node* copy = f.scene.clone(*turret, nullptr);
+    REQUIRE(copy != nullptr);
+    CHECK(f.types.nameOf(*copy) == "Turret");
+    CHECK(dynamic_cast<cinder::Scene::Placeholder*>(copy) != nullptr);
+}
+
+TEST_CASE("an out of range id gets a fresh one") {
+    Fixture f;
+    SceneCodec::load("version 4\nnodes {\n    Group {\n        id 2147483647\n    }\n}\n", f.scene);
+    REQUIRE(f.scene.roots().size() == 1);
+    CHECK(f.scene.roots()[0]->id() < Scene::MAX_ID);
 }

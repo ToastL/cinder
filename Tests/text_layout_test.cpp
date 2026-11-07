@@ -1,13 +1,13 @@
 #include <doctest/doctest.h>
 
-#include "text/FontSet.hpp"
-#include "text/Shaper.hpp"
-#include "text/TextLayout.hpp"
-#include "text/Utf8.hpp"
+#include "Text/FontSet.hpp"
+#include "Text/Shaper.hpp"
+#include "Text/TextLayout.hpp"
+#include "Text/Utf8.hpp"
 
 #include <string>
 
-using namespace cinder::text;
+using namespace cinder::Text;
 
 namespace {
 

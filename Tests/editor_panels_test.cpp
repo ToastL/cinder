@@ -1,48 +1,46 @@
 #include <doctest/doctest.h>
 
+#include "test_support.hpp"
+
 #include "ui_harness.hpp"
 
-#include "components/Builtins.hpp"
-#include "dev/History.hpp"
-#include "dev/Selection.hpp"
-#include "dev/panels/EditorStyle.hpp"
-#include "dev/panels/Explorer.hpp"
-#include "dev/panels/Properties.hpp"
-#include "scene/Node.hpp"
-#include "scene/NodeTypes.hpp"
-#include "scene/PropValue.hpp"
-#include "scene/Scene.hpp"
-#include "scene/Transform.hpp"
-#include "ui/widgets/Label.hpp"
-#include "ui/widgets/SpinBox.hpp"
-#include "ui/widgets/TextField.hpp"
-#include "ui/widgets/TreeView.hpp"
+#include "Dev/History.hpp"
+#include "Dev/Selection.hpp"
+#include "Dev/Panels/Dialog.hpp"
+#include "Dev/Panels/EditorStyle.hpp"
+#include "Dev/Panels/Explorer.hpp"
+#include "Dev/Panels/Properties.hpp"
+#include "Nodes/Builtins.hpp"
+#include "Scene/Node.hpp"
+#include "Scene/NodeTypes.hpp"
+#include "Scene/PropValue.hpp"
+#include "Scene/Scene.hpp"
+#include "Scene/Transform.hpp"
+#include "UI/Framework/Commands.hpp"
+#include "UI/Widgets/Label.hpp"
+#include "UI/Widgets/SpinBox.hpp"
+#include "UI/Widgets/TextField.hpp"
+#include "UI/Widgets/TreeView.hpp"
 
 #include <string>
 #include <vector>
 
-using namespace cinder::ui;
-using cinder::dev::History;
-using cinder::dev::Selection;
-using cinder::dev::panels::Explorer;
-using cinder::dev::panels::Properties;
-using cinder::scene::Node;
-using cinder::scene::NodeTypes;
-using cinder::scene::PropValue;
-using cinder::scene::Scene;
+using namespace cinder::UI;
+using cinder::Dev::History;
+using cinder::Dev::Selection;
+using cinder::Dev::Panels::Explorer;
+using cinder::Dev::Panels::Properties;
+using cinder::Scene::Node;
+using cinder::Scene::NodeTypes;
+using cinder::Scene::PropValue;
+using cinder::Scene::Scene;
 using uitest::Harness;
-namespace keys = cinder::platform::keys;
+namespace keys = cinder::Platform::keys;
 
 namespace {
 
-struct World {
-    NodeTypes types;
-    Scene scene{types};
-    Selection selection;
-    History history{scene};
-
+struct World : testing::EditorFixture {
     World() {
-        cinder::components::registerBuiltins(types);
         Node* box = scene.create("MeshPart", nullptr);
         box->setName("Box");
         box->setAttribute("phase", PropValue::number(2.0));
@@ -61,7 +59,7 @@ TEST_CASE("the Explorer lists the tree, selects a row and deletes the selection 
     World world;
     Harness ui(nullptr);
     Explorer explorer(world.selection, world.history, world.scene, ui.app);
-    ui.app.setTheme(cinder::dev::panels::editorTheme());
+    ui.app.setTheme(cinder::Dev::Panels::editorTheme());
     ui.app.setRoot(explorer.widget());
     ui.size = {320.0f, 400.0f};
     ui.frame();
@@ -76,7 +74,7 @@ TEST_CASE("the Explorer lists the tree, selects a row and deletes the selection 
     CHECK(tree->isSelected(box));
     CHECK(ui.app.focused() == tree);
 
-    ui.key(keys::DELETE);
+    ui.key(keys::DELETE_KEY);
     ui.frame();
     CHECK(world.scene.find("Box") == nullptr);
     CHECK_FALSE(world.selection.id().has_value());
@@ -89,7 +87,7 @@ TEST_CASE("the Explorer's filter flattens the tree to what matches") {
     World world;
     Harness ui(nullptr);
     Explorer explorer(world.selection, world.history, world.scene, ui.app);
-    ui.app.setTheme(cinder::dev::panels::editorTheme());
+    ui.app.setTheme(cinder::Dev::Panels::editorTheme());
     ui.app.setRoot(explorer.widget());
     ui.size = {320.0f, 400.0f};
     ui.frame();
@@ -110,7 +108,7 @@ TEST_CASE("dragging a row in the Explorer reparents the node, and refuses a cycl
     World world;
     Harness ui(nullptr);
     Explorer explorer(world.selection, world.history, world.scene, ui.app);
-    ui.app.setTheme(cinder::dev::panels::editorTheme());
+    ui.app.setTheme(cinder::Dev::Panels::editorTheme());
     ui.app.setRoot(explorer.widget());
     ui.size = {320.0f, 400.0f};
     ui.frame();
@@ -146,7 +144,7 @@ TEST_CASE("Properties edits a reflected prop through its definition and marks th
     World world;
     Harness ui(nullptr);
     Properties properties(world.selection, world.history, world.scene, ui.app);
-    ui.app.setTheme(cinder::dev::panels::editorTheme());
+    ui.app.setTheme(cinder::Dev::Panels::editorTheme());
     ui.app.setRoot(properties.widget());
     ui.size = {320.0f, 500.0f};
     ui.frame();
@@ -188,7 +186,7 @@ TEST_CASE("Properties lists attributes, and rebuilds when one is added or remove
     World world;
     Harness ui(nullptr);
     Properties properties(world.selection, world.history, world.scene, ui.app);
-    ui.app.setTheme(cinder::dev::panels::editorTheme());
+    ui.app.setTheme(cinder::Dev::Panels::editorTheme());
     ui.app.setRoot(properties.widget());
     ui.size = {320.0f, 500.0f};
     ui.frame();
@@ -227,4 +225,72 @@ TEST_CASE("Properties lists attributes, and rebuilds when one is added or remove
     properties.update();
     ui.frame();
     CHECK(labelled("Nothing selected"));
+}
+
+TEST_CASE("Escape in a Properties text field cancels instead of writing") {
+    World world;
+    world.node("Box").setAttribute("tag", PropValue::text("hero"));
+    world.history.reset();
+    Harness ui(nullptr);
+    Properties properties(world.selection, world.history, world.scene, ui.app);
+    ui.app.setTheme(cinder::Dev::Panels::editorTheme());
+    ui.app.setRoot(properties.widget());
+    ui.size = {320.0f, 500.0f};
+    ui.frame();
+    world.selection.select(world.node("Box").id());
+    properties.update();
+    ui.frame();
+
+    TextField* field = nullptr;
+    std::function<void(Widget*)> walk = [&](Widget* widget) {
+        if (widget == nullptr || field != nullptr) return;
+        if (auto* text = dynamic_cast<TextField*>(widget); text != nullptr && text->text() == "hero") {
+            field = text;
+            return;
+        }
+        for (int i = 0; i < widget->childCount(); ++i) walk(widget->childAt(i));
+    };
+    walk(properties.widget().get());
+    REQUIRE(field != nullptr);
+
+    const Rect rect = ui.app.grid().geometryOf(field).value_or(Geometry{}).rect();
+    ui.click(rect.center().x, rect.center().y);
+    ui.type(U"villain");
+    ui.key(keys::ESCAPE);
+    properties.update();
+    ui.frame();
+    world.history.settle(ui.app.isInteracting());
+
+    REQUIRE(world.node("Box").attribute("tag") != nullptr);
+    CHECK(world.node("Box").attribute("tag")->as<std::string>() == "hero");
+    CHECK_FALSE(world.history.dirty());
+}
+
+TEST_CASE("a modal dialog keeps every key from the global shortcuts") {
+    int shortcuts = 0;
+    int confirmed = 0;
+    int cancelled = 0;
+    std::shared_ptr<cinder::Dev::Panels::Dialog> dialog =
+            make<cinder::Dev::Panels::Dialog>()
+                    .title("Unsaved Changes")
+                    .message("Save?")
+                    .choices({cinder::Dev::Panels::DialogChoice{"Save", [&] { ++confirmed; }, true}})
+                    .onCancel([&] { ++cancelled; });
+    Harness ui(dialog);
+    ui.app.setTheme(cinder::Dev::Panels::editorTheme());
+    auto commands = std::make_shared<CommandList>();
+    auto play = std::make_shared<Command>(Command{"Play", "Play", "", Shortcut::primary(keys::letter('p'))});
+    commands->map(play, CommandAction{[&] { ++shortcuts; }, {}, {}});
+    ui.app.addCommands(commands);
+    ui.frame();
+    ui.app.setFocus(dialog);
+
+    ui.key(keys::letter('p'), cinder::Platform::modifiers::PRIMARY);
+    ui.key(keys::TAB);
+    CHECK(shortcuts == 0);
+    CHECK(ui.app.focused() == dialog);
+    ui.key(keys::ENTER);
+    CHECK(confirmed == 1);
+    ui.key(keys::ESCAPE);
+    CHECK(cancelled == 1);
 }

@@ -1,5 +1,7 @@
 #include "CinderBuildTool/Executor.hpp"
 
+#include <cstdint>
+
 #include "CinderBuildTool/Process.hpp"
 
 #include <atomic>
@@ -48,7 +50,12 @@ std::string key(const Action& action) { return action.outputs.empty() ? action.d
 std::string signatureOf(const Action& action) {
     std::string text = action.signature;
     for (const std::string& arg : action.command) text += arg + '\x1f';
-    return std::to_string(std::hash<std::string>{}(text));
+    std::uint64_t hash = 1469598103934665603ull;
+    for (const char c : text) {
+        hash ^= static_cast<unsigned char>(c);
+        hash *= 1099511628211ull;
+    }
+    return std::to_string(hash);
 }
 
 Executor::Executor(std::filesystem::path log, int jobs) : log_(std::move(log)), jobs_(jobs) { load(); }
@@ -131,10 +138,15 @@ ExecutorResult Executor::run(std::vector<Action> actions) {
             const std::size_t index = ready.back();
             ready.pop_back();
             Action& action = actions[index];
+            if (failed) {
+                ++finished;
+                wake.notify_all();
+                continue;
+            }
 
             bool ok = true;
             bool ran = false;
-            if (!failed && stale(action)) {
+            if (stale(action)) {
                 ran = true;
                 const std::size_t number = ++started;
                 lock.unlock();

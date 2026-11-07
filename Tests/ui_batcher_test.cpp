@@ -1,21 +1,21 @@
 #include <doctest/doctest.h>
 
-#include "text/FontSet.hpp"
-#include "text/GlyphAtlas.hpp"
-#include "text/Shaper.hpp"
-#include "ui/core/Batcher.hpp"
-#include "ui/core/ElementList.hpp"
+#include "Text/FontSet.hpp"
+#include "Text/GlyphAtlas.hpp"
+#include "Text/Shaper.hpp"
+#include "UI/Core/Batcher.hpp"
+#include "UI/Core/ElementList.hpp"
 
 #include <array>
 
-using cinder::ui::BoxStyle;
-using cinder::ui::ElementList;
-using cinder::ui::Color;
-using cinder::ui::Rect;
-using cinder::ui::TextureRef;
-using cinder::ui::Transform2D;
-using cinder::ui::UiGeometry;
-using cinder::ui::UiMode;
+using cinder::UI::BoxStyle;
+using cinder::UI::ElementList;
+using cinder::UI::Color;
+using cinder::UI::Rect;
+using cinder::UI::TextureRef;
+using cinder::UI::Transform2D;
+using cinder::UI::UiGeometry;
+using cinder::UI::UiMode;
 
 namespace {
 
@@ -30,16 +30,16 @@ ElementList list(float scale = 1.0f) {
 
 UiGeometry batched(const ElementList& elements) {
     UiGeometry geometry;
-    cinder::ui::batch(elements, geometry);
+    cinder::UI::batch(elements, geometry);
     return geometry;
 }
 
-const cinder::text::FontSet& fonts() {
-    static const cinder::text::FontSet set = cinder::text::FontSet::engineDefault();
+const cinder::Text::FontSet& fonts() {
+    static const cinder::Text::FontSet set = cinder::Text::FontSet::engineDefault();
     return set;
 }
 
-UiMode modeOf(const cinder::ui::UiVertex& vertex) { return static_cast<UiMode>(static_cast<int>(vertex.shape.w)); }
+UiMode modeOf(const cinder::UI::UiVertex& vertex) { return static_cast<UiMode>(static_cast<int>(vertex.shape.w)); }
 
 }
 
@@ -57,10 +57,10 @@ TEST_CASE("the clip stack intersects on push and never pops its root") {
 }
 
 TEST_CASE("boxes, lines and text share one batch because only the text samples a texture") {
-    cinder::text::GlyphAtlas atlas;
+    cinder::Text::GlyphAtlas atlas;
     ElementList elements = list();
     elements.box(0, Rect::fromSize({10.0f, 10.0f}, {50.0f, 20.0f}), GREY);
-    elements.text(0, {12.0f, 25.0f}, cinder::text::shape(fonts().get(cinder::text::FontStyle::Regular), "Hi", 13.0f),
+    elements.text(0, {12.0f, 25.0f}, cinder::Text::shape(fonts().get(cinder::Text::FontStyle::Regular), "Hi", 13.0f),
                   Color::white(), atlas);
     const std::array<glm::vec2, 2> line = {glm::vec2(0.0f), glm::vec2(100.0f, 0.0f)};
     elements.lines(0, line, Color::white(), 2.0f);
@@ -177,9 +177,9 @@ TEST_CASE("a transform moves every vertex, and a clipped-away element emits noth
 }
 
 TEST_CASE("glyph quads land on device pixels and point at their atlas texels") {
-    cinder::text::GlyphAtlas atlas;
+    cinder::Text::GlyphAtlas atlas;
     ElementList elements = list(2.0f);
-    elements.text(0, {10.3f, 20.1f}, cinder::text::shape(fonts().get(cinder::text::FontStyle::Regular), "A", 13.0f),
+    elements.text(0, {10.3f, 20.1f}, cinder::Text::shape(fonts().get(cinder::Text::FontStyle::Regular), "A", 13.0f),
                   Color::white(), atlas);
 
     const UiGeometry geometry = batched(elements);
@@ -189,7 +189,7 @@ TEST_CASE("glyph quads land on device pixels and point at their atlas texels") {
     CHECK(corner.y == doctest::Approx(std::round(corner.y)));
     CHECK(modeOf(geometry.vertices[0]) == UiMode::Glyph);
     const glm::vec2 texels = (geometry.vertices[2].uv - geometry.vertices[0].uv)
-            * static_cast<float>(cinder::text::GlyphAtlas::PAGE_SIZE);
+            * static_cast<float>(cinder::Text::GlyphAtlas::PAGE_SIZE);
     const glm::vec2 pixels = (geometry.vertices[2].position - geometry.vertices[0].position) * 2.0f;
     CHECK(texels.x == doctest::Approx(pixels.x));
     CHECK(texels.y == doctest::Approx(pixels.y));

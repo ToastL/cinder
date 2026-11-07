@@ -1,11 +1,11 @@
 #include <doctest/doctest.h>
 
-#include "components/Builtins.hpp"
-#include "core/ProjectConfig.hpp"
-#include "physics/Nodes.hpp"
-#include "scene/NodeTypes.hpp"
-#include "scene/Scene.hpp"
-#include "serial/SceneCodec.hpp"
+#include "Core/ProjectConfig.hpp"
+#include "Nodes/Builtins.hpp"
+#include "Physics/Nodes.hpp"
+#include "Scene/NodeTypes.hpp"
+#include "Scene/Scene.hpp"
+#include "Serial/SceneCodec.hpp"
 
 
 #include <filesystem>
@@ -15,11 +15,11 @@
 #include <string>
 #include <vector>
 
-using cinder::core::ProjectConfig;
-using cinder::core::ProjectDescriptor;
-using cinder::scene::NodeTypes;
-using cinder::scene::Scene;
-using cinder::serial::SceneCodec;
+using cinder::Core::ProjectConfig;
+using cinder::Core::ProjectDescriptor;
+using cinder::Scene::NodeTypes;
+using cinder::Scene::Scene;
+using cinder::Serial::SceneCodec;
 
 namespace {
 
@@ -71,8 +71,8 @@ TEST_CASE("every shipped project descriptor and config is canonical") {
 
 TEST_CASE("every shipped scene is canonical") {
     NodeTypes types;
-    cinder::components::registerBuiltins(types);
-    cinder::physics::registerNodes(types);
+    cinder::Nodes::registerBuiltins(types);
+    cinder::Physics::registerNodes(types);
     Scene scene{types};
 
     const std::vector<std::filesystem::path> scenes = shippedScenes();

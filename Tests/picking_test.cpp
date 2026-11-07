@@ -1,15 +1,15 @@
 #include <doctest/doctest.h>
 
-#include "components/Builtins.hpp"
-#include "components/Camera.hpp"
-#include "components/Sprite.hpp"
-#include "dev/Picking.hpp"
-#include "gfx/pass/ViewCamera.hpp"
-#include "scene/Node.hpp"
-#include "scene/NodeTypes.hpp"
-#include "scene/Scene.hpp"
-#include "scene/Transform.hpp"
-#include "scene/View.hpp"
+#include "Dev/Picking.hpp"
+#include "Gfx/Pass/ViewCamera.hpp"
+#include "Nodes/Builtins.hpp"
+#include "Nodes/Camera.hpp"
+#include "Nodes/Sprite.hpp"
+#include "Scene/Node.hpp"
+#include "Scene/NodeTypes.hpp"
+#include "Scene/Scene.hpp"
+#include "Scene/Transform.hpp"
+#include "Scene/View.hpp"
 
 #include <glm/geometric.hpp>
 #include <glm/gtc/matrix_transform.hpp>
@@ -18,16 +18,16 @@
 #include <optional>
 #include <string_view>
 
-using cinder::components::Camera;
-using cinder::components::Sprite;
-using cinder::dev::PickView;
-using cinder::dev::Ray;
-using cinder::dev::hitCube;
-using cinder::dev::hitSprite;
-using cinder::dev::rayThrough;
-using cinder::scene::Node;
-using cinder::scene::NodeTypes;
-using cinder::scene::Scene;
+using cinder::Nodes::Camera;
+using cinder::Nodes::Sprite;
+using cinder::Dev::PickView;
+using cinder::Dev::Ray;
+using cinder::Dev::hitCube;
+using cinder::Dev::hitSprite;
+using cinder::Dev::rayThrough;
+using cinder::Scene::Node;
+using cinder::Scene::NodeTypes;
+using cinder::Scene::Scene;
 
 namespace {
 
@@ -37,11 +37,11 @@ const glm::vec2 CENTRE(100.0f, 50.0f);
 struct World {
     NodeTypes types;
     Scene scene{types};
-    cinder::gfx::pass::ViewCamera camera;
+    cinder::Gfx::Pass::ViewCamera camera;
 
     World() {
-        cinder::components::registerBuiltins(types);
-        cinder::scene::View view;
+        cinder::Nodes::registerBuiltins(types);
+        cinder::Scene::View view;
         view.fovDegrees = 60.0f;
         view.nearClip = 0.1f;
         view.farClip = 100.0f;
@@ -56,7 +56,7 @@ struct World {
     }
 
     Node* pickAt(glm::vec2 point) {
-        return cinder::dev::pick(scene, PickView{camera.viewProjection(), point, SIZE});
+        return cinder::Dev::pick(scene, PickView{camera.viewProjection(), point, SIZE});
     }
 };
 
@@ -64,10 +64,10 @@ struct World {
 
 TEST_CASE("a ray through the view starts on the near plane and points into the screen") {
     World world;
-    const Ray centre = rayThrough(world.camera.viewProjection(), CENTRE, SIZE);
-    CHECK(centre.origin.z == doctest::Approx(-0.1f));
-    CHECK(centre.direction.x == doctest::Approx(0.0f));
-    CHECK(centre.direction.z == doctest::Approx(-1.0f));
+    const Ray center = rayThrough(world.camera.viewProjection(), CENTRE, SIZE);
+    CHECK(center.origin.z == doctest::Approx(-0.1f));
+    CHECK(center.direction.x == doctest::Approx(0.0f));
+    CHECK(center.direction.z == doctest::Approx(-1.0f));
 
     const Ray top = rayThrough(world.camera.viewProjection(), glm::vec2(CENTRE.x, 0.0f), SIZE);
     CHECK(top.direction.y > 0.0f);

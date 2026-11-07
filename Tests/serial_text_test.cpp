@@ -1,33 +1,33 @@
 #include <doctest/doctest.h>
 
-#include "components/Builtins.hpp"
-#include "components/Camera.hpp"
-#include "components/Group.hpp"
-#include "components/Sprite.hpp"
-#include "scene/Node.hpp"
-#include "scene/NodeTypes.hpp"
-#include "scene/Scene.hpp"
-#include "serial/SceneCodec.hpp"
+#include "Nodes/Builtins.hpp"
+#include "Nodes/Camera.hpp"
+#include "Nodes/Group.hpp"
+#include "Nodes/Sprite.hpp"
+#include "Scene/Node.hpp"
+#include "Scene/NodeTypes.hpp"
+#include "Scene/Scene.hpp"
+#include "Serial/SceneCodec.hpp"
 
 #include <clocale>
 #include <limits>
 #include <memory>
 #include <string>
 
-using cinder::components::Camera;
-using cinder::components::Group;
-using cinder::components::Sprite;
-using cinder::scene::Node;
-using cinder::scene::NodeTypes;
-using cinder::scene::Scene;
-using cinder::serial::SceneCodec;
+using cinder::Nodes::Camera;
+using cinder::Nodes::Group;
+using cinder::Nodes::Sprite;
+using cinder::Scene::Node;
+using cinder::Scene::NodeTypes;
+using cinder::Scene::Scene;
+using cinder::Serial::SceneCodec;
 
 namespace {
 
-struct Tally : cinder::scene::Node {
+struct Tally : cinder::Scene::Node {
     int count_ = 0;
 
-    CINDER_NODE(Tally, cinder::scene::Node) { CINDER_PROP(count_); }
+    CINDER_NODE(Tally, cinder::Scene::Node) { CINDER_PROP(count_); }
 };
 
 struct Fixture {
@@ -35,7 +35,7 @@ struct Fixture {
     Scene scene{types};
 
     Fixture() {
-        cinder::components::registerBuiltins(types);
+        cinder::Nodes::registerBuiltins(types);
         types.add<Tally>("Tally");
     }
 };

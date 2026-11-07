@@ -24,10 +24,16 @@ struct Varyings {
 
 static const float3 LIGHT_DIR = float3(-0.35, -0.87, -0.35);
 
+float3 worldNormal(float3x3 m, float3 n) {
+    float3x3 cofactor = float3x3(cross(m[1], m[2]), cross(m[2], m[0]), cross(m[0], m[1]));
+    float det = dot(m[0], cofactor[0]);
+    return mul(cofactor, n) * (det < 0.0 ? -1.0 : 1.0);
+}
+
 Varyings VSMain(Vertex input) {
     Varyings output;
     output.position = mul(push.viewProjection, mul(push.model, float4(input.position, 1.0)));
-    output.normal = mul((float3x3)push.model, input.normal);
+    output.normal = worldNormal((float3x3)push.model, input.normal);
     output.uv = input.uv;
     output.color = input.color;
     return output;
