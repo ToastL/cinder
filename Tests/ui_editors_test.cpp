@@ -1,5 +1,6 @@
 #include <doctest/doctest.h>
 
+#include "ui/widgets/MenuBar.hpp"
 #include "ui_harness.hpp"
 
 #include "ui/framework/Commands.hpp"

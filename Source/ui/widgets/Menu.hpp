@@ -6,7 +6,6 @@
 #include "ui/core/TextRun.hpp"
 #include "ui/framework/Application.hpp"
 #include "ui/framework/Commands.hpp"
-#include "ui/framework/PopupHandle.hpp"
 
 #include <cstdint>
 #include <functional>
@@ -129,94 +128,6 @@ private:
     int subRow_ = -1;
     std::shared_ptr<Menu> sub_;
     bool nested_ = false;
-};
-
-class MenuAnchor : public CompoundWidget {
-public:
-    using MenuFactory = std::function<std::shared_ptr<Widget>()>;
-
-    struct Args : ::cinder::ui::Args<Args, MenuAnchor> {
-        UI_EVENT(MenuFactory, onGetMenuContent)
-        UI_ARG(Placement, placement, Placement::Below)
-        UI_ARG(bool, matchWidth)
-        UI_EVENT(OnBoolChanged, onMenuOpenChanged)
-        UI_CONTENT(content)
-    };
-
-    void construct(const Args& args);
-
-    void open();
-    void close();
-    void toggle();
-    bool isOpen() const { return popup_.isOpen(); }
-    const std::shared_ptr<Widget>& menu() const { return popup_.content(); }
-
-private:
-    MenuFactory factory_;
-    Placement placement_ = Placement::Below;
-    bool matchWidth_ = false;
-    OnBoolChanged onChanged_;
-    PopupHandle popup_;
-};
-
-class MenuBar;
-
-class MenuBarItem : public LeafWidget {
-public:
-    MenuBarItem(MenuBar& bar, int index) : bar_(&bar), index_(index) {}
-
-    void onMouseEnter(const Geometry& geometry, const PointerEvent& event) override;
-    Reply onMouseDown(const Geometry& geometry, const PointerEvent& event) override;
-
-protected:
-    glm::vec2 computeDesiredSize(float layoutScale) const override;
-    int onPaint(const PaintArgs& args, const Geometry& geometry, ElementList& list, int layer,
-                const PaintStyle& style, bool enabled) const override;
-
-private:
-    MenuBar* bar_;
-    int index_;
-    mutable TextRun title_;
-};
-
-struct MenuBarEntry {
-    std::string title;
-    std::function<void(MenuBuilder&)> fill;
-};
-
-class MenuBar : public CompoundWidget {
-public:
-    struct Args : ::cinder::ui::Args<Args, MenuBar> {
-        std::vector<MenuBarEntry> menus_;
-        Args& menu(std::string title, std::function<void(MenuBuilder&)> fill) {
-            menus_.push_back(MenuBarEntry{std::move(title), std::move(fill)});
-            return *this;
-        }
-        UI_ARG(std::string, style, "MenuBar")
-    };
-
-    void construct(const Args& args);
-
-    const std::string& style() const { return style_; }
-    const std::string& title(int index) const { return menus_[static_cast<std::size_t>(index)].title; }
-    int menuCount() const { return static_cast<int>(menus_.size()); }
-    int openIndex() const;
-    void open(int index);
-    void close();
-    const std::shared_ptr<MenuBarItem>& item(int index) const { return items_[static_cast<std::size_t>(index)]; }
-
-    Reply onMouseDown(const Geometry& geometry, const PointerEvent& event) override;
-
-protected:
-    int onPaint(const PaintArgs& args, const Geometry& geometry, ElementList& list, int layer,
-                const PaintStyle& style, bool enabled) const override;
-
-private:
-    std::vector<MenuBarEntry> menus_;
-    std::vector<std::shared_ptr<MenuBarItem>> items_;
-    std::string style_;
-    int open_ = -1;
-    PopupHandle popup_;
 };
 
 void showContextMenu(std::shared_ptr<Widget> menu, glm::vec2 at);

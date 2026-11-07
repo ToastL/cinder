@@ -20,6 +20,7 @@
 #include "ui/widgets/ExpandableArea.hpp"
 #include "ui/widgets/Label.hpp"
 #include "ui/widgets/Menu.hpp"
+#include "ui/widgets/MenuBar.hpp"
 #include "ui/widgets/ScrollBox.hpp"
 #include "ui/widgets/SizeBox.hpp"
 #include "ui/widgets/SpinBox.hpp"

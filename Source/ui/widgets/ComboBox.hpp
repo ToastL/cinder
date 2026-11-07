@@ -3,6 +3,7 @@
 #include "ui/core/Args.hpp"
 #include "ui/core/CompoundWidget.hpp"
 #include "ui/widgets/Menu.hpp"
+#include "ui/widgets/MenuAnchor.hpp"
 
 #include <functional>
 #include <memory>
