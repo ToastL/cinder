@@ -161,7 +161,8 @@ std::shared_ptr<Widget> Properties::editorFor(const PropDef& def, Target target)
                         void* at = target();
                         return at != nullptr ? std::string(prop->readText(at)) : std::string();
                     })
-                    .onTextCommitted([this, prop, target](const std::string& text, TextCommit) {
+                    .onTextCommitted([this, prop, target](const std::string& text, TextCommit how) {
+                        if (how == TextCommit::Cleared) return;
                         if (void* at = target()) {
                             prop->writeText(at, text);
                             touched();
@@ -293,7 +294,9 @@ std::shared_ptr<Widget> Properties::attributeEditor(int id, const std::string& n
                     const PropValue current = valueOf();
                     return current.is<std::string>() ? current.as<std::string>() : std::string();
                 })
-                .onTextCommitted([write](const std::string& text, TextCommit) { write(PropValue::text(text)); });
+                .onTextCommitted([write](const std::string& text, TextCommit how) {
+                    if (how != TextCommit::Cleared) write(PropValue::text(text));
+                });
     }
     if (!value.is<PropSeq>()) {
         return make<SpinBox>()

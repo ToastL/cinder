@@ -52,9 +52,8 @@ Reply Dialog::onKeyDown(const Geometry&, const KeyEvent& event) {
     }
     if ((event.key == keys::ENTER || event.key == keys::KEYPAD_ENTER) && primary_) {
         primary_();
-        return Reply::handled();
     }
-    return Reply::unhandled();
+    return Reply::handled();
 }
 
 Reply Dialog::onMouseDown(const Geometry&, const PointerEvent&) {

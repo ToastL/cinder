@@ -47,11 +47,18 @@ std::shared_ptr<Widget> ComboBox::buildMenu() {
     const std::string current = selected();
     int chosen = -1;
     const std::vector<std::string> all = options();
+    const std::weak_ptr<Widget> self = weak_from_this();
     for (std::size_t i = 0; i < all.size(); ++i) {
         const std::string option = all[i];
         if (option == current) chosen = static_cast<int>(i);
-        builder.check(labelFor(option), [this, option] { select(option); },
-                      [this, option] { return selected() == option; });
+        builder.check(labelFor(option),
+                      [self, option] {
+                          if (std::shared_ptr<Widget> alive = self.lock()) static_cast<ComboBox&>(*alive).select(option);
+                      },
+                      [self, option] {
+                          std::shared_ptr<Widget> alive = self.lock();
+                          return alive && static_cast<const ComboBox&>(*alive).selected() == option;
+                      });
     }
     std::shared_ptr<Menu> menu = builder.build();
     if (chosen >= 0) menu->highlight(chosen, false);

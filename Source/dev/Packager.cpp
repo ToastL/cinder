@@ -31,10 +31,10 @@ std::string projectName(const std::filesystem::path& project) {
 
 PackageTools PackageTools::fromBuild() { return PackageTools{cinder::platform::executableDir() / "packager"}; }
 
-std::string packageCommand(const PackageTools& tools, Platform platform, Configuration configuration,
-                           const std::filesystem::path& project, const std::filesystem::path& output) {
-    return quote(tools.packager) + " " + quote(project) + " --platform " + std::string(platformName(platform))
-            + " --config " + std::string(configurationName(configuration)) + " --out " + quote(output) + " 2>&1";
+std::vector<std::string> packageArguments(const PackageTools& tools, Platform platform, Configuration configuration,
+                                          const std::filesystem::path& project, const std::filesystem::path& output) {
+    return {tools.packager.string(), project.string(), "--platform", std::string(platformName(platform)),
+            "--config", std::string(configurationName(configuration)), "--out", output.string()};
 }
 
 Packager::Packager(std::filesystem::path project, std::vector<std::string> targetPlatforms, PackageTools tools)
@@ -79,13 +79,13 @@ bool Packager::start(Platform platform) {
     if (worker_.joinable()) worker_.join();
 
     const std::filesystem::path output = outputDir(platform);
-    const std::string command = packageCommand(tools_, platform, configuration_, project_, output);
+    const std::vector<std::string> arguments = packageArguments(tools_, platform, configuration_, project_, output);
     cinder::platform::logInfo("[package] packaging %s for %s (%s) into %s\n", name_.c_str(),
                               std::string(platformName(platform)).c_str(),
                               std::string(configurationName(configuration_)).c_str(), output.string().c_str());
 
     std::string error;
-    std::unique_ptr<Process> process = Process::shell(command, error);
+    std::unique_ptr<Process> process = Process::start(arguments, error);
     if (process == nullptr) {
         cinder::platform::logError("[package] %s\n", error.c_str());
         return false;

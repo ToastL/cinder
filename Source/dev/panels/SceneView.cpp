@@ -331,7 +331,6 @@ Reply SceneView::keyDown(const KeyEvent& event) {
         const std::string name = label();
         if (manipulation_.cancel(engine_.scene())) history_.touch(name, selection_.id());
         manipulation_.end();
-        grabbed_ = false;
         return Reply::handled();
     }
     if (event.control() || event.super()) return Reply::unhandled();

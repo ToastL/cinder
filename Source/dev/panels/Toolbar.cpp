@@ -109,8 +109,8 @@ void Toolbar::build() {
 
     const std::shared_ptr<const CommandList> list = commands_;
     std::shared_ptr<Widget> menus = make<MenuBar>()
-            .menu("File", [list](MenuBuilder& menu) { menu.command(list, *SAVE).command(list, *BUILD); })
-            .menu("Edit", [list](MenuBuilder& menu) { menu.command(list, *UNDO).command(list, *REDO); })
+            .menu("File", [list](MenuBuilder& menu) { menu.command(list, SAVE).command(list, BUILD); })
+            .menu("Edit", [list](MenuBuilder& menu) { menu.command(list, UNDO).command(list, REDO); })
             .menu("Window", [this](MenuBuilder& menu) {
                 if (windowMenu_) windowMenu_(menu);
             })
@@ -120,7 +120,7 @@ void Toolbar::build() {
                         .entry([this] { return std::string(session_.state() == PlaySession::State::Paused ? "Resume" : "Pause"); },
                                [list] { list->execute(*PAUSE); }, PAUSE->shortcut.label())
                         .enabledIf([this] { return !editing(); })
-                        .command(list, *STEP);
+                        .command(list, STEP);
             })
             .menu("Platforms", [this](MenuBuilder& menu) {
                 menu.heading("Configuration");
@@ -157,7 +157,7 @@ void Toolbar::build() {
                         .buttonStyle([this] { return std::string(editing() ? "Button.Primary" : "Button"); })
                         .toolTipText(shortcut(PLAY))
                         .onClicked([this] {
-                            session_.togglePlay();
+                            commands_->execute(*PLAY);
                             return Reply::handled();
                         })]
          + gap(4.0f)

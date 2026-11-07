@@ -6,6 +6,7 @@
 #include "ui/core/TextRun.hpp"
 #include "ui/framework/Application.hpp"
 #include "ui/framework/Commands.hpp"
+#include "ui/framework/PopupHandle.hpp"
 
 #include <cstdint>
 #include <functional>
@@ -38,7 +39,7 @@ public:
     MenuBuilder& entry(Attribute<std::string> label, std::function<void()> action, std::string shortcut = {});
     MenuBuilder& check(Attribute<std::string> label, std::function<void()> action, std::function<bool()> checked,
                        std::string shortcut = {});
-    MenuBuilder& command(std::shared_ptr<const CommandList> commands, const Command& command);
+    MenuBuilder& command(std::shared_ptr<const CommandList> commands, std::shared_ptr<const Command> command);
     MenuBuilder& subMenu(Attribute<std::string> label, std::function<void(MenuBuilder&)> fill);
     MenuBuilder& separator();
     MenuBuilder& heading(std::string text);
@@ -147,18 +148,15 @@ public:
     void open();
     void close();
     void toggle();
-    bool isOpen() const;
-    const std::shared_ptr<Widget>& menu() const { return menu_; }
+    bool isOpen() const { return popup_.isOpen(); }
+    const std::shared_ptr<Widget>& menu() const { return popup_.content(); }
 
 private:
-    void dismissed(const Widget* menu);
-
     MenuFactory factory_;
     Placement placement_ = Placement::Below;
     bool matchWidth_ = false;
     OnBoolChanged onChanged_;
-    std::shared_ptr<Widget> menu_;
-    Application* app_ = nullptr;
+    PopupHandle popup_;
 };
 
 class MenuBar;
@@ -218,8 +216,7 @@ private:
     std::vector<std::shared_ptr<MenuBarItem>> items_;
     std::string style_;
     int open_ = -1;
-    std::shared_ptr<Widget> menu_;
-    Application* app_ = nullptr;
+    PopupHandle popup_;
 };
 
 void showContextMenu(std::shared_ptr<Widget> menu, glm::vec2 at);

@@ -62,12 +62,12 @@ MenuBuilder& MenuBuilder::check(Attribute<std::string> label, std::function<void
     return add(std::move(item));
 }
 
-MenuBuilder& MenuBuilder::command(std::shared_ptr<const CommandList> commands, const Command& command) {
+MenuBuilder& MenuBuilder::command(std::shared_ptr<const CommandList> commands, std::shared_ptr<const Command> bound) {
+    const Command& command = *bound;
     MenuItem item;
     item.label = command.label;
     item.shortcut = command.shortcut.label();
     item.toolTip = command.description;
-    const Command* bound = &command;
     item.action = [commands, bound] { commands->execute(*bound); };
     item.canExecute = [commands, bound] {
         const CommandAction* action = commands->action(*bound);
@@ -378,8 +378,6 @@ void MenuAnchor::construct(const Args& args) {
     childSlot_.widget = args.content_;
 }
 
-bool MenuAnchor::isOpen() const { return menu_ && app_ != nullptr && app_->isPopupOpen(menu_.get()); }
-
 void MenuAnchor::open() {
     Application* app = Application::current();
     if (app == nullptr || !factory_ || isOpen()) return;
@@ -393,25 +391,17 @@ void MenuAnchor::open() {
     options.minWidth = matchWidth_ ? anchor.width() : 0.0f;
     options.owner = weak_from_this();
     const std::weak_ptr<Widget> self = weak_from_this();
-    const Widget* raw = content.get();
-    options.onDismissed = [self, raw] {
-        if (std::shared_ptr<Widget> alive = self.lock()) static_cast<MenuAnchor&>(*alive).dismissed(raw);
+    options.onDismissed = [self] {
+        std::shared_ptr<Widget> alive = self.lock();
+        if (!alive) return;
+        auto& anchor = static_cast<MenuAnchor&>(*alive);
+        if (anchor.onChanged_) anchor.onChanged_(false);
     };
-    menu_ = content;
-    app_ = app;
-    app->pushPopup(std::move(content), anchor, std::move(options));
+    popup_.open(*app, std::move(content), anchor, std::move(options));
     if (onChanged_) onChanged_(true);
 }
 
-void MenuAnchor::dismissed(const Widget* menu) {
-    if (menu_.get() != menu) return;
-    menu_.reset();
-    if (onChanged_) onChanged_(false);
-}
-
-void MenuAnchor::close() {
-    if (menu_ && app_ != nullptr) app_->dismissPopup(menu_.get());
-}
+void MenuAnchor::close() { popup_.close(); }
 
 void MenuAnchor::toggle() {
     if (isOpen()) close();
@@ -465,7 +455,7 @@ void MenuBar::construct(const Args& args) {
 }
 
 int MenuBar::openIndex() const {
-    if (open_ < 0 || !menu_ || app_ == nullptr || !app_->isPopupOpen(menu_.get())) return -1;
+    if (open_ < 0 || !popup_.isOpen()) return -1;
     return open_;
 }
 
@@ -481,25 +471,15 @@ void MenuBar::open(int index) {
     options.placement = Placement::Below;
     options.owner = weak_from_this();
     const std::weak_ptr<Widget> self = weak_from_this();
-    const Widget* raw = menu.get();
-    options.onDismissed = [self, raw] {
-        std::shared_ptr<Widget> alive = self.lock();
-        if (!alive) return;
-        auto& bar = static_cast<MenuBar&>(*alive);
-        if (bar.menu_.get() != raw) return;
-        bar.menu_.reset();
-        bar.open_ = -1;
+    options.onDismissed = [self] {
+        if (std::shared_ptr<Widget> alive = self.lock()) static_cast<MenuBar&>(*alive).open_ = -1;
     };
     const Rect anchor = app->grid().geometryOf(items_[static_cast<std::size_t>(index)].get()).value_or(Geometry{}).rect();
-    menu_ = menu;
+    popup_.open(*app, std::move(menu), anchor, std::move(options));
     open_ = index;
-    app_ = app;
-    app->pushPopup(menu, anchor, std::move(options));
 }
 
-void MenuBar::close() {
-    if (menu_ && app_ != nullptr) app_->dismissPopup(menu_.get());
-}
+void MenuBar::close() { popup_.close(); }
 
 Reply MenuBar::onMouseDown(const Geometry&, const PointerEvent& event) {
     if (event.button != cinder::platform::buttons::LEFT) return Reply::unhandled();

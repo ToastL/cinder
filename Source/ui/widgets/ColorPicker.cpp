@@ -266,7 +266,7 @@ void ColorBlock::change(Color color) {
     if (onChanged_) onChanged_(color);
 }
 
-bool ColorBlock::isPickerOpen() const { return picker_ && app_ != nullptr && app_->isPopupOpen(picker_.get()); }
+bool ColorBlock::isPickerOpen() const { return picker_.isOpen(); }
 
 void ColorBlock::openPicker() {
     Application* app = Application::current();
@@ -277,7 +277,7 @@ void ColorBlock::openPicker() {
         return alive ? static_cast<ColorBlock*>(alive.get()) : nullptr;
     };
     const Color initial = color();
-    picker_ = make<ColorPicker>()
+    std::shared_ptr<Widget> picker = make<ColorPicker>()
                       .color([block, initial] {
                           const ColorBlock* owner = block();
                           return owner != nullptr ? owner->color() : initial;
@@ -290,14 +290,8 @@ void ColorBlock::openPicker() {
     PopupOptions options;
     options.placement = Placement::Below;
     options.owner = self;
-    const Widget* raw = picker_.get();
-    options.onDismissed = [block, raw] {
-        ColorBlock* owner = block();
-        if (owner != nullptr && owner->picker_.get() == raw) owner->picker_.reset();
-    };
     const Rect anchor = app->grid().geometryOf(this).value_or(Geometry{}).rect();
-    app_ = app;
-    app->pushPopup(picker_, anchor, std::move(options));
+    picker_.open(*app, std::move(picker), anchor, std::move(options));
 }
 
 Reply ColorBlock::onMouseDown(const Geometry&, const PointerEvent& event) {
@@ -305,7 +299,7 @@ Reply ColorBlock::onMouseDown(const Geometry&, const PointerEvent& event) {
     if (onClicked_) return onClicked_();
     if (!opensPicker_) return Reply::unhandled();
     if (isPickerOpen()) {
-        app_->dismissPopup(picker_.get());
+        picker_.close();
     } else {
         openPicker();
     }

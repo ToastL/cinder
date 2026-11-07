@@ -396,17 +396,18 @@ Reply TreeView::onMouseWheel(const Geometry&, const PointerEvent& event) {
     return offset_ != before ? Reply::handled() : Reply::unhandled();
 }
 
+std::size_t TreeView::currentIndex() const {
+    const std::size_t anchored = anchor_ && !selectedGetter_ ? indexOf(*anchor_) : flat_.size();
+    if (anchored < flat_.size()) return anchored;
+    for (std::size_t i = 0; i < flat_.size(); ++i) {
+        if (isSelected(flat_[i].item)) return i;
+    }
+    return flat_.size();
+}
+
 void TreeView::moveSelection(int delta) {
     if (flat_.empty()) return;
-    std::size_t index = anchor_ ? indexOf(*anchor_) : flat_.size();
-    if (index >= flat_.size()) {
-        for (std::size_t i = 0; i < flat_.size(); ++i) {
-            if (isSelected(flat_[i].item)) {
-                index = i;
-                break;
-            }
-        }
-    }
+    const std::size_t index = currentIndex();
     std::size_t next = 0;
     if (index >= flat_.size()) next = delta > 0 ? 0 : flat_.size() - 1;
     else if (delta < 0) next = index == 0 ? 0 : index - 1;
@@ -416,7 +417,7 @@ void TreeView::moveSelection(int delta) {
 
 Reply TreeView::onKeyDown(const Geometry&, const KeyEvent& event) {
     if (onKey_ && onKey_(event)) return Reply::handled();
-    const std::size_t index = anchor_ ? indexOf(*anchor_) : flat_.size();
+    const std::size_t index = currentIndex();
     switch (event.key) {
         case keys::UP:
             moveSelection(-1);

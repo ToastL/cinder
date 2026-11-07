@@ -111,7 +111,7 @@ void runEditor(const core::ProjectConfig& config, const core::LaunchOptions& opt
         const bool last = options.frameLimit > 0 && frames + 1 >= options.frameLimit;
         if (last && !options.windowCapture.empty()) engine.renderer().requestWindowCapture(options.windowCapture);
         modules.update();
-        if (modules.reloadPending() && session.state() == PlaySession::State::Edit && !app.isInteracting()
+        if (modules.reloadPending() && session.state() == PlaySession::State::Edit && !app.isInteracting() && !app.hasPopups()
             && modules.reload()) {
             properties.rebuild();
         }

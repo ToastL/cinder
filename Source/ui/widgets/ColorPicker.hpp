@@ -3,6 +3,7 @@
 #include "ui/core/Args.hpp"
 #include "ui/core/CompoundWidget.hpp"
 #include "ui/core/Delegates.hpp"
+#include "ui/framework/PopupHandle.hpp"
 
 #include <glm/vec3.hpp>
 
@@ -42,7 +43,7 @@ public:
     void change(Color color);
     bool isPickerOpen() const;
     void openPicker();
-    const std::shared_ptr<Widget>& picker() const { return picker_; }
+    const std::shared_ptr<Widget>& picker() const { return picker_.content(); }
 
     Reply onMouseDown(const Geometry& geometry, const PointerEvent& event) override;
 
@@ -60,8 +61,7 @@ private:
     std::string style_;
     OnColorChanged onChanged_;
     OnClicked onClicked_;
-    std::shared_ptr<Widget> picker_;
-    Application* app_ = nullptr;
+    PopupHandle picker_;
 };
 
 class ColorPicker : public CompoundWidget {

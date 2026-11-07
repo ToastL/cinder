@@ -56,6 +56,8 @@ public:
     static Application& get();
     static Application* current();
 
+    std::weak_ptr<const void> lifetime() const { return lifetime_; }
+
     void setRoot(std::shared_ptr<Widget> root) { root_ = std::move(root); }
     const std::shared_ptr<Widget>& root() const { return root_; }
 
@@ -183,6 +185,7 @@ private:
     Click lastClick_;
     std::vector<Popup> popups_;
     std::shared_ptr<DragDropOperation> dragDrop_;
+    int dragDropButton_ = 0;
     std::vector<std::weak_ptr<Widget>> dragTargets_;
     ToolTip toolTip_;
     TextRun toolTipRun_;
@@ -200,6 +203,7 @@ private:
     bool painted_ = false;
     bool focusFresh_ = false;
     bool mouseEnabled_ = true;
+    std::shared_ptr<const int> lifetime_ = std::make_shared<const int>(0);
 };
 
 }

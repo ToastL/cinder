@@ -113,7 +113,8 @@ bool Explorer::matches(const Node& node) const {
 }
 
 void Explorer::gather(const Node& node, std::vector<ItemId>& out) const {
-    if (!node.destroyed() && matches(node)) out.push_back(static_cast<ItemId>(node.id()));
+    if (node.destroyed()) return;
+    if (matches(node)) out.push_back(static_cast<ItemId>(node.id()));
     for (const Node* child : node.children()) gather(*child, out);
 }
 

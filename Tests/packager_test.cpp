@@ -100,9 +100,10 @@ TEST_CASE("targetPlatforms narrows what a project packages for, and empty means 
 }
 
 TEST_CASE("the editor runs the packager binary with the platform and configuration") {
-    const std::string command =
-            cinder::dev::packageCommand(tools(), Platform::Linux, Configuration::Shipping, "/p/My Game", "/p/out's");
-    CHECK(command == "'/b/packager' '/p/My Game' --platform Linux --config Shipping --out '/p/out'\\''s' 2>&1");
+    const std::vector<std::string> arguments =
+            cinder::dev::packageArguments(tools(), Platform::Linux, Configuration::Shipping, "/p/My Game", "/p/out's");
+    CHECK(arguments == std::vector<std::string>{"/b/packager", "/p/My Game", "--platform", "Linux", "--config",
+                                                "Shipping", "--out", "/p/out's"});
 }
 
 TEST_CASE("starting an unavailable platform does nothing") {

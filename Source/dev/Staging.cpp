@@ -7,7 +7,6 @@
 
 #include <algorithm>
 #include <array>
-#include <cstdlib>
 #include <map>
 #include <stdexcept>
 #include <vector>
@@ -52,14 +51,22 @@ std::string expand(std::string step, const StageRequest& request) {
     return step;
 }
 
+void run(const std::vector<std::string>& argv, const std::string& failure) {
+    std::string error;
+    std::unique_ptr<Process> process = Process::start(argv, error);
+    if (process == nullptr) throw std::runtime_error(error);
+    std::string line;
+    while (process->readLine(line)) cinder::platform::logInfo("%s\n", line.c_str());
+    if (process->wait() != 0) throw std::runtime_error(failure);
+}
+
 void runSteps(const char* kind, const core::ProjectDescriptor::BuildSteps& steps, const StageRequest& request) {
     auto found = steps.find(std::string(platformName(request.platform)));
     if (found == steps.end()) return;
     for (const std::string& raw : found->second) {
         const std::string step = expand(raw, request);
         cinder::platform::logInfo("%s: %s\n", kind, step.c_str());
-        const int status = std::system(("cd " + quote(request.project) + " && " + step).c_str());
-        if (status != 0) throw std::runtime_error(std::string(kind) + " failed: " + step);
+        run({"/bin/sh", "-c", "cd " + quote(request.project) + " && " + step}, std::string(kind) + " failed: " + step);
     }
 }
 
@@ -88,16 +95,11 @@ void copyMatching(const std::filesystem::path& from, const std::filesystem::path
 }
 
 void strip(const std::filesystem::path& library) {
-    std::string error;
 #if defined(__APPLE__)
-    std::unique_ptr<Process> process = Process::start({"strip", "-x", library.string()}, error);
+    run({"strip", "-x", library.string()}, "strip failed on " + library.string());
 #else
-    std::unique_ptr<Process> process = Process::start({"strip", "--strip-unneeded", library.string()}, error);
+    run({"strip", "--strip-unneeded", library.string()}, "strip failed on " + library.string());
 #endif
-    if (process == nullptr) throw std::runtime_error(error);
-    std::string line;
-    while (process->readLine(line)) cinder::platform::logInfo("%s\n", line.c_str());
-    if (process->wait() != 0) throw std::runtime_error("strip failed on " + library.string());
 }
 
 std::filesystem::path buildModule(const StageRequest& request, const std::string& name) {
@@ -105,12 +107,7 @@ std::filesystem::path buildModule(const StageRequest& request, const std::string
     const std::filesystem::path library = request.project / "Saved" / "Binaries"
             / ("Package-" + std::string(configurationName(request.configuration)))
             / (name + std::string(cinder::core::GameModule::extension()));
-    std::string error;
-    std::unique_ptr<Process> process = Process::start(request.build->game(request.project, library), error);
-    if (process == nullptr) throw std::runtime_error(error);
-    std::string line;
-    while (process->readLine(line)) cinder::platform::logInfo("%s\n", line.c_str());
-    if (process->wait() != 0) throw std::runtime_error("the project's C++ did not build");
+    run(request.build->game(request.project, library), "the project's C++ did not build");
     return library;
 }
 

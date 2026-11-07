@@ -229,6 +229,7 @@ void Application::mouseDown(const InputEvent& event) {
 void Application::mouseUp(const InputEvent& event) {
     const PointerEvent release = pointer(event, event.code);
     if (dragDrop_) {
+        if (event.code != dragDropButton_) return;
         drop(event);
         if (buttons_ == 0) releaseCapture();
         return;

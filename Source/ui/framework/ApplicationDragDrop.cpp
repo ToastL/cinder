@@ -16,6 +16,7 @@ using detail::within;
 void Application::beginDragDrop(std::shared_ptr<DragDropOperation> operation) {
     if (dragDrop_) cancelDragDrop();
     releaseCapture();
+    dragDropButton_ = drag_ ? drag_->button : cinder::platform::buttons::LEFT;
     drag_.reset();
     dragDrop_ = std::move(operation);
     toolTip_.shown = false;

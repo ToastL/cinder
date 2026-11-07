@@ -14,6 +14,8 @@
 #include <thread>
 #include <vector>
 
+#include <sys/types.h>
+
 namespace cinder::dev {
 
 struct PackageTools {
@@ -22,8 +24,8 @@ struct PackageTools {
     static PackageTools fromBuild();
 };
 
-std::string packageCommand(const PackageTools& tools, Platform platform, Configuration configuration,
-                           const std::filesystem::path& project, const std::filesystem::path& output);
+std::vector<std::string> packageArguments(const PackageTools& tools, Platform platform, Configuration configuration,
+                                          const std::filesystem::path& project, const std::filesystem::path& output);
 
 class Packager {
 public:
@@ -58,7 +60,7 @@ private:
     std::string name_;
     Configuration configuration_ = Configuration::Development;
     std::thread worker_;
-    int pid_ = 0;
+    pid_t pid_ = 0;
     std::atomic<bool> cancelled_ = false;
     std::atomic<bool> running_ = false;
     std::optional<Platform> current_;

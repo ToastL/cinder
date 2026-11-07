@@ -113,6 +113,7 @@ public:
     void setExpanded(ItemId item, bool expanded);
     void toggleExpansion(ItemId item);
     bool isSelected(ItemId item) const;
+    std::size_t currentIndex() const;
     std::vector<ItemId> selectedItems() const { return selected_; }
     void setSelection(std::optional<ItemId> item, SelectInfo how = SelectInfo::Direct);
     void clearSelection(SelectInfo how = SelectInfo::Direct);

@@ -304,7 +304,7 @@ TEST_CASE("a menu entry bound to a command shows its shortcut and runs through t
     bool allowed = true;
     commands->map(command, CommandAction{[&] { ++runs; }, [&] { return allowed; }, {}});
     MenuBuilder builder;
-    builder.command(commands, *command);
+    builder.command(commands, command);
     REQUIRE(builder.items().size() == 1);
     CHECK(builder.items()[0].shortcut == command->shortcut.label());
     CHECK(builder.items()[0].label.get() == "Save");

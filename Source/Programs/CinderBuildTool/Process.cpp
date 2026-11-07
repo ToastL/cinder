@@ -5,6 +5,7 @@
 #include <csignal>
 #include <cstring>
 
+#include <fcntl.h>
 #include <spawn.h>
 #include <sys/wait.h>
 #include <unistd.h>
@@ -13,6 +14,21 @@ extern char** environ;
 
 namespace cbt {
 
+namespace {
+
+bool openPipe(int (&fds)[2]) {
+#if defined(__APPLE__)
+    if (pipe(fds) != 0) return false;
+    fcntl(fds[0], F_SETFD, FD_CLOEXEC);
+    fcntl(fds[1], F_SETFD, FD_CLOEXEC);
+    return true;
+#else
+    return pipe2(fds, O_CLOEXEC) == 0;
+#endif
+}
+
+}
+
 std::unique_ptr<Process> Process::start(const std::vector<std::string>& argv, std::string& error) {
     if (argv.empty()) {
         error = "no program to run";
@@ -20,7 +36,7 @@ std::unique_ptr<Process> Process::start(const std::vector<std::string>& argv, st
     }
 
     int fds[2];
-    if (pipe(fds) != 0) {
+    if (!openPipe(fds)) {
         error = "could not open a pipe";
         return nullptr;
     }
@@ -31,6 +47,9 @@ std::unique_ptr<Process> Process::start(const std::vector<std::string>& argv, st
     posix_spawn_file_actions_adddup2(&actions, fds[1], STDERR_FILENO);
     posix_spawn_file_actions_addclose(&actions, fds[0]);
     posix_spawn_file_actions_addclose(&actions, fds[1]);
+#if defined(__APPLE__)
+    posix_spawn_file_actions_addinherit_np(&actions, STDIN_FILENO);
+#endif
 
     posix_spawnattr_t attributes;
     posix_spawnattr_init(&attributes);
@@ -38,7 +57,11 @@ std::unique_ptr<Process> Process::start(const std::vector<std::string>& argv, st
     sigfillset(&defaults);
     sigset_t unblocked;
     sigemptyset(&unblocked);
-    posix_spawnattr_setflags(&attributes, POSIX_SPAWN_SETPGROUP | POSIX_SPAWN_SETSIGDEF | POSIX_SPAWN_SETSIGMASK);
+    short flags = POSIX_SPAWN_SETPGROUP | POSIX_SPAWN_SETSIGDEF | POSIX_SPAWN_SETSIGMASK;
+#if defined(__APPLE__)
+    flags |= POSIX_SPAWN_CLOEXEC_DEFAULT;
+#endif
+    posix_spawnattr_setflags(&attributes, flags);
     posix_spawnattr_setpgroup(&attributes, 0);
     posix_spawnattr_setsigdefault(&attributes, &defaults);
     posix_spawnattr_setsigmask(&attributes, &unblocked);

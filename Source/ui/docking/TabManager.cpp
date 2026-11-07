@@ -6,6 +6,7 @@
 #include "ui/widgets/Splitter.hpp"
 
 #include <algorithm>
+#include <utility>
 
 namespace cinder::ui {
 
@@ -85,13 +86,7 @@ LayoutNode* TabManager::findNode(LayoutNode& node, int id) {
 }
 
 LayoutNode* TabManager::stackWith(LayoutNode& node, const std::string& tab) {
-    if (node.kind == LayoutNode::Kind::Stack) {
-        return std::find(node.tabs.begin(), node.tabs.end(), tab) != node.tabs.end() ? &node : nullptr;
-    }
-    for (LayoutNode& child : node.children) {
-        if (LayoutNode* found = stackWith(child, tab)) return found;
-    }
-    return nullptr;
+    return const_cast<LayoutNode*>(std::as_const(*this).stackWith(std::as_const(node), tab));
 }
 
 const LayoutNode* TabManager::stackWith(const LayoutNode& node, const std::string& tab) const {
@@ -131,9 +126,13 @@ void TabManager::collapse(LayoutNode& node) {
     if (node.kind != LayoutNode::Kind::Split) return;
     for (LayoutNode& child : node.children) collapse(child);
     std::erase_if(node.children, [](const LayoutNode& child) {
-        return child.kind == LayoutNode::Kind::Stack && child.tabs.empty();
+        return (child.kind == LayoutNode::Kind::Stack && child.tabs.empty()) ||
+               (child.kind == LayoutNode::Kind::Split && child.children.empty());
     });
-    if (node.children.size() == 1) {
+    if (node.children.empty()) {
+        node.kind = LayoutNode::Kind::Stack;
+        node.active.clear();
+    } else if (node.children.size() == 1) {
         LayoutNode only = std::move(node.children.front());
         only.weight = node.weight;
         node = std::move(only);

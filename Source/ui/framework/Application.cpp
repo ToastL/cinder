@@ -27,6 +27,7 @@ Application::Application(PlatformHooks& platform, const cinder::text::FontSet& f
     : platform_(platform), fonts_(fonts), theme_(std::move(theme)) {}
 
 Application::~Application() {
+    lifetime_.reset();
     if (active == this) active = nullptr;
 }
 
