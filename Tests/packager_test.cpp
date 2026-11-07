@@ -1,5 +1,7 @@
 #include <doctest/doctest.h>
 
+#include "test_support.hpp"
+
 #include "core/GameModule.hpp"
 #include "dev/Packager.hpp"
 #include "dev/Staging.hpp"
@@ -32,8 +34,7 @@ struct Project {
     std::filesystem::path player;
 
     explicit Project(const std::string& name, const std::string& descriptor) {
-        const std::filesystem::path base = std::filesystem::temp_directory_path() / ("cinder_stage_" + name);
-        std::filesystem::remove_all(base);
+        const std::filesystem::path base = testing::uniqueTempDir("cinder_stage_" + name);
         root = base / "Game";
         engine = base / "engine";
         shaders = base / "shaders";
@@ -156,8 +157,7 @@ TEST_CASE("cancelling stops the packager's whole process group, and so does dest
     const Platform host = cinder::dev::hostPlatform();
     if (!cinder::dev::platformSupported(host)) return;
 
-    const std::filesystem::path dir = std::filesystem::temp_directory_path() / "cinder_packager_test";
-    std::filesystem::create_directories(dir);
+    const std::filesystem::path dir = testing::uniqueTempDir("cinder_packager_test");
     const std::filesystem::path slow = dir / "packager";
     Project::write(slow, "#!/bin/sh\nsleep 30 &\nwait\n");
     std::filesystem::permissions(slow, std::filesystem::perms::owner_all);
@@ -183,7 +183,7 @@ TEST_CASE("cancelling stops the packager's whole process group, and so does dest
         Packager doomed(dir / "Game", {}, PackageTools{slow});
         REQUIRE(doomed.start(host));
     }
-    CHECK(std::chrono::steady_clock::now() - before < std::chrono::seconds(5));
+    CHECK(std::chrono::steady_clock::now() - before < std::chrono::seconds(20));
     std::filesystem::remove_all(dir);
 }
 

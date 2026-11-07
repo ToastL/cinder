@@ -1,5 +1,7 @@
 #include <doctest/doctest.h>
 
+#include "test_support.hpp"
+
 #include "components/Builtins.hpp"
 #include "core/GameModule.hpp"
 #include "dev/ModuleHost.hpp"
@@ -60,8 +62,7 @@ void finish(ModuleHost& host) {
 TEST_CASE("hot reload: a project's C++ builds, loads, swaps and survives a broken edit") {
     const GameBuild build{CINDER_CBT, CINDER_OUTPUT_ROOT, CINDER_CONFIG, std::string(GameBuild::defaultBackend())};
 
-    const std::filesystem::path project = std::filesystem::temp_directory_path() / "cinder_hot_reload";
-    std::filesystem::remove_all(project);
+    const std::filesystem::path project = testing::uniqueTempDir("cinder_hot_reload");
     std::filesystem::create_directories(project / "Source");
     write(project / "Game.cinder", "{\"fileVersion\": 1, \"engineAssociation\": \"\"}\n");
     const std::filesystem::path source = project / "Source" / "Hopper.cpp";

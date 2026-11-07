@@ -1,5 +1,7 @@
 #include <doctest/doctest.h>
 
+#include "test_support.hpp"
+
 #include "components/Builtins.hpp"
 #include "dev/History.hpp"
 #include "dev/Selection.hpp"
@@ -22,14 +24,8 @@ using cinder::scene::Scene;
 
 namespace {
 
-struct Editor {
-    NodeTypes types;
-    Scene scene{types};
-    Selection selection;
-    History history{scene};
-
+struct Editor : testing::EditorFixture {
     Editor() {
-        cinder::components::registerBuiltins(types);
         scene.create("MeshPart", nullptr)->setName("Box");
         history.reset();
     }
@@ -138,8 +134,7 @@ TEST_CASE("the scene is dirty until saved, and clean again when undone to the sa
     editor.history.redo(editor.selection);
     CHECK(editor.history.dirty());
 
-    const std::filesystem::path path =
-            std::filesystem::temp_directory_path() / "cinder_history_test" / "main.scene";
+    const std::filesystem::path path = testing::uniqueTempDir("cinder_history_test") / "main.scene";
     editor.history.save(path);
     CHECK_FALSE(editor.history.dirty());
 

@@ -1,5 +1,7 @@
 #include <doctest/doctest.h>
 
+#include "test_support.hpp"
+
 #include "core/ProjectConfig.hpp"
 #include "core/ProjectDescriptor.hpp"
 #include "platform/Log.hpp"
@@ -18,12 +20,7 @@ namespace {
 const std::string MINIMAL = "{ \"fileVersion\": 1 }";
 
 struct Folder {
-    std::filesystem::path root = std::filesystem::temp_directory_path() / "cinder_project_test";
-
-    Folder() {
-        std::filesystem::remove_all(root);
-        std::filesystem::create_directories(root);
-    }
+    std::filesystem::path root = testing::uniqueTempDir("cinder_project_test");
 
     ~Folder() { std::filesystem::remove_all(root); }
 

@@ -1,5 +1,7 @@
 #include <doctest/doctest.h>
 
+#include "test_support.hpp"
+
 #include "ui_harness.hpp"
 
 #include "components/Builtins.hpp"
@@ -37,14 +39,8 @@ namespace keys = cinder::platform::keys;
 
 namespace {
 
-struct World {
-    NodeTypes types;
-    Scene scene{types};
-    Selection selection;
-    History history{scene};
-
+struct World : testing::EditorFixture {
     World() {
-        cinder::components::registerBuiltins(types);
         Node* box = scene.create("MeshPart", nullptr);
         box->setName("Box");
         box->setAttribute("phase", PropValue::number(2.0));

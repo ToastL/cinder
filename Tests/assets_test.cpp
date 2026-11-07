@@ -1,5 +1,7 @@
 #include <doctest/doctest.h>
 
+#include "test_support.hpp"
+
 #include "platform/Assets.hpp"
 #include "platform/Log.hpp"
 
@@ -15,10 +17,9 @@ using cinder::platform::sourcePath;
 namespace {
 
 struct Project {
-    std::filesystem::path root = std::filesystem::temp_directory_path() / "cinder_assets_test";
+    std::filesystem::path root = testing::uniqueTempDir("cinder_assets_test");
 
     Project() {
-        std::filesystem::remove_all(root);
         std::filesystem::create_directories(root / "Content" / "Textures");
         std::filesystem::create_directories(root / "Source");
         std::ofstream(root / "Content" / "Textures" / "Box.png") << "png";
