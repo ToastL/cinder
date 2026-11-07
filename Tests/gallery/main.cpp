@@ -1,33 +1,33 @@
-#include "core/Engine.hpp"
-#include "core/LaunchOptions.hpp"
-#include "core/ProjectConfig.hpp"
-#include "platform/Assets.hpp"
-#include "platform/Glfw.hpp"
-#include "platform/InputScript.hpp"
-#include "platform/Log.hpp"
-#include "text/FontSet.hpp"
-#include "text/Shaper.hpp"
-#include "ui/core/Args.hpp"
-#include "ui/core/ElementList.hpp"
-#include "ui/framework/Application.hpp"
-#include "ui/framework/WindowPlatform.hpp"
-#include "ui/widgets/Border.hpp"
-#include "ui/widgets/BoxPanel.hpp"
-#include "ui/widgets/Button.hpp"
-#include "ui/widgets/ColorPicker.hpp"
-#include "ui/widgets/ComboBox.hpp"
-#include "ui/widgets/DefaultTheme.hpp"
-#include "ui/widgets/ExpandableArea.hpp"
-#include "ui/widgets/Label.hpp"
-#include "ui/widgets/Menu.hpp"
-#include "ui/widgets/MenuBar.hpp"
-#include "ui/widgets/ScrollBox.hpp"
-#include "ui/widgets/SizeBox.hpp"
-#include "ui/widgets/SpinBox.hpp"
-#include "ui/widgets/Splitter.hpp"
-#include "ui/widgets/TextField.hpp"
-#include "ui/widgets/TreeView.hpp"
-#include "ui/widgets/VectorInputBox.hpp"
+#include "Core/Engine.hpp"
+#include "Core/LaunchOptions.hpp"
+#include "Core/ProjectConfig.hpp"
+#include "Platform/Assets.hpp"
+#include "Platform/Glfw.hpp"
+#include "Platform/InputScript.hpp"
+#include "Platform/Log.hpp"
+#include "Text/FontSet.hpp"
+#include "Text/Shaper.hpp"
+#include "UI/Core/Args.hpp"
+#include "UI/Core/ElementList.hpp"
+#include "UI/Framework/Application.hpp"
+#include "UI/Framework/WindowPlatform.hpp"
+#include "UI/Widgets/Border.hpp"
+#include "UI/Widgets/BoxPanel.hpp"
+#include "UI/Widgets/Button.hpp"
+#include "UI/Widgets/ColorPicker.hpp"
+#include "UI/Widgets/ComboBox.hpp"
+#include "UI/Widgets/DefaultTheme.hpp"
+#include "UI/Widgets/ExpandableArea.hpp"
+#include "UI/Widgets/Label.hpp"
+#include "UI/Widgets/Menu.hpp"
+#include "UI/Widgets/MenuBar.hpp"
+#include "UI/Widgets/ScrollBox.hpp"
+#include "UI/Widgets/SizeBox.hpp"
+#include "UI/Widgets/SpinBox.hpp"
+#include "UI/Widgets/Splitter.hpp"
+#include "UI/Widgets/TextField.hpp"
+#include "UI/Widgets/TreeView.hpp"
+#include "UI/Widgets/VectorInputBox.hpp"
 
 #include <GLFW/glfw3.h>
 
@@ -45,14 +45,14 @@
 #include <string>
 #include <vector>
 
-using namespace cinder::ui;
-using cinder::text::FontStyle;
+using namespace cinder::UI;
+using cinder::Text::FontStyle;
 
 namespace {
 
 class Drawing : public LeafWidget {
 public:
-    struct Args : ::cinder::ui::Args<Args, Drawing> {};
+    struct Args : ::cinder::UI::Args<Args, Drawing> {};
 
     void construct(const Args&) {}
 
@@ -65,7 +65,7 @@ protected:
         const Theme& theme = app.theme();
         const glm::vec2 origin = geometry.position;
         const auto write = [&](glm::vec2 at, std::string_view text, float size, Color color) {
-            list.text(layer + 2, origin + at, cinder::text::shape(app.fonts().get(FontStyle::Regular), text, size),
+            list.text(layer + 2, origin + at, cinder::Text::shape(app.fonts().get(FontStyle::Regular), text, size),
                       color, app.atlas());
         };
 
@@ -387,7 +387,7 @@ struct Gallery {
                          [make<Border>().brush(Brush::rounded(Color::hex(0x0F0F0FFF), 4.0f)).padding(Margin(2.0f))
                        .toolTipText("Right-click for a context menu")
                        .onMouseDown([this](const Geometry&, const PointerEvent& event) {
-                           if (event.button != cinder::platform::buttons::RIGHT) return Reply::unhandled();
+                           if (event.button != cinder::Platform::buttons::RIGHT) return Reply::unhandled();
                            MenuBuilder menu;
                            menu.entry("Clear", [this] { log->clearChildren(); })
                                .entry("Scroll to End", [this] { log->scrollToEnd(); })
@@ -411,45 +411,45 @@ struct Gallery {
 
 int main(int argc, char** argv) {
     std::setvbuf(stdout, nullptr, _IOLBF, 0);
-    cinder::platform::locateExecutable(argv[0]);
-    const auto options = cinder::core::LaunchOptions::parse(argc, argv, cinder::core::LaunchTarget::Gallery);
+    cinder::Platform::locateExecutable(argv[0]);
+    const auto options = cinder::Core::LaunchOptions::parse(argc, argv, cinder::Core::LaunchTarget::Gallery);
 
     try {
-        const cinder::platform::GlfwSession glfw;
+        const cinder::Platform::GlfwSession glfw;
         if (options.lowDpi) glfwWindowHint(GLFW_SCALE_FRAMEBUFFER, GLFW_FALSE);
         {
-            cinder::core::ProjectConfig config;
+            cinder::Core::ProjectConfig config;
             config.title = "UI Gallery";
             config.width = 1100;
             config.height = 720;
-            cinder::core::Engine engine(config);
-            engine.renderer().ui().setTextGamma(options.textGamma.value_or(cinder::gfx::UiRenderer::DEFAULT_TEXT_GAMMA));
+            cinder::Core::Engine engine(config);
+            engine.renderer().ui().setTextGamma(options.textGamma.value_or(cinder::Gfx::UiRenderer::DEFAULT_TEXT_GAMMA));
 
-            const cinder::text::FontSet fonts = cinder::text::FontSet::engineDefault();
+            const cinder::Text::FontSet fonts = cinder::Text::FontSet::engineDefault();
             WindowPlatform platform(engine.window());
             Application app(platform, fonts, defaultTheme());
             Gallery gallery;
             app.setRoot(gallery.build());
 
-            cinder::platform::Input& input = engine.input();
+            cinder::Platform::Input& input = engine.input();
             input.setRecording(true);
-            std::optional<cinder::platform::InputScript> steps;
+            std::optional<cinder::Platform::InputScript> steps;
             if (!options.inputScript.empty()) {
-                steps = cinder::platform::InputScript::load(options.inputScript);
+                steps = cinder::Platform::InputScript::load(options.inputScript);
                 input.setIgnoreSystem(true);
             }
 
             engine.renderer().setUiPaint([&](ElementList& list) {
-                const std::vector<cinder::platform::InputEvent> events = input.takeEvents();
+                const std::vector<cinder::Platform::InputEvent> events = input.takeEvents();
                 app.processEvents(events);
                 app.paint(list);
             });
 
             int frames = 0;
             while (engine.running()) {
-                cinder::platform::Glfw::pollEvents();
+                cinder::Platform::Glfw::pollEvents();
                 if (engine.minimized()) {
-                    cinder::platform::Glfw::waitEvents();
+                    cinder::Platform::Glfw::waitEvents();
                     continue;
                 }
                 if (steps) {
@@ -467,7 +467,7 @@ int main(int argc, char** argv) {
         }
         return 0;
     } catch (const std::exception& error) {
-        cinder::platform::logError("[fatal] %s\n", error.what());
+        cinder::Platform::logError("[fatal] %s\n", error.what());
         return 1;
     }
 }

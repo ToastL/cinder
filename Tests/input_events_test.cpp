@@ -1,19 +1,19 @@
 #include <doctest/doctest.h>
 
-#include "platform/Input.hpp"
-#include "platform/InputEvent.hpp"
-#include "platform/InputScript.hpp"
+#include "Platform/Input.hpp"
+#include "Platform/InputEvent.hpp"
+#include "Platform/InputScript.hpp"
 
 #include <GLFW/glfw3.h>
 
 #include <vector>
 
-using cinder::platform::Input;
-using cinder::platform::InputEvent;
-using cinder::platform::InputEventType;
-using cinder::platform::InputScript;
-namespace keys = cinder::platform::keys;
-namespace modifiers = cinder::platform::modifiers;
+using cinder::Platform::Input;
+using cinder::Platform::InputEvent;
+using cinder::Platform::InputEventType;
+using cinder::Platform::InputScript;
+namespace keys = cinder::Platform::keys;
+namespace modifiers = cinder::Platform::modifiers;
 
 TEST_CASE("the event queue stays empty until something records it") {
     Input input;

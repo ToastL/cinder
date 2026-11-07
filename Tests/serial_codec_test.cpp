@@ -1,32 +1,32 @@
 #include <doctest/doctest.h>
 
-#include "nodes/Builtins.hpp"
-#include "nodes/Camera.hpp"
-#include "nodes/Group.hpp"
-#include "nodes/MeshPart.hpp"
-#include "nodes/Sprite.hpp"
-#include "scene/Node.hpp"
-#include "scene/NodeTypes.hpp"
-#include "scene/Placeholder.hpp"
-#include "scene/PropValue.hpp"
-#include "scene/Scene.hpp"
-#include "serial/SceneCodec.hpp"
+#include "Nodes/Builtins.hpp"
+#include "Nodes/Camera.hpp"
+#include "Nodes/Group.hpp"
+#include "Nodes/MeshPart.hpp"
+#include "Nodes/Sprite.hpp"
+#include "Scene/Node.hpp"
+#include "Scene/NodeTypes.hpp"
+#include "Scene/Placeholder.hpp"
+#include "Scene/PropValue.hpp"
+#include "Scene/Scene.hpp"
+#include "Serial/SceneCodec.hpp"
 
 #include <cstdint>
 #include <memory>
 #include <stdexcept>
 #include <string>
 
-using cinder::nodes::Camera;
-using cinder::nodes::Group;
-using cinder::nodes::MeshPart;
-using cinder::nodes::Sprite;
-using cinder::scene::Node;
-using cinder::scene::NodeTypes;
-using cinder::scene::PropSeq;
-using cinder::scene::PropValue;
-using cinder::scene::Scene;
-using cinder::serial::SceneCodec;
+using cinder::Nodes::Camera;
+using cinder::Nodes::Group;
+using cinder::Nodes::MeshPart;
+using cinder::Nodes::Sprite;
+using cinder::Scene::Node;
+using cinder::Scene::NodeTypes;
+using cinder::Scene::PropSeq;
+using cinder::Scene::PropValue;
+using cinder::Scene::Scene;
+using cinder::Serial::SceneCodec;
 
 namespace {
 
@@ -41,7 +41,7 @@ struct Fixture {
     NodeTypes types;
     Scene scene{types};
 
-    Fixture() { cinder::nodes::registerBuiltins(types); }
+    Fixture() { cinder::Nodes::registerBuiltins(types); }
 
     void populate() {
         Camera* camera = place<Camera>(scene, 7, nullptr, nullptr);
@@ -421,7 +421,7 @@ TEST_CASE("a placeholder is cloned as a placeholder") {
     Node* copy = f.scene.clone(*turret, nullptr);
     REQUIRE(copy != nullptr);
     CHECK(f.types.nameOf(*copy) == "Turret");
-    CHECK(dynamic_cast<cinder::scene::Placeholder*>(copy) != nullptr);
+    CHECK(dynamic_cast<cinder::Scene::Placeholder*>(copy) != nullptr);
 }
 
 TEST_CASE("an out of range id gets a fresh one") {

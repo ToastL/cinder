@@ -1,0 +1,83 @@
+#include "Core/GameLoop.hpp"
+
+#include "Core/Engine.hpp"
+#include "Platform/Glfw.hpp"
+
+#include <algorithm>
+#include <cmath>
+#include <stdexcept>
+#include <string>
+
+namespace cinder::Core {
+
+GameLoop::GameLoop(int hz) {
+    requirePositiveHz(hz, "fixed step rate");
+    fixedDt_ = 1.0 / hz;
+}
+
+void GameLoop::requirePositiveHz(int hz, const char* what) {
+    if (hz <= 0) {
+        throw std::runtime_error(std::string(what) + " must be positive, got "
+                                 + std::to_string(hz));
+    }
+}
+
+bool GameLoop::begin(Engine& engine) {
+    cinder::Platform::Glfw::pollEvents();
+
+    if (engine.minimized()) {
+        cinder::Platform::Glfw::waitEvents();
+        resetClock();
+        return false;
+    }
+    return true;
+}
+
+void GameLoop::tick(Engine& engine) {
+    if (!begin(engine)) return;
+
+    if (last_ < 0.0) last_ = cinder::Platform::Glfw::time();
+
+    const double now = cinder::Platform::Glfw::time();
+    const int steps = advance(now - last_);
+    last_ = now;
+
+    for (int i = 0; i < steps; ++i) engine.update(static_cast<float>(fixedDt_));
+    engine.render(alpha());
+}
+
+void GameLoop::idle(Engine& engine) {
+    if (!begin(engine)) return;
+
+    resetClock();
+    engine.input().consume();
+    engine.render(alpha());
+}
+
+void GameLoop::step(Engine& engine) {
+    if (!begin(engine)) return;
+
+    resetClock();
+    engine.update(static_cast<float>(fixedDt_));
+    engine.render(alpha());
+}
+
+int GameLoop::advance(double frameTime) {
+    accumulator_ += std::min(frameTime, MAX_FRAME_TIME);
+    const int steps = static_cast<int>(accumulator_ / fixedDt_);
+    accumulator_ -= steps * fixedDt_;
+    return steps;
+}
+
+float GameLoop::alpha() const {
+    const float value = static_cast<float>(accumulator_ / fixedDt_);
+    if (value < 0.0f) return 0.0f;
+    return value < 1.0f ? value : std::nextafter(1.0f, 0.0f);
+}
+
+void GameLoop::resetClock() {
+    last_ = cinder::Platform::Glfw::time();
+    accumulator_ = 0.0;
+}
+
+}

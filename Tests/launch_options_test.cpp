@@ -1,11 +1,11 @@
-#include "core/LaunchOptions.hpp"
+#include "Core/LaunchOptions.hpp"
 
 #include <doctest/doctest.h>
 
 #include <initializer_list>
 
-using cinder::core::LaunchOptions;
-using cinder::core::LaunchTarget;
+using cinder::Core::LaunchOptions;
+using cinder::Core::LaunchTarget;
 
 namespace {
 LaunchOptions parse(std::initializer_list<const char*> args, LaunchTarget target = LaunchTarget::Editor) {

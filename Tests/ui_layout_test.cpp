@@ -2,15 +2,15 @@
 
 #include "ui_harness.hpp"
 
-#include "ui/widgets/Border.hpp"
-#include "ui/widgets/BoxPanel.hpp"
-#include "ui/widgets/Canvas.hpp"
-#include "ui/widgets/Label.hpp"
-#include "ui/widgets/ScrollBox.hpp"
-#include "ui/widgets/SizeBox.hpp"
-#include "ui/widgets/Splitter.hpp"
+#include "UI/Widgets/Border.hpp"
+#include "UI/Widgets/BoxPanel.hpp"
+#include "UI/Widgets/Canvas.hpp"
+#include "UI/Widgets/Label.hpp"
+#include "UI/Widgets/ScrollBox.hpp"
+#include "UI/Widgets/SizeBox.hpp"
+#include "UI/Widgets/Splitter.hpp"
 
-using namespace cinder::ui;
+using namespace cinder::UI;
 using uitest::Harness;
 using uitest::Probe;
 

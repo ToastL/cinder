@@ -2,5 +2,5 @@
 
 
 CINDER_MODULE("gallery", [](cbt::ModuleRules& m, const cbt::TargetInfo&) {
-    m.privateDependencies({"core", "glfw"});
+    m.privateDependencies({"Core", "glfw"});
 });

@@ -2,9 +2,9 @@
 
 #include "test_support.hpp"
 
-#include "core/ProjectConfig.hpp"
-#include "core/ProjectDescriptor.hpp"
-#include "platform/Log.hpp"
+#include "Core/ProjectConfig.hpp"
+#include "Core/ProjectDescriptor.hpp"
+#include "Platform/Log.hpp"
 
 #include <filesystem>
 #include <fstream>
@@ -12,8 +12,8 @@
 #include <string>
 #include <vector>
 
-using cinder::core::ProjectConfig;
-using cinder::core::ProjectDescriptor;
+using cinder::Core::ProjectConfig;
+using cinder::Core::ProjectDescriptor;
 
 namespace {
 
@@ -35,10 +35,10 @@ struct Sink {
     int lines = 0;
 
     Sink() {
-        cinder::platform::setLogSink([this](cinder::platform::LogLevel, std::string_view) { lines++; });
+        cinder::Platform::setLogSink([this](cinder::Platform::LogLevel, std::string_view) { lines++; });
     }
 
-    ~Sink() { cinder::platform::setLogSink(nullptr); }
+    ~Sink() { cinder::Platform::setLogSink(nullptr); }
 
     Sink(const Sink&) = delete;
     Sink& operator=(const Sink&) = delete;

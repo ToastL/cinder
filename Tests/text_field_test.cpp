@@ -2,16 +2,16 @@
 
 #include "ui_harness.hpp"
 
-#include "ui/widgets/Canvas.hpp"
-#include "ui/widgets/TextField.hpp"
+#include "UI/Widgets/Canvas.hpp"
+#include "UI/Widgets/TextField.hpp"
 
 #include <string>
 #include <vector>
 
-using namespace cinder::ui;
+using namespace cinder::UI;
 using uitest::Harness;
-namespace keys = cinder::platform::keys;
-namespace modifiers = cinder::platform::modifiers;
+namespace keys = cinder::Platform::keys;
+namespace modifiers = cinder::Platform::modifiers;
 
 namespace {
 

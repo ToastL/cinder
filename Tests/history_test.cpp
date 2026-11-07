@@ -2,25 +2,25 @@
 
 #include "test_support.hpp"
 
-#include "dev/History.hpp"
-#include "dev/Selection.hpp"
-#include "nodes/Builtins.hpp"
-#include "scene/Node.hpp"
-#include "scene/NodeTypes.hpp"
-#include "scene/Scene.hpp"
-#include "scene/Transform.hpp"
-#include "serial/SceneCodec.hpp"
+#include "Dev/History.hpp"
+#include "Dev/Selection.hpp"
+#include "Nodes/Builtins.hpp"
+#include "Scene/Node.hpp"
+#include "Scene/NodeTypes.hpp"
+#include "Scene/Scene.hpp"
+#include "Scene/Transform.hpp"
+#include "Serial/SceneCodec.hpp"
 
 #include <filesystem>
 #include <fstream>
 #include <sstream>
 #include <string>
 
-using cinder::dev::History;
-using cinder::dev::Selection;
-using cinder::scene::Node;
-using cinder::scene::NodeTypes;
-using cinder::scene::Scene;
+using cinder::Dev::History;
+using cinder::Dev::Selection;
+using cinder::Scene::Node;
+using cinder::Scene::NodeTypes;
+using cinder::Scene::Scene;
 
 namespace {
 
@@ -141,7 +141,7 @@ TEST_CASE("the scene is dirty until saved, and clean again when undone to the sa
     std::ifstream in(path, std::ios::binary);
     std::ostringstream text;
     text << in.rdbuf();
-    CHECK(text.str() == cinder::serial::SceneCodec::save(editor.scene));
+    CHECK(text.str() == cinder::Serial::SceneCodec::save(editor.scene));
     std::filesystem::remove_all(path.parent_path());
 }
 

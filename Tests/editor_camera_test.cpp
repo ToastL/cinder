@@ -1,12 +1,12 @@
 #include <doctest/doctest.h>
 
-#include "dev/EditorCamera.hpp"
-#include "gfx/pass/ViewCamera.hpp"
-#include "nodes/Builtins.hpp"
-#include "nodes/Camera.hpp"
-#include "scene/NodeTypes.hpp"
-#include "scene/Scene.hpp"
-#include "scene/Transform.hpp"
+#include "Dev/EditorCamera.hpp"
+#include "Gfx/Pass/ViewCamera.hpp"
+#include "Nodes/Builtins.hpp"
+#include "Nodes/Camera.hpp"
+#include "Scene/NodeTypes.hpp"
+#include "Scene/Scene.hpp"
+#include "Scene/Transform.hpp"
 
 #include <glm/trigonometric.hpp>
 #include <glm/vec4.hpp>
@@ -15,11 +15,11 @@
 #include <cmath>
 #include <cstddef>
 
-using cinder::nodes::Camera;
-using cinder::dev::EditorCamera;
-using cinder::gfx::pass::ViewCamera;
-using cinder::scene::NodeTypes;
-using cinder::scene::Scene;
+using cinder::Nodes::Camera;
+using cinder::Dev::EditorCamera;
+using cinder::Gfx::Pass::ViewCamera;
+using cinder::Scene::NodeTypes;
+using cinder::Scene::Scene;
 
 namespace {
 
@@ -31,7 +31,7 @@ struct World {
     Camera* camera = nullptr;
 
     World() {
-        cinder::nodes::registerBuiltins(types);
+        cinder::Nodes::registerBuiltins(types);
         camera = scene.create<Camera>(nullptr);
         camera->transform()->setPosition(10.0f, 20.0f, 30.0f);
         camera->transform()->setRotation(glm::radians(-20.0f), glm::radians(35.0f), 0.0f);

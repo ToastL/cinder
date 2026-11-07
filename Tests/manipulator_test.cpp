@@ -1,14 +1,14 @@
 #include <doctest/doctest.h>
 
-#include "dev/History.hpp"
-#include "dev/Manipulator.hpp"
-#include "gfx/pass/ViewCamera.hpp"
-#include "nodes/Builtins.hpp"
-#include "scene/Node.hpp"
-#include "scene/NodeTypes.hpp"
-#include "scene/Scene.hpp"
-#include "scene/Transform.hpp"
-#include "scene/View.hpp"
+#include "Dev/History.hpp"
+#include "Dev/Manipulator.hpp"
+#include "Gfx/Pass/ViewCamera.hpp"
+#include "Nodes/Builtins.hpp"
+#include "Scene/Node.hpp"
+#include "Scene/NodeTypes.hpp"
+#include "Scene/Scene.hpp"
+#include "Scene/Transform.hpp"
+#include "Scene/View.hpp"
 
 #include <glm/geometric.hpp>
 #include <glm/gtc/matrix_transform.hpp>
@@ -20,20 +20,20 @@
 #include <set>
 #include <string_view>
 
-using cinder::dev::Gizmo;
-using cinder::dev::GizmoView;
-using cinder::dev::Handle;
-using cinder::dev::History;
-using cinder::dev::Manipulation;
-using cinder::dev::Space;
-using cinder::dev::Tool;
-using cinder::dev::gizmoFor;
-using cinder::dev::hitHandle;
-using cinder::dev::shapes;
-using cinder::scene::Node;
-using cinder::scene::NodeTypes;
-using cinder::scene::Scene;
-using cinder::scene::Transform;
+using cinder::Dev::Gizmo;
+using cinder::Dev::GizmoView;
+using cinder::Dev::Handle;
+using cinder::Dev::History;
+using cinder::Dev::Manipulation;
+using cinder::Dev::Space;
+using cinder::Dev::Tool;
+using cinder::Dev::gizmoFor;
+using cinder::Dev::hitHandle;
+using cinder::Dev::shapes;
+using cinder::Scene::Node;
+using cinder::Scene::NodeTypes;
+using cinder::Scene::Scene;
+using cinder::Scene::Transform;
 
 namespace {
 
@@ -43,17 +43,17 @@ const glm::vec3 UP(0.0f, 1.0f, 0.0f);
 struct World {
     NodeTypes types;
     Scene scene{types};
-    cinder::gfx::pass::ViewCamera camera;
+    cinder::Gfx::Pass::ViewCamera camera;
 
     World() {
-        cinder::nodes::registerBuiltins(types);
+        cinder::Nodes::registerBuiltins(types);
         lookFrom(glm::vec3(0.0f, 0.0f, 10.0f), glm::vec3(0.0f));
     }
 
     void lookFrom(const glm::vec3& eye, const glm::vec3& target) {
         const glm::vec3 forward = glm::normalize(target - eye);
         const glm::vec3 up = std::abs(forward.y) < 0.9f ? UP : glm::vec3(0.0f, 0.0f, 1.0f);
-        cinder::scene::View view;
+        cinder::Scene::View view;
         view.world = glm::inverse(glm::lookAt(eye, target, up));
         view.fovDegrees = 60.0f;
         view.nearClip = 0.1f;
@@ -62,10 +62,10 @@ struct World {
         camera.setViewSize(SIZE.x, SIZE.y);
     }
 
-    GizmoView view() { return cinder::dev::gizmoView(camera, SIZE); }
+    GizmoView view() { return cinder::Dev::gizmoView(camera, SIZE); }
 
     glm::vec2 screen(const glm::vec3& position) {
-        std::optional<glm::vec2> point = cinder::dev::toScreen(view(), position);
+        std::optional<glm::vec2> point = cinder::Dev::toScreen(view(), position);
         REQUIRE(point);
         return *point;
     }
@@ -107,7 +107,7 @@ glm::vec3 onRing(const Gizmo& gizmo, const glm::vec3& normal, float degrees) {
 
 std::set<Handle> handlesOf(const Gizmo& gizmo, const GizmoView& view) {
     std::set<Handle> found;
-    for (const cinder::dev::HandleShape& shape : shapes(gizmo, view)) found.insert(shape.handle);
+    for (const cinder::Dev::HandleShape& shape : shapes(gizmo, view)) found.insert(shape.handle);
     return found;
 }
 
@@ -305,7 +305,7 @@ TEST_CASE("an axis scale changes one component and a uniform scale all three") {
     const glm::vec2 center = world.screen(gizmo.pivot);
     CHECK(hitHandle(shapes(gizmo, world.view()), world.view(), center) == Handle::Uniform);
     REQUIRE(drag.begin(*box, gizmo, Handle::Uniform, world.view(), center));
-    REQUIRE(drag.drag(world.scene, world.view(), center + glm::vec2(cinder::dev::GIZMO_POINTS * 0.5f, 0.0f), false));
+    REQUIRE(drag.drag(world.scene, world.view(), center + glm::vec2(cinder::Dev::GIZMO_POINTS * 0.5f, 0.0f), false));
     CHECK(box->transform()->scale().x == doctest::Approx(1.5f));
     CHECK(box->transform()->scale().y == doctest::Approx(3.0f));
     CHECK(box->transform()->scale().z == doctest::Approx(4.5f));
@@ -402,7 +402,7 @@ TEST_CASE("handles keep their size on screen at any distance") {
         const Gizmo gizmo = world.gizmo(*box, Tool::Move);
         const float length = glm::distance(world.screen(gizmo.pivot),
                                            world.screen(gizmo.pivot + glm::vec3(gizmo.length, 0.0f, 0.0f)));
-        CHECK(length == doctest::Approx(cinder::dev::GIZMO_POINTS).epsilon(1e-3));
+        CHECK(length == doctest::Approx(cinder::Dev::GIZMO_POINTS).epsilon(1e-3));
     }
 }
 

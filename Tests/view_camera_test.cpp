@@ -1,7 +1,7 @@
 #include <doctest/doctest.h>
 
-#include "gfx/pass/ViewCamera.hpp"
-#include "scene/View.hpp"
+#include "Gfx/Pass/ViewCamera.hpp"
+#include "Scene/View.hpp"
 
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/vec4.hpp>
@@ -10,8 +10,8 @@
 #include <cmath>
 #include <cstddef>
 
-using cinder::gfx::pass::ViewCamera;
-using cinder::scene::View;
+using cinder::Gfx::Pass::ViewCamera;
+using cinder::Scene::View;
 
 namespace {
 

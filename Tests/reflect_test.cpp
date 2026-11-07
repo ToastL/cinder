@@ -1,6 +1,6 @@
 #include <doctest/doctest.h>
 
-#include "reflect/Reflect.hpp"
+#include "Reflect/Reflect.hpp"
 
 #include <clocale>
 #include <limits>
@@ -13,7 +13,7 @@ CINDER_ENUM_NAMES(Mode, "low", "high")
 
 namespace {
 
-struct Fixture : cinder::reflect::PropSink {
+struct Fixture : cinder::Reflect::PropSink {
     int count = 1;
     float fov = 60;
     bool on = true;
@@ -24,7 +24,7 @@ struct Fixture : cinder::reflect::PropSink {
 
     int changes = 0;
 
-    void propChanged(const cinder::reflect::PropDef&) override { changes++; }
+    void propChanged(const cinder::Reflect::PropDef&) override { changes++; }
 
     CINDER_PROPS(Fixture, void) {
         CINDER_PROP(count);
@@ -37,12 +37,12 @@ struct Fixture : cinder::reflect::PropSink {
     }
 };
 
-const cinder::reflect::PropDef& prop(std::string_view name) {
-    for (const cinder::reflect::PropDef& def : cinder::reflect::props<Fixture>()) {
+const cinder::Reflect::PropDef& prop(std::string_view name) {
+    for (const cinder::Reflect::PropDef& def : cinder::Reflect::props<Fixture>()) {
         if (def.name() == name) return def;
     }
     FAIL("no such prop: " << name);
-    return cinder::reflect::props<Fixture>().front();
+    return cinder::Reflect::props<Fixture>().front();
 }
 
 }
@@ -121,15 +121,15 @@ TEST_CASE("every write notifies the sink") {
 }
 
 TEST_CASE("props are in declaration order") {
-    CHECK(cinder::reflect::props<Fixture>().front().name() == "count");
+    CHECK(cinder::Reflect::props<Fixture>().front().name() == "count");
 }
 
 TEST_CASE("unsupported prop types are rejected at compile time") {
-    static_assert(cinder::reflect::IsPropType<float>::value);
-    static_assert(cinder::reflect::IsPropType<glm::vec3>::value);
-    static_assert(cinder::reflect::IsPropType<Mode>::value);
-    static_assert(!cinder::reflect::IsPropType<std::vector<std::string>>::value);
-    static_assert(!cinder::reflect::IsPropType<double>::value);
+    static_assert(cinder::Reflect::IsPropType<float>::value);
+    static_assert(cinder::Reflect::IsPropType<glm::vec3>::value);
+    static_assert(cinder::Reflect::IsPropType<Mode>::value);
+    static_assert(!cinder::Reflect::IsPropType<std::vector<std::string>>::value);
+    static_assert(!cinder::Reflect::IsPropType<double>::value);
     CHECK(true);
 }
 
@@ -146,14 +146,14 @@ TEST_CASE("enum text does not depend on the default locale") {
 }
 
 TEST_CASE("labels are derived from the field name") {
-    CHECK(cinder::reflect::deriveLabel("fov") == "Fov");
-    CHECK(cinder::reflect::deriveLabel("maxSpeed") == "Max Speed");
-    CHECK(cinder::reflect::deriveLabel("position") == "Position");
+    CHECK(cinder::Reflect::deriveLabel("fov") == "Fov");
+    CHECK(cinder::Reflect::deriveLabel("maxSpeed") == "Max Speed");
+    CHECK(cinder::Reflect::deriveLabel("position") == "Position");
 }
 
 TEST_CASE("a label only capitalises a leading lowercase letter") {
-    CHECK(cinder::reflect::deriveLabel("_hidden") == "_hidden");
-    CHECK(cinder::reflect::deriveLabel("x2") == "X2");
+    CHECK(cinder::Reflect::deriveLabel("_hidden") == "_hidden");
+    CHECK(cinder::Reflect::deriveLabel("x2") == "X2");
 }
 
 namespace {
@@ -175,9 +175,9 @@ TEST_CASE("enum props list their constants in order") {
 }
 
 TEST_CASE("a color prop carries its hint and is not clamped") {
-    const cinder::reflect::PropDef& tint = cinder::reflect::props<Swatch>().front();
-    CHECK(tint.hint() == cinder::reflect::PropHint::Color);
-    CHECK(prop("offset").hint() == cinder::reflect::PropHint::None);
+    const cinder::Reflect::PropDef& tint = cinder::Reflect::props<Swatch>().front();
+    CHECK(tint.hint() == cinder::Reflect::PropHint::Color);
+    CHECK(prop("offset").hint() == cinder::Reflect::PropHint::None);
 
     Swatch s;
     const float hdr[] = {4, 0.5f, 0, 1};

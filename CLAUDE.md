@@ -66,7 +66,7 @@ judged at 1x on a Retina display, and `--text-gamma` tunes glyph coverage.
 `cbt test` builds `editor` and `tests` and runs six checks, reporting each as passed or failed:
 `layers` checks first-party includes against the layer graph, `layer_fixtures` exercises allowed and
 forbidden include fixtures, `shaders` asserts every program produced every artifact, `shipping` runs
-`nm` over `player` to prove no `cinder::dev` symbol reached it, `unit` is the doctest suite, and
+`nm` over `player` to prove no `cinder::Dev` symbol reached it, `unit` is the doctest suite, and
 `hot_reload` compiles real game C++ and takes seconds. Name checks to run only those:
 `cbt test unit hot_reload`. `cbt check` runs the layer check alone.
 
@@ -165,7 +165,7 @@ and `GraphicsPipelineBuilder::shader` takes the program name.
   Its sources are the `.cpp`, `.mm` and `.c` files in its folder, minus nested module folders, rule
   files and anything it `exclude`s. Rules set public, private and link dependencies, include paths,
   defines, frameworks, system libraries and ObjC++ flags, and may test `TargetInfo` — the platform, the
-  configuration, the backend, the version and the BuildId — which is how `gfx/rhi` picks Metal or
+  configuration, the backend, the version and the BuildId — which is how `Gfx/RHI` picks Metal or
   Vulkan. A public dependency is seen by everyone who depends on you, a private one by you alone, and a
   link dependency is linked in without reaching your includes — Unreal's model.
   A `<Name>.Target.cpp` (`CINDER_TARGET`) declares what to produce: an executable or a game module, its
@@ -174,7 +174,7 @@ and `GraphicsPipelineBuilder::shader` takes the program name.
   each module's dependencies, evaluated for both backends; `Source/ThirdParty/` and
   `Source/Programs/` are outside the graph.
 - **Actions.** A build is a list of actions — one compile per source, the shader steps, the generated
-  `gfx/rhi/Backend.hpp` and `BuildId.cpp`, one link per target — run in parallel in dependency order.
+  `Gfx/RHI/Backend.hpp` and `BuildId.cpp`, one link per target — run in parallel in dependency order.
   An action reruns when an output is missing, when an input or a header from its `-MMD` depfile is
   newer, or when its command line differs from the signature `Actions.txt` recorded, so changing a flag
   or a define rebuilds exactly what it touches.
@@ -218,7 +218,7 @@ missing. `spirv-cross` is `brew install spirv-cross`.
 `shaders` test asserts every program produced every artifact its formats call for, checks the SPIR-V
 magic number, and runs `spirv-val` when it can find it.
 
-`player`, `editor` and `ui_gallery` parse their arguments through `core/LaunchOptions`, which rejects a
+`player`, `editor` and `ui_gallery` parse their arguments through `Core/LaunchOptions`, which rejects a
 malformed number rather than reading a prefix of it. Their loops have diverged on purpose: the player
 only ever calls `GameLoop::tick`, while the editor calls `PlaySession::tick`, which picks `tick`, `idle`
 or `step`. `GameLoop` is the shared part.
@@ -232,7 +232,7 @@ default search path, and both volk and the Vulkan loader `dlopen` by leaf name.*
   walks its own candidate list and falls back to `volkInitializeCustom`.
 - The validation layer *enumerates* but `vkCreateInstance` returns `VK_ERROR_LAYER_NOT_PRESENT`,
   because the layer manifest's `library_path` is a bare `libVkLayer_khronos_validation.dylib`.
-  `rhi::Ctx` retries without the layer and prints a notice.
+  `RHI::Ctx` retries without the layer and prints a notice.
 
 To actually get validation, put the prefix on the dyld path:
 
@@ -245,8 +245,10 @@ caught a missing `TRANSFER_SRC_BIT` that no test would have.
 
 ## Layout
 
-The repo root has a project's shape: folders that organize are capitalized, and a module's folder is
-named after its namespace, in lowercase.
+The repo root has a project's shape and its folders are capitalized. Under `Source/`, a module's folder
+is named after its namespace, with acronyms in capitals as Unreal writes them: `Gfx/RHI` is
+`cinder::Gfx::RHI`, `UI/Core` is a layer of `cinder::UI`. Only `cinder` itself and helper namespaces such
+as `keys`, `detail` or `images` stay lowercase, and so do target names: `cbt build editor player`.
 
 ```
 cinder/
@@ -255,14 +257,14 @@ cinder/
   Shaders/          HLSL, one program per file; compiled output goes to Binaries/
   Samples/          sandbox2d/, sandbox3d/ and physics/ — example projects
   Source/           the include root
-    reflect/ platform/ text/         leaves
-    scene/ serial/ nodes/            the world model
-    physics/                         rigid bodies, collision and the solver
-    ui/core/ ui/framework/ ui/widgets/ ui/docking/  the UI framework the editor is built on
-    gfx/ gfx/rhi/ gfx/vk/ gfx/mtl/ gfx/asset/ gfx/pass/  the renderer, its seam and two backends
-    core/ game/                      the engine, module loading, and the API game code calls
-    dev/                             editor panels, gizmos, history, play session; never in the player
-    player/ editor/ packager/        the three executables
+    Reflect/ Platform/ Text/         leaves
+    Scene/ Serial/ Nodes/            the world model
+    Physics/                         rigid bodies, collision and the solver
+    UI/Core/ UI/Framework/ UI/Widgets/ UI/Docking/  the UI framework the editor is built on
+    Gfx/ Gfx/RHI/ Gfx/VK/ Gfx/MTL/ Gfx/Asset/ Gfx/Pass/  the renderer, its seam and two backends
+    Core/ Game/                      the engine, module loading, and the API game code calls
+    Dev/                             editor panels, gizmos, history, play session; never in the player
+    Player/ Editor/ Packager/        the three executables
     Programs/CinderBuildTool/        cbt, the build tool
     ThirdParty/                      vendored dependencies; see its README.md
   Tests/
@@ -273,57 +275,57 @@ cinder/
   notes/                             the Obsidian vault
 ```
 
-`Source/` is the only include root, so every include carries its layer: `#include "scene/Node.hpp"`.
+`Source/` is the only include root, so every include carries its layer: `#include "Scene/Node.hpp"`.
 Headers sit next to their sources, and every module's `.Build.cpp` sits in its folder.
 
 ## Layering
 
 The layer graph is **acyclic and strictly layered**. Keep it that way — this is what lets the editor
-depend on `scene` + `reflect` without dragging in Vulkan.
+depend on `Scene` + `Reflect` without dragging in Vulkan.
 
 ```
-reflect, platform          -> leaves (no engine includes)
-text                       -> platform
-scene                      -> reflect
-serial                     -> scene, reflect, platform
-nodes                      -> scene, reflect
-physics                    -> scene, reflect
-ui/core                    -> text, platform
-ui/framework               -> ui/core, text, platform
-ui/widgets                 -> ui/framework, ui/core, text, platform
-ui/docking                 -> ui/widgets, ui/framework, ui/core, text, platform
-gfx/rhi                    -> platform
-gfx/vk, gfx/mtl            -> gfx/rhi, platform          (only one compiles per binary)
-gfx/asset                  -> gfx/rhi, scene
-gfx/pass                   -> gfx/asset, gfx/rhi, scene, platform
-gfx                        -> gfx/pass, gfx/asset, gfx/rhi, ui/core, text, scene, platform
-core                       -> all of the above
-game                       -> core and all of the above
-dev                        -> core and all of the above (a separate target, see below)
+Reflect, Platform          -> leaves (no engine includes)
+Text                       -> Platform
+Scene                      -> Reflect
+Serial                     -> Scene, Reflect, Platform
+Nodes                      -> Scene, Reflect
+Physics                    -> Scene, Reflect
+UI/Core                    -> Text, Platform
+UI/Framework               -> UI/Core, Text, Platform
+UI/Widgets                 -> UI/Framework, UI/Core, Text, Platform
+UI/Docking                 -> UI/Widgets, UI/Framework, UI/Core, Text, Platform
+Gfx/RHI                    -> Platform
+Gfx/VK, Gfx/MTL            -> Gfx/RHI, Platform          (only one compiles per binary)
+Gfx/Asset                  -> Gfx/RHI, Scene
+Gfx/Pass                   -> Gfx/Asset, Gfx/RHI, Scene, Platform
+Gfx                        -> Gfx/Pass, Gfx/Asset, Gfx/RHI, UI/Core, Text, Scene, Platform
+Core                       -> all of the above
+Game                       -> Core and all of the above
+Dev                        -> Core and all of the above (a separate target, see below)
 ```
 
-Everything down to `core` is the engine. **`dev` is not** — it is its own module, and it holds
-everything editor-only: the panels in `dev/panels/`, the Scene view with its editor camera and gizmos,
-the selection, the undo history and the play session. The `player` module depends on `core`, and the
-`editor` module on `dev`, so `dev` is only ever linked into the editor, the packager and the tests.
+Everything down to `Core` is the engine. **`Dev` is not** — it is its own module, and it holds
+everything editor-only: the panels in `Dev/Panels/`, the Scene view with its editor camera and gizmos,
+the selection, the undo history and the play session. The `Player` module depends on `Core`, and the
+`Editor` module on `Dev`, so `Dev` is only ever linked into the editor, the packager and the tests.
 
-**The editor's UI is the engine's own** — see *The UI framework* below. `text` and the four `ui`
-layers are part of `engine`, because the game will use them too; `ui` never includes `scene`,
-`reflect` or `gfx`. The `shipping` test runs `nm` over `player` to prove no `cinder::dev` symbol reached it.
+**The editor's UI is the engine's own** — see *The UI framework* below. `Text` and the four `UI`
+layers are part of `engine`, because the game will use them too; `UI` never includes `Scene`,
+`Reflect` or `Gfx`. The `shipping` test runs `nm` over `player` to prove no `cinder::Dev` symbol reached it.
 
-**`platform` is the one leaf everything may reach for**, because `platform/Log.hpp` lives there and
-every layer logs, and `platform/Assets.hpp` is the only thing that turns a name into a path. That is
-the only reason `serial` and `gfx` have an edge to it, and neither header includes anything
+**`Platform` is the one leaf everything may reach for**, because `Platform/Log.hpp` lives there and
+every layer logs, and `Platform/Assets.hpp` is the only thing that turns a name into a path. That is
+the only reason `Serial` and `Gfx` have an edge to it, and neither header includes anything
 from the engine, so the edges cost nothing and create no cycle.
 
-**`gfx` is split five ways and the seam that matters is `gfx/rhi`.** It is a neutral leaf — formats,
+**`Gfx` is split five ways and the seam that matters is `Gfx/RHI`.** It is a neutral leaf — formats,
 `Commands`/`Uploads` handles, `TextureBinding`, the fluent `PipelineBuilder` — that *declares* the
 types a backend must provide: `Ctx`, `GpuBuffer`, `GraphicsPipeline`, `Texture`, `TexturePool`,
-`RenderTarget`, `GlyphPages`, `Presenter`. `gfx/vk` **defines** them in namespace
-`cinder::gfx::rhi`, and `gfx/mtl` defines the same names in Objective-C++; `cbt` compiles exactly
-one of the two, because `gfx/rhi`'s rules add a link dependency on `gfx/mtl` or `gfx/vk` by backend.
+`RenderTarget`, `GlyphPages`, `Presenter`. `Gfx/VK` **defines** them in namespace
+`cinder::Gfx::RHI`, and `Gfx/MTL` defines the same names in Objective-C++; `cbt` compiles exactly
+one of the two, because `Gfx/RHI`'s rules add a link dependency on `Gfx/MTL` or `Gfx/VK` by backend.
 The choice is `cbt`'s `--backend`, not a runtime flag — the same reasoning that makes the dev tools a
-separate module. No vtables: `Engine` still holds `rhi::Ctx ctx_` by
+separate module. No vtables: `Engine` still holds `RHI::Ctx ctx_` by
 value in the same declaration slot.
 
 **Both backends work.** `--backend vk` builds the Vulkan renderer; `--backend mtl` builds the native
@@ -343,38 +345,38 @@ because Metal has no index-buffer binding point and `drawIndexed` must find it; 
 Vulkan has one combined image sampler. `PipelineFactory` loads the `.metallib` phase 1 produced and
 falls back to compiling the `.metal` source at runtime when it is absent.
 
-`gfx/rhi/Backend.hpp` is **generated** by `cbt` into `Intermediate/<Platform>/<Config>/Generated/` and
-is one line — `#include "gfx/<backend>/Backend.hpp"`. Everything above the backend includes only that,
+`Gfx/RHI/Backend.hpp` is **generated** by `cbt` into `Intermediate/<Platform>/<Config>/Generated/` and
+is one line — `#include "Gfx/<backend>/Backend.hpp"`. Everything above the backend includes only that,
 so no first-party source names a backend. The layer check scans `Source/` only, so the generated header
 is invisible to it and the checked graph stays a strict DAG. **Nothing outside a backend directory names a
-Vulkan or Metal type**, and the one `<volk.h>` left outside it is `platform/Glfw.cpp`'s loader bootstrap,
-guarded by `CINDER_BACKEND_VK` — loader setup is the one place outside `gfx/` that names a backend,
-because it runs before `gfx` exists. `gfx/asset` is what you draw with (`Assets` and `Mesh`; `Texture` lives in the backend, since almost all of it is staging, barriers and copies),
-`gfx/pass` is how you draw it (`DrawPass` and its implementations, their pipelines, and `ViewCamera`), and
-`gfx` itself contains orchestration and frame resources: `Renderer`, `FrameTargets`, `UiRenderer`,
+Vulkan or Metal type**, and the one `<volk.h>` left outside it is `Platform/Glfw.cpp`'s loader bootstrap,
+guarded by `CINDER_BACKEND_VK` — loader setup is the one place outside `Gfx/` that names a backend,
+because it runs before `Gfx` exists. `Gfx/Asset` is what you draw with (`Assets` and `Mesh`; `Texture` lives in the backend, since almost all of it is staging, barriers and copies),
+`Gfx/Pass` is how you draw it (`DrawPass` and its implementations, their pipelines, and `ViewCamera`), and
+`Gfx` itself contains orchestration and frame resources: `Renderer`, `FrameTargets`, `UiRenderer`,
 `CompositePipeline` and `RendererDrawList`. `RenderTarget` is per backend, and the neutral pieces both
-backends share — image decoding, capture encoding, `GlyphRegion` — live in `gfx/rhi`. Nothing in a subdirectory includes
-its parent. `cbt check` and the `layers` test enforce these include directions. `ui` is split
-the same way, and the same rule holds: `ui/core` never includes `ui/widgets`.
+backends share — image decoding, capture encoding, `GlyphRegion` — live in `Gfx/RHI`. Nothing in a subdirectory includes
+its parent. `cbt check` and the `layers` test enforce these include directions. `UI` is split
+the same way, and the same rule holds: `UI/Core` never includes `UI/Widgets`.
 
 Four placements are load-bearing and were each chosen to kill a cycle: `Glfw`/`Window`/`Input` live
-in `platform`, not next to `Engine`; `DrawList` lives in `scene`, so the scene graph never includes
-`gfx`; `PropValue` lives in `scene`, not `serial`, so a node's attributes are scene data that the
-serializer and Properties each read without an edge to one another; and `core/Module.hpp` — the
-`Registrar` and the registration macros — lives in `core`, not `game`, so `core/GameModule` can load a
+in `Platform`, not next to `Engine`; `DrawList` lives in `Scene`, so the scene graph never includes
+`Gfx`; `PropValue` lives in `Scene`, not `Serial`, so a node's attributes are scene data that the
+serializer and Properties each read without an edge to one another; and `Core/Module.hpp` — the
+`Registrar` and the registration macros — lives in `Core`, not `Game`, so `Core/GameModule` can load a
 library without including the layer above it.
 
-`game` sits on top of `core` and is the one layer game code includes: `game/Game.hpp` pulls in the node
+`Game` sits on top of `Core` and is the one layer game code includes: `Game/Game.hpp` pulls in the node
 classes and declares free functions over the running engine. It forward-declares `Engine` rather than
 including it, so a module needs only `Source/` and glm on its include path.
 
-`platform/Files` holds the shared binary-mode file I/O used by project loading, scene files, fonts,
+`Platform/Files` holds the shared binary-mode file I/O used by project loading, scene files, fonts,
 module builds and editor history. `writeTextFile` writes a temporary file beside the target, checks the
 stream, and renames it over the target, so a failed write never truncates a scene; callers still decide
-whether to create parent directories. `platform/Utf8` and `platform/Strings` hold the UTF-8 and trimming
-helpers every layer shares. `serial/NumberText` holds locale-independent
+whether to create parent directories. `Platform/Utf8` and `Platform/Strings` hold the UTF-8 and trimming
+helpers every layer shares. `Serial/NumberText` holds locale-independent
 numeric formatting shared by the text and INI writers; their parsing and wire formats are unchanged.
-`reflect::copyProps` copies through each property's existing writer, including clamping and notifications.
+`Reflect::copyProps` copies through each property's existing writer, including clamping and notifications.
 
 ## Frame flow
 
@@ -411,20 +413,20 @@ and things are made by nesting: a Box is a `MeshPart` with a `Spinner` and a `Bo
 are no components. Behaviour is a node class too — the engine's classes draw, simulate and organize,
 and a project's C++ adds the rest, registered exactly like them (see *Game code*).
 
-- **`scene/Node`** holds an id, a name, a parent, children, `enabled`, attributes, and the lifecycle
+- **`Scene/Node`** holds an id, a name, a parent, children, `enabled`, attributes, and the lifecycle
   hooks `onStart`, `onUpdate`, `onRender` and `onDestroy`, plus the event hooks `onAttributeChanged`,
   `onChildAdded`, `onChildRemoved`, `onTouched` and `onTouchEnded`. `CINDER_PROPS(Node, void)` declares
   `enabled`, so it is the first prop of every class.
-- **`scene/Spatial`** is a `Node` that owns a `Transform`; `Node::transform()` is null on every other
+- **`Scene/Spatial`** is a `Node` that owns a `Transform`; `Node::transform()` is null on every other
   node. A `Transform` composes with its parent only when the parent is spatial, so a `Folder` breaks
   the chain and its children sit in world space.
-- **`scene/NodeTypes`** is the class registry — a name, a factory, the prop list and a default
+- **`Scene/NodeTypes`** is the class registry — a name, a factory, the prop list and a default
   instance per class for delta encoding. Re-binding a name keeps its slot, so iteration order, and
   the Explorer's insert menu, is stable across a reboot; `remove` empties a slot for a library being
   unloaded. Types are keyed by their **mangled name**, not `std::type_index`: on Apple's libc++ a
   library's hidden copy of a header-only class's `type_info` hashes by name while the engine's hashes
   by address, so a `Group` created by game code would otherwise not be found.
-- **`scene/Scene`** owns every node by id. `insert` takes a node and an optional id — the codec's
+- **`Scene/Scene`** owns every node by id. `insert` takes a node and an optional id — the codec's
   path — `create` builds one by class name, and `clone` copies a subtree through the registry, props,
   transform and attributes, with fresh ids. A node inserted without a name takes its class name.
 
@@ -454,17 +456,17 @@ scene, which is what makes unloading a game library safe. An attribute notifies 
 | `MeshPart` | Spatial | `mesh`, `texture` | |
 | `Sprite` | Spatial | `texture`, `size`, `color` | a quad in its local XY plane |
 | `Camera` | Spatial | `projection`, `fov`, clip planes, `zoom`, `clearColor`, `virtualSize` | `projection` is all that makes a scene 2D |
-| `Body` | Spatial | `motion`, `mass`, `gravityScale`, damping, `velocity`, `planar` | physics moves it; lives in `physics` |
+| `Body` | Spatial | `motion`, `mass`, `gravityScale`, damping, `velocity`, `planar` | physics moves it; lives in `Physics` |
 | `Collider` | Spatial | `shape`, `size`, `friction`, `restitution` | a shape of its nearest `Body`; see *Physics* |
 
 A new class derives from `Node` or `Spatial`, declares its props with `CINDER_NODE`, and is
-registered — engine classes in `nodes::registerBuiltins`, physics ones in
-`physics::registerNodes`, game classes by `CINDER_REGISTER` in their library. The serializer and the
+registered — engine classes in `Nodes::registerBuiltins`, physics ones in
+`Physics::registerNodes`, game classes by `CINDER_REGISTER` in their library. The serializer and the
 editor need no change.
 
 ### The scene file
 
-`serial/SceneCodec` writes version 4:
+`Serial/SceneCodec` writes version 4:
 
 ```
 version 4
@@ -485,7 +487,7 @@ nodes {
 
 An item's block name is its class. A node writes `id`, `name` (omitted when it is the class name),
 its transform if it is spatial, its class props where they differ from the class default,
-`attributes`, then `children`. An unknown class is logged once and loaded as a `scene::Placeholder`:
+`attributes`, then `children`. An unknown class is logged once and loaded as a `Scene::Placeholder`:
 a plain node that keeps the class name and its fields verbatim (`Archive::raw`, in file order) and
 writes them back unchanged, so a scene saved while a game module is missing or failed to build loses
 nothing; its children load as ordinary nodes, and cloning one makes another placeholder. Every token keeps
@@ -507,7 +509,7 @@ fully drawn. That split *is* Edit mode: meshes, sprites and cameras draw, game c
 draws too, and nothing else of the game runs. The one thing the editor draws differently is the view: Edit mode looks
 through its own camera and shows the scene's cameras as gizmos — see *The editor camera*.
 
-`dev/PlaySession` owns the editor's state, `Edit | Playing | Paused`:
+`Dev/PlaySession` owns the editor's state, `Edit | Playing | Paused`:
 
 - **Play** saves the scene to text with `SceneCodec::save` and hands it to `Engine::loadScene`, which
   is `SceneCodec::load`: it parses and checks the version first and clears the scene only then, so a
@@ -521,7 +523,7 @@ through its own camera and shows the scene's cameras as gizmos — see *The edit
 
 Toolbar buttons and shortcuts only set a request, and `PlaySession::tick` applies it **between
 frames**. The toolbar draws inside `Engine::render`, and Stop rebuilds every node, which must never
-happen while a node's own code is on the stack. For the same reason, game code calling `game::quit()`
+happen while a node's own code is on the stack. For the same reason, game code calling `Game::quit()`
 only sets a flag. The player ends on it; `PlaySession` turns it into Stop, the way Unity ignores
 `Application.Quit` in the editor.
 
@@ -558,12 +560,12 @@ pass's output needs the same treatment.
 `DrawPass` (`beginFrame` / `record`) is the extension point. It is named `DrawPass`, not `RenderPass`,
 so that `renderPass` unambiguously means a `VkRenderPass`. A new pass means: implement the interface and
 add it to `passes_` in the `Renderer` constructor in draw order; `Renderer::sprites()` and `meshes()`
-hand the two built-in passes to `game/Game` for immediate-mode drawing. A pass owns no camera: `record`
+hand the two built-in passes to `Game/Game` for immediate-mode drawing. A pass owns no camera: `record`
 is handed the frame's view-projection.
 
 **There is one camera, and 2D and 3D differ only in its projection** — Unity's model. `Renderer` owns
-a `gfx/pass/ViewCamera`, and the scene's `Camera` writes it every frame through `DrawList::camera` as a
-`scene::View`: the world matrix, `orthographic`, fov, clip planes, zoom and virtual size. A perspective
+a `Gfx/Pass/ViewCamera`, and the scene's `Camera` writes it every frame through `DrawList::camera` as a
+`Scene::View`: the world matrix, `orthographic`, fov, clip planes, zoom and virtual size. A perspective
 view uses the fov at the view's aspect. An orthographic one covers `virtualSize / zoom` world units —
 or the view's own size in points when `virtualSize` is zero — centred on the camera and stretched to
 the view. Both clip at `near` and `far`, so an orthographic camera at `z = 0` cannot see a sprite at
@@ -586,12 +588,12 @@ rectangle on `z = 0` with `x, y` at its bottom-left.
 
 Conventions used throughout, follow them:
 
-- every call that returns a `VkResult` goes through `check(result, "vkFunctionName")` from `gfx/vk/VkUtil.hpp`,
+- every call that returns a `VkResult` goes through `check(result, "vkFunctionName")` from `Gfx/VK/VkUtil.hpp`,
   except `Ctx::waitIdle`, which logs instead because destructors call it
 - structs are zero-initialized (`VkFooCreateInfo info{};`) and **every count is set by hand**
 - buffers and images allocate through VMA (`ctx.allocator()`); `GpuBuffer` is always host-visible
   and persistently mapped
-- every Vulkan-owning type is move-only with a destructor and no `destroy()` method. `rhi::Ctx` is
+- every Vulkan-owning type is move-only with a destructor and no `destroy()` method. `RHI::Ctx` is
   declared **first** in its owner and destroyed **last**; everything holding Vulkan handles refers to it
   by reference or a non-owning `const Ctx*`, never a copy and never an owning pointer. Declaration order *is* the destruction
   contract.
@@ -609,11 +611,11 @@ props, pushed to the renderer every frame through `DrawList::background` and `ca
 file carries them.
 
 **The UI draws in the present pass**, after the composite, through
-`gfx/UiRenderer` — never as a `DrawPass`, because every `DrawPass` records in the scene pass, which has
-depth. `Renderer::setUiPaint` installs a hook that `beginFrame` calls with a fresh `ui::ElementList`,
+`Gfx/UiRenderer` — never as a `DrawPass`, because every `DrawPass` records in the scene pass, which has
+depth. `Renderer::setUiPaint` installs a hook that `beginFrame` calls with a fresh `UI::ElementList`,
 in window points, every frame. Paint runs before the frame fence, so it fills CPU
 arrays only: `UiRenderer::prepare`, recorded before the scene pass, batches the list with the GPU-free
-`ui::batch`, fills that frame's growable host-visible buffers and uploads the dirty rectangles of the
+`UI::batch`, fills that frame's growable host-visible buffers and uploads the dirty rectangles of the
 list's glyph atlas into R8 pages — barriers from `SHADER_READ_ONLY` so the glyphs already there survive,
 and dirty rectangles cleared at record time, because the `OUT_OF_DATE` path paints without recording.
 One pipeline draws everything with a mode per vertex: solid, textured, glyph coverage with a gamma
@@ -624,7 +626,7 @@ batch, so boxes, lines and text on one glyph page draw in one call. `pixelsPerPo
 width over the window's width in points, measured whenever the swapchain is rebuilt and never
 in between, so a live resize cannot rasterize glyphs at a stream of fractional sizes.
 
-`Renderer::capture(path)` delegates target readback and PNG encoding to `gfx/Capture`.
+`Renderer::capture(path)` delegates target readback and PNG encoding to `Gfx/Capture`.
 `requestWindowCapture(path)` copies the swapchain image of the next frame instead, adding `TRANSFER_SRC`
 to the swapchain the first time it is asked. Both stall the device — debug tools, not
 per-frame features.
@@ -632,14 +634,14 @@ per-frame features.
 ## Physics
 
 **The physics engine is our own**, like the renderer and the coming UI framework — not Jolt, not Box2D.
-It is `Source/physics/`: a layer over `scene` and `reflect` with no Vulkan and no window in it, so all of
+It is `Source/Physics/`: a layer over `Scene` and `Reflect` with no Vulkan and no window in it, so all of
 it runs headlessly in `cbt test`.
 
-`Engine` owns a `physics::World` and steps it in `Engine::update`, after `Scene::update` and before
+`Engine` owns a `Physics::World` and steps it in `Engine::update`, after `Scene::update` and before
 `input.consume()`. Edit mode never calls `Engine::update`, so **physics never runs while you edit** —
 the same split that keeps game code from running, at no cost in code.
 
-Two node classes, registered by `physics::registerNodes`:
+Two node classes, registered by `Physics::registerNodes`:
 
 - **`Body`** is what physics moves: `motion` (`static | kinematic | dynamic`), `mass`, `gravityScale`,
   `linearDamping`, `angularDamping`, `velocity`, `angularVelocity` and `planar`. **`planar` is all that
@@ -679,13 +681,13 @@ The step, in order:
 1. **Place** — a body whose node matrix is not the one physics last wrote has been moved by something
    else — a script, Properties, or a parent moving — so it teleports there, keeping its velocity. A
    kinematic body always takes its pose from its node and derives its velocity from how far it moved.
-2. **Geometry** — each collider's world shape, from its node matrix, through `geometryOf`. `dev/GizmoLines`
+2. **Geometry** — each collider's world shape, from its node matrix, through `geometryOf`. `Dev/GizmoLines`
    draws the wireframes from the same function, so what is drawn is what collides.
 3. **Weigh** — a body's mass is split between its colliders by volume, giving a centre of mass and a
    full inertia tensor through the parallel axis theorem. **A body turns about its centre of mass**,
    not its origin, so a collider hung off to one side behaves like the weight it is.
 4. **Integrate velocities** — gravity, then damping.
-5. **Detect** — `physics::Broadphase` is a bounding volume tree, rebuilt from the frame's bounds every
+5. **Detect** — `Physics::Broadphase` is a bounding volume tree, rebuilt from the frame's bounds every
    step by splitting the widest axis at the median, and every shape queries it for the shapes near it;
    a pair is tested once, when at least one side is dynamic. Sphere–sphere and sphere–box are closed
    form, and a capsule is a segment with a radius: against a sphere or another capsule it is the
@@ -725,7 +727,7 @@ flapped from step to step, changing every feature id and throwing the warm start
 
 **Game code reaches physics directly.** `Body::applyImpulse`, `applyForce` and `applyTorque` are
 **accumulators**, applied at the next step and cleared there, so the order they are called in never
-matters; `game::raycast` returns an optional `RayHit`, and `game::world()` reads and writes gravity.
+matters; `Game::raycast` returns an optional `RayHit`, and `Game::world()` reads and writes gravity.
 
 Contacts reach game code the way scene changes do: `World` tracks which collider pairs touch, compares
 that with the last step's, and emits `Signal::Touched` and `TouchEnded` through `Scene::emit` on both
@@ -751,36 +753,36 @@ transforms, so at `fixedHz` 60 on a 120 Hz display a falling body visibly steps.
 
 **The editor runs on a retained UI of our own, shaped like Unreal's Slate and named our own way.** Widgets are objects that persist between frames; each frame the `Application` asks the
 root for its desired size bottom-up (`Widget::prepass`), arranges children top-down
-(`arrangeChildren` hands out a `Geometry`), and paints into the renderer's `ui::ElementList`. The same
+(`arrangeChildren` hands out a `Geometry`), and paints into the renderer's `UI::ElementList`. The same
 paint builds the `HitTester`, so input always routes against what was last drawn. Everything in
-`text` and `ui` runs headlessly: `Tests/ui_harness.hpp` drives a real `Application` with a
+`Text` and `UI` runs headlessly: `Tests/ui_harness.hpp` drives a real `Application` with a
 `HeadlessPlatform` clock and clipboard.
 
-Widgets are built with `ui::make<T>()`, which returns the widget's `Args`; chained setters fill them,
+Widgets are built with `UI::make<T>()`, which returns the widget's `Args`; chained setters fill them,
 `[child]` sets the content, `+ T::slot()` adds a slot, and the `Args` convert to `std::shared_ptr<T>`
 — or to any base — by building the widget. `.assign(ptr)` keeps a handle, the way `SAssignNew` does:
 
 ```cpp
-auto toolbar = ui::make<HorizontalBox>()
+auto toolbar = UI::make<HorizontalBox>()
     + HorizontalBox::slot().autoWidth().padding(4)
     [
-        ui::make<Button>().text("Play").onClicked([&] { session.requestPlay(); return Reply::handled(); })
+        UI::make<Button>().text("Play").onClicked([&] { session.requestPlay(); return Reply::handled(); })
     ]
     + HorizontalBox::slot().fill(1)
     [
-        ui::make<Label>().assign(title_).text([&] { return history.title(); })
+        UI::make<Label>().assign(title_).text([&] { return history.title(); })
     ];
 ```
 
-A widget declares `struct Args : ui::Args<Args, Widget>` with `UI_ATTR`, `UI_ARG`, `UI_EVENT`,
+A widget declares `struct Args : UI::Args<Args, Widget>` with `UI_ATTR`, `UI_ARG`, `UI_EVENT`,
 `UI_CONTENT` and `UI_SLOTS`, each taking an optional default, and implements `construct(const Args&)`.
-`ui::Args` adds visibility, enabled, tooltip and cursor to every widget. An `Attribute<T>` holds a value
+`UI::Args` adds visibility, enabled, tooltip and cursor to every widget. An `Attribute<T>` holds a value
 or a getter called when read, which is how a label follows `history.title()` without being told.
-`auto x = ui::make<T>()...` is the `Args`, not the widget; name the type or call `.build()`. Slot types
+`auto x = UI::make<T>()...` is the `Args`, not the widget; name the type or call `.build()`. Slot types
 live at namespace scope, because clang cannot use a nested class's member initializers inside the
 class that encloses it.
 
-**Input goes through `platform::Input`'s event queue, not its edge flags.** `setRecording(true)`
+**Input goes through `Platform::Input`'s event queue, not its edge flags.** `setRecording(true)`
 switches the queue on; the host drains it with `takeEvents()` in the UI paint hook and hands the batch
 to `Application::processEvents`. Keys arrive with repeats and modifiers — ⌘ is
 `modifiers::PRIMARY` on macOS and Control elsewhere — characters arrive separately, cursor moves
@@ -797,12 +799,12 @@ never touches the queue: it runs on every idle frame, which is all of Edit mode.
   pointer passes `DRAG_THRESHOLD`;
 - disabled widgets are still hit, so they can show tooltips, but no handler of theirs runs.
 
-`platform/InputScript` replays a text file of timed input — `12 move 40 60`, `13 click left`,
+`Platform/InputScript` replays a text file of timed input — `12 move 40 60`, `13 click left`,
 `14 type Crate`, `15 tap enter`, `20 capture out.png`, `21 quit` — through `Input::inject` with the
 OS's events ignored. It is how a change to a panel is verified without a human at the keyboard, and
 `graphics_smoke` drives the whole editor the same way.
 
-**The editor panels live in `dev/panels/`**, namespace `cinder::dev::panels`, over the units that
+**The editor panels live in `Dev/Panels/`**, namespace `cinder::Dev::Panels`, over the units that
 know nothing about any UI: `Toolbar` (the File, Edit, Window, Play and Platforms menus, play controls,
 save, undo and redo, Build and the module status, the dirty marker, the ⌘ shortcuts as a `CommandList`,
 and the modal Save / Don't Save / Cancel and packaging `Dialog`s, which swallow every key), `SceneView` (a `Viewport`
@@ -825,7 +827,7 @@ handled closes the top popup, and focus returns to whatever held it before. A po
 press keeps the focus it took. Every menu, combo list, submenu, context menu and colour picker is one of
 these. **Tooltips** are the `Application`'s too: after `TOOLTIP_DELAY` over the deepest widget with
 `toolTipText`, disabled ones included, it draws the text beside the cursor, unhittable; a press hides it
-until the pointer leaves that widget. Widgets that open popups hold a `ui::PopupHandle`, which remembers
+until the pointer leaves that widget. Widgets that open popups hold a `UI::PopupHandle`, which remembers
 the `Application` they opened on, so tests can ask `isOpen()` outside a frame, and dismisses the popup
 when the widget is destroyed — so Undo or a hot reload rebuilding Properties never leaves a dropdown
 calling into a dead combo box. Anything that reads the hit grid during paint — a
@@ -867,7 +869,7 @@ focus in paint order, backwards with Shift, and stays inside the popup the focus
 `pushPopup` and the dismissals set the thread's current `Application` themselves, so a panel may call
 them from its `update`, outside the paint.
 
-**Docking is a layout tree, not widget surgery.** `ui/docking`'s `TabManager` holds a `LayoutNode`
+**Docking is a layout tree, not widget surgery.** `UI/Docking`'s `TabManager` holds a `LayoutNode`
 tree of splits and stacks, and every change — a drop, a close, a reopen — edits that tree and rebuilds
 the widgets from it, carrying the splitter sizes over first, so nothing has to reparent a live
 `Splitter`. A tab's panel is spawned once and cached by id, so re-docking the Scene view keeps its
@@ -880,18 +882,18 @@ across an activation, because rebuilding them mid-press would destroy the widget
 armed.
 
 Styles come from a `Theme` of named entries — `"Button"`, `"Button.Primary"`, `"Label.Mono"`,
-`"Color.Primary"` — built by `ui::defaultTheme()` in the colours of Unreal's dark editor. Colours are
-linear `ui::Color`s authored as sRGB hex; the swapchain encodes them.
+`"Color.Primary"` — built by `UI::defaultTheme()` in the colours of Unreal's dark editor. Colours are
+linear `UI::Color`s authored as sRGB hex; the swapchain encodes them.
 
 ## The dev tools
 
 **The dev tools are a separate module, not a runtime flag.** The `player` module never depends on
-`dev` and the `editor` module does, so nothing editor-only is in the shipping binary. There is no
-`--dev`: to get the tools, run `editor`. `tests` depends on `dev` as well, so `History`, `Picking`,
+`Dev` and the `editor` module does, so nothing editor-only is in the shipping binary. There is no
+`--dev`: to get the tools, run `editor`. `tests` depends on `Dev` as well, so `History`, `Picking`,
 `EditorCamera`, `Manipulator` and the panels themselves are tested headlessly.
 
-The seam is `Renderer::setUiPaint(std::function<void(ui::ElementList&)>)`: `gfx` knows how to draw an
-element list and nothing about panels, `Application` or `scene`. `dev/EditorShell` owns the panels and
+The seam is `Renderer::setUiPaint(std::function<void(UI::ElementList&)>)`: `Gfx` knows how to draw an
+element list and nothing about panels, `Application` or `Scene`. `Dev/EditorShell` owns the panels and
 the UI application, and installs a hook that drains `Input`'s event queue into `Application::processEvents`, updates each panel, paints the
 widget tree into the list, and lets the Scene view apply its camera override and input suppression.
 The editor and `graphics_smoke` both build their UI from it, so the smoke test drives the editor as it
@@ -908,7 +910,7 @@ it to the project's `Saved/` is the "editor layout persisted between runs" item 
 
 ### The Scene view
 
-`dev/panels/SceneView` is the "Scene" tab: a `ui::Viewport` widget whose client it drives. Each frame
+`Dev/Panels/SceneView` is the "Scene" tab: a `UI::Viewport` widget whose client it drives. Each frame
 the widget's arrange step hands its size to `Renderer::setViewportSize` and its top-left to
 `Input::setViewportOrigin`, and its paint draws `TextureRef::viewport()` — the frame's scene target,
 opaque — with the gizmo strokes over it. The order is load-bearing: `setViewportSize` may rebuild the
@@ -924,7 +926,7 @@ mouse capture. A locked cursor gives the game both and turns the UI's mouse off 
 would otherwise hover whatever panel it wanders over. Entering `Playing` focuses the Scene view, so
 Play and Resume hand the game the keyboard without a click on the scene first.
 
-In Edit mode a **left click** on the image picks. `dev/Picking` is a CPU raycast that knows nothing
+In Edit mode a **left click** on the image picks. `Dev/Picking` is a CPU raycast that knows nothing
 about the UI: the click unprojects through the editor camera and hits every enabled `MeshPart` as the
 unit cube `Mesh::cube` is — which is every mesh there is — every enabled `Sprite` as the quad it draws,
 in its own plane and axes, and every enabled `Camera` within 10 points of where it projects, taking the
@@ -935,13 +937,13 @@ selects with `reveal`, so the Explorer expands the node's ancestors and scrolls 
 clears the selection. A press on a gizmo handle comes first: it drags the handle, and its release never
 picks — see *Transform gizmos*.
 
-`dev/panels/Layout` builds the default dock layout — the Explorer left, the Scene view in the middle
+`Dev/Panels/Layout` builds the default dock layout — the Explorer left, the Scene view in the middle
 with the console under it, Properties right — as a `TabManager` layout of splits and stacks, and hands
 the toolbar the Window menu that reopens a closed tab.
 
 ### The editor camera
 
-In Edit mode the Scene view looks through `dev/EditorCamera`, not through the scene's `Camera`.
+In Edit mode the Scene view looks through `Dev/EditorCamera`, not through the scene's `Camera`.
 `SceneView::afterPaint` hands its view to `Renderer::overrideCamera` on every Edit frame and calls
 `releaseCamera` in every other state, so Play and Pause show the game's camera. The override covers the whole frame,
 sprites included, so a 2D scene is flown around exactly like a 3D one — Unity's Scene view with 2D
@@ -970,7 +972,7 @@ the near and far rectangles, the four edges joining them, and dimmer lines from 
 corners. An orthographic camera is its near rectangle alone — every cross-section of its box is that
 rectangle, so it is exactly what the camera sees. The corners come from `ViewCamera::corners()` at the
 panel's size — the size Play renders at — and a test pins them to the clip volume of both
-projections. `dev/GizmoLines` turns them into strokes in panel points, which the panel paints into the
+projections. `Dev/GizmoLines` turns them into strokes in panel points, which the panel paints into the
 element list as anti-aliased lines and convex fills. They are projected through the editor camera and clipped in clip space against the near plane and the four sides before the divide, so a
 corner behind the editor camera cannot fold across the image. The sides are inset by `INSET`, so a camera the editor is looking straight through — as
 it is right after seeding — draws nothing, rather than a frame along the border that float noise
@@ -988,7 +990,7 @@ Scene view has focus — and, for Move, **World** or **Local** axes, toggled wit
 Unity's W/E/R because WASD and Q/E fly the editor camera with no button held; the panel takes those
 keys from its own `onKeyDown`.
 
-`dev/GizmoGeometry` owns handle geometry and hit testing; `dev/Manipulator` owns drag state. Neither
+`Dev/GizmoGeometry` owns handle geometry and hit testing; `Dev/Manipulator` owns drag state. Neither
 knows about the UI:
 
 - `gizmoFor` places the gizmo at the node's world position, `GIZMO_POINTS` long on screen at that depth,
@@ -1037,16 +1039,16 @@ ends a drag.
 
 ### The Explorer and Properties
 
-`dev/Selection` holds the selected node's **id**, never a `Node*`. Play and Stop rebuild every node
+`Dev/Selection` holds the selected node's **id**, never a `Node*`. Play and Stop rebuild every node
 through `loadScene`, and ids are what `SceneCodec` round-trips, so a selection survives both.
 `resolve` returns null — and forgets the id — once the node is gone or marked destroyed, so a node
 spawned during Play drops out of the selection on Stop.
 
-`dev/panels/Explorer` is a `TreeView` over node **ids**, so it builds only the rows in view and
+`Dev/Panels/Explorer` is a `TreeView` over node **ids**, so it builds only the rows in view and
 nothing it holds can dangle: every row reads its node back out of the scene each frame. A row is the
 node's name followed, dimmed, by its class — and a node disabled
 itself or through a parent is dimmed unless it is selected. Selection is bound straight to
-`dev/Selection` through `isItemSelected`, so picking in the Scene view and clicking a row are the same
+`Dev/Selection` through `isItemSelected`, so picking in the Scene view and clicking a row are the same
 state with nothing to keep in sync. A click selects and a click on empty space clears. **"+"** lists
 every registered class and inserts one under the selection, or at the root. Right-clicking a row
 offers Insert, Duplicate (`Scene::clone`) and Delete; dragging a row onto another reparents it, cycles
@@ -1058,7 +1060,7 @@ Delete uses `destroyNow`, because Edit mode never runs the `Scene::update` that
 flushes a deferred destroy. An inserted or duplicated node becomes the selection. During Play the same
 edits act on the running game and are discarded by Stop.
 
-`dev/panels/Properties` builds its rows from the prop list, with no per-node-class widget code: the
+`Dev/Panels/Properties` builds its rows from the prop list, with no per-node-class widget code: the
 node's name, class and id, a Transform section for spatial nodes, the class's props and the
 attributes, each section an `ExpandableArea` of name | value rows. The widget comes from the
 `PropType` and the `PropHint`: a `SpinBox` for numbers, a `VectorInputBox` for vectors, a `CheckBox`,
@@ -1084,7 +1086,7 @@ changes*.
 
 ### Undo, redo and unsaved changes
 
-`dev/History` is the editor's undo stack, and it stores **whole scenes**, not commands: after every
+`Dev/History` is the editor's undo stack, and it stores **whole scenes**, not commands: after every
 finished edit it saves the scene to text with `SceneCodec::save` — the same text Play snapshots — and
 undo loads the previous text back with `SceneCodec::load`. Nothing has to describe an edit to make it
 undoable: a prop, an attribute, an insert, a delete, a reparent and a console line are all the same
@@ -1092,7 +1094,7 @@ kind of step, which is what makes a new `CINDER_PROP` undoable with zero editor 
 scene save per finished edit and one load per undo.
 
 Panels and gizmos never push steps. They call `touch(label, selection)` when they write, and
-`dev/panels/Toolbar` calls `settle(app.isInteracting())` in its `update`, which commits only once
+`Dev/Panels/Toolbar` calls `settle(app.isInteracting())` in its `update`, which commits only once
 nothing holds the mouse capture, no text is being edited and no drag-and-drop is in flight. A drag that
 writes on forty frames is therefore one step, carrying the label and selection of its first frame, and
 an edit that saves to the same text as before records nothing. `MAX_STEPS` is 100.
@@ -1105,16 +1107,16 @@ which the tree keys by id, come back with it.
 The document is the text of the last commit, and it is **dirty** while it differs from the text last
 saved or opened — so undoing back to the saved state is clean again. Save commits a pending edit and
 writes that text, and the toolbar shows the scene as `main.scene*` while it is dirty. Closing the window
-does not end the loop directly: `editor/main.cpp` clears GLFW's close flag and calls
+does not end the loop directly: `Editor/main.cpp` clears GLFW's close flag and calls
 `Toolbar::requestClose`, which confirms at once when the scene is clean and otherwise opens a Save /
 Don't Save / Cancel modal, and the loop runs until `closeConfirmed()`. ⌘Z and ⌘⇧Z route globally like
 the other shortcuts, but an active text field claims ⌘Z for its own undo first.
 
 ### Logging and the console
 
-Everything prints through `platform/Log.hpp` — `logInfo` / `logError`, printf-style and
+Everything prints through `Platform/Log.hpp` — `logInfo` / `logError`, printf-style and
 `__attribute__((format))`-checked. Both always write to stdout/stderr, and additionally to a
-`LogSink` if one is installed. `dev/panels/Console` installs that sink in its constructor and clears it in its destructor, which is how `[build]`/`[module]`/`[vk]`/`[serial]` output reaches the panel. The sink receives
+`LogSink` if one is installed. `Dev/Panels/Console` installs that sink in its constructor and clears it in its destructor, which is how `[build]`/`[module]`/`[vk]`/`[serial]` output reaches the panel. The sink receives
 the line **without its trailing newline**. `Log` itself stays in `engine`: the sink is the seam a
 shipping build will use for a crash log file, so it is not a dev-only facility.
 
@@ -1135,14 +1137,14 @@ compiler itself, with no per-project build files. There is no entry point. A pro
 classes**, and the scene places them; a behaviour is a child node that acts on its parent.
 
 ```cpp
-#include "game/Game.hpp"
+#include "Game/Game.hpp"
 
-class Spinner final : public cinder::scene::Node {
+class Spinner final : public cinder::Scene::Node {
 public:
-    CINDER_NODE(Spinner, cinder::scene::Node) { CINDER_PROP(speed_); }
+    CINDER_NODE(Spinner, cinder::Scene::Node) { CINDER_PROP(speed_); }
 
     void onUpdate(float dt) override {
-        cinder::scene::Transform* box = parent() != nullptr ? parent()->transform() : nullptr;
+        cinder::Scene::Transform* box = parent() != nullptr ? parent()->transform() : nullptr;
         if (box == nullptr) return;
         const glm::vec3 rotation = box->rotation() + speed_ * dt;
         box->setRotation(rotation.x, rotation.y, rotation.z);
@@ -1163,11 +1165,11 @@ outside the class. Settings are typed props; attributes stay as free-form data o
 
 - **The scene** is plain C++: `Scene::create<T>(parent)` and `create("Class", parent)`, `clone`, `find`,
   `byId`, `destroy`, `Node::setParent`, `findFirstChild`, attributes, and each class's own setters.
-- **`game/Game.hpp`** declares free functions over the running engine, found through
+- **`Game/Game.hpp`** declares free functions over the running engine, found through
   `Engine::current()`: `time`, `quit`, `keyDown`/`keyPressed`/`keyReleased`, `mouseDown`/`Pressed`/
   `Released`, `mousePosition`, `mouseDelta`, `scroll`, `setCursorLocked`, `loadTexture`, `textureSize`,
   `screenSize`, `screenToWorld`, `drawSprite`, `drawSpriteRegion`, `drawRect`, `newCube`, `drawMesh`,
-  `raycast`, `world()` for gravity, and `random`. `game::quit()` only sets a flag: the player ends on
+  `raycast`, `world()` for gravity, and `random`. `Game::quit()` only sets a flag: the player ends on
   it and the editor turns it into Stop. `time` is scene time, so it stops while paused and advances
   one fixed step per Step. `screenToWorld` takes window points relative to the view and
   returns the point on the `z = 0` plane, through the scene's camera, never the editor's.
@@ -1178,11 +1180,11 @@ outside the class. Settings are typed props; attributes stay as free-form data o
 
 ### Modules
 
-- **`core/Module.hpp`.** `CINDER_REGISTER(T)` appends to a list behind a hidden-visibility inline
+- **`Core/Module.hpp`.** `CINDER_REGISTER(T)` appends to a list behind a hidden-visibility inline
   function, so each library has its own. `CINDER_MODULE_ENTRY()` defines the two exports,
   `cinder_module_abi` and `cinder_module_register`; `cbt` generates the one file that expands it.
   Registration goes through a `Registrar`, which refuses a name the engine or another class already owns.
-- **`core/GameModule`** `dlopen`s a library and refuses it unless its `cinder_module_abi` matches the
+- **`Core/GameModule`** `dlopen`s a library and refuses it unless its `cinder_module_abi` matches the
   engine's **BuildId** — see below. `enlist` registers its classes;
   the destructor calls `NodeTypes::remove` for each — dropping cached default instances, which live in
   the library's code — and only then `dlclose`s. `locate` finds `Binaries/<Platform>/<name>.dylib`
@@ -1192,7 +1194,7 @@ outside the class. Settings are typed props; attributes stay as free-form data o
   Linux), so any engine symbol a library calls exists; libraries link with `-undefined dynamic_lookup`.
   A Shipping package strips `player`, which keeps the exported symbols and drops the rest.
 - **The BuildId** is a hash of the engine's sources under `Source/` — `ThirdParty/` included, and
-  `dev/`, `editor/`, `packager/` and `Programs/` left out, since game code never links them — its
+  `Dev/`, `Editor/`, `Packager/` and `Programs/` left out, since game code never links them — its
   version, backend, configuration and compiler. `cbt` computes it only when it plans an engine build;
   `cbt game` reads it from `Engine.modules`. `cbt build` writes it to
   `Binaries/<Platform>/<Config>/Engine.modules` and compiles it into the engine through a generated
@@ -1205,22 +1207,22 @@ outside the class. Settings are typed props; attributes stay as free-form data o
 ### Building and hot reload
 
 - **`cbt game <project>`** builds a project's C++ as a game-module target. A project with no rule files
-  gets one module, `Project.<name>`, holding every `.cpp` under `Source/` and depending on `game`; a
+  gets one module, `Project.<name>`, holding every `.cpp` under `Source/` and depending on `Game`; a
   project with `*.Build.cpp` files under `Source/` has them compiled into a library `cbt` loads first,
   and a project module named like an engine module is an error. Objects go to
   `Saved/Intermediate/<Platform>/<Config>/` with `-MMD` depfiles, next to a generated
   `ModuleEntry.cpp`; the library goes to `Saved/Binaries/<name>.dylib` (`.so` on Linux), or to
   `--library <file>`. It writes `compile_commands.json` at the project root for clangd. It needs the
   engine's `Engine.modules`, so the engine must be built for the same configuration first.
-- **`dev/GameBuild`** finds `cbt` at `Binaries/<Platform>/cbt`, one folder above the running
+- **`Dev/GameBuild`** finds `cbt` at `Binaries/<Platform>/cbt`, one folder above the running
   executable, and spells the `cbt game` and `cbt build` command lines for the executable's own
   configuration and backend. The editor and the packager compile nothing themselves.
-- **`dev/Process`** runs a child through `posix_spawn` in its own process group with default signal
+- **`Dev/Process`** runs a child through `posix_spawn` in its own process group with default signal
   handlers, reads its output by line, and can terminate the whole group. Its pipes are close-on-exec, so
   a child never inherits another child's output. `ModuleHost`, `Staging` and the packager use it to run
-  `cbt` and build steps, and `dev/BackgroundProcess` runs one on a worker thread for `ModuleHost` and
+  `cbt` and build steps, and `Dev/BackgroundProcess` runs one on a worker thread for `ModuleHost` and
   `Packager`, queueing its lines for the main thread.
-- **`dev/ModuleHost`** is the editor's owner of all this. The editor runs `cbt game` and loads the
+- **`Dev/ModuleHost`** is the editor's owner of all this. The editor runs `cbt game` and loads the
   library synchronously **before the scene opens**, so the scene's classes exist when it loads.
   **Build** on the toolbar and **⌘B** run it in the background; `update` relays its output as `[build]`
   lines on the main thread, counts compiles and errors from it, and marks a reload pending when the
@@ -1241,7 +1243,7 @@ outside the class. Settings are typed props; attributes stay as free-form data o
 ### Attributes
 
 Per-node free-form data: a `PropRec` on `Node`, saved as an `attributes { ... }` block and edited in
-Properties. `scene/Attributes` decides what one may hold — a number, string, bool, or a sequence of 2–4
+Properties. `Scene/Attributes` decides what one may hold — a number, string, bool, or a sequence of 2–4
 numbers — and what a name may be: letters, digits and `_`. A change emits `Signal::AttributeChanged`
 only when the value really changes, and `loadAttributes` never notifies.
 
@@ -1259,7 +1261,7 @@ There is no runtime reflection in C++, so props are declared with a macro that s
 name — the identifier *is* the serialization key:
 
 ```cpp
-CINDER_NODE(Camera, cinder::scene::Spatial) {
+CINDER_NODE(Camera, cinder::Scene::Spatial) {
     CINDER_PROP(projection_);
     CINDER_PROP_S(fov_, 1.0f, 179.0f, 1.0f);
     CINDER_PROP_R(zoom_, 0.05f, 20.0f);
@@ -1354,7 +1356,7 @@ says what the project is and what it is made of, while `Config/` says how it is 
 }
 ```
 
-`core/ProjectDescriptor` carries every `.uproject` field that means something outside Epic's own
+`Core/ProjectDescriptor` carries every `.uproject` field that means something outside Epic's own
 tooling — `EpicSampleNameHash` and `IsEnterpriseProject` are left out — and not all of them are read
 yet:
 
@@ -1373,16 +1375,16 @@ yet:
 `ProjectDescriptor::save` writes Unreal's layout — tabs, the first four keys always, everything else
 only when it is set — and `Tests/scene_files_test` holds the shipped descriptors to it. A wrong type,
 or a module or plugin without a `name`, is an error that names the key, and `ProjectConfig::load`
-prefixes the file name. `serial/Json` is the format: `parseJson` builds a `PropValue` — objects are
+prefixes the file name. `Serial/Json` is the format: `parseJson` builds a `PropValue` — objects are
 `PropRec`, arrays `PropSeq`, and `null` is rejected — and reports errors as `line:column`, and
 `JsonWriter` streams, so the descriptor rather than a sorted map decides the key order.
 
-`serial/IniLoad` and `serial/IniSave` are the `Archive` for INI: a record is a `[Section]`, a field is
+`Serial/IniLoad` and `Serial/IniSave` are the `Archive` for INI: a record is a `[Section]`, a field is
 `key=value` with camelCase keys like props, a value runs raw to the end of its line, and numbers go
 through `from_chars`/`to_chars`. INI has no arrays, attribute bags or nested sections, and asking for
 one throws `std::logic_error`.
 
-`platform/Assets` is the only thing that turns a name into a path, and it has four roots:
+`Platform/Assets` is the only thing that turns a name into a path, and it has four roots:
 
 - **`enginePath`** — engine data, such as `Content/Fonts/`. `CINDER_ENGINE` if set; else `Engine/`
   next to the executable, if it exists, which is the packaged layout; else the repo root, baked in by
@@ -1393,18 +1395,18 @@ one throws `std::logic_error`.
   `CINDER_SHADERS_DEFAULT`; else `engineRoot() / "Shaders"`. The packaged layout deliberately beats
   the baked build directory, so a packaged game run on the dev machine never reads the build tree.
 - **`contentPath`** — `Content/`: the scene to open, `Sprite.texture`, `MeshPart.texture` and
-  `game::loadTexture`.
+  `Game::loadTexture`.
 - **`sourcePath`** — `Source/`: the game's C++, which `cbt game` builds.
 
 The loader picks the root, so a path never names it — a scene says `texture "Textures/box.png"`. Both roots sit under the project root, which is made absolute, so a project
 folder can live anywhere and runs from any working directory; the player falls back to `Project/`
 next to itself. A path that is absolute or climbs out of its root with `..` throws: a texture logs
-and draws white, and `game::loadTexture` throws. It would work in the editor and break
+and draws white, and `Game::loadTexture` throws. It would work in the editor and break
 once packaged. A path that exists but differs in case from the disk logs `[assets] ... differs in
 case`: macOS is case-insensitive by default, and the same project would not find the file on a
 case-sensitive system.
 
-**Packaging is C++.** `dev/Staging` does it, and two things call it: the `packager`
+**Packaging is C++.** `Dev/Staging` does it, and two things call it: the `packager`
 executable, and the editor's **Platforms** menu, which runs that executable as a child process.
 `stage(request)`:
 
@@ -1431,8 +1433,8 @@ host, Development and `<project>/Saved/Builds/<Platform>/<name>/`. When it finds
 configuration's shaders; without `cbt` it falls back to the `player` and shaders next to itself.
 
 **The editor's Platforms menu** has a Development/Shipping check and one entry per platform in
-`dev/Staging` — macOS, Linux, Windows, iOS and Android. `dev/Packager` runs `packager` through
-`dev/Process`, in a process group of its own, and reads its output on a worker thread; the lines are
+`Dev/Staging` — macOS, Linux, Windows, iOS and Android. `Dev/Packager` runs `packager` through
+`Dev/Process`, in a process group of its own, and reads its output on a worker thread; the lines are
 queued and logged as `[package]` from `Toolbar::update`, on the main thread, so the console sink is
 never called off it. Only the host's own desktop platform is enabled; the others are listed, disabled,
 with a tooltip saying why, and a project whose `targetPlatforms` leaves a platform out disables it too.
@@ -1453,7 +1455,7 @@ closing the editor mid-package asks to Stop and Close or Keep Packaging.
   destructor, and `main` holds an outer acquire across the whole run.
 - `Input` is edge-triggered: `keyPressed`/`keyReleased` are true for exactly one fixed update,
   cleared by `input.consume()` at the end of `Engine::update` and on every `GameLoop::idle` frame.
-- **`std::to_chars` everywhere in `serial`** — never `printf` or `ostream`, which follow the locale.
+- **`std::to_chars` everywhere in `Serial`** — never `printf` or `ostream`, which follow the locale.
   A test pins the output under a Turkish locale, and `IniLoad` and `parseJson` parse with
   `std::from_chars` for the same reason.
 - Sizes and view dimensions come in two flavours and they are not interchangeable: the swapchain and

@@ -1,26 +1,26 @@
 #include <doctest/doctest.h>
 
-#include "ui/widgets/MenuBar.hpp"
+#include "UI/Widgets/MenuBar.hpp"
 #include "ui_harness.hpp"
 
-#include "ui/framework/Commands.hpp"
-#include "ui/widgets/Canvas.hpp"
-#include "ui/widgets/ColorPicker.hpp"
-#include "ui/widgets/ComboBox.hpp"
-#include "ui/widgets/ExpandableArea.hpp"
-#include "ui/widgets/Menu.hpp"
-#include "ui/widgets/SpinBox.hpp"
-#include "ui/widgets/TextField.hpp"
-#include "ui/widgets/VectorInputBox.hpp"
+#include "UI/Framework/Commands.hpp"
+#include "UI/Widgets/Canvas.hpp"
+#include "UI/Widgets/ColorPicker.hpp"
+#include "UI/Widgets/ComboBox.hpp"
+#include "UI/Widgets/ExpandableArea.hpp"
+#include "UI/Widgets/Menu.hpp"
+#include "UI/Widgets/SpinBox.hpp"
+#include "UI/Widgets/TextField.hpp"
+#include "UI/Widgets/VectorInputBox.hpp"
 
 #include <glm/geometric.hpp>
 
-using namespace cinder::ui;
+using namespace cinder::UI;
 using uitest::Harness;
 using uitest::Probe;
 using uitest::count;
-namespace keys = cinder::platform::keys;
-namespace modifiers = cinder::platform::modifiers;
+namespace keys = cinder::Platform::keys;
+namespace modifiers = cinder::Platform::modifiers;
 
 namespace {
 

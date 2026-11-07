@@ -1,10 +1,10 @@
 #include <doctest/doctest.h>
 
-#include "core/ProjectConfig.hpp"
-#include "core/GameLoop.hpp"
+#include "Core/ProjectConfig.hpp"
+#include "Core/GameLoop.hpp"
 
-using cinder::core::ProjectConfig;
-using cinder::core::GameLoop;
+using cinder::Core::ProjectConfig;
+using cinder::Core::GameLoop;
 
 TEST_CASE("one step per exact period") {
     GameLoop loop(60);

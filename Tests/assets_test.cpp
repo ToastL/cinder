@@ -2,8 +2,8 @@
 
 #include "test_support.hpp"
 
-#include "platform/Assets.hpp"
-#include "platform/Log.hpp"
+#include "Platform/Assets.hpp"
+#include "Platform/Log.hpp"
 
 #include <filesystem>
 #include <fstream>
@@ -11,8 +11,8 @@
 #include <string>
 #include <vector>
 
-using cinder::platform::contentPath;
-using cinder::platform::sourcePath;
+using cinder::Platform::contentPath;
+using cinder::Platform::sourcePath;
 
 namespace {
 
@@ -23,7 +23,7 @@ struct Project {
         std::filesystem::create_directories(root / "Content" / "Textures");
         std::filesystem::create_directories(root / "Source");
         std::ofstream(root / "Content" / "Textures" / "Box.png") << "png";
-        cinder::platform::setProjectRoot(root);
+        cinder::Platform::setProjectRoot(root);
     }
 
     ~Project() { std::filesystem::remove_all(root); }
@@ -33,12 +33,12 @@ struct Sink {
     std::vector<std::string> lines;
 
     Sink() {
-        cinder::platform::setLogSink([this](cinder::platform::LogLevel, std::string_view text) {
+        cinder::Platform::setLogSink([this](cinder::Platform::LogLevel, std::string_view text) {
             lines.emplace_back(text);
         });
     }
 
-    ~Sink() { cinder::platform::setLogSink(nullptr); }
+    ~Sink() { cinder::Platform::setLogSink(nullptr); }
 
     Sink(const Sink&) = delete;
     Sink& operator=(const Sink&) = delete;

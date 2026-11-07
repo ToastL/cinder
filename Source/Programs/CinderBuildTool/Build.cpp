@@ -117,7 +117,7 @@ std::string Builder::computeBuildId() const {
 
     std::vector<std::filesystem::path> files;
     const std::filesystem::path source = options_.root / "Source";
-    const std::filesystem::path outsideAbi[] = {source / "dev", source / "editor", source / "packager",
+    const std::filesystem::path outsideAbi[] = {source / "Dev", source / "Editor", source / "Packager",
                                                 source / "Programs"};
     {
         std::error_code error;
@@ -383,11 +383,11 @@ void Builder::planRules(const std::string& name, const TargetRules& target, cons
         }
     }
 
-    if (!game && std::find(modules.begin(), modules.end(), "core") != modules.end()) {
+    if (!game && std::find(modules.begin(), modules.end(), "Core") != modules.end()) {
         const std::filesystem::path source = intermediate() / "Generated" / "BuildId.cpp";
-        const std::filesystem::path object = intermediate() / "Modules" / "core" / "BuildId.cpp.o";
+        const std::filesystem::path object = intermediate() / "Modules" / "Core" / "BuildId.cpp.o";
         std::vector<std::string> command{toolchain_.cxx, "-std=c++20"};
-        const std::vector<std::string> flags = compileFlags("core", targetInfo, false, {});
+        const std::vector<std::string> flags = compileFlags("Core", targetInfo, false, {});
         command.insert(command.end(), flags.begin(), flags.end());
         command.insert(command.end(), {"-c", source.string(), "-o", object.string()});
         actions.push_back(Action{"compile BuildId.cpp", command, {}, {source}, {object}, {}, {}});
@@ -395,7 +395,7 @@ void Builder::planRules(const std::string& name, const TargetRules& target, cons
     }
 
     std::vector<std::filesystem::path> linkInputs = objects;
-    if (!game && std::find(modules.begin(), modules.end(), "gfx") != modules.end() && shaderPlanned_.insert("shaders").second) {
+    if (!game && std::find(modules.begin(), modules.end(), "Gfx") != modules.end() && shaderPlanned_.insert("shaders").second) {
         std::vector<std::filesystem::path> shaderOutputs;
         planShaders(actions, shaderOutputs);
     }
@@ -482,7 +482,7 @@ bool Builder::buildGame(const std::filesystem::path& project, std::filesystem::p
     std::vector<std::string> modules;
     if (rules.empty()) {
         registerModule("Project." + name, source / (name + ".Build.cpp"),
-                       [](ModuleRules& m, const TargetInfo&) { m.publicDependencies({"game"}); });
+                       [](ModuleRules& m, const TargetInfo&) { m.publicDependencies({"Game"}); });
         modules.push_back("Project." + name);
     } else {
         std::set<std::string> engine;
@@ -512,7 +512,7 @@ bool Builder::buildGame(const std::filesystem::path& project, std::filesystem::p
     }
 
     const std::filesystem::path entry = objects / "ModuleEntry.cpp";
-    if (!writeIfChanged(entry, "#include \"core/Module.hpp\"\nCINDER_MODULE_ENTRY()\n")) {
+    if (!writeIfChanged(entry, "#include \"Core/Module.hpp\"\nCINDER_MODULE_ENTRY()\n")) {
         throw std::runtime_error("could not write " + entry.string());
     }
     if (library.empty()) library = project / "Saved" / "Binaries" / (name + toolchain_.libraryExtension());
@@ -533,12 +533,13 @@ bool Builder::buildGame(const std::filesystem::path& project, std::filesystem::p
 }
 
 std::vector<Action> Builder::plan(const std::vector<std::string>& targets) {
-    const std::string backend = "#pragma once\n\n#include \"gfx/" + options_.backend + "/Backend.hpp\"\n";
-    if (!writeIfChanged(intermediate() / "Generated" / "gfx" / "rhi" / "Backend.hpp", backend)) {
+    const std::string backendFolder = options_.backend == "mtl" ? "MTL" : "VK";
+    const std::string backend = "#pragma once\n\n#include \"Gfx/" + backendFolder + "/Backend.hpp\"\n";
+    if (!writeIfChanged(intermediate() / "Generated" / "Gfx" / "RHI" / "Backend.hpp", backend)) {
         throw std::runtime_error("could not write the generated Backend.hpp");
     }
 
-    const std::string id = "namespace cinder::core {\n\nconst char* buildId() { return \"" + buildId() + "\"; }\n\n}\n";
+    const std::string id = "namespace cinder::Core {\n\nconst char* buildId() { return \"" + buildId() + "\"; }\n\n}\n";
     const std::string modules = "{\n\t\"buildId\": \"" + buildId() + "\",\n\t\"version\": \"" + ENGINE_VERSION
             + "\",\n\t\"config\": \"" + options_.config + "\",\n\t\"backend\": \"" + options_.backend + "\"\n}\n";
     if (!writeIfChanged(intermediate() / "Generated" / "BuildId.cpp", id) || !writeIfChanged(binaries() / "Engine.modules", modules)) {

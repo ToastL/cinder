@@ -1,13 +1,13 @@
-#include "game/Game.hpp"
+#include "Game/Game.hpp"
 
 using namespace cinder;
 
-class Spinner final : public scene::Node {
+class Spinner final : public Scene::Node {
 public:
-    CINDER_NODE(Spinner, scene::Node) { CINDER_PROP(speed_); }
+    CINDER_NODE(Spinner, Scene::Node) { CINDER_PROP(speed_); }
 
     void onUpdate(float dt) override {
-        scene::Transform* box = parent() != nullptr ? parent()->transform() : nullptr;
+        Scene::Transform* box = parent() != nullptr ? parent()->transform() : nullptr;
         if (box == nullptr) return;
         const glm::vec3 rotation = box->rotation() + speed_ * dt;
         box->setRotation(rotation.x, rotation.y, rotation.z);

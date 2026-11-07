@@ -1,15 +1,15 @@
 #include <doctest/doctest.h>
 
-#include "nodes/Builtins.hpp"
-#include "nodes/Group.hpp"
-#include "nodes/Sprite.hpp"
-#include "scene/Attributes.hpp"
-#include "scene/DrawList.hpp"
-#include "scene/Node.hpp"
-#include "scene/NodeTypes.hpp"
-#include "scene/PropValue.hpp"
-#include "scene/Scene.hpp"
-#include "scene/Transform.hpp"
+#include "Nodes/Builtins.hpp"
+#include "Nodes/Group.hpp"
+#include "Nodes/Sprite.hpp"
+#include "Scene/Attributes.hpp"
+#include "Scene/DrawList.hpp"
+#include "Scene/Node.hpp"
+#include "Scene/NodeTypes.hpp"
+#include "Scene/PropValue.hpp"
+#include "Scene/Scene.hpp"
+#include "Scene/Transform.hpp"
 
 #include <cstdint>
 #include <memory>
@@ -17,11 +17,11 @@
 #include <string>
 #include <vector>
 
-using cinder::scene::DrawList;
-using cinder::scene::Node;
-using cinder::scene::NodeTypes;
-using cinder::scene::PropValue;
-using cinder::scene::Scene;
+using cinder::Scene::DrawList;
+using cinder::Scene::Node;
+using cinder::Scene::NodeTypes;
+using cinder::Scene::PropValue;
+using cinder::Scene::Scene;
 
 namespace {
 
@@ -45,7 +45,7 @@ struct NullDraws : DrawList {
     void background(float r, float g, float b) override {}
     void sprite(int texture, const glm::mat4& model, glm::vec2 size, const glm::vec4& color) override {}
     void mesh(int mesh, int texture, const glm::mat4& model) override {}
-    void camera(const cinder::scene::View& view) override {}
+    void camera(const cinder::Scene::View& view) override {}
 };
 
 struct Suicide : Node {
@@ -68,8 +68,8 @@ struct Recorder {
     std::vector<std::string> events;
 
     void watch(Scene& scene, Node& source, Node& owner) {
-        using cinder::scene::Signal;
-        using cinder::scene::SignalArgs;
+        using cinder::Scene::Signal;
+        using cinder::Scene::SignalArgs;
         scene.connect(source, Signal::AttributeChanged, owner,
                       [this](const SignalArgs& args) { events.push_back("attribute " + std::string(args.name)); });
         scene.connect(source, Signal::ChildAdded, owner,
@@ -248,7 +248,7 @@ TEST_CASE("clear does not reissue ids") {
 
 TEST_CASE("an unregistered node is named Node, a registered one after its class") {
     Fixture f;
-    cinder::nodes::registerBuiltins(f.types);
+    cinder::Nodes::registerBuiltins(f.types);
 
     CHECK(f.scene.create<Counter>(nullptr)->name() == "Node");
     CHECK(f.scene.create("Group", nullptr)->name() == "Group");
@@ -257,12 +257,12 @@ TEST_CASE("an unregistered node is named Node, a registered one after its class"
 
 TEST_CASE("clone copies props, transform, attributes and children with fresh ids") {
     Fixture f;
-    cinder::nodes::registerBuiltins(f.types);
+    cinder::Nodes::registerBuiltins(f.types);
     Node* box = f.scene.create("Group", nullptr);
     box->setName("Box");
     box->transform()->setPosition(1, 2, 3);
     box->setAttribute("hp", PropValue::integer(3));
-    f.scene.create<cinder::nodes::Sprite>(box)->setSize(5, 7);
+    f.scene.create<cinder::Nodes::Sprite>(box)->setSize(5, 7);
 
     Node* copy = f.scene.clone(*box, nullptr);
     REQUIRE(copy != nullptr);
@@ -272,7 +272,7 @@ TEST_CASE("clone copies props, transform, attributes and children with fresh ids
     CHECK(copy->attribute("hp")->as<std::int64_t>() == 3);
     REQUIRE(copy->children().size() == 1);
 
-    auto* sprite = dynamic_cast<cinder::nodes::Sprite*>(copy->children()[0]);
+    auto* sprite = dynamic_cast<cinder::Nodes::Sprite*>(copy->children()[0]);
     REQUIRE(sprite != nullptr);
     CHECK(sprite != box->children()[0]);
     CHECK(sprite->size().y == doctest::Approx(7));
@@ -330,8 +330,8 @@ TEST_CASE("loaded attributes do not notify") {
 }
 
 TEST_CASE("attributes hold numbers, strings, bools and small vectors") {
-    using cinder::scene::isAttributeName;
-    using cinder::scene::isAttributeValue;
+    using cinder::Scene::isAttributeName;
+    using cinder::Scene::isAttributeValue;
 
     CHECK(isAttributeName("max_speed2"));
     CHECK_FALSE(isAttributeName(""));
@@ -388,8 +388,8 @@ TEST_CASE("a connection hears another node's signal and dies with either node") 
     auto* source = scene.create<Counter>(nullptr);
     auto* owner = scene.create<Counter>(source);
     std::vector<std::string> heard;
-    scene.connect(*source, cinder::scene::Signal::AttributeChanged, *owner,
-                  [&heard](const cinder::scene::SignalArgs& args) { heard.emplace_back(args.name); });
+    scene.connect(*source, cinder::Scene::Signal::AttributeChanged, *owner,
+                  [&heard](const cinder::Scene::SignalArgs& args) { heard.emplace_back(args.name); });
 
     source->setAttribute("before", PropValue::integer(1));
     scene.update(0.0f);
@@ -403,10 +403,10 @@ TEST_CASE("a connection hears another node's signal and dies with either node") 
     auto* other = scene.create<Counter>(nullptr);
     scene.update(0.0f);
     int destroying = 0;
-    scene.connect(*source, cinder::scene::Signal::Destroying, *other,
-                  [&destroying](const cinder::scene::SignalArgs&) { destroying++; });
-    const int handle = scene.connect(*source, cinder::scene::Signal::AttributeChanged, *other,
-                                     [&heard](const cinder::scene::SignalArgs&) { heard.emplace_back("x"); });
+    scene.connect(*source, cinder::Scene::Signal::Destroying, *other,
+                  [&destroying](const cinder::Scene::SignalArgs&) { destroying++; });
+    const int handle = scene.connect(*source, cinder::Scene::Signal::AttributeChanged, *other,
+                                     [&heard](const cinder::Scene::SignalArgs&) { heard.emplace_back("x"); });
     scene.disconnect(handle);
     source->setAttribute("quiet", PropValue::integer(4));
     CHECK(heard.size() == 1);

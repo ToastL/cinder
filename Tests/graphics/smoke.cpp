@@ -1,27 +1,27 @@
-#include "nodes/Camera.hpp"
-#include "nodes/MeshPart.hpp"
-#include "core/Engine.hpp"
-#include "core/GameLoop.hpp"
-#include "dev/EditorShell.hpp"
-#include "dev/History.hpp"
-#include "dev/Manipulator.hpp"
-#include "dev/ModuleHost.hpp"
-#include "dev/Packager.hpp"
-#include "dev/PlaySession.hpp"
-#include "dev/Selection.hpp"
-#include "dev/panels/Explorer.hpp"
-#include "dev/panels/SceneView.hpp"
-#include "physics/Body.hpp"
-#include "physics/Collider.hpp"
-#include "platform/Assets.hpp"
-#include "platform/Files.hpp"
-#include "platform/Glfw.hpp"
-#include "platform/InputEvent.hpp"
-#include "serial/SceneCodec.hpp"
-#include "ui/docking/DockTab.hpp"
-#include "ui/docking/TabManager.hpp"
-#include "ui/framework/Application.hpp"
-#include "ui/widgets/TreeView.hpp"
+#include "Nodes/Camera.hpp"
+#include "Nodes/MeshPart.hpp"
+#include "Core/Engine.hpp"
+#include "Core/GameLoop.hpp"
+#include "Dev/EditorShell.hpp"
+#include "Dev/History.hpp"
+#include "Dev/Manipulator.hpp"
+#include "Dev/ModuleHost.hpp"
+#include "Dev/Packager.hpp"
+#include "Dev/PlaySession.hpp"
+#include "Dev/Selection.hpp"
+#include "Dev/Panels/Explorer.hpp"
+#include "Dev/Panels/SceneView.hpp"
+#include "Physics/Body.hpp"
+#include "Physics/Collider.hpp"
+#include "Platform/Assets.hpp"
+#include "Platform/Files.hpp"
+#include "Platform/Glfw.hpp"
+#include "Platform/InputEvent.hpp"
+#include "Serial/SceneCodec.hpp"
+#include "UI/Docking/DockTab.hpp"
+#include "UI/Docking/TabManager.hpp"
+#include "UI/Framework/Application.hpp"
+#include "UI/Widgets/TreeView.hpp"
 
 #include <GLFW/glfw3.h>
 
@@ -33,10 +33,10 @@
 
 namespace {
 
-using cinder::platform::InputEvent;
-using cinder::platform::InputEventType;
-namespace buttons = cinder::platform::buttons;
-namespace keys = cinder::platform::keys;
+using cinder::Platform::InputEvent;
+using cinder::Platform::InputEventType;
+namespace buttons = cinder::Platform::buttons;
+namespace keys = cinder::Platform::keys;
 
 void require(bool condition, const char* message) {
     if (!condition) throw std::runtime_error(message);
@@ -44,7 +44,7 @@ void require(bool condition, const char* message) {
 
 class Driver {
 public:
-    explicit Driver(cinder::platform::Input& input) : input_(&input) {
+    explicit Driver(cinder::Platform::Input& input) : input_(&input) {
         input_->setRecording(true);
         input_->setIgnoreSystem(true);
     }
@@ -90,50 +90,50 @@ public:
     }
 
 private:
-    cinder::platform::Input* input_;
+    cinder::Platform::Input* input_;
     glm::vec2 cursor_{0.0f};
 };
 
-glm::vec2 centerOf(const cinder::ui::Application& app, const std::shared_ptr<cinder::ui::Widget>& widget) {
-    const cinder::ui::Geometry geometry = app.grid().geometryOf(widget.get()).value_or(cinder::ui::Geometry{});
+glm::vec2 centerOf(const cinder::UI::Application& app, const std::shared_ptr<cinder::UI::Widget>& widget) {
+    const cinder::UI::Geometry geometry = app.grid().geometryOf(widget.get()).value_or(cinder::UI::Geometry{});
     require(geometry.size.x > 0.0f && geometry.size.y > 0.0f, "Widget was not painted");
     return geometry.rect().center();
 }
 
 void exercise() {
-    using namespace cinder::dev;
-    using cinder::serial::SceneCodec;
+    using namespace cinder::Dev;
+    using cinder::Serial::SceneCodec;
 
     const auto output = std::filesystem::path(CINDER_BINARY_DIR) / "graphics-smoke";
     std::filesystem::create_directories(output);
-    cinder::platform::setProjectRoot(std::filesystem::path(CINDER_SOURCE_DIR) / "Samples/sandbox3d");
-    cinder::core::ProjectConfig config("Cinder graphics smoke", 1100, 700, "", 60);
-    cinder::core::Engine engine(config);
+    cinder::Platform::setProjectRoot(std::filesystem::path(CINDER_SOURCE_DIR) / "Samples/sandbox3d");
+    cinder::Core::ProjectConfig config("Cinder graphics smoke", 1100, 700, "", 60);
+    cinder::Core::Engine engine(config);
     auto& scene = engine.scene();
-    auto* camera = scene.create<cinder::nodes::Camera>(nullptr);
+    auto* camera = scene.create<cinder::Nodes::Camera>(nullptr);
     camera->transform()->setPosition(0.0f, 3.0f, 10.0f);
-    auto* body = scene.create<cinder::physics::Body>(nullptr);
+    auto* body = scene.create<cinder::Physics::Body>(nullptr);
     body->setName("Ball");
     body->transform()->setPosition(0.0f, 3.0f, 0.0f);
-    scene.create<cinder::physics::Collider>(body);
-    scene.create<cinder::nodes::MeshPart>(body);
+    scene.create<cinder::Physics::Collider>(body);
+    scene.create<cinder::Nodes::MeshPart>(body);
     const int id = body->id();
 
-    cinder::dev::Packager packager(cinder::platform::projectRoot(), {});
-    cinder::dev::ModuleHost modules(scene, cinder::platform::projectRoot(), "Smoke", std::nullopt);
+    cinder::Dev::Packager packager(cinder::Platform::projectRoot(), {});
+    cinder::Dev::ModuleHost modules(scene, cinder::Platform::projectRoot(), "Smoke", std::nullopt);
     EditorShell shell(engine, modules, packager, output / "saved.scene");
     PlaySession& session = shell.session();
     Selection& selection = shell.selection();
     History& history = shell.history();
-    cinder::ui::Application& app = shell.app();
-    panels::SceneView& view = shell.view();
-    panels::Explorer& explorer = shell.explorer();
-    cinder::ui::TabManager& tabs = shell.tabs();
+    cinder::UI::Application& app = shell.app();
+    Panels::SceneView& view = shell.view();
+    Panels::Explorer& explorer = shell.explorer();
+    cinder::UI::TabManager& tabs = shell.tabs();
 
-    cinder::platform::Input& input = engine.input();
+    cinder::Platform::Input& input = engine.input();
     Driver driver(input);
 
-    cinder::core::GameLoop loop(60);
+    cinder::Core::GameLoop loop(60);
     const auto frames = [&](int count) {
         for (int i = 0; i < count; ++i) session.tick(loop);
     };
@@ -144,7 +144,7 @@ void exercise() {
     require(SceneCodec::save(scene) == initial, "Edit mode changed the scene");
     require(tabs.stackCount() == 4, "The editor did not dock its four panels");
 
-    const std::shared_ptr<cinder::ui::TableRow> row = explorer.tree()->rowFor(static_cast<cinder::ui::ItemId>(id));
+    const std::shared_ptr<cinder::UI::TableRow> row = explorer.tree()->rowFor(static_cast<cinder::UI::ItemId>(id));
     require(row != nullptr, "The Explorer has no row for the body");
     driver.move(centerOf(app, row));
     driver.press();
@@ -157,8 +157,8 @@ void exercise() {
     require(placed.has_value(), "Selected body has no move gizmo");
     const auto pivot = toScreen(gizmo, placed->pivot);
     require(pivot.has_value(), "Gizmo pivot is not visible");
-    const cinder::ui::Geometry panel =
-            app.grid().geometryOf(view.viewport().get()).value_or(cinder::ui::Geometry{});
+    const cinder::UI::Geometry panel =
+            app.grid().geometryOf(view.viewport().get()).value_or(cinder::UI::Geometry{});
     const glm::vec2 handle = panel.position + *pivot;
 
     driver.move(handle);
@@ -181,7 +181,7 @@ void exercise() {
 
     history.save(output / "saved.scene");
     require(!history.dirty(), "Save did not clear the dirty state");
-    require(cinder::platform::readTextFile(output / "saved.scene") == edited, "Saved scene text changed");
+    require(cinder::Platform::readTextFile(output / "saved.scene") == edited, "Saved scene text changed");
 
     driver.chord(keys::letter('p'));
     frames(2);
@@ -215,7 +215,7 @@ void exercise() {
         require(SceneCodec::save(scene) == edited, "Stop did not restore the edited scene");
     }
 
-    const std::shared_ptr<cinder::ui::TabStack> stack = tabs.stackWidget(tabs.stackOf("Console"));
+    const std::shared_ptr<cinder::UI::TabStack> stack = tabs.stackWidget(tabs.stackOf("Console"));
     require(stack != nullptr, "The docked layout lost the console's stack");
     const glm::vec2 consoleTab = centerOf(app, stack->tabWidget("Console"));
     driver.move(consoleTab);
@@ -251,9 +251,9 @@ void exercise() {
 
 int main(int, char** argv) {
     std::setvbuf(stdout, nullptr, _IOLBF, 0);
-    cinder::platform::locateExecutable(argv[0]);
+    cinder::Platform::locateExecutable(argv[0]);
     try {
-        const cinder::platform::GlfwSession glfw;
+        const cinder::Platform::GlfwSession glfw;
         exercise();
         std::puts("graphics smoke: ALL PASS");
         return 0;

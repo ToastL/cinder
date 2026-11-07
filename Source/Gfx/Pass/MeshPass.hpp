@@ -1,0 +1,46 @@
+#pragma once
+
+#include "Gfx/Asset/Assets.hpp"
+#include "Gfx/Asset/Mesh.hpp"
+#include "Gfx/Pass/DrawPass.hpp"
+#include "Gfx/Pass/MeshPipeline.hpp"
+
+#include <string>
+#include <string_view>
+#include <unordered_map>
+#include <vector>
+
+namespace cinder::Gfx::Pass {
+
+class MeshPass : public DrawPass {
+public:
+    static constexpr uint32_t MAX_DRAWS = 4096;
+
+    MeshPass(const cinder::Gfx::RHI::Ctx& ctx, cinder::Gfx::Asset::Assets& assets,
+             const MeshPipeline& pipeline);
+
+    void beginFrame() override;
+    void record(cinder::Gfx::RHI::Commands cmd, uint32_t frameInFlight,
+                const glm::mat4& viewProjection) override;
+
+    void submit(int mesh, int texture, const glm::mat4& model);
+    int addCube(float r, float g, float b);
+    int meshNamed(std::string_view name) const;
+
+private:
+    bool accept(int mesh);
+
+    const cinder::Gfx::RHI::Ctx& ctx_;
+    cinder::Gfx::Asset::Assets& assets_;
+    const MeshPipeline& pipeline_;
+
+    std::vector<cinder::Gfx::Asset::Mesh> meshes_;
+    std::unordered_map<std::string, int> named_;
+    std::vector<int> drawMesh_;
+    std::vector<int> drawTexture_;
+    std::vector<glm::mat4> drawModel_;
+    uint32_t drawCount_ = 0;
+    bool overflowWarned_ = false;
+};
+
+}

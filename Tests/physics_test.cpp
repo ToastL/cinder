@@ -1,19 +1,19 @@
 #include <doctest/doctest.h>
 
-#include "nodes/Builtins.hpp"
-#include "nodes/Group.hpp"
-#include "physics/Body.hpp"
-#include "physics/Broadphase.hpp"
-#include "physics/Collide.hpp"
-#include "physics/Collider.hpp"
-#include "physics/Geometry.hpp"
-#include "physics/Nodes.hpp"
-#include "physics/Pose.hpp"
-#include "physics/World.hpp"
-#include "scene/NodeTypes.hpp"
-#include "scene/Scene.hpp"
-#include "scene/Transform.hpp"
-#include "serial/SceneCodec.hpp"
+#include "Nodes/Builtins.hpp"
+#include "Nodes/Group.hpp"
+#include "Physics/Body.hpp"
+#include "Physics/Broadphase.hpp"
+#include "Physics/Collide.hpp"
+#include "Physics/Collider.hpp"
+#include "Physics/Geometry.hpp"
+#include "Physics/Nodes.hpp"
+#include "Physics/Pose.hpp"
+#include "Physics/World.hpp"
+#include "Scene/NodeTypes.hpp"
+#include "Scene/Scene.hpp"
+#include "Scene/Transform.hpp"
+#include "Serial/SceneCodec.hpp"
 
 #include <glm/geometric.hpp>
 #include <glm/gtc/constants.hpp>
@@ -26,15 +26,15 @@
 #include <string>
 #include <vector>
 
-using cinder::physics::Body;
-using cinder::physics::Collider;
-using cinder::physics::Geometry;
-using cinder::physics::Manifold;
-using cinder::physics::Shape;
-using cinder::physics::World;
-using cinder::scene::Node;
-using cinder::scene::NodeTypes;
-using cinder::scene::Scene;
+using cinder::Physics::Body;
+using cinder::Physics::Collider;
+using cinder::Physics::Geometry;
+using cinder::Physics::Manifold;
+using cinder::Physics::Shape;
+using cinder::Physics::World;
+using cinder::Scene::Node;
+using cinder::Scene::NodeTypes;
+using cinder::Scene::Scene;
 
 namespace {
 
@@ -46,8 +46,8 @@ struct Fixture {
     World world{scene};
 
     Fixture() {
-        cinder::nodes::registerBuiltins(types);
-        cinder::physics::registerNodes(types);
+        cinder::Nodes::registerBuiltins(types);
+        cinder::Physics::registerNodes(types);
     }
 
     void run(int steps) {
@@ -111,32 +111,32 @@ TEST_CASE("a box collider's geometry follows its world transform") {
                     glm::vec3(0.0f, 0.0f, 1.0f)),
         glm::vec3(2.0f, 3.0f, 4.0f));
 
-    const Geometry box = cinder::physics::geometryOf(Shape::Box, glm::vec3(1.0f, 2.0f, 1.0f), world);
+    const Geometry box = cinder::Physics::geometryOf(Shape::Box, glm::vec3(1.0f, 2.0f, 1.0f), world);
     checkVec(box.center, glm::vec3(1.0f, 2.0f, 3.0f));
     checkVec(box.halfExtents, glm::vec3(1.0f, 3.0f, 2.0f));
     checkVec(box.axes[0], glm::vec3(0.0f, 1.0f, 0.0f));
 
-    const cinder::physics::Bounds bounds = cinder::physics::boundsOf(box);
+    const cinder::Physics::Bounds bounds = cinder::Physics::boundsOf(box);
     checkVec(bounds.min, glm::vec3(-2.0f, 1.0f, 1.0f));
     checkVec(bounds.max, glm::vec3(4.0f, 3.0f, 5.0f));
 }
 
 TEST_CASE("a sphere collider fits the largest side of its scaled size") {
     const glm::mat4 world = glm::scale(glm::mat4(1.0f), glm::vec3(1.0f, 3.0f, 2.0f));
-    const Geometry sphere = cinder::physics::geometryOf(Shape::Sphere, glm::vec3(1.0f), world);
+    const Geometry sphere = cinder::Physics::geometryOf(Shape::Sphere, glm::vec3(1.0f), world);
     CHECK(sphere.radius == doctest::Approx(1.5f));
 }
 
 TEST_CASE("overlapping spheres touch along the line between their centers") {
     Manifold manifold;
-    REQUIRE(cinder::physics::collide(sphereAt(glm::vec3(0.0f), 1.0f), sphereAt(glm::vec3(1.5f, 0.0f, 0.0f), 1.0f),
+    REQUIRE(cinder::Physics::collide(sphereAt(glm::vec3(0.0f), 1.0f), sphereAt(glm::vec3(1.5f, 0.0f, 0.0f), 1.0f),
                                      manifold));
     CHECK(manifold.count == 1);
     checkVec(manifold.normal, glm::vec3(1.0f, 0.0f, 0.0f));
     CHECK(manifold.points[0].depth == doctest::Approx(0.5f));
     checkVec(manifold.points[0].position, glm::vec3(0.75f, 0.0f, 0.0f));
 
-    CHECK_FALSE(cinder::physics::collide(sphereAt(glm::vec3(0.0f), 1.0f),
+    CHECK_FALSE(cinder::Physics::collide(sphereAt(glm::vec3(0.0f), 1.0f),
                                          sphereAt(glm::vec3(2.5f, 0.0f, 0.0f), 1.0f), manifold));
 }
 
@@ -145,12 +145,12 @@ TEST_CASE("a sphere resting on a box face touches along the face normal") {
     const Geometry ball = sphereAt(glm::vec3(0.3f, 0.9f, 0.0f), 0.5f);
     const Geometry floor = boxAt(glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(2.0f, 0.5f, 2.0f));
 
-    REQUIRE(cinder::physics::collide(ball, floor, manifold));
+    REQUIRE(cinder::Physics::collide(ball, floor, manifold));
     checkVec(manifold.normal, glm::vec3(0.0f, -1.0f, 0.0f));
     CHECK(manifold.points[0].depth == doctest::Approx(0.1f));
     checkVec(manifold.points[0].position, glm::vec3(0.3f, 0.5f, 0.0f));
 
-    REQUIRE(cinder::physics::collide(floor, ball, manifold));
+    REQUIRE(cinder::Physics::collide(floor, ball, manifold));
     checkVec(manifold.normal, glm::vec3(0.0f, 1.0f, 0.0f));
 }
 
@@ -159,7 +159,7 @@ TEST_CASE("a sphere near a box corner touches along the line to the corner") {
     const Geometry ball = sphereAt(glm::vec3(1.3f, 1.4f, 0.0f), 0.6f);
     const Geometry box = boxAt(glm::vec3(0.0f), glm::vec3(1.0f));
 
-    REQUIRE(cinder::physics::collide(ball, box, manifold));
+    REQUIRE(cinder::Physics::collide(ball, box, manifold));
     checkVec(manifold.normal, -glm::normalize(glm::vec3(0.3f, 0.4f, 0.0f)));
     CHECK(manifold.points[0].depth == doctest::Approx(0.1f));
     checkVec(manifold.points[0].position, glm::vec3(1.0f, 1.0f, 0.0f));
@@ -170,7 +170,7 @@ TEST_CASE("a sphere whose center is inside a box leaves through the nearest face
     const Geometry ball = sphereAt(glm::vec3(0.2f, 0.0f, -0.9f), 0.25f);
     const Geometry box = boxAt(glm::vec3(0.0f), glm::vec3(1.0f));
 
-    REQUIRE(cinder::physics::collide(ball, box, manifold));
+    REQUIRE(cinder::Physics::collide(ball, box, manifold));
     checkVec(manifold.normal, glm::vec3(0.0f, 0.0f, 1.0f));
     CHECK(manifold.points[0].depth == doctest::Approx(0.35f));
 }
@@ -180,7 +180,7 @@ TEST_CASE("two boxes meet on the face with the least penetration") {
     const Geometry below = boxAt(glm::vec3(0.0f), glm::vec3(1.0f));
     const Geometry above = boxAt(glm::vec3(0.0f, 1.8f, 0.0f), glm::vec3(1.0f));
 
-    REQUIRE(cinder::physics::collide(below, above, manifold));
+    REQUIRE(cinder::Physics::collide(below, above, manifold));
     checkVec(manifold.normal, glm::vec3(0.0f, 1.0f, 0.0f));
     CHECK(manifold.count == 4);
 
@@ -196,10 +196,10 @@ TEST_CASE("two boxes meet on the face with the least penetration") {
 
 TEST_CASE("boxes that clear each other do not touch") {
     Manifold manifold;
-    CHECK_FALSE(cinder::physics::collide(boxAt(glm::vec3(0.0f), glm::vec3(1.0f)),
+    CHECK_FALSE(cinder::Physics::collide(boxAt(glm::vec3(0.0f), glm::vec3(1.0f)),
                                          boxAt(glm::vec3(0.0f, 2.01f, 0.0f), glm::vec3(1.0f)),
                                          manifold));
-    CHECK_FALSE(cinder::physics::collide(boxAt(glm::vec3(0.0f), glm::vec3(1.0f)),
+    CHECK_FALSE(cinder::Physics::collide(boxAt(glm::vec3(0.0f), glm::vec3(1.0f)),
                                          boxAt(glm::vec3(3.0f, 0.5f, 0.0f), glm::vec3(1.0f)),
                                          manifold));
 }
@@ -211,7 +211,7 @@ TEST_CASE("a box tipped onto its corner touches at the corner") {
     tipped.axes = glm::mat3(glm::rotate(glm::mat4(1.0f), glm::quarter_pi<float>(),
                                         glm::vec3(0.0f, 0.0f, 1.0f)));
 
-    REQUIRE(cinder::physics::collide(floor, tipped, manifold));
+    REQUIRE(cinder::Physics::collide(floor, tipped, manifold));
     checkVec(manifold.normal, glm::vec3(0.0f, 1.0f, 0.0f));
 
     float deepest = 0.0f;
@@ -231,11 +231,11 @@ TEST_CASE("written rotations compose back into the orientation they came from") 
 
     NodeTypes types;
     Scene scene{types};
-    cinder::nodes::registerBuiltins(types);
-    Node* node = scene.create<cinder::nodes::Group>(nullptr);
+    cinder::Nodes::registerBuiltins(types);
+    Node* node = scene.create<cinder::Nodes::Group>(nullptr);
 
     for (const glm::quat& orientation : orientations) {
-        const glm::vec3 rotation = cinder::physics::rotationOf(orientation);
+        const glm::vec3 rotation = cinder::Physics::rotationOf(orientation);
         node->transform()->setRotation(rotation.x, rotation.y, rotation.z);
         const glm::mat3 expected = glm::mat3_cast(orientation);
         const glm::mat3 actual(node->transform()->local());
@@ -362,7 +362,7 @@ TEST_CASE("writing a body's position teleports it and keeps its velocity") {
 TEST_CASE("moving a body's parent carries the body with it") {
     Fixture f;
     f.world.setGravity(glm::vec3(0.0f));
-    Node* group = f.scene.create<cinder::nodes::Group>(nullptr);
+    Node* group = f.scene.create<cinder::Nodes::Group>(nullptr);
     Body* body = f.scene.create<Body>(group);
     body->transform()->setPosition(0.0f, 5.0f, 0.0f);
     body->setVelocity(1.0f, 0.0f, 0.0f);
@@ -376,7 +376,7 @@ TEST_CASE("moving a body's parent carries the body with it") {
 TEST_CASE("a body under a rotated parent keeps its world pose when written back") {
     Fixture f;
     f.world.setGravity(glm::vec3(0.0f));
-    Node* group = f.scene.create<cinder::nodes::Group>(nullptr);
+    Node* group = f.scene.create<cinder::Nodes::Group>(nullptr);
     group->transform()->setPosition(1.0f, 2.0f, 3.0f).setRotation(0.4f, 1.1f, -0.3f);
     Body* body = f.scene.create<Body>(group);
 
@@ -421,7 +421,7 @@ TEST_CASE("disabled bodies and colliders take no part in the step") {
     Fixture f;
     Collider* floor = f.floor();
     Body* body = f.ball(0.0f, 3.0f, 0.0f);
-    Node* group = f.scene.create<cinder::nodes::Group>(nullptr);
+    Node* group = f.scene.create<cinder::Nodes::Group>(nullptr);
     Body* hidden = f.ball(5.0f, 3.0f, 0.0f, group);
     group->setEnabled(false);
     floor->setEnabled(false);
@@ -472,14 +472,14 @@ TEST_CASE("bodies and colliders round-trip through the scene file") {
     Collider* capsule = f.scene.create<Collider>(body);
     capsule->setShape(Shape::Capsule).setSize(1.0f, 2.0f, 1.0f).setFriction(0.25f);
 
-    const std::string text = cinder::serial::SceneCodec::save(f.scene);
+    const std::string text = cinder::Serial::SceneCodec::save(f.scene);
     CHECK(text.find("motion \"kinematic\"") != std::string::npos);
     CHECK(text.find("shape \"sphere\"") != std::string::npos);
     CHECK(text.find("shape \"capsule\"") != std::string::npos);
 
     Fixture g;
-    cinder::serial::SceneCodec::load(text, g.scene);
-    CHECK(cinder::serial::SceneCodec::save(g.scene) == text);
+    cinder::Serial::SceneCodec::load(text, g.scene);
+    CHECK(cinder::Serial::SceneCodec::save(g.scene) == text);
 }
 
 TEST_CASE("a box comes to rest on the floor and stays there") {
@@ -625,7 +625,7 @@ TEST_CASE("a ray reports the nearest shape it meets") {
     Collider* floor = f.floor();
     Body* ball = f.ball(0.0f, 3.0f, 0.0f);
 
-    cinder::physics::RayHit hit;
+    cinder::Physics::RayHit hit;
     REQUIRE(f.world.raycast(glm::vec3(0.0f, 10.0f, 0.0f), glm::vec3(0.0f, -1.0f, 0.0f), 100.0f, hit));
     CHECK(hit.node == ball);
     CHECK(hit.distance == doctest::Approx(6.5f));
@@ -643,17 +643,17 @@ TEST_CASE("a ray reports the nearest shape it meets") {
 
 TEST_CASE("a capsule is a segment of its size with round ends") {
     const Geometry capsule =
-        cinder::physics::geometryOf(Shape::Capsule, glm::vec3(1.0f, 3.0f, 1.0f), glm::mat4(1.0f));
+        cinder::Physics::geometryOf(Shape::Capsule, glm::vec3(1.0f, 3.0f, 1.0f), glm::mat4(1.0f));
     CHECK(capsule.radius == doctest::Approx(0.5f));
-    CHECK(cinder::physics::segmentHalf(capsule) == doctest::Approx(1.0f));
-    checkVec(cinder::physics::segmentAxis(capsule), glm::vec3(0.0f, 1.0f, 0.0f));
+    CHECK(cinder::Physics::segmentHalf(capsule) == doctest::Approx(1.0f));
+    checkVec(cinder::Physics::segmentAxis(capsule), glm::vec3(0.0f, 1.0f, 0.0f));
 
     const Geometry ball =
-        cinder::physics::geometryOf(Shape::Capsule, glm::vec3(2.0f, 1.0f, 2.0f), glm::mat4(1.0f));
+        cinder::Physics::geometryOf(Shape::Capsule, glm::vec3(2.0f, 1.0f, 2.0f), glm::mat4(1.0f));
     CHECK(ball.radius == doctest::Approx(1.0f));
-    CHECK(cinder::physics::segmentHalf(ball) == 0.0f);
+    CHECK(cinder::Physics::segmentHalf(ball) == 0.0f);
 
-    const glm::mat3 inertia = cinder::physics::inertiaOf(capsule, 1.0f);
+    const glm::mat3 inertia = cinder::Physics::inertiaOf(capsule, 1.0f);
     CHECK(inertia[1][1] < inertia[0][0]);
     CHECK(inertia[0][0] == doctest::Approx(inertia[2][2]));
 }
@@ -661,17 +661,17 @@ TEST_CASE("a capsule is a segment of its size with round ends") {
 TEST_CASE("a capsule meets a sphere along its shaft and over its caps") {
     Manifold manifold;
     const Geometry capsule =
-        cinder::physics::geometryOf(Shape::Capsule, glm::vec3(1.0f, 3.0f, 1.0f), glm::mat4(1.0f));
+        cinder::Physics::geometryOf(Shape::Capsule, glm::vec3(1.0f, 3.0f, 1.0f), glm::mat4(1.0f));
 
-    REQUIRE(cinder::physics::collide(capsule, sphereAt(glm::vec3(0.8f, 0.3f, 0.0f), 0.5f), manifold));
+    REQUIRE(cinder::Physics::collide(capsule, sphereAt(glm::vec3(0.8f, 0.3f, 0.0f), 0.5f), manifold));
     checkVec(manifold.normal, glm::vec3(1.0f, 0.0f, 0.0f));
     CHECK(manifold.points[0].depth == doctest::Approx(0.2f));
 
-    REQUIRE(cinder::physics::collide(capsule, sphereAt(glm::vec3(0.0f, 1.9f, 0.0f), 0.5f), manifold));
+    REQUIRE(cinder::Physics::collide(capsule, sphereAt(glm::vec3(0.0f, 1.9f, 0.0f), 0.5f), manifold));
     checkVec(manifold.normal, glm::vec3(0.0f, 1.0f, 0.0f));
     CHECK(manifold.points[0].depth == doctest::Approx(0.1f));
 
-    REQUIRE(cinder::physics::collide(sphereAt(glm::vec3(0.8f, 0.3f, 0.0f), 0.5f), capsule, manifold));
+    REQUIRE(cinder::Physics::collide(sphereAt(glm::vec3(0.8f, 0.3f, 0.0f), 0.5f), capsule, manifold));
     checkVec(manifold.normal, glm::vec3(-1.0f, 0.0f, 0.0f));
 }
 
@@ -679,14 +679,14 @@ TEST_CASE("a capsule lying on a box touches at both ends") {
     Manifold manifold;
     const glm::mat4 lying = glm::rotate(glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, 0.9f, 0.0f)),
                                         glm::half_pi<float>(), glm::vec3(0.0f, 0.0f, 1.0f));
-    const Geometry capsule = cinder::physics::geometryOf(Shape::Capsule, glm::vec3(1.0f, 2.0f, 1.0f), lying);
+    const Geometry capsule = cinder::Physics::geometryOf(Shape::Capsule, glm::vec3(1.0f, 2.0f, 1.0f), lying);
     const Geometry floor = boxAt(glm::vec3(0.0f), glm::vec3(2.0f, 0.5f, 2.0f));
 
-    REQUIRE(cinder::physics::collide(capsule, floor, manifold));
+    REQUIRE(cinder::Physics::collide(capsule, floor, manifold));
     checkVec(manifold.normal, glm::vec3(0.0f, -1.0f, 0.0f));
     REQUIRE(manifold.count == 2);
     for (int i = 0; i < 2; ++i) {
-        const cinder::physics::ContactPoint& point = manifold.points[static_cast<std::size_t>(i)];
+        const cinder::Physics::ContactPoint& point = manifold.points[static_cast<std::size_t>(i)];
         CHECK(point.depth == doctest::Approx(0.1f));
         CHECK(point.position.y == doctest::Approx(0.5f));
         CHECK(std::abs(point.position.x) == doctest::Approx(0.5f));
@@ -698,9 +698,9 @@ TEST_CASE("a capsule standing on a box touches once") {
     Manifold manifold;
     const glm::mat4 standing = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, 1.4f, 0.0f));
     const Geometry capsule =
-        cinder::physics::geometryOf(Shape::Capsule, glm::vec3(1.0f, 2.0f, 1.0f), standing);
+        cinder::Physics::geometryOf(Shape::Capsule, glm::vec3(1.0f, 2.0f, 1.0f), standing);
 
-    REQUIRE(cinder::physics::collide(capsule, boxAt(glm::vec3(0.0f), glm::vec3(2.0f, 0.5f, 2.0f)),
+    REQUIRE(cinder::Physics::collide(capsule, boxAt(glm::vec3(0.0f), glm::vec3(2.0f, 0.5f, 2.0f)),
                                      manifold));
     checkVec(manifold.normal, glm::vec3(0.0f, -1.0f, 0.0f));
     CHECK(manifold.count == 1);
@@ -710,34 +710,34 @@ TEST_CASE("a capsule standing on a box touches once") {
 TEST_CASE("crossed capsules meet where they are closest") {
     Manifold manifold;
     const Geometry upright =
-        cinder::physics::geometryOf(Shape::Capsule, glm::vec3(1.0f, 3.0f, 1.0f), glm::mat4(1.0f));
+        cinder::Physics::geometryOf(Shape::Capsule, glm::vec3(1.0f, 3.0f, 1.0f), glm::mat4(1.0f));
     const glm::mat4 across = glm::rotate(glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, 0.5f, 0.9f)),
                                          glm::half_pi<float>(), glm::vec3(0.0f, 0.0f, 1.0f));
     const Geometry crossing =
-        cinder::physics::geometryOf(Shape::Capsule, glm::vec3(1.0f, 3.0f, 1.0f), across);
+        cinder::Physics::geometryOf(Shape::Capsule, glm::vec3(1.0f, 3.0f, 1.0f), across);
 
-    REQUIRE(cinder::physics::collide(upright, crossing, manifold));
+    REQUIRE(cinder::Physics::collide(upright, crossing, manifold));
     checkVec(manifold.normal, glm::vec3(0.0f, 0.0f, 1.0f));
     CHECK(manifold.points[0].depth == doctest::Approx(0.1f));
 }
 
 TEST_CASE("a ray meets a capsule's shaft and its cap") {
     const Geometry capsule =
-        cinder::physics::geometryOf(Shape::Capsule, glm::vec3(1.0f, 3.0f, 1.0f), glm::mat4(1.0f));
+        cinder::Physics::geometryOf(Shape::Capsule, glm::vec3(1.0f, 3.0f, 1.0f), glm::mat4(1.0f));
 
     float distance = 0.0f;
     glm::vec3 normal(0.0f);
-    REQUIRE(cinder::physics::rayHits(capsule, glm::vec3(3.0f, 0.5f, 0.0f), glm::vec3(-1.0f, 0.0f, 0.0f),
+    REQUIRE(cinder::Physics::rayHits(capsule, glm::vec3(3.0f, 0.5f, 0.0f), glm::vec3(-1.0f, 0.0f, 0.0f),
                                      distance, normal));
     CHECK(distance == doctest::Approx(2.5f));
     checkVec(normal, glm::vec3(1.0f, 0.0f, 0.0f));
 
-    REQUIRE(cinder::physics::rayHits(capsule, glm::vec3(0.0f, 5.0f, 0.0f), glm::vec3(0.0f, -1.0f, 0.0f),
+    REQUIRE(cinder::Physics::rayHits(capsule, glm::vec3(0.0f, 5.0f, 0.0f), glm::vec3(0.0f, -1.0f, 0.0f),
                                      distance, normal));
     CHECK(distance == doctest::Approx(3.5f));
     checkVec(normal, glm::vec3(0.0f, 1.0f, 0.0f));
 
-    CHECK_FALSE(cinder::physics::rayHits(capsule, glm::vec3(3.0f, 0.5f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f),
+    CHECK_FALSE(cinder::Physics::rayHits(capsule, glm::vec3(3.0f, 0.5f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f),
                                          distance, normal));
 }
 
@@ -762,7 +762,7 @@ TEST_CASE("the broadphase finds every overlapping pair") {
         return static_cast<float>((seed >> 8) % 2000) / 100.0f;
     };
 
-    std::vector<cinder::physics::Bounds> boxes;
+    std::vector<cinder::Physics::Bounds> boxes;
     for (int i = 0; i < 300; ++i) {
         const glm::vec3 center(next(), next(), next());
         const glm::vec3 half(0.2f + next() * 0.02f, 0.2f + next() * 0.02f, 0.2f + next() * 0.02f);
@@ -772,14 +772,14 @@ TEST_CASE("the broadphase finds every overlapping pair") {
     std::set<std::pair<int, int>> expected;
     for (std::size_t i = 0; i < boxes.size(); ++i) {
         for (std::size_t j = i + 1; j < boxes.size(); ++j) {
-            if (cinder::physics::overlaps(boxes[i], boxes[j])) {
+            if (cinder::Physics::overlaps(boxes[i], boxes[j])) {
                 expected.insert({static_cast<int>(i), static_cast<int>(j)});
             }
         }
     }
     REQUIRE(expected.size() > 10);
 
-    cinder::physics::Broadphase tree;
+    cinder::Physics::Broadphase tree;
     tree.build(boxes);
 
     std::set<std::pair<int, int>> found;
@@ -788,7 +788,7 @@ TEST_CASE("the broadphase finds every overlapping pair") {
         tree.query(boxes[i], nearby);
         for (const int index : nearby) {
             const std::size_t j = static_cast<std::size_t>(index);
-            if (j <= i || !cinder::physics::overlaps(boxes[i], boxes[j])) continue;
+            if (j <= i || !cinder::Physics::overlaps(boxes[i], boxes[j])) continue;
             found.insert({static_cast<int>(i), static_cast<int>(j)});
         }
     }
@@ -880,14 +880,14 @@ TEST_CASE("touches reach both nodes' hooks and any connected listener") {
     Fixture f;
     Collider* floor = f.floor();
     Body* ball = f.ball(0.0f, 3.0f, 0.0f);
-    Node* watcher = f.scene.create<cinder::nodes::Group>(nullptr);
+    Node* watcher = f.scene.create<cinder::Nodes::Group>(nullptr);
 
     std::vector<int> touched;
     std::vector<int> ended;
-    f.scene.connect(*ball, cinder::scene::Signal::Touched, *watcher,
-                    [&touched](const cinder::scene::SignalArgs& args) { touched.push_back(args.other->id()); });
-    f.scene.connect(*ball, cinder::scene::Signal::TouchEnded, *watcher,
-                    [&ended](const cinder::scene::SignalArgs& args) { ended.push_back(args.other->id()); });
+    f.scene.connect(*ball, cinder::Scene::Signal::Touched, *watcher,
+                    [&touched](const cinder::Scene::SignalArgs& args) { touched.push_back(args.other->id()); });
+    f.scene.connect(*ball, cinder::Scene::Signal::TouchEnded, *watcher,
+                    [&ended](const cinder::Scene::SignalArgs& args) { ended.push_back(args.other->id()); });
 
     f.run(120);
     CHECK(touched == std::vector<int>{floor->id()});
@@ -910,8 +910,8 @@ TEST_CASE("body setters clamp the way their props do") {
 }
 
 TEST_CASE("contact keys never alias across large node ids") {
-    const cinder::physics::ContactKey low{1, 2, 0};
-    const cinder::physics::ContactKey high{1 + (1 << 22), 2, 0};
+    const cinder::Physics::ContactKey low{1, 2, 0};
+    const cinder::Physics::ContactKey high{1 + (1 << 22), 2, 0};
     CHECK_FALSE(low == high);
 }
 
@@ -919,10 +919,10 @@ TEST_CASE("every clipped contact point of a box pair has its own feature id") {
     for (const float turn : {0.0f, 0.3f, 0.785f, 1.1f}) {
         const glm::mat4 world = glm::rotate(glm::translate(glm::mat4(1.0f), glm::vec3(0.1f, 0.95f, -0.05f)), turn,
                                             glm::vec3(0.0f, 1.0f, 0.0f));
-        const Geometry above = cinder::physics::geometryOf(Shape::Box, glm::vec3(1.0f), world);
+        const Geometry above = cinder::Physics::geometryOf(Shape::Box, glm::vec3(1.0f), world);
         const Geometry below = boxAt(glm::vec3(0.0f), glm::vec3(1.0f));
         Manifold manifold;
-        REQUIRE(cinder::physics::collide(below, above, manifold));
+        REQUIRE(cinder::Physics::collide(below, above, manifold));
         std::set<int> features;
         for (int i = 0; i < manifold.count; ++i) features.insert(manifold.points[static_cast<std::size_t>(i)].feature);
         CHECK(static_cast<int>(features.size()) == manifold.count);

@@ -1,23 +1,23 @@
 #include <doctest/doctest.h>
 
-#include "platform/Assets.hpp"
-#include "text/Font.hpp"
-#include "text/FontSet.hpp"
-#include "text/GlyphAtlas.hpp"
-#include "text/Shaper.hpp"
+#include "Platform/Assets.hpp"
+#include "Text/Font.hpp"
+#include "Text/FontSet.hpp"
+#include "Text/GlyphAtlas.hpp"
+#include "Text/Shaper.hpp"
 
 #include <algorithm>
 #include <cstdint>
 #include <optional>
 
-using cinder::text::AtlasGlyph;
-using cinder::text::AtlasRect;
-using cinder::text::Font;
-using cinder::text::FontSet;
-using cinder::text::FontStyle;
-using cinder::text::GlyphAtlas;
-using cinder::text::ShapedText;
-using cinder::text::shape;
+using cinder::Text::AtlasGlyph;
+using cinder::Text::AtlasRect;
+using cinder::Text::Font;
+using cinder::Text::FontSet;
+using cinder::Text::FontStyle;
+using cinder::Text::GlyphAtlas;
+using cinder::Text::ShapedText;
+using cinder::Text::shape;
 
 namespace {
 
@@ -35,7 +35,7 @@ TEST_CASE("the engine's fonts load and report sensible metrics") {
     CHECK(fonts().get(FontStyle::Bold).family() == "Roboto");
     CHECK(fonts().get(FontStyle::Mono).family() == "Roboto Mono");
 
-    const cinder::text::FontMetrics metrics = regular().metrics(16.0f);
+    const cinder::Text::FontMetrics metrics = regular().metrics(16.0f);
     CHECK(metrics.ascent > 10.0f);
     CHECK(metrics.descent < 0.0f);
     CHECK(metrics.lineHeight >= metrics.ascent - metrics.descent);
@@ -43,7 +43,7 @@ TEST_CASE("the engine's fonts load and report sensible metrics") {
 }
 
 TEST_CASE("a missing font file is an error that names the path") {
-    CHECK_THROWS_WITH_AS(Font::load(cinder::platform::enginePath("Content/Fonts/Missing.ttf")),
+    CHECK_THROWS_WITH_AS(Font::load(cinder::Platform::enginePath("Content/Fonts/Missing.ttf")),
                          doctest::Contains("Missing.ttf"), std::exception);
 }
 
@@ -75,7 +75,7 @@ TEST_CASE("the mono font advances every character by the same width, and width s
 }
 
 TEST_CASE("a rasterized glyph has coverage and a bearing above the baseline") {
-    const cinder::text::GlyphBitmap bitmap = regular().rasterize(regular().glyphIndex(U'A'), 24.0f);
+    const cinder::Text::GlyphBitmap bitmap = regular().rasterize(regular().glyphIndex(U'A'), 24.0f);
     CHECK(bitmap.width > 5);
     CHECK(bitmap.height > 10);
     CHECK(bitmap.bearing.y < 0.0f);

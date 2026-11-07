@@ -1,15 +1,15 @@
-#include "game/Game.hpp"
+#include "Game/Game.hpp"
 
 using namespace cinder;
 
-class FollowMouse final : public scene::Node {
+class FollowMouse final : public Scene::Node {
 public:
-    CINDER_NODE(FollowMouse, scene::Node) {}
+    CINDER_NODE(FollowMouse, Scene::Node) {}
 
     void onUpdate(float dt) override {
-        scene::Transform* cursor = parent() != nullptr ? parent()->transform() : nullptr;
+        Scene::Transform* cursor = parent() != nullptr ? parent()->transform() : nullptr;
         if (cursor == nullptr) return;
-        const glm::vec2 world = game::screenToWorld(game::mousePosition());
+        const glm::vec2 world = Game::screenToWorld(Game::mousePosition());
         cursor->setPosition(world.x, world.y, 0.0f);
     }
 };

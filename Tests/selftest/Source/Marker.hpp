@@ -1,6 +1,6 @@
 #pragma once
 
-#include "game/Game.hpp"
+#include "Game/Game.hpp"
 
 #include <map>
 #include <string>
@@ -15,23 +15,23 @@ inline int& selftestTicks() {
     return ticks;
 }
 
-class Marker final : public cinder::scene::Node {
+class Marker final : public cinder::Scene::Node {
 public:
-    CINDER_NODE(Marker, cinder::scene::Node) {}
+    CINDER_NODE(Marker, cinder::Scene::Node) {}
 
     void onStart() override {
-        cinder::scene::Node* marked = parent();
+        cinder::Scene::Node* marked = parent();
         if (marked == nullptr) return;
-        const cinder::scene::PropValue* mark = marked->attribute("mark");
+        const cinder::Scene::PropValue* mark = marked->attribute("mark");
         if (mark == nullptr) return;
         selftestMarks()[marked->name()] = mark->is<double>() ? mark->as<double>()
                                                              : static_cast<double>(mark->as<std::int64_t>());
     }
 };
 
-class Ticker final : public cinder::scene::Node {
+class Ticker final : public cinder::Scene::Node {
 public:
-    CINDER_NODE(Ticker, cinder::scene::Node) {}
+    CINDER_NODE(Ticker, cinder::Scene::Node) {}
 
     void onUpdate(float dt) override { selftestTicks()++; }
 };

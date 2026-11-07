@@ -1,10 +1,10 @@
 #pragma once
 
-#include "dev/History.hpp"
-#include "dev/Selection.hpp"
-#include "nodes/Builtins.hpp"
-#include "scene/NodeTypes.hpp"
-#include "scene/Scene.hpp"
+#include "Dev/History.hpp"
+#include "Dev/Selection.hpp"
+#include "Nodes/Builtins.hpp"
+#include "Scene/NodeTypes.hpp"
+#include "Scene/Scene.hpp"
 
 #include <filesystem>
 #include <stdexcept>
@@ -22,15 +22,15 @@ inline std::filesystem::path uniqueTempDir(std::string_view prefix) {
 }
 
 struct SceneFixture {
-    cinder::scene::NodeTypes types;
-    cinder::scene::Scene scene{types};
+    cinder::Scene::NodeTypes types;
+    cinder::Scene::Scene scene{types};
 
-    SceneFixture() { cinder::nodes::registerBuiltins(types); }
+    SceneFixture() { cinder::Nodes::registerBuiltins(types); }
 };
 
 struct EditorFixture : SceneFixture {
-    cinder::dev::Selection selection;
-    cinder::dev::History history{scene};
+    cinder::Dev::Selection selection;
+    cinder::Dev::History history{scene};
 };
 
 }

@@ -1,17 +1,17 @@
 #include <doctest/doctest.h>
 
-#include "serial/Json.hpp"
+#include "Serial/Json.hpp"
 
 #include <clocale>
 #include <cstdint>
 #include <stdexcept>
 #include <string>
 
-using cinder::scene::PropRec;
-using cinder::scene::PropSeq;
-using cinder::scene::PropValue;
-using cinder::serial::JsonWriter;
-using cinder::serial::parseJson;
+using cinder::Scene::PropRec;
+using cinder::Scene::PropSeq;
+using cinder::Scene::PropValue;
+using cinder::Serial::JsonWriter;
+using cinder::Serial::parseJson;
 
 namespace {
 

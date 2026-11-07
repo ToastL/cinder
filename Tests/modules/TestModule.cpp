@@ -1,14 +1,14 @@
-#include "game/Game.hpp"
+#include "Game/Game.hpp"
 
-class TestTicker final : public cinder::scene::Node {
+class TestTicker final : public cinder::Scene::Node {
 public:
-    CINDER_NODE(TestTicker, cinder::scene::Node) { CINDER_PROP(step_); }
+    CINDER_NODE(TestTicker, cinder::Scene::Node) { CINDER_PROP(step_); }
 
-    void onStart() override { scene()->create<cinder::nodes::Group>(this)->setName("Made"); }
+    void onStart() override { scene()->create<cinder::Nodes::Group>(this)->setName("Made"); }
 
     void onUpdate(float dt) override {
         count_ += step_;
-        setAttribute("count", cinder::scene::PropValue::number(count_));
+        setAttribute("count", cinder::Scene::PropValue::number(count_));
     }
 
 private:
@@ -16,9 +16,9 @@ private:
     double count_ = 0.0;
 };
 
-class TestMover final : public cinder::scene::Spatial {
+class TestMover final : public cinder::Scene::Spatial {
 public:
-    CINDER_NODE(TestMover, cinder::scene::Spatial) { CINDER_PROP(speed_); }
+    CINDER_NODE(TestMover, cinder::Scene::Spatial) { CINDER_PROP(speed_); }
 
     void onUpdate(float dt) override {
         const glm::vec3 position = transform()->position();
@@ -29,9 +29,9 @@ private:
     float speed_ = 2.0f;
 };
 
-class Group final : public cinder::scene::Node {
+class Group final : public cinder::Scene::Node {
 public:
-    CINDER_NODE(Group, cinder::scene::Node) {}
+    CINDER_NODE(Group, cinder::Scene::Node) {}
 };
 
 CINDER_REGISTER(TestTicker);

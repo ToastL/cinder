@@ -2,7 +2,7 @@
 
 
 CINDER_MODULE("tests", [](cbt::ModuleRules& m, const cbt::TargetInfo&) {
-    m.privateDependencies({"dev", "doctest", "glfw"});
-    m.linkDependencies({"game"});
+    m.privateDependencies({"Dev", "doctest", "glfw"});
+    m.linkDependencies({"Game"});
     m.exclude({"selftest"});
 });
