@@ -3,7 +3,7 @@
 Roadmap toward a Unity/Unreal-shaped engine: an editor where you select a node, edit its fields,
 hit Play, hit Stop, and land back where you started.
 
-**Where we are:** a Vulkan renderer driving an ordered pass list into an offscreen target,
+**Where we are:** a renderer with Vulkan and Metal backends driving an ordered pass list into an offscreen target,
 composited to the swapchain by a fullscreen triangle. Sprite batch with atlas support, mesh pipeline
 with one directional light, one camera that every pass draws through, edge-triggered input, and game
 code in C++: each project's `Source/` defines node classes, built by the editor into a library it
@@ -21,7 +21,7 @@ undoable, and an unsaved scene is marked and guarded on close. A physics engine 
 started: bodies and colliders as nodes, spheres and boxes, friction, and a sequential-impulse solver
 with warm starting that stacks crates and never runs in Edit mode; boxes, spheres and capsules meet
 through a bounding volume tree, settled islands fall asleep, and game code pushes bodies around, casts rays
-and hears about contacts, with a `planar` body making a 2D scene physical. 352 headless test cases, a
+and hears about contacts, with a `planar` body making a 2D scene physical. 355 headless test cases, a
 hot-reload test that compiles real C++, and a C++ selftest project.
 
 Foundations, the scene model, game code in C++, serialization and the Edit/Play split are
@@ -58,7 +58,7 @@ view, the editor camera, the Explorer, Properties, picking, undo and transform g
 - [ ] Gizmos for a multi-selection, about the pivot or the selection's centre — waits for Explorer
       multi-select
 - [x] Mouse picking — `dev/Picking`, a CPU raycast against each `MeshPart`'s cube, each `Sprite`'s
-      quad and each `Camera`; the Explorer reveals the pick and `dev/Gizmos` outlines it
+      quad and each `Camera`; the Explorer reveals the pick and `dev/GizmoLines` outlines it
 - [ ] Picking against real mesh bounds — `MeshPass` now has a `sphere` primitive that `Picking` still
       treats as a cube, and imported meshes will need their own bounds or triangles
 - [x] Editor camera, independent of the game camera — `dev/EditorCamera`, seeded from the scene's
@@ -71,13 +71,13 @@ view, the editor camera, the Explorer, Properties, picking, undo and transform g
       edit, so every edit is covered with no per-edit code; ⌘Z / ⌘⇧Z and toolbar buttons
 - [ ] Undo: a snapshot costs a full scene save per edit — fine at sample scale; move to diffed snapshots
       or a command stack if scenes grow large
-- [x] Console panel — every print routes through `platform/Log`, and `dev/Console` installs the
+- [x] Console panel — every print routes through `platform/Log`, and `dev/panels/Console` installs the
       sink. It is a log view.
 - [ ] Console commands registered by game code — Unreal's `exec` functions and console variables
 - [x] Toolbar — Play / Pause / Step / Stop and Save, on ⌘P / ⌘⇧P / ⌘⌥P / ⌘S, in the main menu bar
 - [ ] Console: click a `file:line` to open it in `$EDITOR`; filter by level; search
-- [ ] Editor layout + window state persisted between runs — `io.IniFilename` is currently `nullptr`;
-      the file belongs in the project's `Saved/`
+- [ ] Editor layout + window state persisted between runs — `TabManager` holds the layout in memory
+      only; the file belongs in the project's `Saved/`
 - [ ] Project picker and new-project template — the editor takes the project folder or its
       `.cinder` file on the command line; the template writes `Content/Scenes/` and `Content/Textures/`,
       and the picker lists each descriptor's `category` and `description`. The *Project browser*
@@ -175,7 +175,7 @@ includes `scene`, `reflect` or `gfx` — the reflection-driven Properties panel 
       to type an expression, bounds only when declared, never rounded to its display),
       `VectorInputBox`, `ComboBox`, `ExpandableArea`, `ColorBlock` and `ColorPicker`; `Menu`,
       `MenuBuilder`, `MenuAnchor`, `MenuBar` and context menus, with commands, checks and submenus.
-      The editor's toolbar has File, Edit and Play menus.
+      The editor's toolbar has File, Edit, Window, Play and Platforms menus.
 - [x] **Lists and trees** — `TreeView` (a `ListView` is one with no children) builds only the rows in
       view, keyed by item id, with selection by mouse and arrow keys, expansion from the arrow or a
       double click, `reveal` through collapsed ancestors, context menus, and drag and drop carrying a
@@ -187,7 +187,7 @@ includes `scene`, `reflect` or `gfx` — the reflection-driven Properties panel 
       change, carrying the splitter sizes over. A tab drags to another stack's middle or against an
       edge, which splits it; closing the last tab of a stack collapses it; the Window menu reopens a
       closed tab where it last lived. The editor runs on it.
-- [ ] **Floating panels** — panels in their own OS windows, after parity: `VkCtx` has to stop owning
+- [ ] **Floating panels** — panels in their own OS windows, after parity: `rhi::Ctx` has to stop owning
       the one GLFW surface — one device, a swapchain per window.
 - [x] **Port the panels** — `dev/panels/` holds `Toolbar`, `SceneView`, `Explorer`, `Properties`,
       `Console` and the docked `Layout`, and `editor` is now the new UI. `PlaySession`, `History`,
@@ -206,13 +206,13 @@ includes `scene`, `reflect` or `gfx` — the reflection-driven Properties panel 
 
 ## Play mode
 
-- [x] Play / Pause / Step / Stop — `dev/PlaySession`, driven by `dev/Toolbar`
+- [x] Play / Pause / Step / Stop — `dev/PlaySession`, driven by `dev/panels/Toolbar`
 - [x] Serialize scene on Play, restore on Stop — both are `Engine::loadScene` on one snapshot, so
       every node is rebuilt from text and every connection and timer starts empty
 - [x] Editor keeps rendering while paused — `GameLoop::idle`
 - [x] Game code never runs in Edit mode — there is no entry point, and hooks, connections and timers
       reach only nodes `Scene::update` has started, which Edit mode never calls. `onRender` still draws.
-- [x] Input routing — `dev/Viewport` gives the game the keyboard while the Scene window is focused
+- [x] Input routing — `dev/panels/SceneView` gives the game the keyboard while the Scene view is focused
       and the mouse while its image is hovered; a locked cursor keeps both. Play focuses the Scene.
 - [x] Dirty tracking — the toolbar shows `main.scene*`, and closing the window with unsaved changes
       asks Save / Don't Save / Cancel
@@ -249,7 +249,7 @@ includes `scene`, `reflect` or `gfx` — the reflection-driven Properties panel 
       nodes, sphere and box shapes, compound mass and inertia about the centre of mass, a brute-force
       broadphase, exact sphere–sphere and sphere–box contacts, and sequential impulses with Baumgarte
       correction and restitution. `World::step` walks the scene, so Play, Stop, disable and reparent
-      need no bookkeeping, and Edit mode never simulates. `dev/Gizmos` draws collider wireframes from
+      need no bookkeeping, and Edit mode never simulates. `dev/GizmoLines` draws collider wireframes from
       the same geometry the solver collides. `Samples/physics` is the sample.
 - [x] **Physics, phase 2** — box–box contacts through a separating axis test with face clipping and an
       edge-edge fallback, Coulomb friction on two tangents, impulses carried across steps by feature id,
@@ -304,8 +304,9 @@ includes `scene`, `reflect` or `gfx` — the reflection-driven Properties panel 
 - [ ] Shadow maps
 - [ ] Sort transparent draws back-to-front; sort opaque by pipeline/material
 - [ ] Frustum culling
-- [ ] Mipmaps — `Texture` hardcodes `mipLevels = 1` and `MIPMAP_MODE_NEAREST`
-- [ ] Anisotropic filtering — `anisotropyEnable = VK_FALSE` in the shared sampler
+- [ ] Mipmaps — `vk/VkImages.cpp` creates every image with `mipLevels = 1` and samplers with
+      `MIPMAP_MODE_NEAREST`; Metal textures are `mipmapped:NO`
+- [ ] Anisotropic filtering — `anisotropyEnable = VK_FALSE` in each `TexturePool`'s sampler
 - [ ] MSAA
 - [ ] Post-processing chain (tonemap, bloom)
 - [ ] Instanced rendering — `MeshPass` issues one `vkCmdDrawIndexed` per object
@@ -339,7 +340,7 @@ includes `scene`, `reflect` or `gfx` — the reflection-driven Properties panel 
       reference needs *Node references*.
 - [ ] **A disabled node's timers still fire.** `enabled` skips a subtree's update and render, but
       `Scene::after`/`every` only check that the owner exists.
-- [ ] **Runtime meshes cannot be named in a scene** — `MeshRenderer.mesh` names a primitive, and
+- [ ] **Runtime meshes cannot be named in a scene** — `MeshPart.mesh` names a primitive, and
       `engine.newCube` hands back an anonymous handle. Mesh import is where named meshes come from.
 - [ ] Fixed caps with no growth path: `MAX_QUADS = 10000`, `MAX_DRAWS = 4096`, `MAX_TEXTURES = 256`
 - [ ] **`Renderer::capture` stalls the device** and reads the target back synchronously. It is a
@@ -350,18 +351,22 @@ includes `scene`, `reflect` or `gfx` — the reflection-driven Properties panel 
       but the descriptor set already recorded for that frame would have to survive the rebuild.
 - [x] **Enforce the layer graph.** `cbt test` derives it from the module rules and runs `layers`
       against first-party includes and `layer_fixtures` against allowed and forbidden include fixtures.
-- [ ] **Scene text numeric parsing still follows the process locale.** `TextLoad` uses `std::stod` /
-      `std::stoll`, which also accept numeric prefixes. The refactor shares writer formatting only;
-      changing this grammar and its error behavior belongs in a separate correctness change.
-- [ ] **Swapchain format changes leave existing graphics pipelines in place.** The renderer rebuilds
-      its render passes when the format changes, but the dependent scene, composite and overlay
-      pipelines need a separate compatibility fix.
+- [x] **Scene text numeric parsing is locale-independent.** `TextLoad` parses with `from_chars`
+      through `serial/NumberText`, rejects numeric prefixes, and logs a malformed value.
+- [ ] **Swapchain format changes leave the scene and composite pipelines in place on Vulkan.** The
+      renderer rebuilds its render passes and the UI pipeline when the format changes; the scene and
+      composite pipelines still need the same treatment. Metal's format is fixed.
 - [ ] **The points-vs-pixels split is implicit.** `ViewCamera` and `screenToWorld` are in
       window points; the swapchain and render target are in framebuffer pixels. 2x apart on Retina.
       `FollowMouse` and `Spawner` in `Samples/sandbox2d` depend on the current behaviour.
 - [ ] **The packaged player finds itself through `argv[0]`**, so launching it through a `PATH`
       lookup rather than by path misses `Engine/` and `Project/` next to it
 - [ ] No CI
+- [ ] **The two presenters duplicate their bookkeeping** — the recreate callback, window-capture
+      request, `pixelsPerPoint` and the shared fields of `Frame` are written twice; a neutral
+      `rhi::PresenterState` would hold them once.
+- [ ] **`UiRenderer` notices a new glyph atlas by its address**, so an atlas allocated where a freed
+      one lived would skip the full re-upload.
 
 ## Backends and platforms
 
@@ -369,12 +374,10 @@ DXC is the single HLSL frontend and already emits SPIR-V, DXIL and MSL/`.metalli
 *Commands* section. Only the Vulkan backend consumes its output; these are the phases that would
 change that. Each leaves the engine running on Vulkan after every step.
 
-- [x] **The backend seam.** *(done)* Vulkan is not confined to `Source/gfx/vk/`: 273 `Vk*` references and 55 raw
-      `vk*()` calls live outside it. A neutral leaf `Source/gfx/rhi/` (formats, `Commands`/`Uploads`
-      handles, `TextureBinding`, a neutral pipeline builder) that `gfx/vk` and a future `gfx/mtl`
-      each *define*, selected by a `CINDER_BACKEND` cache variable — compile-time, no vtables, so
-      `Engine` keeps holding its context by value. The deliverable is deleting `gfx/vk` from
-      `ALLOWED_gfx`, `ALLOWED_gfx/asset`, `ALLOWED_gfx/pass` and `ALLOWED_core`.
+- [x] **The backend seam.** *(done)* A neutral leaf `Source/gfx/rhi/` (formats, `Commands`/`Uploads`
+      handles, `TextureBinding`, a neutral pipeline builder) that `gfx/vk` and `gfx/mtl` each
+      *define*, selected by `cbt`'s `--backend` — compile-time, no vtables, so `Engine` keeps holding
+      its context by value. Nothing outside a backend directory names a Vulkan or Metal type.
       - [x] Delete `VkDescriptorSetLayout` from eight constructors — there is exactly one layout in
             the engine and `setLayoutCount` is hardcoded to 1, so it is a constant pretending to be
             a parameter. This removes more Vulkan from headers than the new types add.
