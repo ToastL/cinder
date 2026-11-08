@@ -97,6 +97,7 @@ private:
     void attach(Actor& actor, Actor* parent);
     void detach(Actor& actor);
     void update(Actor& actor, float dt);
+    void snapshot(Actor& actor);
     void render(Actor& actor, float alpha, DrawList& draws);
     void startPending();
     void start(Object& object);

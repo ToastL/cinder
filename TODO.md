@@ -290,9 +290,10 @@ includes `Scene`, `Reflect` or `Gfx` — the reflection-driven Details panel liv
 - [ ] Physics: let a raycast use the broadphase tree — it walks every collider today, because the tree
       belongs to the last step and game code can cast at any time
 - [ ] Physics, phase 5 — joints, CCD, collision layers, a character controller, convex hulls
-- [ ] Render interpolation — `alpha` reaches `onRender` and nothing uses it, so at `fixedHz` 60 on a
-      120 Hz display a body visibly steps. Keeping the previous transform and interpolating in render
-      fixes game-driven motion too.
+- [x] Render interpolation — every scene component's world matrix is snapshotted at the top of each
+      fixed update, and meshes, sprites and cameras draw it blended toward the current one by `alpha`
+      (slerped rotation, lerped translation and scale), so motion is smooth above `fixedHz`.
+      `Transform::resetInterpolation` makes a teleport land at once
 - [ ] **Audio** — clip loading, one-shot + looping sources, 3D positional, buses/volume
 - [ ] **Animation** — skeletal (skinning shader, joint palette), sprite sheet animation, and a
       clip/state machine

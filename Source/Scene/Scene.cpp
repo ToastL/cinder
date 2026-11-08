@@ -230,6 +230,7 @@ const Component* Scene::archetype(const Component& component) const {
 bool Scene::isDefault(const Component& component) const { return archetype(component) != nullptr; }
 
 void Scene::update(float dt) {
+    for (std::size_t i = 0; i < roots_.size(); ++i) snapshot(*roots_[i]);
     startPending();
     runTimers(dt);
     for (std::size_t i = 0; i < roots_.size(); ++i) update(*roots_[i], dt);
@@ -245,6 +246,14 @@ void Scene::update(Actor& actor, float dt) {
         component->tick(dt);
     }
     for (std::size_t i = 0; i < actor.children_.size(); ++i) update(*actor.children_[i], dt);
+}
+
+void Scene::snapshot(Actor& actor) {
+    if (actor.destroyed_) return;
+    for (std::size_t i = 0; i < actor.components_.size(); ++i) {
+        if (SceneComponent* placed = actor.components_[i]->asSceneComponent()) placed->transform().snapshot();
+    }
+    for (std::size_t i = 0; i < actor.children_.size(); ++i) snapshot(*actor.children_[i]);
 }
 
 void Scene::render(float alpha, DrawList& draws) {

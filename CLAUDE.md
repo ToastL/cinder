@@ -395,9 +395,20 @@ happens next. The player calls `GameLoop::tick` every iteration. The editor call
   5. `engine.render(alpha())` once — `renderer.beginFrame()`, `scene.render(alpha, draws)`,
      `renderer.drawFrame()`
 - **`idle`** — Edit mode and Paused: steps 1–2, then it resets the clock, calls `input.consume()` and
-  renders. Consuming on idle frames is load-bearing: without it, the key that pressed Play, or an
+  renders with `alpha` 1. Consuming on idle frames is load-bearing: without it, the key that pressed Play, or an
   Esc from Edit mode, would fire as `keyPressed` on the first play step.
-- **`step`** — exactly one fixed update, then render. The Step button.
+- **`step`** — exactly one fixed update, then render with `alpha` 1. The Step button.
+
+**Rendering is interpolated.** `Scene::update` first snapshots every scene component's world matrix —
+every actor, disabled ones included — and `Transform::interpolated(alpha)` blends that snapshot toward
+the current matrix: translation and scale lerped, rotation slerped, and a sheared or degenerate matrix
+lerped element-wise. So `tick` draws one step behind, between the last two states, and motion is smooth
+at any refresh rate. `alpha` 1 — `idle` and `step` — and a transform with no snapshot, such as an actor
+spawned since the last update or anything after a `loadScene`, draw exactly `world()`, which is why
+Edit mode, Pause and Step never lag. `StaticMeshComponent`, `SpriteComponent` and `CameraComponent`
+draw through it; a game component's `onRender` should too. Game code, physics, picking and gizmos keep
+reading `world()`, the simulated state. `Transform::resetInterpolation` drops the snapshot, so a
+teleport lands at once instead of streaking across one step.
 
 `Engine` is a library that gets ticked, not something that runs itself. **Do not move the loop into
 `Engine`.** `GameLoop::advance()` and `alpha()` are public precisely so the tests can drive them
@@ -803,8 +814,7 @@ stack of crates, and a `Dropper` that drops more balls onto it. `--scene Scenes/
 an orthographic camera over sprites with `planar` bodies, where a click drops another box. `MeshPass` carries three primitives — `cube`, `sphere` and `capsule`, the last two matching what a
 sphere and a `1 2 1` capsule collider cover; `Picking` still treats every `StaticMeshComponent` as a cube.
 
-What is missing is tracked in `TODO.md`: joints, CCD, sensors, collision layers and convex hulls. So is the one that is not physics' fault — nothing interpolates
-transforms, so at `fixedHz` 60 on a 120 Hz display a falling body visibly steps.
+What is missing is tracked in `TODO.md`: joints, CCD, sensors, collision layers and convex hulls.
 
 ## The UI framework
 

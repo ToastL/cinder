@@ -51,7 +51,7 @@ void GameLoop::idle(Engine& engine) {
 
     resetClock();
     engine.input().consume();
-    engine.render(alpha());
+    engine.render(1.0f);
 }
 
 void GameLoop::step(Engine& engine) {
@@ -59,7 +59,7 @@ void GameLoop::step(Engine& engine) {
 
     resetClock();
     engine.update(static_cast<float>(fixedDt_));
-    engine.render(alpha());
+    engine.render(1.0f);
 }
 
 int GameLoop::advance(double frameTime) {

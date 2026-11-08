@@ -39,6 +39,10 @@ public:
     const glm::mat4& local();
     const glm::mat4& world();
 
+    void snapshot();
+    void resetInterpolation() { hasPrevious_ = false; }
+    glm::mat4 interpolated(float alpha);
+
     glm::vec3 worldPosition();
     glm::vec3 forward();
     glm::vec3 right();
@@ -59,9 +63,11 @@ private:
 
     glm::mat4 local_{1.0f};
     glm::mat4 world_{1.0f};
+    glm::mat4 previous_{1.0f};
 
     bool localDirty_ = true;
     bool worldDirty_ = true;
+    bool hasPrevious_ = false;
     std::uint64_t version_ = 0;
     std::uint64_t parentVersion_ = std::numeric_limits<std::uint64_t>::max();
 };
