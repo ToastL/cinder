@@ -14,11 +14,17 @@ namespace cinder::Dev {
 EditorShell::EditorShell(cinder::Core::Engine& engine, ModuleHost& modules, Packager& packager,
                          std::filesystem::path scene)
     : engine_(engine), modules_(modules), session_(engine), history_(engine.scene()),
+      document_(engine.scene(), history_, selection_, std::move(scene)),
       fonts_(cinder::Text::FontSet::engineDefault()), platform_(engine.window()),
       app_(platform_, fonts_, Panels::editorTheme()),
-      toolbar_(session_, history_, selection_, packager, modules, std::move(scene), app_),
+      toolbar_(session_, history_, selection_, packager, modules, document_, app_),
       view_(session_, selection_, history_, engine, app_), outliner_(selection_, history_, engine.scene(), app_),
       details_(selection_, history_, engine.scene(), app_), console_(app_) {
+    document_.setOnSwitched([this] {
+        view_.sceneChanged();
+        outliner_.sceneChanged();
+        details_.rebuild();
+    });
     app_.setRoot(Panels::editorLayout(toolbar_, view_, outliner_, details_, console_, tabs_));
     engine.renderer().setUiPaint([this](cinder::UI::ElementList& list) {
         const std::vector<cinder::Platform::InputEvent> events = engine_.input().takeEvents();
@@ -34,6 +40,7 @@ EditorShell::EditorShell(cinder::Core::Engine& engine, ModuleHost& modules, Pack
 }
 
 EditorShell::~EditorShell() {
+    document_.setOnSwitched(nullptr);
     engine_.renderer().setUiPaint(nullptr);
     app_.setRoot(nullptr);
 }
@@ -45,6 +52,14 @@ bool EditorShell::applyPendingReload() {
     }
     details_.rebuild();
     return true;
+}
+
+bool EditorShell::applyPendingScene() {
+    if (!document_.pending() || session_.state() != PlaySession::State::Edit || app_.isInteracting()
+        || app_.hasPopups()) {
+        return false;
+    }
+    return document_.applyPending();
 }
 
 }

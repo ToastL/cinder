@@ -94,8 +94,8 @@ framework*): one window of docked tabs, the Outliner on the left, the Scene view
 the console under it and Details on the right, over a toolbar carrying the File, Edit, Window, Play and
 Platforms menus. Drag a tab to another stack's middle or edge to re-dock it, close it, and reopen it from
 the Window menu. It opens a project in **Edit mode**: the scene is loaded and drawn, and no game code
-runs. Play/Pause/Step/Stop are on the toolbar and on ⌘P, ⌘⇧P and ⌘⌥P; ⌘S saves the scene, and ⌘Z and
-⌘⇧Z undo and redo edits. In the Scene view 1, 2 and 3 pick the move, rotate and scale gizmos. It takes
+runs. Play/Pause/Step/Stop are on the toolbar and on ⌘P, ⌘⇧P and ⌘⌥P; ⌘N, ⌘O, ⌘S and ⌘⇧S start, open,
+save and save-as a scene, and ⌘Z and ⌘⇧Z undo and redo edits. In the Scene view 1, 2 and 3 pick the move, rotate and scale gizmos. It takes
 the project folder or its `.cinder` file, then `--scene <path>` (relative to `Content/`), `--play`
 (start in Play), `--frames <n>`, `--capture <png>`, `--capture-window <png>` and `--input-script
 <file>`; a script can also `close` the window to exercise the unsaved-changes prompt. `--frames 90
@@ -1193,6 +1193,26 @@ does not end the loop directly: `Editor/main.cpp` clears GLFW's close flag and c
 `Toolbar::requestClose`, which confirms at once when the scene is clean and otherwise opens a Save /
 Don't Save / Cancel modal, and the loop runs until `closeConfirmed()`. ⌘Z and ⌘⇧Z route globally like
 the other shortcuts, but an active text field claims ⌘Z for its own undo first.
+
+That modal guards every action that would lose the document — closing, packaging, opening another
+scene and starting a new one — through one `Toolbar::guard(verb, action)`, which runs the action at
+once on a clean scene and otherwise keeps it until the prompt is answered. Save on an **untitled**
+scene opens Save As instead and keeps the action for after the write.
+
+**Which scene is open** belongs to `Dev/SceneDocument`: an absolute path, empty for an untitled scene,
+shown relative to `Content/` (or as a bare file name outside it, which is how `graphics_smoke` saves
+into `Intermediate/`). `open` reads the file and hands it to `SceneCodec::load`, which fails before it
+clears anything, so a bad file leaves the current scene and path alone; `create` clears the scene to one
+perspective `CameraActor`; `saveAs` goes through `History::save` and adopts the path. Every switch resets
+history, clears the selection and calls `EditorShell`'s hook, which reseeds the editor camera, collapses
+the Outliner — its rows are keyed by ids that now name other actors — and rebuilds Details. The File
+menu only *requests* a switch; `EditorShell::applyPendingScene` applies it between frames, in Edit mode,
+when nothing is interacting and no popup is open, like a hot reload. Open Scene and Save Scene As are our
+own `Dev/Panels/ScenePicker` dialogs in the toolbar's prompt overlay, not native ones: Open lists every
+`.scene` under `Content/` with a filter, and Save As takes a name relative to `Content/` that
+`SceneDocument::resolve` checks live, adding `.scene` and refusing anything outside the folder. When a
+picker closes, the toolbar drops the focus its text field held, because a focused text field counts as
+interacting and would otherwise hold off both the switch and `History::settle`.
 
 ### Logging and the console
 

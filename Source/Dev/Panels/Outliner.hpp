@@ -36,6 +36,7 @@ public:
     const std::shared_ptr<cinder::UI::TreeView>& tree() const { return tree_; }
 
     void update();
+    void sceneChanged() { tree_->collapseAll(); }
     std::optional<int> selectedActor() const;
 
 private:

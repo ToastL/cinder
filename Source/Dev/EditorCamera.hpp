@@ -23,6 +23,7 @@ public:
     };
 
     bool seeded() const { return seeded_; }
+    void reset() { seeded_ = false; }
     void seed(cinder::Components::CameraComponent* camera, glm::vec2 viewSize);
 
     void setViewSize(glm::vec2 size) { camera_.setViewSize(size.x, size.y); }

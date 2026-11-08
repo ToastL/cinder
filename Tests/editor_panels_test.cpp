@@ -10,6 +10,9 @@
 #include "Dev/Panels/EditorStyle.hpp"
 #include "Dev/Panels/Details.hpp"
 #include "Dev/Panels/Outliner.hpp"
+#include "Dev/Panels/ScenePicker.hpp"
+#include "Platform/Assets.hpp"
+#include "Platform/Files.hpp"
 #include "Scene/Actor.hpp"
 #include "Scene/ClassRegistry.hpp"
 #include "Scene/SceneComponent.hpp"
@@ -27,6 +30,8 @@
 #include "UI/Widgets/TextField.hpp"
 #include "UI/Widgets/TreeView.hpp"
 
+#include <filesystem>
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -371,7 +376,7 @@ TEST_CASE("a modal dialog keeps every key from the global shortcuts") {
             make<cinder::Dev::Panels::Dialog>()
                     .title("Unsaved Changes")
                     .message("Save?")
-                    .choices({cinder::Dev::Panels::DialogChoice{"Save", [&] { ++confirmed; }, true}})
+                    .choices({cinder::Dev::Panels::DialogChoice{"Save", [&] { ++confirmed; }, true, {}}})
                     .onCancel([&] { ++cancelled; });
     Harness ui(dialog);
     ui.app.setTheme(cinder::Dev::Panels::editorTheme());
@@ -526,4 +531,68 @@ TEST_CASE("an armed pick skips what it cannot take and tries the actor's compone
     CHECK(world.selection.pick().offer(world.node("Box")));
     CHECK(taken == world.aim->id());
     CHECK_FALSE(world.selection.pick().armed());
+}
+
+TEST_CASE("the Open Scene picker filters as you type and opens the highlighted scene") {
+    std::optional<std::string> opened;
+    int cancelled = 0;
+    std::shared_ptr<cinder::Dev::Panels::OpenSceneDialog> picker =
+            make<cinder::Dev::Panels::OpenSceneDialog>()
+                    .current("Scenes/main.scene")
+                    .onOpen([&](const std::string& name) { opened = name; })
+                    .onCancel([&] { ++cancelled; });
+    Harness ui(picker);
+    ui.app.setTheme(cinder::Dev::Panels::editorTheme());
+    picker->show({"Scenes/Levels/cave.scene", "Scenes/Levels/forest.scene", "Scenes/main.scene"});
+    ui.frame();
+    ui.app.setFocus(picker->focusTarget());
+
+    CHECK(picker->chosen() == "Scenes/main.scene");
+    ui.type(U"lev");
+    CHECK(picker->matches().size() == 2);
+    CHECK(picker->chosen() == "Scenes/Levels/cave.scene");
+    ui.key(keys::DOWN);
+    ui.key(keys::DOWN);
+    CHECK(picker->chosen() == "Scenes/Levels/forest.scene");
+    ui.key(keys::letter('p'), cinder::Platform::modifiers::PRIMARY);
+    CHECK_FALSE(opened.has_value());
+    ui.key(keys::ENTER);
+    CHECK(opened == "Scenes/Levels/forest.scene");
+
+    opened.reset();
+    ui.type(U"zzz");
+    CHECK(picker->matches().empty());
+    ui.key(keys::ENTER);
+    CHECK_FALSE(opened.has_value());
+    ui.key(keys::ESCAPE);
+    CHECK(cancelled == 1);
+}
+
+TEST_CASE("the Save Scene As dialog resolves the name under Content and refuses one outside it") {
+    const std::filesystem::path root = testing::uniqueTempDir("cinder_save_as_test");
+    std::filesystem::create_directories(root / "Content" / "Scenes");
+    cinder::Platform::writeTextFile(root / "Content" / "Scenes" / "main.scene", "version 5\n");
+    cinder::Platform::setProjectRoot(root);
+
+    std::optional<std::filesystem::path> saved;
+    std::shared_ptr<cinder::Dev::Panels::SaveSceneDialog> dialog =
+            make<cinder::Dev::Panels::SaveSceneDialog>().onSave([&](const std::filesystem::path& path) { saved = path; });
+    Harness ui(dialog);
+    ui.app.setTheme(cinder::Dev::Panels::editorTheme());
+    dialog->show("Scenes/main.scene");
+    ui.frame();
+    ui.app.setFocus(dialog->focusTarget());
+
+    CHECK(dialog->resolved().exists);
+    ui.type(U"../outside");
+    CHECK_FALSE(dialog->resolved().error.empty());
+    ui.key(keys::ENTER);
+    CHECK_FALSE(saved.has_value());
+
+    dialog->show("Scenes/level");
+    ui.key(keys::ENTER);
+    REQUIRE(saved.has_value());
+    CHECK(*saved == root / "Content" / "Scenes" / "level.scene");
+    CHECK_FALSE(dialog->resolved().exists);
+    std::filesystem::remove_all(root);
 }

@@ -75,6 +75,7 @@ void runEditor(const Core::ProjectConfig& config, const Core::LaunchOptions& opt
         if (last && !options.windowCapture.empty()) engine.renderer().requestWindowCapture(options.windowCapture);
         modules.update();
         shell.applyPendingReload();
+        shell.applyPendingScene();
         session.tick(loop);
         ++frames;
         if (last) break;

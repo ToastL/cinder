@@ -7,9 +7,11 @@
 #include "Dev/ModuleHost.hpp"
 #include "Dev/Packager.hpp"
 #include "Dev/PlaySession.hpp"
+#include "Dev/SceneDocument.hpp"
 #include "Dev/Selection.hpp"
 #include "Dev/Panels/Outliner.hpp"
 #include "Dev/Panels/SceneView.hpp"
+#include "Dev/Panels/Toolbar.hpp"
 #include "Physics/ColliderComponent.hpp"
 #include "Physics/RigidBodyComponent.hpp"
 #include "Platform/Assets.hpp"
@@ -25,7 +27,9 @@
 #include <GLFW/glfw3.h>
 
 #include <cstdio>
+#include <cmath>
 #include <filesystem>
+#include <optional>
 #include <stdexcept>
 #include <string>
 #include <vector>
@@ -72,6 +76,11 @@ public:
         event.type = type;
         event.code = code;
         input_->inject(event);
+    }
+
+    void tap(int code) {
+        key(InputEventType::KeyDown, code);
+        key(InputEventType::KeyUp, code);
     }
 
     void chord(int code, bool shift = false) {
@@ -134,7 +143,10 @@ void exercise() {
 
     cinder::Core::GameLoop loop(60);
     const auto frames = [&](int count) {
-        for (int i = 0; i < count; ++i) session.tick(loop);
+        for (int i = 0; i < count; ++i) {
+            shell.applyPendingScene();
+            session.tick(loop);
+        }
     };
 
     history.reset();
@@ -213,6 +225,48 @@ void exercise() {
         require(session.state() == PlaySession::State::Edit, "Game quit did not stop Play");
         require(SceneCodec::save(scene) == edited, "Stop did not restore the edited scene");
     }
+
+    Panels::Toolbar& toolbar = shell.toolbar();
+    SceneDocument& document = shell.document();
+    driver.chord(keys::letter('n'));
+    frames(2);
+    require(document.untitled(), "New Scene did not start an untitled scene");
+    require(scene.roots().size() == 1
+                    && dynamic_cast<cinder::Components::CameraActor*>(scene.roots().front()) != nullptr,
+            "A new scene is not one camera");
+    const glm::vec4 eye = view.camera().view().world[3];
+    require(std::abs(eye.x) < 1e-4f && std::abs(eye.y - 2.0f) < 1e-4f && std::abs(eye.z - 10.0f) < 1e-4f,
+            "The editor camera did not reseed from the new scene's camera");
+
+    history.touch("Add Actor", std::nullopt);
+    scene.spawn("Actor");
+    history.settle(false);
+    require(history.dirty(), "The edit to the new scene was not recorded");
+    driver.chord(keys::letter('o'));
+    frames(1);
+    require(toolbar.prompting(), "Open Scene did not show the picker");
+    driver.tap(keys::ENTER);
+    frames(1);
+    require(toolbar.prompting(), "Opening over unsaved changes did not ask first");
+    driver.tap(keys::ESCAPE);
+    frames(2);
+    require(!toolbar.prompting() && !document.pending() && document.untitled(),
+            "Cancelling the unsaved prompt still opened the scene");
+    require(!app.isInteracting(), "The closed picker kept the keyboard");
+
+    driver.chord(keys::letter('s'), true);
+    frames(1);
+    require(toolbar.prompting(), "Save As did not show its dialog");
+    driver.tap(keys::ESCAPE);
+    frames(2);
+    require(!toolbar.prompting() && !app.isInteracting(), "Cancelling Save As left the dialog holding focus");
+
+    require(document.saveAs(output / "new.scene"), "Save As failed");
+    require(!history.dirty() && document.displayName() == "new.scene", "Save As did not adopt the file");
+    document.requestOpen(output / "saved.scene");
+    frames(2);
+    require(SceneCodec::save(scene) == edited, "Reopening the saved scene did not restore it");
+    require(document.path() == output / "saved.scene" && !history.dirty(), "Reopening did not adopt the file");
 
     const std::shared_ptr<cinder::UI::TabStack> stack = tabs.stackWidget(tabs.stackOf("Console"));
     require(stack != nullptr, "The docked layout lost the console's stack");

@@ -91,8 +91,12 @@ view, the editor camera, the Outliner, Details, picking, undo and transform gizm
       and the picker lists each descriptor's `category` and `description`. The *Project browser*
       under *UI framework*.
 - [ ] Project Settings panel — `ProjectConfig::walk` already writes `Config/Game.ini` through `IniSave`
-- [ ] Scene switching — open, new and save-as. The editor edits the one scene named by
-      `startScene` in `Config/Game.ini` or `--scene`.
+- [x] Scene switching — File › New Scene (⌘N), Open Scene… (⌘O) and Save As… (⌘⇧S) through
+      `Dev/SceneDocument` and our own pickers over `Content/`; the switch is applied between frames,
+      behind the unsaved-changes guard
+- [ ] Open Recent — waits for editor state persisted in `Saved/`
+- [ ] Set as Start Scene — write `startScene` to `Config/Game.ini` through `ProjectConfig::save`
+- [ ] Scene pickers: a folder tree, and New Folder in Save As
 
 **Done when:** adding `CINDER_PROP(bounciness_)` to any actor or component class makes it appear in Details, save
 to disk, and become undoable — with zero editor code.
