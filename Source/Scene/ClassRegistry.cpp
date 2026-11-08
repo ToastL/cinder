@@ -8,6 +8,7 @@ ClassRegistry::~ClassRegistry() = default;
 
 void ClassRegistry::bind(std::string name, std::string type, ClassKind kind,
                          const cinder::Reflect::PropList* props, Factory factory) {
+    prefabs_.clear();
     auto existing = byName_.find(name);
     if (existing != byName_.end()) {
         Entry& slot = entries_[existing->second];
@@ -32,6 +33,7 @@ void ClassRegistry::remove(std::string_view name) {
     if (found == byName_.end()) return;
     Entry& slot = entries_[found->second];
     if (!slot.factory) return;
+    prefabs_.clear();
     byType_.erase(slot.type);
     slot.type.clear();
     slot.props = nullptr;

@@ -6,6 +6,7 @@
 #include "Gfx/Pass/SpritePass.hpp"
 #include "Platform/Assets.hpp"
 #include "Platform/Input.hpp"
+#include "Serial/Prefab.hpp"
 
 #include <glm/gtc/matrix_transform.hpp>
 
@@ -72,6 +73,10 @@ glm::vec2 scroll() {
 void setCursorLocked(bool locked) { input().setCursorLocked(locked); }
 
 bool cursorLocked() { return input().cursorLocked(); }
+
+cinder::Scene::Actor* spawnPrefab(std::string_view path, cinder::Scene::Actor* parent) {
+    return cinder::Serial::Prefab::instantiate(scene(), path, parent);
+}
 
 int loadTexture(std::string_view path) {
     return engine().renderer().assets().load(cinder::Platform::contentPath(path).string());

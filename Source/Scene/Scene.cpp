@@ -126,17 +126,40 @@ Component* Scene::addComponent(Actor& actor, std::string_view className, SceneCo
 
 Actor* Scene::clone(const Actor& source, Actor* parent) {
     std::unordered_map<int, Object*> copies;
-    Actor* actor = cloneTree(source, parent, copies);
+    Actor* actor = cloneTree(source, parent, copies, source.prefab().empty() ? Link::Unlinked : Link::Keep);
+    remapRefs(copies);
+    return actor;
+}
+
+Actor* Scene::instantiate(const Actor& source, Actor* parent, std::string prefab, bool remap) {
+    std::unordered_map<int, Object*> copies;
+    Actor* actor = cloneTree(source, parent, copies, Link::Stamp);
+    if (actor == nullptr) return nullptr;
+    actor->prefab_ = std::move(prefab);
+    if (remap) remapRefs(copies);
+    return actor;
+}
+
+void Scene::remapRefs(const std::unordered_map<int, Object*>& copies) {
     for (const auto& [from, copy] : copies) {
         forEachRef(*copy, [&](const cinder::Reflect::PropDef& def, void* target) {
             auto found = copies.find(def.readInt(target));
             if (found != copies.end()) def.writeInt(target, found->second->id());
         });
     }
-    return actor;
 }
 
-Actor* Scene::cloneTree(const Actor& source, Actor* parent, std::unordered_map<int, Object*>& copies) {
+void Scene::unlink(Actor& root) {
+    root.prefab_.clear();
+    root.setPrefabId(0);
+    for (Component* component : root.components_) component->setPrefabId(0);
+    for (Actor* child : root.children_) {
+        if (child->prefab_.empty()) unlink(*child);
+    }
+}
+
+std::unique_ptr<Actor> Scene::replicate(const Actor& source,
+                                        std::vector<std::pair<const Component*, Component*>>& pairs) const {
     std::unique_ptr<Actor> copy;
     if (const auto* placeholder = dynamic_cast<const ActorPlaceholder*>(&source)) {
         copy = std::make_unique<ActorPlaceholder>(placeholder->className(), placeholder->fields());
@@ -149,7 +172,13 @@ Actor* Scene::cloneTree(const Actor& source, Actor* parent, std::unordered_map<i
     copy->setName(source.name());
     copy->attributes_ = source.attributes_;
 
-    std::unordered_map<const Component*, Component*> matched;
+    const auto copyOf = [&](const Component* from) -> Component* {
+        for (const auto& [original, to] : pairs) {
+            if (original == from) return to;
+        }
+        return nullptr;
+    };
+
     std::vector<Component*> unclaimed = copy->components_;
     for (const Component* from : source.components_) {
         if (from->destroyed()) continue;
@@ -170,27 +199,46 @@ Actor* Scene::cloneTree(const Actor& source, Actor* parent, std::unordered_map<i
         }
         copyComponent(*from, *to);
         to->setName(from->name());
-        matched.emplace(from, to);
+        pairs.emplace_back(from, to);
     }
 
-    for (const auto& [from, to] : matched) {
+    for (const auto& [from, to] : pairs) {
         const SceneComponent* placed = from->asSceneComponent();
         SceneComponent* target = to->asSceneComponent();
         if (placed == nullptr || target == nullptr) continue;
-        auto parentCopy = placed->attachParent() != nullptr ? matched.find(placed->attachParent()) : matched.end();
-        target->attachTo(parentCopy != matched.end() ? parentCopy->second->asSceneComponent() : nullptr);
+        Component* parentCopy = placed->attachParent() != nullptr ? copyOf(placed->attachParent()) : nullptr;
+        target->attachTo(parentCopy != nullptr ? parentCopy->asSceneComponent() : nullptr);
     }
     if (const SceneComponent* root = source.rootComponent()) {
-        auto found = matched.find(root);
-        if (found != matched.end()) copy->setRootComponent(found->second->asSceneComponent());
+        if (Component* found = copyOf(root)) copy->setRootComponent(found->asSceneComponent());
+    }
+    return copy;
+}
+
+Actor* Scene::cloneTree(const Actor& source, Actor* parent, std::unordered_map<int, Object*>& copies, Link link) {
+    std::vector<std::pair<const Component*, Component*>> pairs;
+    std::unique_ptr<Actor> copy = replicate(source, pairs);
+    if (copy == nullptr) return nullptr;
+
+    if (link == Link::Keep) {
+        copy->setPrefabId(source.prefabId());
+        copy->prefab_ = source.prefab_;
+        for (const auto& [from, to] : pairs) to->setPrefabId(from->prefabId());
+    } else if (link == Link::Stamp) {
+        copy->setPrefabId(source.id());
+        for (const auto& [from, to] : pairs) to->setPrefabId(from->id());
     }
 
     const std::vector<Actor*> children = source.children_;
     Actor* actor = insert(std::move(copy), parent);
     copies.emplace(source.id(), actor);
-    for (const auto& [from, to] : matched) copies.emplace(from->id(), to);
+    for (const auto& [from, to] : pairs) copies.emplace(from->id(), to);
     for (Actor* child : children) {
-        if (!child->destroyed_) cloneTree(*child, actor, copies);
+        if (child->destroyed_) continue;
+        Link next = Link::Unlinked;
+        if (link == Link::Stamp) next = Link::Stamp;
+        else if (!child->prefab_.empty() || (link == Link::Keep && child->prefabId() != 0)) next = Link::Keep;
+        cloneTree(*child, actor, copies, next);
     }
     return actor;
 }

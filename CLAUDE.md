@@ -458,6 +458,8 @@ was dropped on 2026-11-07.
   to it through the registry, with fresh ids. A `Ref` in the copies that names an object inside the
   copied subtree is pointed at that object's copy, and one naming anything outside is left alone, so a
   duplicated turret aims its own barrel. An object inserted without a name takes its class name.
+  `instantiate` copies a prefab's template the same way, stamping each copy with its source's id as
+  its `prefabId`; `replicate` is the per-actor half both share, and `unlink` cuts an instance loose.
 
 Lifecycle rules that are easy to lose:
 
@@ -506,10 +508,10 @@ A new class derives from `Actor`, `Component` or `SceneComponent`, declares its 
 
 ### The scene file
 
-`Serial/SceneCodec` writes version 5:
+`Serial/SceneCodec` writes version 6:
 
 ```
-version 5
+version 6
 actors {
     StaticMeshActor {
         id 2
@@ -545,8 +547,9 @@ ordinary ones, and cloning a placeholder makes another. Every token keeps its qu
 unquoted `{` opens a block, so an actor named `{` round-trips. A stray or missing `}` fails the load with
 its line number before anything is cleared, numbers are parsed with `from_chars`, a malformed one is
 logged and falls back to the default, and an id outside `1..Scene::MAX_ID`, or taken, is replaced with a
-fresh one. A value an attribute cannot hold is logged and dropped. `VERSION` and `OLDEST` are both 5:
-the node-tree format is not read, and the repo's scenes were converted once.
+fresh one. A value an attribute cannot hold is logged and dropped. `VERSION` is 6 and `OLDEST` 5 — a
+version 5 file is a valid version 6 file, and the bump only stops an older build from loading a prefab
+instance against class defaults and saving it without its link. The node-tree format is not read.
 
 **A reference is an integer field**, `target 82`, delta-encoded against the class default, which is
 always 0. Save writes it only while it resolves to a live object its field accepts, so a reference to a
@@ -557,6 +560,64 @@ is done — which is what makes forward references work and what follows an obje
 range to its fresh one. On a duplicate id the object that kept it wins, and an id that names nothing in
 the file loads as 0. A placeholder's raw fields are copied verbatim, so a reference inside an
 unknown-class object is neither checked nor remapped.
+
+### Prefabs
+
+A **prefab** is a `.prefab` file under `Content/` in the scene format holding one root actor and the
+actors attached to it — Unreal's Blueprint class without the graph. An **instance** is linked to it
+live: the prefab is the instance's archetype, so an instance writes only where it differs, and editing
+the prefab reaches every instance on its next load unless the instance overrides that field.
+
+```
+StaticMeshActor {
+    id 2
+    prefab "Prefabs/box.prefab"
+    components {
+        StaticMeshComponent {
+            id 247
+            from 2
+            position -6 0 -6
+        }
+        SpriteComponent {
+            id 900
+        }
+    }
+}
+```
+
+The link is two fields that are not props: `Actor::prefab()`, the path, set only on an instance's root,
+and `Object::prefabId()`, the id the object has **inside the prefab file**, on every object the prefab
+supplied. Matching is by that id and never by name or order, because a rename is the commonest override
+and an order shift would silently re-pair them; a prefab-owned object other than the root writes it as
+`from`. An object with no `prefabId` under an instance was added by the instance and is written against
+its class default, the way an instance component always was. An instance may add components and
+attached actors but never remove what the prefab supplies — Unreal's inherited-component rule — so one
+deleted anyway comes back on the next load, and one the prefab gained appears; an attached actor the
+prefab gained is created after the walk, so its fresh ids cannot take an id later in the file. A `from`
+the prefab no longer has is logged and dropped. An instance's components keep the prefab's attachment,
+and its attributes are the prefab's overlaid by its own. A **reference** inside an instance is written
+against the prefab's reference translated into the instance, so a box aims its own barrel, clearing an
+inherited reference writes `target 0`, and one into or out of an instance works as anywhere else.
+
+Templates are parsed once into a `Scene` of their own and cached in a `Scene/PrefabCache` that
+**`ClassRegistry` owns and clears in `bind` and `remove`**, beside the default instances and for the
+same reason: a template holds objects whose code lives in the game library, and they must die before it
+is unloaded. `SceneCodec::prefab` reads the file and re-parses only when its text changed, once per path
+per save or load; a failed read keeps the last good template. A template with no actor, an unknown class
+or a cycle counts as missing. **An instance of a missing prefab** loads its root and every `from` object
+as placeholders, whose raw fields carry the link, so it round-trips byte for byte and comes back whole
+when the file does. Nested prefabs load flattened: a prefab holding an instance stamps that instance's
+objects as its own.
+
+`Serial/Prefab` holds the operations. `instantiate` copies the cached template, which is what
+`Game::spawnPrefab` calls. `write` is both **Apply** and **Save as Prefab**: it saves the subtree with
+the root's name and placement left out — the prefab's own on Apply, the origin for a new prefab — keeps
+every existing prefab id and numbers new objects past the largest, so instances in scenes that are not
+open stay valid; then it saves the scene with the root unlinked, writes the file, drops the cached
+template and loads the scene back, so every other instance rebuilds on the new template, and re-links
+the root. **Revert** is `SceneCodec::revert`: a save in which the instance writes only its ids, its
+root's name and its root's placement, then a load. `refusal` refuses a part of an instance, a subtree
+holding another instance, and Apply to a prefab that holds one.
 
 ## Edit mode and Play mode
 
@@ -1278,7 +1339,8 @@ as free-form data on any actor.
 
 ### What game code calls
 
-- **The scene** is plain C++: `Scene::spawn<T>(parent)` and `spawn("Class", parent)`, `addComponent`,
+- **The scene** is plain C++: `Scene::spawn<T>(parent)` and `spawn("Class", parent)`,
+  `Game::spawnPrefab("Prefabs/ball.prefab", parent)`, `addComponent`,
   `clone`, `find`, `byId`, `actor`, `component`, `destroy`, `Actor::attachTo`, `findAttached`,
   `findComponent<T>()`, `addComponent<T>()`, attributes, and each class's own setters. A
   `Scene::Ref<T>` prop names another actor or component, set in Details, and `get(*scene())` resolves it.
@@ -1422,7 +1484,7 @@ type for delta encoding. Re-binding a name keeps its slot — so iteration order
 reboot — and drops its cached default, so a default instance never outlives the library whose code
 it runs.
 
-`SceneCodec::VERSION` and `OLDEST` are both 5 — see *The scene file*. `Tests/scene_files_test` loads
+`SceneCodec::VERSION` is 6 and `OLDEST` 5 — see *The scene file*. `Tests/scene_files_test` loads
 and re-saves every `.scene` and every project's `Config/Game.ini` under `Samples/` and
 `Tests/selftest/`, and requires the bytes to match, so shipped scenes and settings stay canonical as
 the formats move.

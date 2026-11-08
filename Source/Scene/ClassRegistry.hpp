@@ -3,6 +3,7 @@
 #include "Reflect/Reflect.hpp"
 #include "Scene/Actor.hpp"
 #include "Scene/Component.hpp"
+#include "Scene/PrefabCache.hpp"
 
 #include <functional>
 #include <memory>
@@ -58,6 +59,8 @@ public:
 
     const std::vector<Entry>& registered() const { return entries_; }
 
+    PrefabCache& prefabs() const { return prefabs_; }
+
 private:
     void bind(std::string name, std::string type, ClassKind kind,
               const cinder::Reflect::PropList* props, Factory factory);
@@ -66,6 +69,7 @@ private:
     std::vector<Entry> entries_;
     std::unordered_map<std::string, std::size_t> byName_;
     std::unordered_map<std::string, std::size_t> byType_;
+    mutable PrefabCache prefabs_;
 };
 
 }

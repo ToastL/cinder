@@ -55,6 +55,10 @@ public:
 
     void destroy();
 
+    const std::string& prefab() const { return prefab_; }
+    void setPrefab(std::string path) { prefab_ = std::move(path); }
+    bool prefabOwned() const { return prefabId() != 0 && prefab_.empty(); }
+
     const PropRec& attributes() const { return attributes_; }
     const PropValue* attribute(const std::string& name) const;
     void setAttribute(const std::string& name, PropValue value);
@@ -79,6 +83,7 @@ private:
     Actor* parent_ = nullptr;
     std::vector<Actor*> children_;
     PropRec attributes_;
+    std::string prefab_;
 };
 
 }
