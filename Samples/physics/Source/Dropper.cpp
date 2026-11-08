@@ -8,6 +8,7 @@ public:
         CINDER_PROP(interval_);
         CINDER_PROP(lifetime_);
         CINDER_PROP(spread_);
+        CINDER_PROP(prefab_);
     }
 
     void beginPlay() override {
@@ -29,14 +30,9 @@ private:
         const glm::vec3 at = from->worldPosition()
                 + glm::vec3(Game::random(-0.5f, 0.5f) * spread_, 0.0f, Game::random(-0.5f, 0.5f) * spread_);
 
-        auto* ball = world.spawn<Components::StaticMeshActor>();
-        ball->setName("Dropped");
-        ball->mesh().setMesh("sphere");
+        Scene::Actor* ball = Game::spawnPrefab(prefab_);
+        if (ball == nullptr || ball->transform() == nullptr) return;
         ball->transform()->setPosition(at.x, at.y, at.z);
-        ball->transform()->setScale(0.8f);
-        auto* body = ball->addComponent<Physics::RigidBodyComponent>();
-        body->setDamping(0.2f, body->angularDamping());
-        ball->addComponent<Physics::ColliderComponent>()->setShape(Physics::Shape::Sphere).setRestitution(0.5f);
 
         const int id = ball->id();
         world.after(
@@ -51,6 +47,7 @@ private:
     float interval_ = 0.7f;
     float lifetime_ = 9.0f;
     float spread_ = 4.0f;
+    std::string prefab_ = "Prefabs/ball.prefab";
 };
 
 CINDER_REGISTER(Dropper);

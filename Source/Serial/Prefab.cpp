@@ -95,10 +95,8 @@ bool Prefab::missing(const Scene& scene, const Actor& root) { return cached(scen
 
 std::string Prefab::refusal(Scene& scene, const Actor& actor, std::string_view path) {
     const bool applying = !actor.prefab().empty() && actor.prefab() == path;
-    if (!applying && actor.prefabId() != 0) {
-        return "it is part of a prefab instance; unpack the instance first";
-    }
-    if (holdsLink(actor, !applying)) return "nested prefabs are not supported yet";
+    if (actor.prefabOwned()) return "it is part of a prefab instance; unpack the instance first";
+    if (holdsLink(actor, false)) return "nested prefabs are not supported yet";
     if (holdsPlaceholder(const_cast<Actor&>(actor))) return "it holds an unknown class";
     if (applying) {
         const Actor* source = SceneCodec::prefab(scene.types(), path);

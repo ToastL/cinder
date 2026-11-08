@@ -311,6 +311,24 @@ TEST_CASE("Save as Prefab numbers the prefab from 1 and links the source") {
     CHECK(text.find("position 7 0 0") != std::string::npos);
 }
 
+TEST_CASE("Save as Prefab from an instance makes a new prefab and links the instance to it") {
+    Project p;
+    Actor* box = p.place();
+    aimOf(box)->speed_ = 4.0f;
+    const int id = box->id();
+
+    REQUIRE(Prefab::refusal(p.scene, *box, "Prefabs/fast.prefab").empty());
+    REQUIRE(Prefab::write(p.scene, *box, "Prefabs/fast.prefab"));
+    box = p.scene.actor(id);
+    CHECK(box->prefab() == "Prefabs/fast.prefab");
+    CHECK(box->prefabId() == 1);
+    CHECK(aimOf(box)->target_.get(p.scene) == box->findAttached("Barrel"));
+
+    const std::string text = p.reload();
+    CHECK(text.find("speed") == std::string::npos);
+    CHECK(aimOf(p.scene.actor(id))->speed_ == 4.0f);
+}
+
 TEST_CASE("prefab operations refuse a part of an instance and nested prefabs") {
     Project p;
     Actor* box = p.place();

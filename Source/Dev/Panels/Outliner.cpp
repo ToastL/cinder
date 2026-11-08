@@ -170,7 +170,8 @@ std::shared_ptr<Widget> Outliner::rowFor(ItemId item) {
         const bool lit = actor != nullptr && (actor->enabledInHierarchy() || selectedActor() == id);
         const Theme& theme = Application::get().theme();
         if (!lit) return theme.color("Color.ForegroundDim");
-        return actor->prefab().empty() ? theme.color("Color.Foreground") : theme.color("Color.Primary");
+        const bool linked = !actor->prefab().empty() && selectedActor() != id;
+        return linked ? theme.color("Color.Primary") : theme.color("Color.Foreground");
     };
     return make<HorizontalBox>()
            + HorizontalBox::slot().autoWidth().vAlign(VAlign::Center)

@@ -871,7 +871,7 @@ belongs to the last step and game code can cast a ray at any time, after anythin
 costs the walk either way; many rays per frame are what would justify keeping the tree valid.
 
 `Samples/physics` is the sample: a floor, a ramp and a step as static colliders, balls, capsules, a
-stack of crates, and a `Dropper` that drops more balls onto it. `--scene Scenes/planar.scene` opens the 2D half —
+stack of crates, and a `Dropper` that drops more balls onto it, each `Game::spawnPrefab("Prefabs/ball.prefab")`. `--scene Scenes/planar.scene` opens the 2D half —
 an orthographic camera over sprites with `planar` bodies, where a click drops another box. `MeshPass` carries three primitives — `cube`, `sphere` and `capsule`, the last two matching what a
 sphere and a `1 2 1` capsule collider cover; `Picking` still treats every `StaticMeshComponent` as a cube.
 
@@ -1197,7 +1197,8 @@ expanders.
 `Color.Primary` with its prefab's name in place of the class. Right-clicking any actor offers **Save as
 Prefab…**, which opens the toolbar's second `SaveSceneDialog` — titled, hinted and resolved for
 `.prefab`, refusing a file that exists, because renumbering a prefab's ids would cut every instance of it
-loose — and links the actor as an ordinary undoable step. An instance's root also offers **Apply**,
+loose — and links the actor as an ordinary undoable step; on an instance's root it makes a new prefab
+and relinks the instance to it. An instance's root also offers **Apply**,
 **Revert** and **Unpack**. A part of an instance cannot be deleted, dragged out or have an inherited
 component removed: an instance only adds. Details shows a **Prefab** section for any object of an
 instance — the source, `(missing)` in `Color.Error` when the file cannot be read, and the three buttons.
@@ -1505,7 +1506,7 @@ reboot — and drops its cached default, so a default instance never outlives th
 it runs.
 
 `SceneCodec::VERSION` is 6 and `OLDEST` 5 — see *The scene file*. `Tests/scene_files_test` loads
-and re-saves every `.scene` and every project's `Config/Game.ini` under `Samples/` and
+and re-saves every `.scene` and `.prefab`, with its project's root set, and every project's `Config/Game.ini` under `Samples/` and
 `Tests/selftest/`, and requires the bytes to match, so shipped scenes and settings stay canonical as
 the formats move.
 

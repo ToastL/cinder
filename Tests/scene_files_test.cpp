@@ -3,7 +3,9 @@
 #include "Core/ProjectConfig.hpp"
 #include "Components/Builtins.hpp"
 #include "Physics/Components.hpp"
+#include "Platform/Assets.hpp"
 #include "Scene/ClassRegistry.hpp"
+#include "Scene/PrefabCache.hpp"
 #include "Scene/Scene.hpp"
 #include "Serial/SceneCodec.hpp"
 
@@ -37,7 +39,7 @@ std::vector<std::filesystem::path> shippedScenes() {
     for (const std::filesystem::path& root : {SOURCE / "Samples", SOURCE / "Tests" / "selftest"}) {
         for (auto it = std::filesystem::recursive_directory_iterator(root); it != std::filesystem::recursive_directory_iterator(); ++it) {
             if (it->is_directory() && it->path().filename() == "Saved") it.disable_recursion_pending();
-            else if (it->path().extension() == ".scene") out.push_back(it->path());
+            else if (it->path().extension() == ".scene" || it->path().extension() == ".prefab") out.push_back(it->path());
         }
     }
     return out;
@@ -52,6 +54,16 @@ std::vector<std::filesystem::path> shippedDescriptors() {
         }
     }
     return out;
+}
+
+std::filesystem::path projectOf(const std::filesystem::path& file) {
+    for (std::filesystem::path folder = file.parent_path(); !folder.empty() && folder != folder.parent_path();
+         folder = folder.parent_path()) {
+        for (const auto& entry : std::filesystem::directory_iterator(folder)) {
+            if (entry.path().extension() == ".cinder") return folder;
+        }
+    }
+    return file.parent_path();
 }
 
 }
@@ -71,7 +83,7 @@ TEST_CASE("every shipped project descriptor and config is canonical") {
     }
 }
 
-TEST_CASE("every shipped scene is canonical") {
+TEST_CASE("every shipped scene and prefab is canonical") {
     ClassRegistry types;
     cinder::Components::registerBuiltins(types);
     cinder::Physics::registerComponents(types);
@@ -84,6 +96,8 @@ TEST_CASE("every shipped scene is canonical") {
         const std::string name = path.lexically_relative(SOURCE).string();
         CAPTURE(name);
         const std::string text = read(path);
+        cinder::Platform::setProjectRoot(projectOf(path));
+        types.prefabs().clear();
         SceneCodec::load(text, scene);
         CHECK(SceneCodec::save(scene) == text);
     }

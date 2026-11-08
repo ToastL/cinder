@@ -1,0 +1,23 @@
+version 6
+actors {
+    StaticMeshActor {
+        id 1
+        name "Ball"
+        components {
+            StaticMeshComponent {
+                id 2
+                scale 0.8 0.8 0.8
+                mesh "sphere"
+            }
+            RigidBodyComponent {
+                id 3
+                linearDamping 0.2
+            }
+            ColliderComponent {
+                id 4
+                shape "sphere"
+                restitution 0.5
+            }
+        }
+    }
+}

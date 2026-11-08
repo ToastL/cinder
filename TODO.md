@@ -53,7 +53,7 @@ view, the editor camera, the Outliner, Details, picking, undo and transform gizm
 - [x] Details: an actor-reference widget — a combo of the objects a `Ref` accepts, a Pick eyedropper
       that takes the next Scene view or Outliner click, and Go to select the target
 - [ ] Details: a filter in the reference menu, and an id or path beside duplicate names
-- [ ] Details: an asset-reference widget for texture and mesh names
+- [ ] Details: an asset-reference widget for texture, mesh and prefab names
 - [ ] Details: rename, reorder and reattach components by dragging, and set the root
 - [x] **Gizmos** — `Dev/Manipulator` moves along world or local axes and planes, rotates on gimbal
       rings that each turn one Euler angle, and scales along local axes or uniformly; ⌘ snaps and
@@ -240,9 +240,16 @@ includes `Scene`, `Reflect` or `Gfx` — the reflection-driven Details panel liv
 - [x] Actor references — `Scene::Ref<T>`, a prop holding an actor or component id that `get` resolves
       on every call; saved only while it resolves, fixed up after a load, remapped by `clone`
 - [ ] Attributes that name an actor — an attribute holds numbers, strings, bools and small vectors
-- [ ] Prefabs — a saved actor that can be instanced, with per-instance overrides: Unreal's Blueprint
-      class without the graph. `Scene::clone` already copies an actor, its components and its attached
-      actors generically, and the archetype delta is the override model.
+- [x] **Prefabs** (2026-11-08) — a `.prefab` is a scene file holding one actor subtree, and an instance
+      is live-linked to it: it writes `prefab` and only what differs, matched by the id each object has
+      in the prefab (`from`). Instances add but never remove; references resolve to the instance's own
+      copies; a missing prefab round-trips as placeholders. Place, Save as Prefab, Apply, Revert and
+      Unpack in the Outliner and Details, and `Game::spawnPrefab` from game code. sandbox3d's boxes and
+      the physics sample's dropped balls are prefabs.
+- [ ] Prefabs: nested prefabs — a prefab holding an instance loads flattened today, and Apply refuses it
+- [ ] Prefabs: Apply as an undo step — it writes the file, saves the scene and drops the history today
+- [ ] Prefabs: mark overridden props in Details, with a revert per prop
+- [ ] Prefabs: an instance cannot reattach the components the prefab supplies
 - [ ] Tags — one class driving every actor carrying a tag, like Unreal's actor tags
 - [ ] Attach to a named component or socket of the parent actor — attachment is always to the parent's
       root today
