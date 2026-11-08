@@ -99,6 +99,19 @@ TEST_CASE("a button clicks on release inside, and not after the pointer leaves")
     CHECK_FALSE(ui.app.captor());
 }
 
+TEST_CASE("a button has given up the mouse capture by the time it clicks") {
+    bool interacting = true;
+    Harness* harness = nullptr;
+    Harness ui(at({10.0f, 10.0f}, {100.0f, 30.0f}, make<Button>().text("Undo").onClicked([&] {
+        interacting = harness->app.isInteracting();
+        return Reply::handled();
+    })));
+    harness = &ui;
+
+    ui.click(50.0f, 20.0f);
+    CHECK_FALSE(interacting);
+}
+
 TEST_CASE("a disabled button never clicks") {
     int clicks = 0;
     Harness ui(at({0.0f, 0.0f}, {100.0f, 30.0f}, make<Button>().text("Stop").isEnabled(false).onClicked([&] {

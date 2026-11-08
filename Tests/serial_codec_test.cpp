@@ -92,7 +92,7 @@ TEST_CASE("the emitted format is pinned byte for byte") {
     f.populate();
 
     const std::string golden =
-        "version 5\n"
+        "version 6\n"
         "actors {\n"
         "    CameraActor {\n"
         "        id 7\n"
@@ -248,7 +248,7 @@ TEST_CASE("a component that is the root in the file stays the root") {
 TEST_CASE("load replaces the previous scene") {
     Fixture f;
     f.populate();
-    SceneCodec::load("version 5\nactors {\n    Actor {\n        id 1\n    }\n}\n", f.scene);
+    SceneCodec::load("version 6\nactors {\n    Actor {\n        id 1\n    }\n}\n", f.scene);
 
     CHECK(f.scene.roots().size() == 1);
     CHECK(f.scene.byId(7) == nullptr);
@@ -301,7 +301,7 @@ TEST_CASE("camera render settings survive") {
 TEST_CASE("duplicate ids in a file do not abort the load") {
     Fixture f;
     SceneCodec::load(
-        "version 5\n"
+        "version 6\n"
         "actors {\n"
         "    Actor {\n"
         "        id 5\n"
@@ -326,7 +326,7 @@ TEST_CASE("duplicate ids in a file do not abort the load") {
 TEST_CASE("camera zoom beyond its range is clamped on load") {
     Fixture f;
     SceneCodec::load(
-        "version 5\n"
+        "version 6\n"
         "actors {\n"
         "    CameraActor {\n"
         "        id 1\n"
@@ -368,7 +368,7 @@ TEST_CASE("attributes round trip with their types") {
 TEST_CASE("an attribute that is not a value is dropped on load") {
     Fixture f;
     SceneCodec::load(
-        "version 5\n"
+        "version 6\n"
         "actors {\n"
         "    Actor {\n"
         "        id 1\n"
@@ -388,7 +388,7 @@ TEST_CASE("an attribute that is not a value is dropped on load") {
 }
 
 TEST_CASE("unknown actor and component classes are kept as placeholders and save back unchanged") {
-    const std::string text = R"(version 5
+    const std::string text = R"(version 6
 actors {
     Turret {
         id 4
@@ -469,14 +469,14 @@ TEST_CASE("an actor named with a lone brace does not open a block") {
 TEST_CASE("unbalanced braces are rejected and leave the scene intact") {
     Fixture f;
     f.populate();
-    CHECK_THROWS_AS(SceneCodec::load("version 5\nactors {\n    Actor {\n        id 1\n    }\n", f.scene), std::runtime_error);
-    CHECK_THROWS_AS(SceneCodec::load("version 5\n}\nactors {\n}\n", f.scene), std::runtime_error);
+    CHECK_THROWS_AS(SceneCodec::load("version 6\nactors {\n    Actor {\n        id 1\n    }\n", f.scene), std::runtime_error);
+    CHECK_THROWS_AS(SceneCodec::load("version 6\n}\nactors {\n}\n", f.scene), std::runtime_error);
     CHECK(f.scene.roots().size() == 2);
 }
 
 TEST_CASE("malformed numbers fall back instead of throwing or truncating") {
     Fixture f;
-    SceneCodec::load("version 5\nactors {\n    Actor {\n        id 1e20\n        components {\n"
+    SceneCodec::load("version 6\nactors {\n    Actor {\n        id 1e20\n        components {\n"
                      "            SceneComponent {\n                id 2\n                position 1 two 3x\n"
                      "            }\n        }\n    }\n}\n", f.scene);
     REQUIRE(f.scene.roots().size() == 1);
@@ -501,7 +501,7 @@ TEST_CASE("a subnormal value survives a round trip") {
 }
 
 TEST_CASE("a placeholder keeps the quoting of every token in a field") {
-    const std::string text = R"(version 5
+    const std::string text = R"(version 6
 actors {
     Turret {
         id 4
@@ -521,7 +521,7 @@ actors {
 }
 
 TEST_CASE("a placeholder is cloned as a placeholder") {
-    const std::string text = "version 5\nactors {\n    Turret {\n        id 4\n        range 3\n    }\n}\n";
+    const std::string text = "version 6\nactors {\n    Turret {\n        id 4\n        range 3\n    }\n}\n";
     Fixture f;
     SceneCodec::load(text, f.scene);
     Actor* turret = f.scene.actor(4);
@@ -534,14 +534,14 @@ TEST_CASE("a placeholder is cloned as a placeholder") {
 
 TEST_CASE("an out of range id gets a fresh one") {
     Fixture f;
-    SceneCodec::load("version 5\nactors {\n    Actor {\n        id 2147483647\n    }\n}\n", f.scene);
+    SceneCodec::load("version 6\nactors {\n    Actor {\n        id 2147483647\n    }\n}\n", f.scene);
     REQUIRE(f.scene.roots().size() == 1);
     CHECK(f.scene.roots()[0]->id() < Scene::MAX_ID);
 }
 
 TEST_CASE("a placeholder component is never the root") {
     Fixture f;
-    SceneCodec::load("version 5\nactors {\n    Actor {\n        id 1\n        components {\n"
+    SceneCodec::load("version 6\nactors {\n    Actor {\n        id 1\n        components {\n"
                      "            Laser {\n                id 2\n            }\n"
                      "            SceneComponent {\n                id 3\n            }\n        }\n    }\n}\n", f.scene);
     REQUIRE(f.scene.roots().size() == 1);

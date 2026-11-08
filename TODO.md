@@ -53,7 +53,7 @@ view, the editor camera, the Outliner, Details, picking, undo and transform gizm
 - [x] Details: an actor-reference widget — a combo of the objects a `Ref` accepts, a Pick eyedropper
       that takes the next Scene view or Outliner click, and Go to select the target
 - [ ] Details: a filter in the reference menu, and an id or path beside duplicate names
-- [ ] Details: an asset-reference widget for texture and mesh names
+- [ ] Details: an asset-reference widget for texture, mesh and prefab names
 - [ ] Details: rename, reorder and reattach components by dragging, and set the root
 - [x] **Gizmos** — `Dev/Manipulator` moves along world or local axes and planes, rotates on gimbal
       rings that each turn one Euler angle, and scales along local axes or uniformly; ⌘ snaps and
@@ -91,8 +91,12 @@ view, the editor camera, the Outliner, Details, picking, undo and transform gizm
       and the picker lists each descriptor's `category` and `description`. The *Project browser*
       under *UI framework*.
 - [ ] Project Settings panel — `ProjectConfig::walk` already writes `Config/Game.ini` through `IniSave`
-- [ ] Scene switching — open, new and save-as. The editor edits the one scene named by
-      `startScene` in `Config/Game.ini` or `--scene`.
+- [x] Scene switching — File › New Scene (⌘N), Open Scene… (⌘O) and Save As… (⌘⇧S) through
+      `Dev/SceneDocument` and our own pickers over `Content/`; the switch is applied between frames,
+      behind the unsaved-changes guard
+- [ ] Open Recent — waits for editor state persisted in `Saved/`
+- [ ] Set as Start Scene — write `startScene` to `Config/Game.ini` through `ProjectConfig::save`
+- [ ] Scene pickers: a folder tree, and New Folder in Save As
 
 **Done when:** adding `CINDER_PROP(bounciness_)` to any actor or component class makes it appear in Details, save
 to disk, and become undoable — with zero editor code.
@@ -236,9 +240,16 @@ includes `Scene`, `Reflect` or `Gfx` — the reflection-driven Details panel liv
 - [x] Actor references — `Scene::Ref<T>`, a prop holding an actor or component id that `get` resolves
       on every call; saved only while it resolves, fixed up after a load, remapped by `clone`
 - [ ] Attributes that name an actor — an attribute holds numbers, strings, bools and small vectors
-- [ ] Prefabs — a saved actor that can be instanced, with per-instance overrides: Unreal's Blueprint
-      class without the graph. `Scene::clone` already copies an actor, its components and its attached
-      actors generically, and the archetype delta is the override model.
+- [x] **Prefabs** (2026-11-08) — a `.prefab` is a scene file holding one actor subtree, and an instance
+      is live-linked to it: it writes `prefab` and only what differs, matched by the id each object has
+      in the prefab (`from`). Instances add but never remove; references resolve to the instance's own
+      copies; a missing prefab round-trips as placeholders. Place, Save as Prefab, Apply, Revert and
+      Unpack in the Outliner and Details, and `Game::spawnPrefab` from game code. sandbox3d's boxes and
+      the physics sample's dropped balls are prefabs.
+- [ ] Prefabs: nested prefabs — a prefab holding an instance loads flattened today, and Apply refuses it
+- [ ] Prefabs: Apply as an undo step — it writes the file, saves the scene and drops the history today
+- [ ] Prefabs: mark overridden props in Details, with a revert per prop
+- [ ] Prefabs: an instance cannot reattach the components the prefab supplies
 - [ ] Tags — one class driving every actor carrying a tag, like Unreal's actor tags
 - [ ] Attach to a named component or socket of the parent actor — attachment is always to the parent's
       root today
@@ -286,9 +297,10 @@ includes `Scene`, `Reflect` or `Gfx` — the reflection-driven Details panel liv
 - [ ] Physics: let a raycast use the broadphase tree — it walks every collider today, because the tree
       belongs to the last step and game code can cast at any time
 - [ ] Physics, phase 5 — joints, CCD, collision layers, a character controller, convex hulls
-- [ ] Render interpolation — `alpha` reaches `onRender` and nothing uses it, so at `fixedHz` 60 on a
-      120 Hz display a body visibly steps. Keeping the previous transform and interpolating in render
-      fixes game-driven motion too.
+- [x] Render interpolation — every scene component's world matrix is snapshotted at the top of each
+      fixed update, and meshes, sprites and cameras draw it blended toward the current one by `alpha`
+      (slerped rotation, lerped translation and scale), so motion is smooth above `fixedHz`.
+      `Transform::resetInterpolation` makes a teleport land at once
 - [ ] **Audio** — clip loading, one-shot + looping sources, 3D positional, buses/volume
 - [ ] **Animation** — skeletal (skinning shader, joint palette), sprite sheet animation, and a
       clip/state machine

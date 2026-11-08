@@ -2,6 +2,7 @@
 
 #include "Dev/History.hpp"
 #include "Dev/PlaySession.hpp"
+#include "Dev/SceneDocument.hpp"
 #include "Dev/Selection.hpp"
 #include "Dev/Panels/Console.hpp"
 #include "Dev/Panels/Outliner.hpp"
@@ -31,10 +32,12 @@ public:
     EditorShell& operator=(const EditorShell&) = delete;
 
     bool applyPendingReload();
+    bool applyPendingScene();
 
     PlaySession& session() { return session_; }
     Selection& selection() { return selection_; }
     History& history() { return history_; }
+    SceneDocument& document() { return document_; }
     cinder::UI::Application& app() { return app_; }
     Panels::Toolbar& toolbar() { return toolbar_; }
     Panels::SceneView& view() { return view_; }
@@ -49,6 +52,7 @@ private:
     PlaySession session_;
     Selection selection_;
     History history_;
+    SceneDocument document_;
     cinder::Text::FontSet fonts_;
     cinder::UI::WindowPlatform platform_;
     cinder::UI::Application app_;

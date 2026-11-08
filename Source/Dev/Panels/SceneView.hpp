@@ -30,6 +30,7 @@ public:
 
     void update();
     void afterPaint();
+    void sceneChanged();
 
     Tool tool() const { return tool_; }
     Space space() const { return space_; }

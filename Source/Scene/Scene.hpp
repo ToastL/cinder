@@ -51,6 +51,10 @@ public:
                   const std::vector<IdHint>& componentIds = {});
     Actor* spawn(std::string_view className, Actor* parent = nullptr);
     Actor* clone(const Actor& source, Actor* parent);
+    Actor* instantiate(const Actor& source, Actor* parent, std::string prefab, bool remapRefs = true);
+    std::unique_ptr<Actor> replicate(const Actor& source,
+                                     std::vector<std::pair<const Component*, Component*>>& pairs) const;
+    void unlink(Actor& root);
 
     template <class T, class... Args>
     T* spawn(Actor* parent = nullptr, Args&&... args) {
@@ -92,11 +96,15 @@ public:
     double time() const { return time_; }
 
 private:
-    Actor* cloneTree(const Actor& source, Actor* parent, std::unordered_map<int, Object*>& copies);
+    enum class Link { Keep, Unlinked, Stamp };
+
+    Actor* cloneTree(const Actor& source, Actor* parent, std::unordered_map<int, Object*>& copies, Link link);
+    static void remapRefs(const std::unordered_map<int, Object*>& copies);
     void enroll(Object& object, std::optional<int> id);
     void attach(Actor& actor, Actor* parent);
     void detach(Actor& actor);
     void update(Actor& actor, float dt);
+    void snapshot(Actor& actor);
     void render(Actor& actor, float alpha, DrawList& draws);
     void startPending();
     void start(Object& object);

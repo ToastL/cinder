@@ -156,3 +156,21 @@ TEST_CASE("history keeps at most MAX_STEPS") {
     for (std::size_t i = 0; i < History::MAX_STEPS + 5; ++i) editor.move(static_cast<float>(i + 1));
     CHECK(editor.history.steps() == History::MAX_STEPS);
 }
+
+TEST_CASE("rebase drops the undo and redo steps and keeps the scene dirty against what was saved") {
+    Editor editor;
+    editor.move(3.0f);
+    editor.move(4.0f);
+    editor.history.undo(editor.selection);
+    REQUIRE(editor.history.canUndo());
+    REQUIRE(editor.history.canRedo());
+
+    editor.history.rebase();
+    CHECK_FALSE(editor.history.canUndo());
+    CHECK_FALSE(editor.history.canRedo());
+    CHECK(editor.history.dirty());
+    CHECK(editor.history.document() == cinder::Serial::SceneCodec::save(editor.scene));
+
+    editor.move(0.0f);
+    CHECK_FALSE(editor.history.dirty());
+}

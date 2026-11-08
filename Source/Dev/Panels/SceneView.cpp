@@ -162,6 +162,14 @@ void SceneView::update() {
     }
 }
 
+void SceneView::sceneChanged() {
+    camera_.reset();
+    manipulation_.end();
+    grabbed_ = false;
+    picking_ = false;
+    hot_ = Handle::None;
+}
+
 void SceneView::afterPaint() {
     cinder::Gfx::Renderer& renderer = engine_.renderer();
     if (editing() && camera_.seeded()) renderer.overrideCamera(camera_.view());

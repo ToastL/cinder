@@ -30,6 +30,9 @@ public:
     bool isEnabled() const { return enabled_; }
     void setEnabled(bool value) { enabled_ = value; }
 
+    int prefabId() const { return prefabId_; }
+    void setPrefabId(int id) { prefabId_ = id; }
+
     bool started() const { return started_; }
     bool destroyed() const { return destroyed_; }
 
@@ -40,6 +43,7 @@ private:
 
     Scene* scene_ = nullptr;
     int id_ = 0;
+    int prefabId_ = 0;
     std::string name_;
     bool enabled_ = true;
     bool started_ = false;

@@ -5,11 +5,15 @@
 #include "ui_harness.hpp"
 
 #include "Dev/History.hpp"
+#include "Dev/PrefabActions.hpp"
 #include "Dev/Selection.hpp"
 #include "Dev/Panels/Dialog.hpp"
 #include "Dev/Panels/EditorStyle.hpp"
 #include "Dev/Panels/Details.hpp"
 #include "Dev/Panels/Outliner.hpp"
+#include "Dev/Panels/ScenePicker.hpp"
+#include "Platform/Assets.hpp"
+#include "Platform/Files.hpp"
 #include "Scene/Actor.hpp"
 #include "Scene/ClassRegistry.hpp"
 #include "Scene/SceneComponent.hpp"
@@ -27,6 +31,8 @@
 #include "UI/Widgets/TextField.hpp"
 #include "UI/Widgets/TreeView.hpp"
 
+#include <filesystem>
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -371,7 +377,7 @@ TEST_CASE("a modal dialog keeps every key from the global shortcuts") {
             make<cinder::Dev::Panels::Dialog>()
                     .title("Unsaved Changes")
                     .message("Save?")
-                    .choices({cinder::Dev::Panels::DialogChoice{"Save", [&] { ++confirmed; }, true}})
+                    .choices({cinder::Dev::Panels::DialogChoice{"Save", [&] { ++confirmed; }, true, {}}})
                     .onCancel([&] { ++cancelled; });
     Harness ui(dialog);
     ui.app.setTheme(cinder::Dev::Panels::editorTheme());
@@ -526,4 +532,140 @@ TEST_CASE("an armed pick skips what it cannot take and tries the actor's compone
     CHECK(world.selection.pick().offer(world.node("Box")));
     CHECK(taken == world.aim->id());
     CHECK_FALSE(world.selection.pick().armed());
+}
+
+TEST_CASE("the Open Scene picker filters as you type and opens the highlighted scene") {
+    std::optional<std::string> opened;
+    int cancelled = 0;
+    std::shared_ptr<cinder::Dev::Panels::OpenSceneDialog> picker =
+            make<cinder::Dev::Panels::OpenSceneDialog>()
+                    .current("Scenes/main.scene")
+                    .onOpen([&](const std::string& name) { opened = name; })
+                    .onCancel([&] { ++cancelled; });
+    Harness ui(picker);
+    ui.app.setTheme(cinder::Dev::Panels::editorTheme());
+    picker->show({"Scenes/Levels/cave.scene", "Scenes/Levels/forest.scene", "Scenes/main.scene"});
+    ui.frame();
+    ui.app.setFocus(picker->focusTarget());
+
+    CHECK(picker->chosen() == "Scenes/main.scene");
+    ui.type(U"lev");
+    CHECK(picker->matches().size() == 2);
+    CHECK(picker->chosen() == "Scenes/Levels/cave.scene");
+    ui.key(keys::DOWN);
+    ui.key(keys::DOWN);
+    CHECK(picker->chosen() == "Scenes/Levels/forest.scene");
+    ui.key(keys::letter('p'), cinder::Platform::modifiers::PRIMARY);
+    CHECK_FALSE(opened.has_value());
+    ui.key(keys::ENTER);
+    CHECK(opened == "Scenes/Levels/forest.scene");
+
+    opened.reset();
+    ui.type(U"zzz");
+    CHECK(picker->matches().empty());
+    ui.key(keys::ENTER);
+    CHECK_FALSE(opened.has_value());
+    ui.key(keys::ESCAPE);
+    CHECK(cancelled == 1);
+}
+
+TEST_CASE("the Save Scene As dialog resolves the name under Content and refuses one outside it") {
+    const std::filesystem::path root = testing::uniqueTempDir("cinder_save_as_test");
+    std::filesystem::create_directories(root / "Content" / "Scenes");
+    cinder::Platform::writeTextFile(root / "Content" / "Scenes" / "main.scene", "version 5\n");
+    cinder::Platform::setProjectRoot(root);
+
+    std::optional<std::filesystem::path> saved;
+    std::shared_ptr<cinder::Dev::Panels::SaveSceneDialog> dialog =
+            make<cinder::Dev::Panels::SaveSceneDialog>().onSave([&](const std::filesystem::path& path) { saved = path; });
+    Harness ui(dialog);
+    ui.app.setTheme(cinder::Dev::Panels::editorTheme());
+    dialog->show("Scenes/main.scene");
+    ui.frame();
+    ui.app.setFocus(dialog->focusTarget());
+
+    CHECK(dialog->resolved().exists);
+    ui.type(U"../outside");
+    CHECK_FALSE(dialog->resolved().error.empty());
+    ui.key(keys::ENTER);
+    CHECK_FALSE(saved.has_value());
+
+    dialog->show("Scenes/level");
+    ui.key(keys::ENTER);
+    REQUIRE(saved.has_value());
+    CHECK(*saved == root / "Content" / "Scenes" / "level.scene");
+    CHECK_FALSE(dialog->resolved().exists);
+    std::filesystem::remove_all(root);
+}
+
+namespace {
+
+struct Instance : World {
+    int root = 0;
+    int part = 0;
+    int pivot = 0;
+
+    Instance() {
+        Actor* crate = scene.spawn("StaticMeshActor");
+        crate->setName("Crate");
+        crate->setPrefab("Prefabs/crate.prefab");
+        crate->setPrefabId(1);
+        crate->rootComponent()->setPrefabId(2);
+        pivot = crate->addComponent<cinder::Scene::SceneComponent>("Pivot")->id();
+        scene.component(pivot)->setPrefabId(3);
+        Actor* lid = scene.spawn("Actor", crate);
+        lid->setName("Lid");
+        lid->setPrefabId(4);
+        root = crate->id();
+        part = lid->id();
+        history.reset();
+    }
+};
+
+}
+
+TEST_CASE("the Outliner keeps a part of a prefab instance from being deleted") {
+    Instance world;
+    Harness ui(nullptr);
+    Outliner outliner(world.selection, world.history, world.scene, ui.app);
+    ui.app.setTheme(cinder::Dev::Panels::editorTheme());
+    ui.app.setRoot(outliner.widget());
+    ui.size = {320.0f, 400.0f};
+    world.selection.select(world.part, true);
+    outliner.update();
+    ui.frame();
+
+    const Rect row = ui.rectOf(outliner.tree()->rowFor(static_cast<ItemId>(world.part)));
+    ui.click(row.center().x, row.center().y);
+    ui.key(keys::DELETE_KEY);
+    ui.frame();
+    CHECK(world.scene.actor(world.part) != nullptr);
+}
+
+TEST_CASE("Details shows a prefab instance's source, hides remove on what it inherits, and runs its actions") {
+    Instance world;
+    Harness ui(nullptr);
+    Details details(world.selection, world.history, world.scene, ui.app);
+    std::optional<int> reverted;
+    cinder::Dev::PrefabActions actions;
+    actions.revert = [&](int id) { reverted = id; };
+    actions.enabled = [] { return true; };
+    details.setPrefabActions(actions);
+    ui.app.setTheme(cinder::Dev::Panels::editorTheme());
+    ui.app.setRoot(details.widget());
+    ui.size = {360.0f, 900.0f};
+    world.selection.select(world.part);
+    details.update();
+    ui.frame();
+
+    Button* revert = buttonNamed(details.widget().get(), "Revert");
+    REQUIRE(revert != nullptr);
+    const Rect rect = ui.app.grid().geometryOf(revert).value_or(Geometry{}).rect();
+    ui.click(rect.center().x, rect.center().y);
+    CHECK(reverted == world.root);
+
+    world.selection.select(world.root);
+    details.update();
+    ui.frame();
+    CHECK(buttonNamed(details.widget().get(), "x") == nullptr);
 }

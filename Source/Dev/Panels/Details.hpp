@@ -1,5 +1,6 @@
 #pragma once
 
+#include "Dev/PrefabActions.hpp"
 #include "Reflect/PropDef.hpp"
 #include "UI/Core/Widget.hpp"
 
@@ -41,6 +42,7 @@ public:
 
     void update();
     void rebuild();
+    void setPrefabActions(PrefabActions actions) { prefabs_ = std::move(actions); }
 
 private:
     cinder::Scene::Actor* actor() const;
@@ -49,6 +51,8 @@ private:
     void touched();
     std::shared_ptr<cinder::UI::Widget> body(cinder::Scene::Actor& actor);
     std::shared_ptr<cinder::UI::Widget> componentsSection(cinder::Scene::Actor& actor);
+    std::shared_ptr<cinder::UI::Widget> prefabSection(const cinder::Scene::Actor& actor);
+    std::string linkOf(const cinder::Scene::Actor* actor) const;
     std::shared_ptr<cinder::UI::Widget> addComponentMenu(int actor);
     void addComponent(int actor, const std::string& className);
     void removeComponent(int component);
@@ -85,6 +89,8 @@ private:
     std::vector<int> components_;
     std::string newName_;
     std::string newKind_ = "Number";
+    std::string link_;
+    PrefabActions prefabs_;
 };
 
 }

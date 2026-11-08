@@ -94,8 +94,8 @@ framework*): one window of docked tabs, the Outliner on the left, the Scene view
 the console under it and Details on the right, over a toolbar carrying the File, Edit, Window, Play and
 Platforms menus. Drag a tab to another stack's middle or edge to re-dock it, close it, and reopen it from
 the Window menu. It opens a project in **Edit mode**: the scene is loaded and drawn, and no game code
-runs. Play/Pause/Step/Stop are on the toolbar and on ⌘P, ⌘⇧P and ⌘⌥P; ⌘S saves the scene, and ⌘Z and
-⌘⇧Z undo and redo edits. In the Scene view 1, 2 and 3 pick the move, rotate and scale gizmos. It takes
+runs. Play/Pause/Step/Stop are on the toolbar and on ⌘P, ⌘⇧P and ⌘⌥P; ⌘N, ⌘O, ⌘S and ⌘⇧S start, open,
+save and save-as a scene, and ⌘Z and ⌘⇧Z undo and redo edits. In the Scene view 1, 2 and 3 pick the move, rotate and scale gizmos. It takes
 the project folder or its `.cinder` file, then `--scene <path>` (relative to `Content/`), `--play`
 (start in Play), `--frames <n>`, `--capture <png>`, `--capture-window <png>` and `--input-script
 <file>`; a script can also `close` the window to exercise the unsaved-changes prompt. `--frames 90
@@ -395,9 +395,20 @@ happens next. The player calls `GameLoop::tick` every iteration. The editor call
   5. `engine.render(alpha())` once — `renderer.beginFrame()`, `scene.render(alpha, draws)`,
      `renderer.drawFrame()`
 - **`idle`** — Edit mode and Paused: steps 1–2, then it resets the clock, calls `input.consume()` and
-  renders. Consuming on idle frames is load-bearing: without it, the key that pressed Play, or an
+  renders with `alpha` 1. Consuming on idle frames is load-bearing: without it, the key that pressed Play, or an
   Esc from Edit mode, would fire as `keyPressed` on the first play step.
-- **`step`** — exactly one fixed update, then render. The Step button.
+- **`step`** — exactly one fixed update, then render with `alpha` 1. The Step button.
+
+**Rendering is interpolated.** `Scene::update` first snapshots every scene component's world matrix —
+every actor, disabled ones included — and `Transform::interpolated(alpha)` blends that snapshot toward
+the current matrix: translation and scale lerped, rotation slerped, and a sheared or degenerate matrix
+lerped element-wise. So `tick` draws one step behind, between the last two states, and motion is smooth
+at any refresh rate. `alpha` 1 — `idle` and `step` — and a transform with no snapshot, such as an actor
+spawned since the last update or anything after a `loadScene`, draw exactly `world()`, which is why
+Edit mode, Pause and Step never lag. `StaticMeshComponent`, `SpriteComponent` and `CameraComponent`
+draw through it; a game component's `onRender` should too. Game code, physics, picking and gizmos keep
+reading `world()`, the simulated state. `Transform::resetInterpolation` drops the snapshot, so a
+teleport lands at once instead of streaking across one step.
 
 `Engine` is a library that gets ticked, not something that runs itself. **Do not move the loop into
 `Engine`.** `GameLoop::advance()` and `alpha()` are public precisely so the tests can drive them
@@ -447,6 +458,8 @@ was dropped on 2026-11-07.
   to it through the registry, with fresh ids. A `Ref` in the copies that names an object inside the
   copied subtree is pointed at that object's copy, and one naming anything outside is left alone, so a
   duplicated turret aims its own barrel. An object inserted without a name takes its class name.
+  `instantiate` copies a prefab's template the same way, stamping each copy with its source's id as
+  its `prefabId`; `replicate` is the per-actor half both share, and `unlink` cuts an instance loose.
 
 Lifecycle rules that are easy to lose:
 
@@ -495,10 +508,10 @@ A new class derives from `Actor`, `Component` or `SceneComponent`, declares its 
 
 ### The scene file
 
-`Serial/SceneCodec` writes version 5:
+`Serial/SceneCodec` writes version 6:
 
 ```
-version 5
+version 6
 actors {
     StaticMeshActor {
         id 2
@@ -534,8 +547,9 @@ ordinary ones, and cloning a placeholder makes another. Every token keeps its qu
 unquoted `{` opens a block, so an actor named `{` round-trips. A stray or missing `}` fails the load with
 its line number before anything is cleared, numbers are parsed with `from_chars`, a malformed one is
 logged and falls back to the default, and an id outside `1..Scene::MAX_ID`, or taken, is replaced with a
-fresh one. A value an attribute cannot hold is logged and dropped. `VERSION` and `OLDEST` are both 5:
-the node-tree format is not read, and the repo's scenes were converted once.
+fresh one. A value an attribute cannot hold is logged and dropped. `VERSION` is 6 and `OLDEST` 5 — a
+version 5 file is a valid version 6 file, and the bump only stops an older build from loading a prefab
+instance against class defaults and saving it without its link. The node-tree format is not read.
 
 **A reference is an integer field**, `target 82`, delta-encoded against the class default, which is
 always 0. Save writes it only while it resolves to a live object its field accepts, so a reference to a
@@ -546,6 +560,64 @@ is done — which is what makes forward references work and what follows an obje
 range to its fresh one. On a duplicate id the object that kept it wins, and an id that names nothing in
 the file loads as 0. A placeholder's raw fields are copied verbatim, so a reference inside an
 unknown-class object is neither checked nor remapped.
+
+### Prefabs
+
+A **prefab** is a `.prefab` file under `Content/` in the scene format holding one root actor and the
+actors attached to it — Unreal's Blueprint class without the graph. An **instance** is linked to it
+live: the prefab is the instance's archetype, so an instance writes only where it differs, and editing
+the prefab reaches every instance on its next load unless the instance overrides that field.
+
+```
+StaticMeshActor {
+    id 2
+    prefab "Prefabs/box.prefab"
+    components {
+        StaticMeshComponent {
+            id 247
+            from 2
+            position -6 0 -6
+        }
+        SpriteComponent {
+            id 900
+        }
+    }
+}
+```
+
+The link is two fields that are not props: `Actor::prefab()`, the path, set only on an instance's root,
+and `Object::prefabId()`, the id the object has **inside the prefab file**, on every object the prefab
+supplied. Matching is by that id and never by name or order, because a rename is the commonest override
+and an order shift would silently re-pair them; a prefab-owned object other than the root writes it as
+`from`. An object with no `prefabId` under an instance was added by the instance and is written against
+its class default, the way an instance component always was. An instance may add components and
+attached actors but never remove what the prefab supplies — Unreal's inherited-component rule — so one
+deleted anyway comes back on the next load, and one the prefab gained appears; an attached actor the
+prefab gained is created after the walk, so its fresh ids cannot take an id later in the file. A `from`
+the prefab no longer has is logged and dropped. An instance's components keep the prefab's attachment,
+and its attributes are the prefab's overlaid by its own. A **reference** inside an instance is written
+against the prefab's reference translated into the instance, so a box aims its own barrel, clearing an
+inherited reference writes `target 0`, and one into or out of an instance works as anywhere else.
+
+Templates are parsed once into a `Scene` of their own and cached in a `Scene/PrefabCache` that
+**`ClassRegistry` owns and clears in `bind` and `remove`**, beside the default instances and for the
+same reason: a template holds objects whose code lives in the game library, and they must die before it
+is unloaded. `SceneCodec::prefab` reads the file and re-parses only when its text changed, once per path
+per save or load; a failed read keeps the last good template. A template with no actor, an unknown class
+or a cycle counts as missing. **An instance of a missing prefab** loads its root and every `from` object
+as placeholders, whose raw fields carry the link, so it round-trips byte for byte and comes back whole
+when the file does. Nested prefabs load flattened: a prefab holding an instance stamps that instance's
+objects as its own.
+
+`Serial/Prefab` holds the operations. `instantiate` copies the cached template, which is what
+`Game::spawnPrefab` calls. `write` is both **Apply** and **Save as Prefab**: it saves the subtree with
+the root's name and placement left out — the prefab's own on Apply, the origin for a new prefab — keeps
+every existing prefab id and numbers new objects past the largest, so instances in scenes that are not
+open stay valid; then it saves the scene with the root unlinked, writes the file, drops the cached
+template and loads the scene back, so every other instance rebuilds on the new template, and re-links
+the root. **Revert** is `SceneCodec::revert`: a save in which the instance writes only its ids, its
+root's name and its root's placement, then a load. `refusal` refuses a part of an instance, a subtree
+holding another instance, and Apply to a prefab that holds one.
 
 ## Edit mode and Play mode
 
@@ -799,12 +871,11 @@ belongs to the last step and game code can cast a ray at any time, after anythin
 costs the walk either way; many rays per frame are what would justify keeping the tree valid.
 
 `Samples/physics` is the sample: a floor, a ramp and a step as static colliders, balls, capsules, a
-stack of crates, and a `Dropper` that drops more balls onto it. `--scene Scenes/planar.scene` opens the 2D half —
+stack of crates, and a `Dropper` that drops more balls onto it, each `Game::spawnPrefab("Prefabs/ball.prefab")`. `--scene Scenes/planar.scene` opens the 2D half —
 an orthographic camera over sprites with `planar` bodies, where a click drops another box. `MeshPass` carries three primitives — `cube`, `sphere` and `capsule`, the last two matching what a
 sphere and a `1 2 1` capsule collider cover; `Picking` still treats every `StaticMeshComponent` as a cube.
 
-What is missing is tracked in `TODO.md`: joints, CCD, sensors, collision layers and convex hulls. So is the one that is not physics' fault — nothing interpolates
-transforms, so at `fixedHz` 60 on a 120 Hz display a falling body visibly steps.
+What is missing is tracked in `TODO.md`: joints, CCD, sensors, collision layers and convex hulls.
 
 ## The UI framework
 
@@ -1121,6 +1192,19 @@ Backspace removes the selected actor while the tree has focus — a focused text
 itself. A filter turns the tree into a flat list of the actors whose name or class matches, with no
 expanders.
 
+**Prefabs in the editor.** "+" and Add Actor end in a **Prefab** submenu listing every `.prefab` under
+`Content/`, which places an instance through `Prefab::instantiate`. An instance's root row is drawn in
+`Color.Primary` with its prefab's name in place of the class. Right-clicking any actor offers **Save as
+Prefab…**, which opens the toolbar's second `SaveSceneDialog` — titled, hinted and resolved for
+`.prefab`, refusing a file that exists, because renumbering a prefab's ids would cut every instance of it
+loose — and links the actor as an ordinary undoable step; on an instance's root it makes a new prefab
+and relinks the instance to it. An instance's root also offers **Apply**,
+**Revert** and **Unpack**. A part of an instance cannot be deleted, dragged out or have an inherited
+component removed: an instance only adds. Details shows a **Prefab** section for any object of an
+instance — the source, `(missing)` in `Color.Error` when the file cannot be read, and the three buttons.
+The panels reach those operations through a `Dev/PrefabActions` of callbacks that `EditorShell` fills,
+enabled in Edit mode with no prompt open, so the panels' constructors and their tests are unchanged.
+
 Delete uses `destroyNow`, because Edit mode never runs the `Scene::update` that
 flushes a deferred destroy. A spawned or duplicated actor becomes the selection. During Play the same
 edits act on the running game and are discarded by Stop.
@@ -1154,7 +1238,7 @@ command), any change of selection, leaving Edit mode and `Details::rebuild`, whi
 reload because the armed callback holds a `PropDef` from the old library. The menu has no filter yet.
 
 The panel holds the selected **id** and nothing else, and rebuilds its rows only when the selection,
-the actor's components or its attribute names change, so a drag is not fighting a fresh widget tree
+the actor's components, its attribute names or its prefab link change, so a drag is not fighting a fresh widget tree
 every frame.
 
 The **Attributes** section lists each attribute with a remove button, and **Add Attribute…** opens a
@@ -1193,6 +1277,34 @@ does not end the loop directly: `Editor/main.cpp` clears GLFW's close flag and c
 `Toolbar::requestClose`, which confirms at once when the scene is clean and otherwise opens a Save /
 Don't Save / Cancel modal, and the loop runs until `closeConfirmed()`. ⌘Z and ⌘⇧Z route globally like
 the other shortcuts, but an active text field claims ⌘Z for its own undo first.
+
+That modal guards every action that would lose the document — closing, packaging, opening another
+scene and starting a new one — through one `Toolbar::guard(verb, action)`, which runs the action at
+once on a clean scene and otherwise keeps it until the prompt is answered. Save on an **untitled**
+scene opens Save As instead and keeps the action for after the write.
+
+**Which scene is open** belongs to `Dev/SceneDocument`: an absolute path, empty for an untitled scene,
+shown relative to `Content/` (or as a bare file name outside it, which is how `graphics_smoke` saves
+into `Intermediate/`). `open` reads the file and hands it to `SceneCodec::load`, which fails before it
+clears anything, so a bad file leaves the current scene and path alone; `create` clears the scene to one
+perspective `CameraActor`; `saveAs` goes through `History::save` and adopts the path. Every switch resets
+history, clears the selection and calls `EditorShell`'s hook, which reseeds the editor camera, collapses
+the Outliner — its rows are keyed by ids that now name other actors — and rebuilds Details. The File
+menu only *requests* a switch; `EditorShell::applyPendingScene` applies it between frames, in Edit mode,
+when nothing is interacting and no popup is open, like a hot reload. Open Scene and Save Scene As are our
+own `Dev/Panels/ScenePicker` dialogs in the toolbar's prompt overlay, not native ones: Open lists every
+`.scene` and `.prefab` under `Content/` with a filter — a prefab opens as a document like any scene, and
+saving one drops its cached template — and Save As takes a name relative to `Content/` that
+`SceneDocument::resolve` checks live, adding `.scene` and refusing anything outside the folder. When a
+picker closes, the toolbar drops the focus its text field held, because a focused text field counts as
+interacting and would otherwise hold off both the switch and `History::settle`.
+
+**Apply cannot be undone, and it saves the open scene.** The prefab file is outside History, and every
+older snapshot was written against the old template; worse, the scene on disk would list a component
+the instance added that the prefab now supplies as well, and reopening it would give the instance two.
+So `SceneDocument::applyPrefab` writes the prefab, calls `History::rebase` — which drops both stacks and
+keeps the saved text, so the dirty marker stays honest — and saves a titled scene at once. Revert,
+Unpack and Save as Prefab are ordinary steps: they `touch` first and the toolbar's `settle` commits them.
 
 ### Logging and the console
 
@@ -1248,7 +1360,8 @@ as free-form data on any actor.
 
 ### What game code calls
 
-- **The scene** is plain C++: `Scene::spawn<T>(parent)` and `spawn("Class", parent)`, `addComponent`,
+- **The scene** is plain C++: `Scene::spawn<T>(parent)` and `spawn("Class", parent)`,
+  `Game::spawnPrefab("Prefabs/ball.prefab", parent)`, `addComponent`,
   `clone`, `find`, `byId`, `actor`, `component`, `destroy`, `Actor::attachTo`, `findAttached`,
   `findComponent<T>()`, `addComponent<T>()`, attributes, and each class's own setters. A
   `Scene::Ref<T>` prop names another actor or component, set in Details, and `get(*scene())` resolves it.
@@ -1392,8 +1505,8 @@ type for delta encoding. Re-binding a name keeps its slot — so iteration order
 reboot — and drops its cached default, so a default instance never outlives the library whose code
 it runs.
 
-`SceneCodec::VERSION` and `OLDEST` are both 5 — see *The scene file*. `Tests/scene_files_test` loads
-and re-saves every `.scene` and every project's `Config/Game.ini` under `Samples/` and
+`SceneCodec::VERSION` is 6 and `OLDEST` 5 — see *The scene file*. `Tests/scene_files_test` loads
+and re-saves every `.scene` and `.prefab`, with its project's root set, and every project's `Config/Game.ini` under `Samples/` and
 `Tests/selftest/`, and requires the bytes to match, so shipped scenes and settings stay canonical as
 the formats move.
 

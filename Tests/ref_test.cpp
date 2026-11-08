@@ -196,7 +196,7 @@ TEST_CASE("a reference to a deleted or mismatched object is not saved") {
 namespace {
 
 std::string holderPointingAt(const std::string& target, const std::string& rest) {
-    return "version 5\n"
+    return "version 6\n"
            "actors {\n"
            "    Actor {\n"
            "        id 2\n"

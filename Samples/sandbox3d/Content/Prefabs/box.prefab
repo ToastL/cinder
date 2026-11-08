@@ -1,0 +1,19 @@
+version 6
+actors {
+    StaticMeshActor {
+        id 1
+        name "Box"
+        components {
+            StaticMeshComponent {
+                id 2
+            }
+            Spinner {
+                id 3
+                speed 0 0.5 0
+            }
+            Bobber {
+                id 4
+            }
+        }
+    }
+}

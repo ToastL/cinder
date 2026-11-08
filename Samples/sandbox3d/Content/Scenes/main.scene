@@ -1,4 +1,4 @@
-version 5
+version 6
 actors {
     CameraActor {
         id 1
@@ -18,18 +18,20 @@ actors {
     }
     StaticMeshActor {
         id 2
-        name "Box"
+        prefab "Prefabs/box.prefab"
         components {
             StaticMeshComponent {
                 id 247
+                from 2
                 position -6 0 -6
             }
             Spinner {
                 id 84
-                speed 0 0.5 0
+                from 3
             }
             Bobber {
                 id 85
+                from 4
                 enabled false
                 phase -8
             }
@@ -37,1412 +39,1570 @@ actors {
     }
     StaticMeshActor {
         id 3
-        name "Box"
+        prefab "Prefabs/box.prefab"
         components {
             StaticMeshComponent {
                 id 248
+                from 2
                 position -6 0 -4.5
             }
             Spinner {
                 id 86
-                speed 0 0.5 0
+                from 3
             }
             Bobber {
                 id 87
+                from 4
                 phase -7
             }
         }
     }
     StaticMeshActor {
         id 4
-        name "Box"
+        prefab "Prefabs/box.prefab"
         components {
             StaticMeshComponent {
                 id 249
+                from 2
                 position -6 0 -3
             }
             Spinner {
                 id 88
-                speed 0 0.5 0
+                from 3
             }
             Bobber {
                 id 89
+                from 4
                 phase -6
             }
         }
     }
     StaticMeshActor {
         id 5
-        name "Box"
+        prefab "Prefabs/box.prefab"
         components {
             StaticMeshComponent {
                 id 250
+                from 2
                 position -6 0 -1.5
             }
             Spinner {
                 id 90
-                speed 0 0.5 0
+                from 3
             }
             Bobber {
                 id 91
+                from 4
                 phase -5
             }
         }
     }
     StaticMeshActor {
         id 6
-        name "Box"
+        prefab "Prefabs/box.prefab"
         components {
             StaticMeshComponent {
                 id 251
+                from 2
                 position -6 0 0
             }
             Spinner {
                 id 92
-                speed 0 0.5 0
+                from 3
             }
             Bobber {
                 id 93
+                from 4
                 phase -4
             }
         }
     }
     StaticMeshActor {
         id 7
-        name "Box"
+        prefab "Prefabs/box.prefab"
         components {
             StaticMeshComponent {
                 id 252
+                from 2
                 position -6 0 1.5
             }
             Spinner {
                 id 94
-                speed 0 0.5 0
+                from 3
             }
             Bobber {
                 id 95
+                from 4
                 phase -3
             }
         }
     }
     StaticMeshActor {
         id 8
-        name "Box"
+        prefab "Prefabs/box.prefab"
         components {
             StaticMeshComponent {
                 id 253
+                from 2
                 position -6 0 3
             }
             Spinner {
                 id 96
-                speed 0 0.5 0
+                from 3
             }
             Bobber {
                 id 97
+                from 4
                 phase -2
             }
         }
     }
     StaticMeshActor {
         id 9
-        name "Box"
+        prefab "Prefabs/box.prefab"
         components {
             StaticMeshComponent {
                 id 254
+                from 2
                 position -6 0 4.5
             }
             Spinner {
                 id 98
-                speed 0 0.5 0
+                from 3
             }
             Bobber {
                 id 99
+                from 4
                 phase -1
             }
         }
     }
     StaticMeshActor {
         id 10
-        name "Box"
+        prefab "Prefabs/box.prefab"
         components {
             StaticMeshComponent {
                 id 255
+                from 2
                 position -6 0 6
             }
             Spinner {
                 id 100
-                speed 0 0.5 0
+                from 3
             }
             Bobber {
                 id 101
+                from 4
             }
         }
     }
     StaticMeshActor {
         id 11
-        name "Box"
+        prefab "Prefabs/box.prefab"
         components {
             StaticMeshComponent {
                 id 256
+                from 2
                 position -4.5 0 -6
             }
             Spinner {
                 id 102
-                speed 0 0.5 0
+                from 3
             }
             Bobber {
                 id 103
+                from 4
                 phase -7
             }
         }
     }
     StaticMeshActor {
         id 12
-        name "Box"
+        prefab "Prefabs/box.prefab"
         components {
             StaticMeshComponent {
                 id 257
+                from 2
                 position -4.5 0 -4.5
             }
             Spinner {
                 id 104
-                speed 0 0.5 0
+                from 3
             }
             Bobber {
                 id 105
+                from 4
                 phase -6
             }
         }
     }
     StaticMeshActor {
         id 13
-        name "Box"
+        prefab "Prefabs/box.prefab"
         components {
             StaticMeshComponent {
                 id 258
+                from 2
                 position -4.5 0 -3
             }
             Spinner {
                 id 106
-                speed 0 0.5 0
+                from 3
             }
             Bobber {
                 id 107
+                from 4
                 phase -5
             }
         }
     }
     StaticMeshActor {
         id 14
-        name "Box"
+        prefab "Prefabs/box.prefab"
         components {
             StaticMeshComponent {
                 id 259
+                from 2
                 position -4.5 0 -1.5
             }
             Spinner {
                 id 108
-                speed 0 0.5 0
+                from 3
             }
             Bobber {
                 id 109
+                from 4
                 phase -4
             }
         }
     }
     StaticMeshActor {
         id 15
-        name "Box"
+        prefab "Prefabs/box.prefab"
         components {
             StaticMeshComponent {
                 id 260
+                from 2
                 position -4.5 0 0
             }
             Spinner {
                 id 110
-                speed 0 0.5 0
+                from 3
             }
             Bobber {
                 id 111
+                from 4
                 phase -3
             }
         }
     }
     StaticMeshActor {
         id 16
-        name "Box"
+        prefab "Prefabs/box.prefab"
         components {
             StaticMeshComponent {
                 id 261
+                from 2
                 position -4.5 0 1.5
             }
             Spinner {
                 id 112
-                speed 0 0.5 0
+                from 3
             }
             Bobber {
                 id 113
+                from 4
                 phase -2
             }
         }
     }
     StaticMeshActor {
         id 17
-        name "Box"
+        prefab "Prefabs/box.prefab"
         components {
             StaticMeshComponent {
                 id 262
+                from 2
                 position -4.5 0 3
             }
             Spinner {
                 id 114
-                speed 0 0.5 0
+                from 3
             }
             Bobber {
                 id 115
+                from 4
                 phase -1
             }
         }
     }
     StaticMeshActor {
         id 18
-        name "Box"
+        prefab "Prefabs/box.prefab"
         components {
             StaticMeshComponent {
                 id 263
+                from 2
                 position -4.5 0 4.5
             }
             Spinner {
                 id 116
-                speed 0 0.5 0
+                from 3
             }
             Bobber {
                 id 117
+                from 4
             }
         }
     }
     StaticMeshActor {
         id 19
-        name "Box"
+        prefab "Prefabs/box.prefab"
         components {
             StaticMeshComponent {
                 id 264
+                from 2
                 position -4.5 0 6
             }
             Spinner {
                 id 118
-                speed 0 0.5 0
+                from 3
             }
             Bobber {
                 id 119
+                from 4
                 phase 1
             }
         }
     }
     StaticMeshActor {
         id 20
-        name "Box"
+        prefab "Prefabs/box.prefab"
         components {
             StaticMeshComponent {
                 id 265
+                from 2
                 position -3 0 -6
             }
             Spinner {
                 id 120
-                speed 0 0.5 0
+                from 3
             }
             Bobber {
                 id 121
+                from 4
                 phase -6
             }
         }
     }
     StaticMeshActor {
         id 21
-        name "Box"
+        prefab "Prefabs/box.prefab"
         components {
             StaticMeshComponent {
                 id 266
+                from 2
                 position -3 0 -4.5
             }
             Spinner {
                 id 122
-                speed 0 0.5 0
+                from 3
             }
             Bobber {
                 id 123
+                from 4
                 phase -5
             }
         }
     }
     StaticMeshActor {
         id 22
-        name "Box"
+        prefab "Prefabs/box.prefab"
         components {
             StaticMeshComponent {
                 id 267
+                from 2
                 position -3 0 -3
             }
             Spinner {
                 id 124
-                speed 0 0.5 0
+                from 3
             }
             Bobber {
                 id 125
+                from 4
                 phase -4
             }
         }
     }
     StaticMeshActor {
         id 23
-        name "Box"
+        prefab "Prefabs/box.prefab"
         components {
             StaticMeshComponent {
                 id 268
+                from 2
                 position -3 0 -1.5
             }
             Spinner {
                 id 126
-                speed 0 0.5 0
+                from 3
             }
             Bobber {
                 id 127
+                from 4
                 phase -3
             }
         }
     }
     StaticMeshActor {
         id 24
-        name "Box"
+        prefab "Prefabs/box.prefab"
         components {
             StaticMeshComponent {
                 id 269
+                from 2
                 position -3 0 0
             }
             Spinner {
                 id 128
-                speed 0 0.5 0
+                from 3
             }
             Bobber {
                 id 129
+                from 4
                 phase -2
             }
         }
     }
     StaticMeshActor {
         id 25
-        name "Box"
+        prefab "Prefabs/box.prefab"
         components {
             StaticMeshComponent {
                 id 270
+                from 2
                 position -3 0 1.5
             }
             Spinner {
                 id 130
-                speed 0 0.5 0
+                from 3
             }
             Bobber {
                 id 131
+                from 4
                 phase -1
             }
         }
     }
     StaticMeshActor {
         id 26
-        name "Box"
+        prefab "Prefabs/box.prefab"
         components {
             StaticMeshComponent {
                 id 271
+                from 2
                 position -3 0 3
             }
             Spinner {
                 id 132
-                speed 0 0.5 0
+                from 3
             }
             Bobber {
                 id 133
+                from 4
             }
         }
     }
     StaticMeshActor {
         id 27
-        name "Box"
+        prefab "Prefabs/box.prefab"
         components {
             StaticMeshComponent {
                 id 272
+                from 2
                 position -3 0 4.5
             }
             Spinner {
                 id 134
-                speed 0 0.5 0
+                from 3
             }
             Bobber {
                 id 135
+                from 4
                 phase 1
             }
         }
     }
     StaticMeshActor {
         id 28
-        name "Box"
+        prefab "Prefabs/box.prefab"
         components {
             StaticMeshComponent {
                 id 273
+                from 2
                 position -3 0 6
             }
             Spinner {
                 id 136
-                speed 0 0.5 0
+                from 3
             }
             Bobber {
                 id 137
+                from 4
                 phase 2
             }
         }
     }
     StaticMeshActor {
         id 29
-        name "Box"
+        prefab "Prefabs/box.prefab"
         components {
             StaticMeshComponent {
                 id 274
+                from 2
                 position -1.5 0 -6
             }
             Spinner {
                 id 138
-                speed 0 0.5 0
+                from 3
             }
             Bobber {
                 id 139
+                from 4
                 phase -5
             }
         }
     }
     StaticMeshActor {
         id 30
-        name "Box"
+        prefab "Prefabs/box.prefab"
         components {
             StaticMeshComponent {
                 id 275
+                from 2
                 position -1.5 0 -4.5
             }
             Spinner {
                 id 140
-                speed 0 0.5 0
+                from 3
             }
             Bobber {
                 id 141
+                from 4
                 phase -4
             }
         }
     }
     StaticMeshActor {
         id 31
-        name "Box"
+        prefab "Prefabs/box.prefab"
         components {
             StaticMeshComponent {
                 id 276
+                from 2
                 position -1.5 0 -3
             }
             Spinner {
                 id 142
-                speed 0 0.5 0
+                from 3
             }
             Bobber {
                 id 143
+                from 4
                 phase -3
             }
         }
     }
     StaticMeshActor {
         id 32
-        name "Box"
+        prefab "Prefabs/box.prefab"
         components {
             StaticMeshComponent {
                 id 277
+                from 2
                 position -1.5 0 -1.5
             }
             Spinner {
                 id 144
-                speed 0 0.5 0
+                from 3
             }
             Bobber {
                 id 145
+                from 4
                 phase -2
             }
         }
     }
     StaticMeshActor {
         id 33
-        name "Box"
+        prefab "Prefabs/box.prefab"
         components {
             StaticMeshComponent {
                 id 278
+                from 2
                 position -1.5 0 0
             }
             Spinner {
                 id 146
-                speed 0 0.5 0
+                from 3
             }
             Bobber {
                 id 147
+                from 4
                 phase -1
             }
         }
     }
     StaticMeshActor {
         id 34
-        name "Box"
+        prefab "Prefabs/box.prefab"
         components {
             StaticMeshComponent {
                 id 279
+                from 2
                 position -1.5 0 1.5
             }
             Spinner {
                 id 148
-                speed 0 0.5 0
+                from 3
             }
             Bobber {
                 id 149
+                from 4
             }
         }
     }
     StaticMeshActor {
         id 35
-        name "Box"
+        prefab "Prefabs/box.prefab"
         components {
             StaticMeshComponent {
                 id 280
+                from 2
                 position -1.5 0 3
             }
             Spinner {
                 id 150
-                speed 0 0.5 0
+                from 3
             }
             Bobber {
                 id 151
+                from 4
                 phase 1
             }
         }
     }
     StaticMeshActor {
         id 36
-        name "Box"
+        prefab "Prefabs/box.prefab"
         components {
             StaticMeshComponent {
                 id 281
+                from 2
                 position -1.5 0 4.5
             }
             Spinner {
                 id 152
-                speed 0 0.5 0
+                from 3
             }
             Bobber {
                 id 153
+                from 4
                 phase 2
             }
         }
     }
     StaticMeshActor {
         id 37
-        name "Box"
+        prefab "Prefabs/box.prefab"
         components {
             StaticMeshComponent {
                 id 282
+                from 2
                 position -1.5 0 6
             }
             Spinner {
                 id 154
-                speed 0 0.5 0
+                from 3
             }
             Bobber {
                 id 155
+                from 4
                 phase 3
             }
         }
     }
     StaticMeshActor {
         id 38
-        name "Box"
+        prefab "Prefabs/box.prefab"
         components {
             StaticMeshComponent {
                 id 283
+                from 2
                 position 0 0 -6
             }
             Spinner {
                 id 156
-                speed 0 0.5 0
+                from 3
             }
             Bobber {
                 id 157
+                from 4
                 phase -4
             }
         }
     }
     StaticMeshActor {
         id 39
-        name "Box"
+        prefab "Prefabs/box.prefab"
         components {
             StaticMeshComponent {
                 id 284
+                from 2
                 position 0 0 -4.5
             }
             Spinner {
                 id 158
-                speed 0 0.5 0
+                from 3
             }
             Bobber {
                 id 159
+                from 4
                 phase -3
             }
         }
     }
     StaticMeshActor {
         id 40
-        name "Box"
+        prefab "Prefabs/box.prefab"
         components {
             StaticMeshComponent {
                 id 285
+                from 2
                 position 0 0 -3
             }
             Spinner {
                 id 160
-                speed 0 0.5 0
+                from 3
             }
             Bobber {
                 id 161
+                from 4
                 phase -2
             }
         }
     }
     StaticMeshActor {
         id 41
-        name "Box"
+        prefab "Prefabs/box.prefab"
         components {
             StaticMeshComponent {
                 id 286
+                from 2
                 position 0 0 -1.5
             }
             Spinner {
                 id 162
-                speed 0 0.5 0
+                from 3
             }
             Bobber {
                 id 163
+                from 4
                 phase -1
             }
         }
     }
     StaticMeshActor {
         id 42
-        name "Box"
+        prefab "Prefabs/box.prefab"
         components {
             StaticMeshComponent {
                 id 287
+                from 2
             }
             Spinner {
                 id 164
-                speed 0 0.5 0
+                from 3
             }
             Bobber {
                 id 165
+                from 4
             }
         }
     }
     StaticMeshActor {
         id 43
-        name "Box"
+        prefab "Prefabs/box.prefab"
         components {
             StaticMeshComponent {
                 id 288
+                from 2
                 position 0 0 1.5
             }
             Spinner {
                 id 166
-                speed 0 0.5 0
+                from 3
             }
             Bobber {
                 id 167
+                from 4
                 phase 1
             }
         }
     }
     StaticMeshActor {
         id 44
-        name "Box"
+        prefab "Prefabs/box.prefab"
         components {
             StaticMeshComponent {
                 id 289
+                from 2
                 position 0 0 3
             }
             Spinner {
                 id 168
-                speed 0 0.5 0
+                from 3
             }
             Bobber {
                 id 169
+                from 4
                 phase 2
             }
         }
     }
     StaticMeshActor {
         id 45
-        name "Box"
+        prefab "Prefabs/box.prefab"
         components {
             StaticMeshComponent {
                 id 290
+                from 2
                 position 0 0 4.5
             }
             Spinner {
                 id 170
-                speed 0 0.5 0
+                from 3
             }
             Bobber {
                 id 171
+                from 4
                 phase 3
             }
         }
     }
     StaticMeshActor {
         id 46
-        name "Box"
+        prefab "Prefabs/box.prefab"
         components {
             StaticMeshComponent {
                 id 291
+                from 2
                 position 0 0 6
             }
             Spinner {
                 id 172
-                speed 0 0.5 0
+                from 3
             }
             Bobber {
                 id 173
+                from 4
                 phase 4
             }
         }
     }
     StaticMeshActor {
         id 47
-        name "Box"
+        prefab "Prefabs/box.prefab"
         components {
             StaticMeshComponent {
                 id 292
+                from 2
                 position 1.5 0 -6
             }
             Spinner {
                 id 174
-                speed 0 0.5 0
+                from 3
             }
             Bobber {
                 id 175
+                from 4
                 phase -3
             }
         }
     }
     StaticMeshActor {
         id 48
-        name "Box"
+        prefab "Prefabs/box.prefab"
         components {
             StaticMeshComponent {
                 id 293
+                from 2
                 position 1.5 0 -4.5
             }
             Spinner {
                 id 176
-                speed 0 0.5 0
+                from 3
             }
             Bobber {
                 id 177
+                from 4
                 phase -2
             }
         }
     }
     StaticMeshActor {
         id 49
-        name "Box"
+        prefab "Prefabs/box.prefab"
         components {
             StaticMeshComponent {
                 id 294
+                from 2
                 position 1.5 0 -3
             }
             Spinner {
                 id 178
-                speed 0 0.5 0
+                from 3
             }
             Bobber {
                 id 179
+                from 4
                 phase -1
             }
         }
     }
     StaticMeshActor {
         id 50
-        name "Box"
+        prefab "Prefabs/box.prefab"
         components {
             StaticMeshComponent {
                 id 295
+                from 2
                 position 1.5 0 -1.5
             }
             Spinner {
                 id 180
-                speed 0 0.5 0
+                from 3
             }
             Bobber {
                 id 181
+                from 4
             }
         }
     }
     StaticMeshActor {
         id 51
-        name "Box"
+        prefab "Prefabs/box.prefab"
         components {
             StaticMeshComponent {
                 id 296
+                from 2
                 position 1.5 0 0
             }
             Spinner {
                 id 182
-                speed 0 0.5 0
+                from 3
             }
             Bobber {
                 id 183
+                from 4
                 phase 1
             }
         }
     }
     StaticMeshActor {
         id 52
-        name "Box"
+        prefab "Prefabs/box.prefab"
         components {
             StaticMeshComponent {
                 id 297
+                from 2
                 position 1.5 0 1.5
             }
             Spinner {
                 id 184
-                speed 0 0.5 0
+                from 3
             }
             Bobber {
                 id 185
+                from 4
                 phase 2
             }
         }
     }
     StaticMeshActor {
         id 53
-        name "Box"
+        prefab "Prefabs/box.prefab"
         components {
             StaticMeshComponent {
                 id 298
+                from 2
                 position 1.5 0 3
             }
             Spinner {
                 id 186
-                speed 0 0.5 0
+                from 3
             }
             Bobber {
                 id 187
+                from 4
                 phase 3
             }
         }
     }
     StaticMeshActor {
         id 54
-        name "Box"
+        prefab "Prefabs/box.prefab"
         components {
             StaticMeshComponent {
                 id 299
+                from 2
                 position 1.5 0 4.5
             }
             Spinner {
                 id 188
-                speed 0 0.5 0
+                from 3
             }
             Bobber {
                 id 189
+                from 4
                 phase 4
             }
         }
     }
     StaticMeshActor {
         id 55
-        name "Box"
+        prefab "Prefabs/box.prefab"
         components {
             StaticMeshComponent {
                 id 300
+                from 2
                 position 1.5 0 6
             }
             Spinner {
                 id 190
-                speed 0 0.5 0
+                from 3
             }
             Bobber {
                 id 191
+                from 4
                 phase 5
             }
         }
     }
     StaticMeshActor {
         id 56
-        name "Box"
+        prefab "Prefabs/box.prefab"
         components {
             StaticMeshComponent {
                 id 301
+                from 2
                 position 3 0 -6
             }
             Spinner {
                 id 192
-                speed 0 0.5 0
+                from 3
             }
             Bobber {
                 id 193
+                from 4
                 phase -2
             }
         }
     }
     StaticMeshActor {
         id 57
-        name "Box"
+        prefab "Prefabs/box.prefab"
         components {
             StaticMeshComponent {
                 id 302
+                from 2
                 position 3 0 -4.5
             }
             Spinner {
                 id 194
-                speed 0 0.5 0
+                from 3
             }
             Bobber {
                 id 195
+                from 4
                 phase -1
             }
         }
     }
     StaticMeshActor {
         id 58
-        name "Box"
+        prefab "Prefabs/box.prefab"
         components {
             StaticMeshComponent {
                 id 303
+                from 2
                 position 3 0 -3
             }
             Spinner {
                 id 196
-                speed 0 0.5 0
+                from 3
             }
             Bobber {
                 id 197
+                from 4
             }
         }
     }
     StaticMeshActor {
         id 59
-        name "Box"
+        prefab "Prefabs/box.prefab"
         components {
             StaticMeshComponent {
                 id 304
+                from 2
                 position 3 0 -1.5
             }
             Spinner {
                 id 198
-                speed 0 0.5 0
+                from 3
             }
             Bobber {
                 id 199
+                from 4
                 phase 1
             }
         }
     }
     StaticMeshActor {
         id 60
-        name "Box"
+        prefab "Prefabs/box.prefab"
         components {
             StaticMeshComponent {
                 id 305
+                from 2
                 position 3 0 0
             }
             Spinner {
                 id 200
-                speed 0 0.5 0
+                from 3
             }
             Bobber {
                 id 201
+                from 4
                 phase 2
             }
         }
     }
     StaticMeshActor {
         id 61
-        name "Box"
+        prefab "Prefabs/box.prefab"
         components {
             StaticMeshComponent {
                 id 306
+                from 2
                 position 3 0 1.5
             }
             Spinner {
                 id 202
-                speed 0 0.5 0
+                from 3
             }
             Bobber {
                 id 203
+                from 4
                 phase 3
             }
         }
     }
     StaticMeshActor {
         id 62
-        name "Box"
+        prefab "Prefabs/box.prefab"
         components {
             StaticMeshComponent {
                 id 307
+                from 2
                 position 3 0 3
             }
             Spinner {
                 id 204
-                speed 0 0.5 0
+                from 3
             }
             Bobber {
                 id 205
+                from 4
                 phase 4
             }
         }
     }
     StaticMeshActor {
         id 63
-        name "Box"
+        prefab "Prefabs/box.prefab"
         components {
             StaticMeshComponent {
                 id 308
+                from 2
                 position 3 0 4.5
             }
             Spinner {
                 id 206
-                speed 0 0.5 0
+                from 3
             }
             Bobber {
                 id 207
+                from 4
                 phase 5
             }
         }
     }
     StaticMeshActor {
         id 64
-        name "Box"
+        prefab "Prefabs/box.prefab"
         components {
             StaticMeshComponent {
                 id 309
+                from 2
                 position 3 0 6
             }
             Spinner {
                 id 208
-                speed 0 0.5 0
+                from 3
             }
             Bobber {
                 id 209
+                from 4
                 phase 6
             }
         }
     }
     StaticMeshActor {
         id 65
-        name "Box"
+        prefab "Prefabs/box.prefab"
         components {
             StaticMeshComponent {
                 id 310
+                from 2
                 position 4.5 0 -6
             }
             Spinner {
                 id 210
-                speed 0 0.5 0
+                from 3
             }
             Bobber {
                 id 211
+                from 4
                 phase -1
             }
         }
     }
     StaticMeshActor {
         id 66
-        name "Box"
+        prefab "Prefabs/box.prefab"
         components {
             StaticMeshComponent {
                 id 311
+                from 2
                 position 4.5 0 -4.5
             }
             Spinner {
                 id 212
-                speed 0 0.5 0
+                from 3
             }
             Bobber {
                 id 213
+                from 4
             }
         }
     }
     StaticMeshActor {
         id 67
-        name "Box"
+        prefab "Prefabs/box.prefab"
         components {
             StaticMeshComponent {
                 id 312
+                from 2
                 position 4.5 0 -3
             }
             Spinner {
                 id 214
-                speed 0 0.5 0
+                from 3
             }
             Bobber {
                 id 215
+                from 4
                 phase 1
             }
         }
     }
     StaticMeshActor {
         id 68
-        name "Box"
+        prefab "Prefabs/box.prefab"
         components {
             StaticMeshComponent {
                 id 313
+                from 2
                 position 4.5 0 -1.5
             }
             Spinner {
                 id 216
-                speed 0 0.5 0
+                from 3
             }
             Bobber {
                 id 217
+                from 4
                 phase 2
             }
         }
     }
     StaticMeshActor {
         id 69
-        name "Box"
+        prefab "Prefabs/box.prefab"
         components {
             StaticMeshComponent {
                 id 314
+                from 2
                 position 4.5 0 0
             }
             Spinner {
                 id 218
-                speed 0 0.5 0
+                from 3
             }
             Bobber {
                 id 219
+                from 4
                 phase 3
             }
         }
     }
     StaticMeshActor {
         id 70
-        name "Box"
+        prefab "Prefabs/box.prefab"
         components {
             StaticMeshComponent {
                 id 315
+                from 2
                 position 4.5 0 1.5
             }
             Spinner {
                 id 220
-                speed 0 0.5 0
+                from 3
             }
             Bobber {
                 id 221
+                from 4
                 phase 4
             }
         }
     }
     StaticMeshActor {
         id 71
-        name "Box"
+        prefab "Prefabs/box.prefab"
         components {
             StaticMeshComponent {
                 id 316
+                from 2
                 position 4.5 0 3
             }
             Spinner {
                 id 222
-                speed 0 0.5 0
+                from 3
             }
             Bobber {
                 id 223
+                from 4
                 phase 5
             }
         }
     }
     StaticMeshActor {
         id 72
-        name "Box"
+        prefab "Prefabs/box.prefab"
         components {
             StaticMeshComponent {
                 id 317
+                from 2
                 position 4.5 0 4.5
             }
             Spinner {
                 id 224
-                speed 0 0.5 0
+                from 3
             }
             Bobber {
                 id 225
+                from 4
                 phase 6
             }
         }
     }
     StaticMeshActor {
         id 73
-        name "Box"
+        prefab "Prefabs/box.prefab"
         components {
             StaticMeshComponent {
                 id 318
+                from 2
                 position 4.5 0 6
             }
             Spinner {
                 id 226
-                speed 0 0.5 0
+                from 3
             }
             Bobber {
                 id 227
+                from 4
                 phase 7
             }
         }
     }
     StaticMeshActor {
         id 74
-        name "Box"
+        prefab "Prefabs/box.prefab"
         components {
             StaticMeshComponent {
                 id 319
+                from 2
                 position 6 0 -6
             }
             Spinner {
                 id 228
-                speed 0 0.5 0
+                from 3
             }
             Bobber {
                 id 229
+                from 4
             }
         }
     }
     StaticMeshActor {
         id 75
-        name "Box"
+        prefab "Prefabs/box.prefab"
         components {
             StaticMeshComponent {
                 id 320
+                from 2
                 position 6 0 -4.5
             }
             Spinner {
                 id 230
-                speed 0 0.5 0
+                from 3
             }
             Bobber {
                 id 231
+                from 4
                 phase 1
             }
         }
     }
     StaticMeshActor {
         id 76
-        name "Box"
+        prefab "Prefabs/box.prefab"
         components {
             StaticMeshComponent {
                 id 321
+                from 2
                 position 6 0 -3
             }
             Spinner {
                 id 232
-                speed 0 0.5 0
+                from 3
             }
             Bobber {
                 id 233
+                from 4
                 phase 2
             }
         }
     }
     StaticMeshActor {
         id 77
-        name "Box"
+        prefab "Prefabs/box.prefab"
         components {
             StaticMeshComponent {
                 id 322
+                from 2
                 position 6 0 -1.5
             }
             Spinner {
                 id 234
-                speed 0 0.5 0
+                from 3
             }
             Bobber {
                 id 235
+                from 4
                 phase 3
             }
         }
     }
     StaticMeshActor {
         id 78
-        name "Box"
+        prefab "Prefabs/box.prefab"
         components {
             StaticMeshComponent {
                 id 323
+                from 2
                 position 6 0 0
             }
             Spinner {
                 id 236
-                speed 0 0.5 0
+                from 3
             }
             Bobber {
                 id 237
+                from 4
                 phase 4
             }
         }
     }
     StaticMeshActor {
         id 79
-        name "Box"
+        prefab "Prefabs/box.prefab"
         components {
             StaticMeshComponent {
                 id 324
+                from 2
                 position 6 0 1.5
             }
             Spinner {
                 id 238
-                speed 0 0.5 0
+                from 3
             }
             Bobber {
                 id 239
+                from 4
                 phase 5
             }
         }
     }
     StaticMeshActor {
         id 80
-        name "Box"
+        prefab "Prefabs/box.prefab"
         components {
             StaticMeshComponent {
                 id 325
+                from 2
                 position 6 0 3
             }
             Spinner {
                 id 240
-                speed 0 0.5 0
+                from 3
             }
             Bobber {
                 id 241
+                from 4
                 phase 6
             }
         }
     }
     StaticMeshActor {
         id 81
-        name "Box"
+        prefab "Prefabs/box.prefab"
         components {
             StaticMeshComponent {
                 id 326
+                from 2
                 position 6 0 4.5
             }
             Spinner {
                 id 242
-                speed 0 0.5 0
+                from 3
             }
             Bobber {
                 id 243
+                from 4
                 phase 7
             }
         }
@@ -1450,17 +1610,20 @@ actors {
     StaticMeshActor {
         id 82
         name "Target"
+        prefab "Prefabs/box.prefab"
         components {
             StaticMeshComponent {
                 id 327
+                from 2
                 position 6 0 6
             }
             Spinner {
                 id 244
-                speed 0 0.5 0
+                from 3
             }
             Bobber {
                 id 245
+                from 4
                 phase 8
             }
         }

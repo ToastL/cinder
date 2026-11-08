@@ -8,6 +8,8 @@
 
 #include <glm/gtc/constants.hpp>
 
+#include <cmath>
+
 using cinder::Scene::Actor;
 using cinder::Scene::ClassRegistry;
 using cinder::Scene::SceneComponent;
@@ -208,4 +210,74 @@ TEST_CASE("rotation is declared as an angle, so the editor shows it in degrees")
     CHECK(defs[0].hint() == cinder::Reflect::PropHint::None);
     CHECK(defs[1].name() == "rotation");
     CHECK(defs[1].hint() == cinder::Reflect::PropHint::Angle);
+}
+
+TEST_CASE("a transform with no snapshot renders where it is") {
+    Fixture f;
+    Actor* box = f.spawn("Box");
+    box->transform()->setPosition(3.0f, 0.0f, 0.0f);
+    CHECK(box->transform()->interpolated(0.25f) == box->transform()->world());
+}
+
+TEST_CASE("rendering blends from the last step's pose by alpha") {
+    Fixture f;
+    Actor* box = f.spawn("Box");
+    Transform& transform = *box->transform();
+    transform.setPosition(0.0f, 0.0f, 0.0f);
+    transform.snapshot();
+    transform.setPosition(4.0f, 2.0f, 0.0f);
+    transform.setRotation(0.0f, glm::half_pi<float>(), 0.0f);
+
+    const glm::mat4 halfway = transform.interpolated(0.5f);
+    CHECK(halfway[3].x == doctest::Approx(2.0f));
+    CHECK(halfway[3].y == doctest::Approx(1.0f));
+    const glm::vec3 axis(halfway[0]);
+    CHECK(glm::length(axis) == doctest::Approx(1.0f));
+    CHECK(axis.x == doctest::Approx(std::cos(glm::quarter_pi<float>())));
+    CHECK(axis.z == doctest::Approx(-std::sin(glm::quarter_pi<float>())));
+
+    CHECK(transform.interpolated(0.0f)[3].x == doctest::Approx(0.0f));
+    CHECK(transform.interpolated(1.0f) == transform.world());
+}
+
+TEST_CASE("interpolation keeps a mirrored scale and blends scale linearly") {
+    Fixture f;
+    Transform& transform = *f.spawn("Box")->transform();
+    transform.setScale(-1.0f, 1.0f, 1.0f);
+    transform.snapshot();
+    transform.setScale(-3.0f, 1.0f, 1.0f);
+    const glm::mat4 halfway = transform.interpolated(0.5f);
+    CHECK(halfway[0].x == doctest::Approx(-2.0f));
+    CHECK(halfway[1].y == doctest::Approx(1.0f));
+    CHECK(halfway[2].z == doctest::Approx(1.0f));
+}
+
+TEST_CASE("resetInterpolation makes a teleport render at once") {
+    Fixture f;
+    Transform& transform = *f.spawn("Box")->transform();
+    transform.snapshot();
+    transform.setPosition(100.0f, 0.0f, 0.0f);
+    transform.resetInterpolation();
+    CHECK(transform.interpolated(0.1f)[3].x == doctest::Approx(100.0f));
+}
+
+TEST_CASE("each update snapshots every transform, attached children and disabled actors included") {
+    Fixture f;
+    Actor* parent = f.spawn("Parent");
+    Actor* child = f.spawn("Child", parent);
+    child->transform()->setPosition(1.0f, 0.0f, 0.0f);
+    parent->setEnabled(false);
+    f.scene.update(1.0f / 60.0f);
+
+    parent->transform()->setPosition(0.0f, 10.0f, 0.0f);
+    CHECK(child->transform()->interpolated(0.5f)[3].y == doctest::Approx(5.0f));
+    CHECK(child->transform()->interpolated(0.5f)[3].x == doctest::Approx(1.0f));
+}
+
+TEST_CASE("an actor spawned after the snapshot renders at its pose") {
+    Fixture f;
+    f.scene.update(1.0f / 60.0f);
+    Actor* late = f.spawn("Late");
+    late->transform()->setPosition(7.0f, 0.0f, 0.0f);
+    CHECK(late->transform()->interpolated(0.0f)[3].x == doctest::Approx(7.0f));
 }

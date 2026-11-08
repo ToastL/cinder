@@ -45,6 +45,8 @@ glm::vec2 scroll();
 void setCursorLocked(bool locked);
 bool cursorLocked();
 
+cinder::Scene::Actor* spawnPrefab(std::string_view path, cinder::Scene::Actor* parent = nullptr);
+
 int loadTexture(std::string_view path);
 glm::ivec2 textureSize(int texture);
 

@@ -123,6 +123,10 @@ public:
     void requestScrollIntoView(ItemId item) { pending_ = item; }
     void reveal(ItemId item);
     void refresh() { rows_.clear(); }
+    void collapseAll() {
+        expanded_.clear();
+        rows_.clear();
+    }
 
     bool hasChildren(ItemId item) const;
     float rowHeight() const;

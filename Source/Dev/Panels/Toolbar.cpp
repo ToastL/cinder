@@ -4,10 +4,15 @@
 #include "Dev/ModuleHost.hpp"
 #include "Dev/Packager.hpp"
 #include "Dev/PlaySession.hpp"
+#include "Dev/SceneDocument.hpp"
 #include "Dev/Selection.hpp"
 #include "Dev/Panels/Dialog.hpp"
 #include "Dev/Panels/EditorStyle.hpp"
+#include "Dev/Panels/ScenePicker.hpp"
+#include "Platform/Assets.hpp"
 #include "Platform/Log.hpp"
+#include "Scene/Actor.hpp"
+#include "Scene/Scene.hpp"
 #include "UI/Framework/Application.hpp"
 #include "UI/Widgets/Border.hpp"
 #include "UI/Widgets/BoxPanel.hpp"
@@ -40,7 +45,13 @@ const std::shared_ptr<const Command> STEP =
         command("Step", "Run one fixed update", Shortcut::primary(keys::letter('p'), modifiers::ALT));
 const std::shared_ptr<const Command> CANCEL_PICK =
         command("Cancel Pick", "Stop picking a reference", Shortcut{keys::ESCAPE, 0});
+const std::shared_ptr<const Command> NEW_SCENE =
+        command("New Scene", "Start a new scene", Shortcut::primary(keys::letter('n')));
+const std::shared_ptr<const Command> OPEN_SCENE =
+        command("Open Scene...", "Open a scene from Content/", Shortcut::primary(keys::letter('o')));
 const std::shared_ptr<const Command> SAVE = command("Save", "Save the scene", Shortcut::primary(keys::letter('s')));
+const std::shared_ptr<const Command> SAVE_AS =
+        command("Save As...", "Save the scene under a new name", Shortcut::primary(keys::letter('s'), modifiers::SHIFT));
 const std::shared_ptr<const Command> UNDO = command("Undo", "Undo the last edit", Shortcut::primary(keys::letter('z')));
 const std::shared_ptr<const Command> REDO =
         command("Redo", "Redo the last undone edit", Shortcut::primary(keys::letter('z'), modifiers::SHIFT));
@@ -63,15 +74,18 @@ BoxSlot gap(float width) { return HorizontalBox::slot().autoWidth()[make<Spacer>
 const Command& Toolbar::play() { return *PLAY; }
 const Command& Toolbar::pause() { return *PAUSE; }
 const Command& Toolbar::step() { return *STEP; }
+const Command& Toolbar::newScene() { return *NEW_SCENE; }
+const Command& Toolbar::openScene() { return *OPEN_SCENE; }
 const Command& Toolbar::save() { return *SAVE; }
+const Command& Toolbar::saveAs() { return *SAVE_AS; }
 const Command& Toolbar::undo() { return *UNDO; }
 const Command& Toolbar::redo() { return *REDO; }
 const Command& Toolbar::compile() { return *BUILD; }
 
 Toolbar::Toolbar(PlaySession& session, History& history, Selection& selection, Packager& packager,
-                 ModuleHost& modules, std::filesystem::path scene, Application& app)
+                 ModuleHost& modules, SceneDocument& document, Application& app)
     : session_(session), history_(history), selection_(selection), packager_(packager), modules_(modules),
-      scene_(std::move(scene)),
+      document_(document),
       app_(app),
       commands_(std::make_shared<CommandList>()) {
     bind();
@@ -87,7 +101,13 @@ void Toolbar::bind() {
     commands_->map(STEP, CommandAction{[this] { session_.step(); }, [this] { return !editing(); }, {}});
     commands_->map(CANCEL_PICK, CommandAction{[this] { selection_.pick().cancel(); },
                                               [this] { return selection_.pick().armed(); }, {}});
-    commands_->map(SAVE, CommandAction{[this] { write(); }, [this] { return editing(); }, {}});
+    commands_->map(NEW_SCENE, CommandAction{[this] { requestNew(); }, [this] { return editing(); }, {}});
+    commands_->map(OPEN_SCENE, CommandAction{[this] { requestOpen(); }, [this] { return editing(); }, {}});
+    commands_->map(SAVE, CommandAction{[this] {
+                                           if (document_.untitled()) requestSaveAs();
+                                           else write();
+                                       }, [this] { return editing(); }, {}});
+    commands_->map(SAVE_AS, CommandAction{[this] { requestSaveAs(); }, [this] { return editing(); }, {}});
     commands_->map(UNDO, CommandAction{[this] { history_.undo(selection_); },
                                        [this] { return editing() && !app_.isInteracting(); }, {}});
     commands_->map(BUILD, CommandAction{[this] { modules_.requestBuild(); },
@@ -161,7 +181,7 @@ void Toolbar::build() {
          + HorizontalBox::slot().autoWidth().vAlign(VAlign::Center)
                [make<Label>()
                         .text([this] {
-                            return std::string(label(session_.state())) + "  " + scene_.filename().string()
+                            return std::string(label(session_.state())) + "  " + document_.displayName()
                                     + (history_.dirty() ? "*" : "");
                         })
                         .colorAndOpacity(themeColor("Color.ForegroundDim"))]];
@@ -172,7 +192,15 @@ void Toolbar::build() {
 std::shared_ptr<Widget> Toolbar::buildMenus() {
     const std::shared_ptr<const CommandList> list = commands_;
     return make<MenuBar>()
-            .menu("File", [list](MenuBuilder& menu) { menu.command(list, SAVE).command(list, BUILD); })
+            .menu("File", [list](MenuBuilder& menu) {
+                menu.command(list, NEW_SCENE)
+                        .command(list, OPEN_SCENE)
+                        .separator()
+                        .command(list, SAVE)
+                        .command(list, SAVE_AS)
+                        .separator()
+                        .command(list, BUILD);
+            })
             .menu("Edit", [list](MenuBuilder& menu) { menu.command(list, UNDO).command(list, REDO); })
             .menu("Window", [this](MenuBuilder& menu) {
                 if (windowMenu_) windowMenu_(menu);
@@ -212,30 +240,33 @@ std::shared_ptr<Widget> Toolbar::buildMenus() {
 void Toolbar::buildPrompts() {
     const auto dismiss = [this] {
         prompting_ = Prompt::None;
-        packageAfterPrompt_.reset();
+        pending_.reset();
     };
 
     std::vector<DialogChoice> unsaved;
     unsaved.push_back({"Save", [this] {
                            prompting_ = Prompt::None;
-                           if (write()) {
+                           if (document_.untitled()) {
+                               open(Prompt::SaveAs);
+                               saveAsPrompt_->show("Scenes/untitled.scene");
+                           } else if (write()) {
                                proceed();
                            } else {
-                               packageAfterPrompt_.reset();
+                               pending_.reset();
                            }
-                       }, true});
+                       }, true, {}});
     unsaved.push_back({"Don't Save", [this] {
                            prompting_ = Prompt::None;
                            proceed();
-                       }, false});
-    unsaved.push_back({"Cancel", dismiss, false});
+                       }, false, {}});
+    unsaved.push_back({"Cancel", dismiss, false, {}});
 
     unsavedPrompt_ = make<Dialog>()
             .visibility([this] { return prompting_ == Prompt::Unsaved ? Visibility::Visible : Visibility::Collapsed; })
             .title("Unsaved Changes")
             .message([this] {
-                return "Save changes to " + scene_.filename().string()
-                        + (packageAfterPrompt_ ? " before packaging?" : " before closing?");
+                return "Save changes to " + document_.displayName() + " "
+                        + (pending_ ? pending_->verb : std::string("before closing?"));
             })
             .choices(std::move(unsaved))
             .onCancel(dismiss);
@@ -245,8 +276,8 @@ void Toolbar::buildPrompts() {
                              prompting_ = Prompt::None;
                              packager_.cancel();
                              confirmClose();
-                         }, false});
-    packaging.push_back({"Keep Packaging", dismiss, true});
+                         }, false, {}});
+    packaging.push_back({"Keep Packaging", dismiss, true, {}});
 
     packagingPrompt_ = make<Dialog>()
             .visibility([this] { return prompting_ == Prompt::Packaging ? Visibility::Visible : Visibility::Collapsed; })
@@ -259,23 +290,79 @@ void Toolbar::buildPrompts() {
             .choices(std::move(packaging))
             .onCancel(dismiss);
 
+    openPrompt_ = make<OpenSceneDialog>()
+            .visibility([this] { return prompting_ == Prompt::OpenScene ? Visibility::Visible : Visibility::Collapsed; })
+            .current([this] { return document_.untitled() ? std::string() : document_.displayName(); })
+            .onOpen([this](const std::string& name) {
+                prompting_ = Prompt::None;
+                std::filesystem::path path;
+                try {
+                    path = cinder::Platform::contentPath(name);
+                } catch (const std::exception& e) {
+                    cinder::Platform::logError("[editor] %s\n", e.what());
+                    return;
+                }
+                guard("before opening " + name + "?", [this, path] { document_.requestOpen(path); });
+            })
+            .onCancel(dismiss);
+
+    saveAsPrompt_ = make<SaveSceneDialog>()
+            .visibility([this] { return prompting_ == Prompt::SaveAs ? Visibility::Visible : Visibility::Collapsed; })
+            .onSave([this](const std::filesystem::path& path) { saveAsChosen(path); })
+            .onCancel(dismiss);
+
+    savePrefabPrompt_ = make<SaveSceneDialog>()
+            .visibility([this] { return prompting_ == Prompt::SavePrefab ? Visibility::Visible : Visibility::Collapsed; })
+            .title("Save as Prefab")
+            .hint("Prefabs/name.prefab")
+            .extension(std::string(SceneDocument::PREFAB_EXTENSION))
+            .refuseExisting(true)
+            .onSave([this](const std::filesystem::path& path) {
+                if (document_.savePrefab(prefabSource_, path)) prompting_ = Prompt::None;
+            })
+            .onCancel(dismiss);
+
     prompt_ = make<Overlay>().visibility([this] { return prompting() ? Visibility::Visible : Visibility::Collapsed; })
-            + Overlay::slot()[unsavedPrompt_] + Overlay::slot()[packagingPrompt_];
+            + Overlay::slot()[unsavedPrompt_] + Overlay::slot()[packagingPrompt_] + Overlay::slot()[openPrompt_]
+            + Overlay::slot()[saveAsPrompt_] + Overlay::slot()[savePrefabPrompt_];
 }
 
 void Toolbar::update() {
     packager_.update();
     history_.setEnabled(editing());
     if (!editing()) selection_.pick().cancel();
+    if (shown_ != prompting_) {
+        if (shown_ == Prompt::OpenScene || shown_ == Prompt::SaveAs || shown_ == Prompt::SavePrefab) {
+            const std::shared_ptr<Widget> focus = app_.focused();
+            if (focus && (focus == openPrompt_->focusTarget() || focus == saveAsPrompt_->focusTarget()
+                          || focus == savePrefabPrompt_->focusTarget())) {
+                app_.clearFocus();
+            }
+        }
+        shown_ = prompting_;
+    }
     history_.settle(app_.isInteracting());
     if (focusPrompt_) {
-        app_.setFocus(prompting_ == Prompt::Packaging ? packagingPrompt_ : unsavedPrompt_);
+        if (const std::shared_ptr<Widget> target = promptFocus()) app_.setFocus(target);
         focusPrompt_ = false;
     }
 }
 
+std::shared_ptr<Widget> Toolbar::promptFocus() const {
+    switch (prompting_) {
+        case Prompt::None: return nullptr;
+        case Prompt::Unsaved: return unsavedPrompt_;
+        case Prompt::Packaging: return packagingPrompt_;
+        case Prompt::OpenScene: return openPrompt_->focusTarget();
+        case Prompt::SaveAs: return saveAsPrompt_->focusTarget();
+        case Prompt::SavePrefab: return savePrefabPrompt_->focusTarget();
+    }
+    return nullptr;
+}
+
 void Toolbar::requestClose() {
-    packageAfterPrompt_.reset();
+    pending_.reset();
+    prompting_ = Prompt::None;
     if (packager_.busy()) {
         open(Prompt::Packaging);
         return;
@@ -285,12 +372,40 @@ void Toolbar::requestClose() {
 
 void Toolbar::requestPackage(Platform platform) {
     if (!editing() || prompting()) return;
-    if (!history_.dirty()) {
-        packager_.start(platform);
-        return;
+    guard("before packaging?", [this, platform] { packager_.start(platform); });
+}
+
+void Toolbar::requestNew() {
+    if (!editing() || prompting()) return;
+    guard("before starting a new scene?", [this] { document_.requestNew(); });
+}
+
+void Toolbar::requestOpen() {
+    if (!editing() || prompting()) return;
+    openPrompt_->show(SceneDocument::listScenes());
+    open(Prompt::OpenScene);
+}
+
+void Toolbar::requestSaveAs() {
+    if (!editing() || prompting()) return;
+    pending_.reset();
+    saveAsPrompt_->show(document_.untitled() ? std::string("Scenes/untitled.scene") : document_.displayName());
+    open(Prompt::SaveAs);
+}
+
+void Toolbar::requestSavePrefab(int actor) {
+    if (!editing() || prompting()) return;
+    const cinder::Scene::Actor* source = document_.scene().actor(actor);
+    if (source == nullptr) return;
+    std::string stem;
+    for (const char c : source->name()) {
+        if (c != '/' && c != '\\' && c != '.') stem += c;
     }
-    packageAfterPrompt_ = platform;
-    open(Prompt::Unsaved);
+    if (stem.empty()) stem = "Prefab";
+    pending_.reset();
+    prefabSource_ = actor;
+    savePrefabPrompt_->show("Prefabs/" + stem + std::string(SceneDocument::PREFAB_EXTENSION));
+    open(Prompt::SavePrefab);
 }
 
 void Toolbar::open(Prompt prompt) {
@@ -298,33 +413,31 @@ void Toolbar::open(Prompt prompt) {
     focusPrompt_ = true;
 }
 
-void Toolbar::proceed() {
-    if (packageAfterPrompt_) {
-        const Platform platform = *packageAfterPrompt_;
-        packageAfterPrompt_.reset();
-        packager_.start(platform);
-        return;
-    }
-    closeConfirmed_ = true;
-}
-
-void Toolbar::confirmClose() {
+void Toolbar::guard(std::string verb, std::function<void()> action) {
     if (!history_.dirty()) {
-        closeConfirmed_ = true;
+        action();
         return;
     }
+    pending_ = Pending{std::move(verb), std::move(action)};
     open(Prompt::Unsaved);
 }
 
-bool Toolbar::write() {
-    try {
-        history_.save(scene_);
-        cinder::Platform::logInfo("[editor] saved %s\n", scene_.string().c_str());
-        return true;
-    } catch (const std::exception& e) {
-        cinder::Platform::logError("[editor] save failed: %s\n", e.what());
-        return false;
+void Toolbar::proceed() {
+    if (std::optional<Pending> pending = std::exchange(pending_, std::nullopt)) {
+        if (pending->action) pending->action();
     }
 }
+
+void Toolbar::confirmClose() {
+    guard("before closing?", [this] { closeConfirmed_ = true; });
+}
+
+void Toolbar::saveAsChosen(const std::filesystem::path& path) {
+    if (!document_.saveAs(path)) return;
+    prompting_ = Prompt::None;
+    proceed();
+}
+
+bool Toolbar::write() { return document_.save(); }
 
 }
