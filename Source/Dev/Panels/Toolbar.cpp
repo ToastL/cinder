@@ -11,6 +11,8 @@
 #include "Dev/Panels/ScenePicker.hpp"
 #include "Platform/Assets.hpp"
 #include "Platform/Log.hpp"
+#include "Scene/Actor.hpp"
+#include "Scene/Scene.hpp"
 #include "UI/Framework/Application.hpp"
 #include "UI/Widgets/Border.hpp"
 #include "UI/Widgets/BoxPanel.hpp"
@@ -309,9 +311,20 @@ void Toolbar::buildPrompts() {
             .onSave([this](const std::filesystem::path& path) { saveAsChosen(path); })
             .onCancel(dismiss);
 
+    savePrefabPrompt_ = make<SaveSceneDialog>()
+            .visibility([this] { return prompting_ == Prompt::SavePrefab ? Visibility::Visible : Visibility::Collapsed; })
+            .title("Save as Prefab")
+            .hint("Prefabs/name.prefab")
+            .extension(std::string(SceneDocument::PREFAB_EXTENSION))
+            .refuseExisting(true)
+            .onSave([this](const std::filesystem::path& path) {
+                if (document_.savePrefab(prefabSource_, path)) prompting_ = Prompt::None;
+            })
+            .onCancel(dismiss);
+
     prompt_ = make<Overlay>().visibility([this] { return prompting() ? Visibility::Visible : Visibility::Collapsed; })
             + Overlay::slot()[unsavedPrompt_] + Overlay::slot()[packagingPrompt_] + Overlay::slot()[openPrompt_]
-            + Overlay::slot()[saveAsPrompt_];
+            + Overlay::slot()[saveAsPrompt_] + Overlay::slot()[savePrefabPrompt_];
 }
 
 void Toolbar::update() {
@@ -319,9 +332,10 @@ void Toolbar::update() {
     history_.setEnabled(editing());
     if (!editing()) selection_.pick().cancel();
     if (shown_ != prompting_) {
-        if (shown_ == Prompt::OpenScene || shown_ == Prompt::SaveAs) {
+        if (shown_ == Prompt::OpenScene || shown_ == Prompt::SaveAs || shown_ == Prompt::SavePrefab) {
             const std::shared_ptr<Widget> focus = app_.focused();
-            if (focus && (focus == openPrompt_->focusTarget() || focus == saveAsPrompt_->focusTarget())) {
+            if (focus && (focus == openPrompt_->focusTarget() || focus == saveAsPrompt_->focusTarget()
+                          || focus == savePrefabPrompt_->focusTarget())) {
                 app_.clearFocus();
             }
         }
@@ -341,6 +355,7 @@ std::shared_ptr<Widget> Toolbar::promptFocus() const {
         case Prompt::Packaging: return packagingPrompt_;
         case Prompt::OpenScene: return openPrompt_->focusTarget();
         case Prompt::SaveAs: return saveAsPrompt_->focusTarget();
+        case Prompt::SavePrefab: return savePrefabPrompt_->focusTarget();
     }
     return nullptr;
 }
@@ -376,6 +391,21 @@ void Toolbar::requestSaveAs() {
     pending_.reset();
     saveAsPrompt_->show(document_.untitled() ? std::string("Scenes/untitled.scene") : document_.displayName());
     open(Prompt::SaveAs);
+}
+
+void Toolbar::requestSavePrefab(int actor) {
+    if (!editing() || prompting()) return;
+    const cinder::Scene::Actor* source = document_.scene().actor(actor);
+    if (source == nullptr) return;
+    std::string stem;
+    for (const char c : source->name()) {
+        if (c != '/' && c != '\\' && c != '.') stem += c;
+    }
+    if (stem.empty()) stem = "Prefab";
+    pending_.reset();
+    prefabSource_ = actor;
+    savePrefabPrompt_->show("Prefabs/" + stem + std::string(SceneDocument::PREFAB_EXTENSION));
+    open(Prompt::SavePrefab);
 }
 
 void Toolbar::open(Prompt prompt) {

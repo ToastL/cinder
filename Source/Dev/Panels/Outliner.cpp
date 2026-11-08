@@ -1,6 +1,7 @@
 #include "Dev/Panels/Outliner.hpp"
 
 #include "Dev/History.hpp"
+#include "Dev/SceneDocument.hpp"
 #include "Dev/Selection.hpp"
 #include "Dev/Panels/EditorStyle.hpp"
 #include "Reflect/Reflect.hpp"
@@ -8,6 +9,7 @@
 #include "Scene/ClassRegistry.hpp"
 #include "Scene/Component.hpp"
 #include "Scene/Scene.hpp"
+#include "Serial/Prefab.hpp"
 #include "UI/Framework/Application.hpp"
 #include "UI/Widgets/Border.hpp"
 #include "UI/Widgets/BoxPanel.hpp"
@@ -18,6 +20,7 @@
 #include "UI/Widgets/TextField.hpp"
 #include "UI/Widgets/TreeView.hpp"
 
+#include <filesystem>
 #include <string_view>
 
 namespace cinder::Dev::Panels {
@@ -65,7 +68,7 @@ Outliner::Outliner(Selection& selection, History& history, cinder::Scene::Scene&
             .onContextMenuOpening([this](std::optional<ItemId> item) { return contextMenu(item); })
             .onDragDetected([this](ItemId item) -> std::shared_ptr<DragDropOperation> {
                 Actor* actor = scene_.actor(static_cast<int>(item));
-                if (actor == nullptr) return nullptr;
+                if (actor == nullptr || actor->prefabOwned()) return nullptr;
                 return std::make_shared<ItemDragDrop>(std::vector<ItemId>{item}, actor->name());
             })
             .onCanAcceptDrop([this](const DragDropEvent& event, std::optional<ItemId> item,
@@ -166,7 +169,8 @@ std::shared_ptr<Widget> Outliner::rowFor(ItemId item) {
         const Actor* actor = scene_.actor(id);
         const bool lit = actor != nullptr && (actor->enabledInHierarchy() || selectedActor() == id);
         const Theme& theme = Application::get().theme();
-        return lit ? theme.color("Color.Foreground") : theme.color("Color.ForegroundDim");
+        if (!lit) return theme.color("Color.ForegroundDim");
+        return actor->prefab().empty() ? theme.color("Color.Foreground") : theme.color("Color.Primary");
     };
     return make<HorizontalBox>()
            + HorizontalBox::slot().autoWidth().vAlign(VAlign::Center)
@@ -181,6 +185,9 @@ std::shared_ptr<Widget> Outliner::rowFor(ItemId item) {
                           .text([this, id] {
                               const Actor* actor = scene_.actor(id);
                               if (actor == nullptr) return std::string();
+                              if (!actor->prefab().empty()) {
+                                  return std::filesystem::path(actor->prefab()).stem().string();
+                              }
                               const std::string detail(scene_.types().nameOf(*actor));
                               return detail == actor->name() ? std::string() : detail;
                           })
@@ -194,6 +201,13 @@ void Outliner::addInsertEntries(MenuBuilder& menu, std::optional<int> parent) {
         const std::string name = entry.name;
         menu.entry(name, [this, name, parent] { insert(name, parent); });
     }
+    const std::vector<std::string> prefabs = SceneDocument::listPrefabs();
+    if (prefabs.empty()) return;
+    menu.subMenu("Prefab", [this, prefabs, parent](MenuBuilder& entries) {
+        for (const std::string& prefab : prefabs) {
+            entries.entry(prefab, [this, prefab, parent] { place(prefab, parent); });
+        }
+    });
 }
 
 std::shared_ptr<Widget> Outliner::contextMenu(std::optional<ItemId> item) {
@@ -202,7 +216,32 @@ std::shared_ptr<Widget> Outliner::contextMenu(std::optional<ItemId> item) {
     menu.subMenu("Add Actor", [this, id](MenuBuilder& insertions) { addInsertEntries(insertions, id); });
     if (id) {
         menu.entry("Duplicate", [this, id] { duplicate(*id); })
-                .entry("Delete", [this, id] { remove(*id); });
+                .entry("Delete", [this, id] { remove(*id); })
+                .enabledIf([this, id] {
+                    const Actor* actor = scene_.actor(*id);
+                    return actor != nullptr && !actor->prefabOwned();
+                });
+        const Actor* actor = scene_.actor(*id);
+        if (actor != nullptr && prefabs_.enabled) {
+            const auto enabled = [this] { return prefabs_.available(); };
+            menu.separator();
+            if (prefabs_.save) {
+                menu.entry("Save as Prefab...", [this, id] { prefabs_.save(*id); }).enabledIf(enabled);
+            }
+            if (!actor->prefab().empty()) {
+                if (prefabs_.apply) {
+                    menu.entry("Apply to Prefab", [this, id] { prefabs_.apply(*id); })
+                            .enabledIf(enabled)
+                            .toolTip("Write this instance into its prefab. Saves the scene and cannot be undone.");
+                }
+                if (prefabs_.revert) {
+                    menu.entry("Revert to Prefab", [this, id] { prefabs_.revert(*id); }).enabledIf(enabled);
+                }
+                if (prefabs_.unpack) {
+                    menu.entry("Unpack Prefab", [this, id] { prefabs_.unpack(*id); }).enabledIf(enabled);
+                }
+            }
+        }
     }
     return menu.build();
 }
@@ -211,6 +250,15 @@ void Outliner::insert(const std::string& className, std::optional<int> parent) {
     history_.touch("Add " + className, selection_.id());
     Actor* target = parent ? scene_.actor(*parent) : nullptr;
     if (Actor* actor = scene_.spawn(className, target)) {
+        if (target != nullptr) tree_->setExpanded(static_cast<ItemId>(target->id()), true);
+        selection_.select(actor->id(), true);
+    }
+}
+
+void Outliner::place(const std::string& prefab, std::optional<int> parent) {
+    history_.touch("Add " + std::filesystem::path(prefab).stem().string(), selection_.id());
+    Actor* target = parent ? scene_.actor(*parent) : nullptr;
+    if (Actor* actor = cinder::Serial::Prefab::instantiate(scene_, prefab, target)) {
         if (target != nullptr) tree_->setExpanded(static_cast<ItemId>(target->id()), true);
         selection_.select(actor->id(), true);
     }
@@ -225,7 +273,7 @@ void Outliner::duplicate(int id) {
 
 void Outliner::remove(int id) {
     Actor* actor = scene_.actor(id);
-    if (actor == nullptr) return;
+    if (actor == nullptr || actor->prefabOwned()) return;
     history_.touch("Delete " + actor->name(), selection_.id());
     scene_.destroyNow(actor);
     selection_.clear();
@@ -234,7 +282,7 @@ void Outliner::remove(int id) {
 void Outliner::attach(int id, std::optional<int> parent) {
     Actor* actor = scene_.actor(id);
     Actor* target = parent ? scene_.actor(*parent) : nullptr;
-    if (actor == nullptr || actor == target || actor->isAncestorOf(target)) return;
+    if (actor == nullptr || actor == target || actor->isAncestorOf(target) || actor->prefabOwned()) return;
     history_.touch("Attach " + actor->name(), selection_.id());
     actor->attachTo(target);
     if (target != nullptr) tree_->setExpanded(static_cast<ItemId>(target->id()), true);

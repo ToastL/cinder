@@ -1192,6 +1192,18 @@ Backspace removes the selected actor while the tree has focus — a focused text
 itself. A filter turns the tree into a flat list of the actors whose name or class matches, with no
 expanders.
 
+**Prefabs in the editor.** "+" and Add Actor end in a **Prefab** submenu listing every `.prefab` under
+`Content/`, which places an instance through `Prefab::instantiate`. An instance's root row is drawn in
+`Color.Primary` with its prefab's name in place of the class. Right-clicking any actor offers **Save as
+Prefab…**, which opens the toolbar's second `SaveSceneDialog` — titled, hinted and resolved for
+`.prefab`, refusing a file that exists, because renumbering a prefab's ids would cut every instance of it
+loose — and links the actor as an ordinary undoable step. An instance's root also offers **Apply**,
+**Revert** and **Unpack**. A part of an instance cannot be deleted, dragged out or have an inherited
+component removed: an instance only adds. Details shows a **Prefab** section for any object of an
+instance — the source, `(missing)` in `Color.Error` when the file cannot be read, and the three buttons.
+The panels reach those operations through a `Dev/PrefabActions` of callbacks that `EditorShell` fills,
+enabled in Edit mode with no prompt open, so the panels' constructors and their tests are unchanged.
+
 Delete uses `destroyNow`, because Edit mode never runs the `Scene::update` that
 flushes a deferred destroy. A spawned or duplicated actor becomes the selection. During Play the same
 edits act on the running game and are discarded by Stop.
@@ -1225,7 +1237,7 @@ command), any change of selection, leaving Edit mode and `Details::rebuild`, whi
 reload because the armed callback holds a `PropDef` from the old library. The menu has no filter yet.
 
 The panel holds the selected **id** and nothing else, and rebuilds its rows only when the selection,
-the actor's components or its attribute names change, so a drag is not fighting a fresh widget tree
+the actor's components, its attribute names or its prefab link change, so a drag is not fighting a fresh widget tree
 every frame.
 
 The **Attributes** section lists each attribute with a remove button, and **Add Attribute…** opens a
@@ -1280,10 +1292,18 @@ the Outliner — its rows are keyed by ids that now name other actors — and re
 menu only *requests* a switch; `EditorShell::applyPendingScene` applies it between frames, in Edit mode,
 when nothing is interacting and no popup is open, like a hot reload. Open Scene and Save Scene As are our
 own `Dev/Panels/ScenePicker` dialogs in the toolbar's prompt overlay, not native ones: Open lists every
-`.scene` under `Content/` with a filter, and Save As takes a name relative to `Content/` that
+`.scene` and `.prefab` under `Content/` with a filter — a prefab opens as a document like any scene, and
+saving one drops its cached template — and Save As takes a name relative to `Content/` that
 `SceneDocument::resolve` checks live, adding `.scene` and refusing anything outside the folder. When a
 picker closes, the toolbar drops the focus its text field held, because a focused text field counts as
 interacting and would otherwise hold off both the switch and `History::settle`.
+
+**Apply cannot be undone, and it saves the open scene.** The prefab file is outside History, and every
+older snapshot was written against the old template; worse, the scene on disk would list a component
+the instance added that the prefab now supplies as well, and reopening it would give the instance two.
+So `SceneDocument::applyPrefab` writes the prefab, calls `History::rebase` — which drops both stacks and
+keeps the saved text, so the dirty marker stays honest — and saves a titled scene at once. Revert,
+Unpack and Save as Prefab are ordinary steps: they `touch` first and the toolbar's `settle` commits them.
 
 ### Logging and the console
 

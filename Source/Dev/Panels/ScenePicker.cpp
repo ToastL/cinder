@@ -172,10 +172,12 @@ void OpenSceneDialog::submit() {
 void SaveSceneDialog::construct(const Args& args) {
     onSave_ = args.onSave_;
     onCancel_ = args.onCancel_;
+    extension_ = args.extension_;
+    refuseExisting_ = args.refuseExisting_;
 
     auto field = make<TextBox>()
             .assign(field_)
-            .hintText("Scenes/name.scene")
+            .hintText(args.hint_)
             .clearFocusOnCommit(false)
             .selectAllOnFocus(true)
             .onTextChanged([this](const std::string& text) { typed(text); })
@@ -212,7 +214,7 @@ void SaveSceneDialog::construct(const Args& args) {
                        }, false, {}});
 
     childSlot_.widget = make<Dialog>()
-            .title("Save Scene As")
+            .title(args.title_)
             .message("A path under Content/")
             .body(body)
             .choices(std::move(choices))
@@ -230,7 +232,12 @@ std::shared_ptr<Widget> SaveSceneDialog::focusTarget() const { return field_->fi
 
 std::string SaveSceneDialog::text() const { return field_->text(); }
 
-void SaveSceneDialog::typed(const std::string& text) { resolved_ = SceneDocument::resolve(text); }
+void SaveSceneDialog::typed(const std::string& text) {
+    resolved_ = SceneDocument::resolve(text, extension_);
+    if (refuseExisting_ && resolved_.error.empty() && resolved_.exists) {
+        resolved_.error = SceneDocument::nameOf(resolved_.path) + " already exists";
+    }
+}
 
 void SaveSceneDialog::submit() {
     if (!resolved_.error.empty()) return;

@@ -23,6 +23,8 @@ public:
 
     void reset();
     void setEnabled(bool enabled) { enabled_ = enabled; }
+    bool enabled() const { return enabled_; }
+    void rebase();
     void touch(std::string label, std::optional<int> selection);
     void settle(bool interacting);
 

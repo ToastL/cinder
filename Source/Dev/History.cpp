@@ -25,6 +25,14 @@ void History::reset() {
     dirty_ = false;
 }
 
+void History::rebase() {
+    current_ = cinder::Serial::SceneCodec::save(scene_);
+    undo_.clear();
+    redo_.clear();
+    pending_ = false;
+    dirty_ = current_ != saved_;
+}
+
 void History::touch(std::string label, std::optional<int> selection) {
     if (!enabled_ || pending_) return;
     pending_ = true;

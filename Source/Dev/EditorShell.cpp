@@ -25,6 +25,14 @@ EditorShell::EditorShell(cinder::Core::Engine& engine, ModuleHost& modules, Pack
         outliner_.sceneChanged();
         details_.rebuild();
     });
+    PrefabActions prefabs;
+    prefabs.save = [this](int actor) { toolbar_.requestSavePrefab(actor); };
+    prefabs.apply = [this](int actor) { document_.applyPrefab(actor); };
+    prefabs.revert = [this](int actor) { document_.revertPrefab(actor); };
+    prefabs.unpack = [this](int actor) { document_.unpackPrefab(actor); };
+    prefabs.enabled = [this] { return session_.state() == PlaySession::State::Edit && !toolbar_.prompting(); };
+    outliner_.setPrefabActions(prefabs);
+    details_.setPrefabActions(std::move(prefabs));
     app_.setRoot(Panels::editorLayout(toolbar_, view_, outliner_, details_, console_, tabs_));
     engine.renderer().setUiPaint([this](cinder::UI::ElementList& list) {
         const std::vector<cinder::Platform::InputEvent> events = engine_.input().takeEvents();

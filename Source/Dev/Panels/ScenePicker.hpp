@@ -60,6 +60,10 @@ public:
     using OnSave = std::function<void(const std::filesystem::path&)>;
 
     struct Args : ::cinder::UI::Args<Args, SaveSceneDialog> {
+        UI_ARG(std::string, title, "Save Scene As")
+        UI_ARG(std::string, hint, "Scenes/name.scene")
+        UI_ARG(std::string, extension, std::string(SceneDocument::EXTENSION))
+        UI_ARG(bool, refuseExisting, false)
         UI_EVENT(OnSave, onSave)
         UI_EVENT(cinder::UI::OnVoid, onCancel)
     };
@@ -79,6 +83,8 @@ private:
     cinder::UI::OnVoid onCancel_;
     std::shared_ptr<cinder::UI::TextBox> field_;
     SceneDocument::Resolved resolved_;
+    std::string extension_;
+    bool refuseExisting_ = false;
 };
 
 }

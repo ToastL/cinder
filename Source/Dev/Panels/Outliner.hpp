@@ -1,11 +1,13 @@
 #pragma once
 
+#include "Dev/PrefabActions.hpp"
 #include "UI/Core/Widget.hpp"
 #include "UI/Widgets/TreeView.hpp"
 
 #include <memory>
 #include <optional>
 #include <string>
+#include <utility>
 #include <vector>
 
 namespace cinder::Scene {
@@ -37,6 +39,7 @@ public:
 
     void update();
     void sceneChanged() { tree_->collapseAll(); }
+    void setPrefabActions(PrefabActions actions) { prefabs_ = std::move(actions); }
     std::optional<int> selectedActor() const;
 
 private:
@@ -50,6 +53,7 @@ private:
     void gather(const cinder::Scene::Actor& actor, std::vector<cinder::UI::ItemId>& out) const;
 
     void insert(const std::string& className, std::optional<int> parent);
+    void place(const std::string& prefab, std::optional<int> parent);
     void duplicate(int id);
     void remove(int id);
     void attach(int id, std::optional<int> parent);
@@ -61,6 +65,7 @@ private:
     std::shared_ptr<cinder::UI::Widget> widget_;
     std::shared_ptr<cinder::UI::TreeView> tree_;
     std::string filter_;
+    PrefabActions prefabs_;
 };
 
 }

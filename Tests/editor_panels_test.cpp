@@ -5,6 +5,7 @@
 #include "ui_harness.hpp"
 
 #include "Dev/History.hpp"
+#include "Dev/PrefabActions.hpp"
 #include "Dev/Selection.hpp"
 #include "Dev/Panels/Dialog.hpp"
 #include "Dev/Panels/EditorStyle.hpp"
@@ -595,4 +596,76 @@ TEST_CASE("the Save Scene As dialog resolves the name under Content and refuses 
     CHECK(*saved == root / "Content" / "Scenes" / "level.scene");
     CHECK_FALSE(dialog->resolved().exists);
     std::filesystem::remove_all(root);
+}
+
+namespace {
+
+struct Instance : World {
+    int root = 0;
+    int part = 0;
+    int pivot = 0;
+
+    Instance() {
+        Actor* crate = scene.spawn("StaticMeshActor");
+        crate->setName("Crate");
+        crate->setPrefab("Prefabs/crate.prefab");
+        crate->setPrefabId(1);
+        crate->rootComponent()->setPrefabId(2);
+        pivot = crate->addComponent<cinder::Scene::SceneComponent>("Pivot")->id();
+        scene.component(pivot)->setPrefabId(3);
+        Actor* lid = scene.spawn("Actor", crate);
+        lid->setName("Lid");
+        lid->setPrefabId(4);
+        root = crate->id();
+        part = lid->id();
+        history.reset();
+    }
+};
+
+}
+
+TEST_CASE("the Outliner keeps a part of a prefab instance from being deleted") {
+    Instance world;
+    Harness ui(nullptr);
+    Outliner outliner(world.selection, world.history, world.scene, ui.app);
+    ui.app.setTheme(cinder::Dev::Panels::editorTheme());
+    ui.app.setRoot(outliner.widget());
+    ui.size = {320.0f, 400.0f};
+    world.selection.select(world.part, true);
+    outliner.update();
+    ui.frame();
+
+    const Rect row = ui.rectOf(outliner.tree()->rowFor(static_cast<ItemId>(world.part)));
+    ui.click(row.center().x, row.center().y);
+    ui.key(keys::DELETE_KEY);
+    ui.frame();
+    CHECK(world.scene.actor(world.part) != nullptr);
+}
+
+TEST_CASE("Details shows a prefab instance's source, hides remove on what it inherits, and runs its actions") {
+    Instance world;
+    Harness ui(nullptr);
+    Details details(world.selection, world.history, world.scene, ui.app);
+    std::optional<int> reverted;
+    cinder::Dev::PrefabActions actions;
+    actions.revert = [&](int id) { reverted = id; };
+    actions.enabled = [] { return true; };
+    details.setPrefabActions(actions);
+    ui.app.setTheme(cinder::Dev::Panels::editorTheme());
+    ui.app.setRoot(details.widget());
+    ui.size = {360.0f, 900.0f};
+    world.selection.select(world.part);
+    details.update();
+    ui.frame();
+
+    Button* revert = buttonNamed(details.widget().get(), "Revert");
+    REQUIRE(revert != nullptr);
+    const Rect rect = ui.app.grid().geometryOf(revert).value_or(Geometry{}).rect();
+    ui.click(rect.center().x, rect.center().y);
+    CHECK(reverted == world.root);
+
+    world.selection.select(world.root);
+    details.update();
+    ui.frame();
+    CHECK(buttonNamed(details.widget().get(), "x") == nullptr);
 }

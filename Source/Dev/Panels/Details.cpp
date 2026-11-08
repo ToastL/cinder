@@ -12,6 +12,7 @@
 #include "Scene/PropValue.hpp"
 #include "Scene/Scene.hpp"
 #include "Scene/Transform.hpp"
+#include "Serial/Prefab.hpp"
 #include "UI/Framework/Application.hpp"
 #include "UI/Widgets/Border.hpp"
 #include "UI/Widgets/BoxPanel.hpp"
@@ -140,7 +141,9 @@ void Details::update() {
             if (!component->destroyed()) components.push_back(component->id());
         }
     }
-    if (id == shown_ && keys == keys_ && components == components_) return;
+    std::string link = linkOf(current);
+    if (id == shown_ && keys == keys_ && components == components_ && link == link_) return;
+    link_ = std::move(link);
     shown_ = id;
     keys_ = std::move(keys);
     components_ = std::move(components);
@@ -471,8 +474,14 @@ std::shared_ptr<Widget> Details::attributesSection(int id) {
     Actor* current = scene_.actor(id);
     auto list = make<VerticalBox>();
     if (current != nullptr) {
+        const auto* inherited = dynamic_cast<const Actor*>(cinder::Serial::Prefab::baseline(scene_, *current));
         for (const auto& [name, value] : current->attributes()) {
             const std::string key = name;
+            if (inherited != nullptr && inherited->attribute(key) != nullptr) {
+                list + VerticalBox::slot().autoHeight().padding(Margin(0.0f, 0.0f, 0.0f, 3.0f))
+                               [row(key, attributeEditor(id, key))];
+                continue;
+            }
             auto remove = make<Button>()
                     .text("\xC3\x97")
                     .buttonStyle("Button.Small")
@@ -520,7 +529,7 @@ std::shared_ptr<Widget> Details::componentsSection(Actor& owner) {
                                    selection_.select(id);
                                    return Reply::handled();
                                })];
-        if (!component.isDefault()) {
+        if (!component.isDefault() && component.prefabId() == 0) {
             line + HorizontalBox::slot().autoWidth().vAlign(VAlign::Center).padding(Margin(4.0f, 0.0f, 0.0f, 0.0f))
                        [make<Button>()
                                 .text("x")
@@ -583,11 +592,70 @@ void Details::addComponent(int actorId, const std::string& className) {
 
 void Details::removeComponent(int id) {
     Component* component = scene_.component(id);
-    if (component == nullptr || component->isDefault()) return;
+    if (component == nullptr || component->isDefault() || component->prefabId() != 0) return;
     Actor* owner = component->owner();
     history_.touch("Remove " + component->name(), selection_.id());
     scene_.destroyNow(component);
     if (owner != nullptr) selection_.select(owner->id());
+}
+
+std::string Details::linkOf(const Actor* actor) const {
+    const Actor* root = actor != nullptr ? cinder::Serial::Prefab::rootOf(*actor) : nullptr;
+    return root != nullptr ? root->prefab() + "#" + std::to_string(root->id()) : std::string();
+}
+
+std::shared_ptr<Widget> Details::prefabSection(const Actor& owner) {
+    const Actor* root = cinder::Serial::Prefab::rootOf(owner);
+    const int rootId = root->id();
+    const std::string path = root->prefab();
+    auto list = make<VerticalBox>();
+
+    list + VerticalBox::slot().autoHeight().padding(Margin(0.0f, 0.0f, 0.0f, 4.0f))
+                   [row("Source", make<Label>()
+                                          .text([this, path, rootId] {
+                                              const Actor* current = scene_.actor(rootId);
+                                              const bool missing = current == nullptr
+                                                                   || cinder::Serial::Prefab::missing(scene_, *current);
+                                              return missing ? path + "  (missing)" : path;
+                                          })
+                                          .colorAndOpacity(Attribute<Color>([this, rootId] {
+                                              const Actor* current = scene_.actor(rootId);
+                                              const bool missing = current == nullptr
+                                                                   || cinder::Serial::Prefab::missing(scene_, *current);
+                                              return Application::get().theme().color(missing ? "Color.Error"
+                                                                                              : "Color.Foreground");
+                                          })))];
+    if (root != &owner) {
+        list + VerticalBox::slot().autoHeight().padding(Margin(0.0f, 0.0f, 0.0f, 4.0f))
+                       [row("Instance", make<Label>().text([this, rootId] {
+                            const Actor* current = scene_.actor(rootId);
+                            return current != nullptr ? current->name() : std::string();
+                        }))];
+    }
+    if (!prefabs_.enabled) return list;
+
+    const auto action = [this, rootId](std::string text, std::string tip, std::function<void(int)> run) {
+        return make<Button>()
+                .text(std::move(text))
+                .toolTipText(std::move(tip))
+                .isEnabled([this] { return prefabs_.available(); })
+                .onClicked([run, rootId] {
+                    if (run) run(rootId);
+                    return Reply::handled();
+                });
+    };
+    list + VerticalBox::slot().autoHeight()
+                   [make<HorizontalBox>()
+                    + HorizontalBox::slot().autoWidth().padding(Margin(0.0f, 0.0f, 4.0f, 0.0f))
+                          [action("Apply", "Write this instance into " + path
+                                                   + ". Saves the scene and cannot be undone.",
+                                  prefabs_.apply)]
+                    + HorizontalBox::slot().autoWidth().padding(Margin(0.0f, 0.0f, 4.0f, 0.0f))
+                          [action("Revert", "Drop this instance's overrides and additions", prefabs_.revert)]
+                    + HorizontalBox::slot().autoWidth()
+                          [action("Unpack", "Turn this instance into plain actors", prefabs_.unpack)]
+                    + HorizontalBox::slot().fill(1.0f)[make<Spacer>()]];
+    return list;
 }
 
 std::shared_ptr<Widget> Details::body(Actor& owner) {
@@ -613,6 +681,14 @@ std::shared_ptr<Widget> Details::body(Actor& owner) {
                            .text(type + "  #" + std::to_string(id))
                            .textStyle("Label.Small")
                            .colorAndOpacity(themeColor("Color.ForegroundDim"))];
+
+    if (cinder::Serial::Prefab::rootOf(owner) != nullptr) {
+        column + VerticalBox::slot().autoHeight().padding(Margin(0.0f, 0.0f, 0.0f, 4.0f))
+                         [make<ExpandableArea>()
+                                  .areaTitle("Prefab")
+                                  .padding(Margin(6.0f, 6.0f))
+                                  .bodyContent(prefabSection(owner))];
+    }
 
     column + VerticalBox::slot().autoHeight().padding(Margin(0.0f, 0.0f, 0.0f, 4.0f))
                      [make<ExpandableArea>()

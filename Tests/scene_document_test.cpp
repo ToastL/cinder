@@ -160,3 +160,63 @@ TEST_CASE("a requested switch waits for applyPending") {
     CHECK(project.document.untitled());
     CHECK_FALSE(project.document.applyPending());
 }
+
+TEST_CASE("prefabs are listed with the scenes, and alone for the Prefab menu") {
+    Project project;
+    std::filesystem::create_directories(project.root / "Content" / "Prefabs");
+    project.write("Scenes/main.scene", "A");
+    project.write("Prefabs/crate.prefab", "Crate");
+
+    CHECK(SceneDocument::listScenes() == std::vector<std::string>{"Prefabs/crate.prefab", "Scenes/main.scene"});
+    CHECK(SceneDocument::listPrefabs() == std::vector<std::string>{"Prefabs/crate.prefab"});
+}
+
+TEST_CASE("resolve keeps a prefab extension and adds the one it is asked for") {
+    Project project;
+    CHECK(SceneDocument::resolve("Prefabs/crate.prefab").path.extension() == ".prefab");
+    CHECK(SceneDocument::resolve("Prefabs/crate", SceneDocument::PREFAB_EXTENSION).path.extension() == ".prefab");
+    CHECK(SceneDocument::resolve("", SceneDocument::PREFAB_EXTENSION).error == "Enter a name for the prefab");
+}
+
+TEST_CASE("Save as Prefab links the actor as an undoable step and refuses an existing file") {
+    Project project;
+    cinder::Scene::Actor* crate = project.scene.spawn("StaticMeshActor");
+    crate->setName("Crate");
+    const int id = crate->id();
+    project.history.reset();
+    const std::filesystem::path path = project.root / "Content" / "Prefabs" / "crate.prefab";
+
+    REQUIRE(project.document.savePrefab(id, path));
+    project.history.settle(false);
+    CHECK(std::filesystem::exists(path));
+    CHECK(project.scene.actor(id)->prefab() == "Prefabs/crate.prefab");
+    REQUIRE(project.history.canUndo());
+
+    project.history.undo(project.selection);
+    CHECK(project.scene.actor(id)->prefab().empty());
+    CHECK_FALSE(project.document.savePrefab(id, path));
+}
+
+TEST_CASE("Apply saves the open scene and starts a fresh history") {
+    Project project;
+    const std::filesystem::path scenePath = project.write("Scenes/main.scene", "A");
+    REQUIRE(project.document.open(scenePath));
+    cinder::Scene::Actor* crate = project.scene.spawn("StaticMeshActor");
+    crate->setName("Crate");
+    const int id = crate->id();
+    REQUIRE(project.document.savePrefab(id, project.root / "Content" / "Prefabs" / "crate.prefab"));
+    project.history.settle(false);
+
+    project.scene.actor(id)->setAttribute("hp", cinder::Scene::PropValue::number(5.0));
+    project.history.touch("Edit", id);
+    project.history.settle(false);
+    REQUIRE(project.document.applyPrefab(id));
+
+    CHECK_FALSE(project.history.canUndo());
+    CHECK_FALSE(project.history.dirty());
+    const std::string prefab = cinder::Platform::readTextFile(project.root / "Content" / "Prefabs" / "crate.prefab");
+    CHECK(prefab.find("hp 5") != std::string::npos);
+    const std::string saved = cinder::Platform::readTextFile(scenePath);
+    CHECK(saved.find("prefab \"Prefabs/crate.prefab\"") != std::string::npos);
+    CHECK(saved.find("hp") == std::string::npos);
+}
