@@ -1,6 +1,7 @@
 #pragma once
 
 #include "UI/Core/Args.hpp"
+#include "UI/Core/Attribute.hpp"
 #include "UI/Core/CompoundWidget.hpp"
 #include "UI/Core/Delegates.hpp"
 
@@ -12,7 +13,7 @@
 namespace cinder::Dev::Panels {
 
 struct DialogChoice {
-    std::string label;
+    cinder::UI::Attribute<std::string> label;
     std::function<void()> action;
     bool primary = false;
     std::function<bool()> enabled;

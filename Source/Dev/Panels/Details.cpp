@@ -1,5 +1,7 @@
 #include "Dev/Panels/Details.hpp"
 
+#include "Dev/AssetCatalog.hpp"
+#include "Dev/AssetDragDrop.hpp"
 #include "Dev/History.hpp"
 #include "Dev/Selection.hpp"
 #include "Dev/Panels/EditorStyle.hpp"
@@ -7,6 +9,7 @@
 #include "Scene/Attributes.hpp"
 #include "Scene/Actor.hpp"
 #include "Scene/ClassRegistry.hpp"
+#include "Scene/DrawList.hpp"
 #include "Scene/Component.hpp"
 #include "Scene/SceneComponent.hpp"
 #include "Scene/PropValue.hpp"
@@ -19,6 +22,7 @@
 #include "UI/Widgets/Button.hpp"
 #include "UI/Widgets/ColorPicker.hpp"
 #include "UI/Widgets/ComboBox.hpp"
+#include "UI/Widgets/DropTarget.hpp"
 #include "UI/Widgets/ExpandableArea.hpp"
 #include "UI/Widgets/Label.hpp"
 #include "UI/Widgets/ScrollBox.hpp"
@@ -32,6 +36,7 @@
 
 #include <cfloat>
 #include <cstdint>
+#include <filesystem>
 #include <functional>
 
 namespace cinder::Dev::Panels {
@@ -287,6 +292,57 @@ std::shared_ptr<Widget> Details::refEditorFor(const PropDef& def, Target target)
                           .onClicked(browse)];
 }
 
+std::shared_ptr<Widget> Details::assetEditorFor(const PropDef& def, Target target) {
+    const PropDef* prop = &def;
+    const PropHint hint = def.hint();
+    const AssetKind kind = hint == PropHint::Prefab ? AssetKind::Prefab : AssetKind::Texture;
+    const auto assign = writing(target, [prop](void* at, const std::string& value) { prop->writeText(at, value); });
+    const auto current = [prop, target] {
+        void* at = target();
+        return at != nullptr ? std::string(prop->readText(at)) : std::string();
+    };
+
+    auto menu = [assign, current, hint, kind] {
+        MenuBuilder builder;
+        std::vector<std::string> options;
+        if (hint == PropHint::Mesh) {
+            for (const std::string_view primitive : cinder::Scene::DrawList::PRIMITIVES) options.emplace_back(primitive);
+        } else {
+            builder.check("None", [assign] { assign(std::string()); }, [current] { return current().empty(); });
+            options = AssetCatalog::scan({kind});
+            if (!options.empty()) builder.separator();
+        }
+        for (const std::string& option : options) {
+            builder.check(option, [assign, option] { assign(option); }, [current, option] { return current() == option; });
+        }
+        return builder.build();
+    };
+
+    const auto label = [current] {
+        const std::string value = current();
+        return value.empty() ? std::string("None") : std::filesystem::path(value).stem().string();
+    };
+    auto field = make<HorizontalBox>()
+            + HorizontalBox::slot().fill(1.0f).vAlign(VAlign::Center)
+                  [make<ComboButton>().onGetMenuContent(menu).toolTipText(current)[make<Label>().text(label)]];
+    if (hint == PropHint::Mesh) return field;
+
+    field + HorizontalBox::slot().autoWidth().vAlign(VAlign::Center).padding(Margin(4.0f, 0.0f, 0.0f, 0.0f))
+                    [make<Button>()
+                             .text("Browse")
+                             .isEnabled([this, current] { return content_.reveal && !current().empty(); })
+                             .toolTipText("Show it in the Content Browser")
+                             .onClicked([this, current] {
+                                 if (content_.reveal) content_.reveal(current());
+                                 return Reply::handled();
+                             })];
+    return make<DropTarget>()
+            .onCanAccept([kind](const DragDropEvent& event) { return AssetDragDrop::carried(event, kind) != nullptr; })
+            .onDrop([assign, kind](const DragDropEvent& event) {
+                if (const AssetDragDrop* asset = AssetDragDrop::carried(event, kind)) assign(asset->path());
+            })[field];
+}
+
 std::shared_ptr<Widget> Details::editorFor(const PropDef& def, Target target) {
     const PropDef* prop = &def;
     const auto text = [prop, target] {
@@ -302,6 +358,9 @@ std::shared_ptr<Widget> Details::editorFor(const PropDef& def, Target target) {
                     })
                     .onCheckStateChanged(writing(target, [prop](void* at, bool value) { prop->writeBool(at, value); }));
         case PropType::String:
+            if (def.hint() == PropHint::Texture || def.hint() == PropHint::Mesh || def.hint() == PropHint::Prefab) {
+                return assetEditorFor(def, target);
+            }
             return make<TextBox>().text(text).onTextCommitted(
                     [write = writing(target, [prop](void* at, const std::string& value) { prop->writeText(at, value); })](
                             const std::string& value, TextCommit how) {

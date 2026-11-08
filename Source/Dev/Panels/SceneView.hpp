@@ -1,10 +1,13 @@
 #pragma once
 
+#include "Dev/ContentActions.hpp"
 #include "Dev/EditorCamera.hpp"
 #include "Dev/Manipulator.hpp"
 #include "UI/Widgets/Viewport.hpp"
 
 #include <memory>
+#include <optional>
+#include <utility>
 
 namespace cinder::Core { class Engine; }
 namespace cinder::UI { class Application; }
@@ -31,6 +34,8 @@ public:
     void update();
     void afterPaint();
     void sceneChanged();
+    void setContentActions(ContentActions actions) { content_ = std::move(actions); }
+    std::optional<int> dropTarget() const { return dropTarget_; }
 
     Tool tool() const { return tool_; }
     Space space() const { return space_; }
@@ -49,6 +54,10 @@ private:
     cinder::UI::Reply wheel(const cinder::UI::PointerEvent& event);
     cinder::UI::Reply keyDown(const cinder::UI::KeyEvent& event);
     void captureLost();
+    cinder::UI::Reply dragOver(const cinder::UI::Geometry& geometry, const cinder::UI::DragDropEvent& event);
+    cinder::UI::Reply drop(const cinder::UI::Geometry& geometry, const cinder::UI::DragDropEvent& event);
+    void dragLeave() { dropTarget_.reset(); }
+    bool flatScene();
 
     bool editing() const;
     void build();
@@ -71,6 +80,8 @@ private:
     Tool tool_ = Tool::Move;
     Space space_ = Space::World;
     Handle hot_ = Handle::None;
+    ContentActions content_;
+    std::optional<int> dropTarget_;
 
     glm::vec2 origin_{0.0f};
     glm::vec2 extent_{1.0f};

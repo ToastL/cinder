@@ -167,3 +167,9 @@ public:                                                                 \
 #define CINDER_PROP_ANGLE(field)                                            \
     b.template add<&PropSelf::field>(#field, -FLT_MAX, FLT_MAX, 1.0f,       \
                                      cinder::Reflect::PropHint::Angle)
+#define CINDER_PROP_ASSET(field, kind)                                      \
+    b.template add<&PropSelf::field>(#field, -FLT_MAX, FLT_MAX, 0.1f,       \
+                                     cinder::Reflect::PropHint::kind)
+#define CINDER_PROP_TEXTURE(field) CINDER_PROP_ASSET(field, Texture)
+#define CINDER_PROP_MESH(field)    CINDER_PROP_ASSET(field, Mesh)
+#define CINDER_PROP_PREFAB(field)  CINDER_PROP_ASSET(field, Prefab)

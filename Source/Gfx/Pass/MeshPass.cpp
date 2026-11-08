@@ -4,6 +4,7 @@
 
 #include "Gfx/Pass/Overflow.hpp"
 #include "Gfx/RHI/Backend.hpp"
+#include "Scene/DrawList.hpp"
 
 namespace cinder::Gfx::Pass {
 
@@ -14,11 +15,11 @@ MeshPass::MeshPass(const cinder::Gfx::RHI::Ctx& ctx, cinder::Gfx::Asset::Assets&
     : ctx_(ctx), assets_(assets), pipeline_(pipeline),
       drawMesh_(MAX_DRAWS), drawTexture_(MAX_DRAWS), drawModel_(MAX_DRAWS, glm::mat4(1.0f)) {
     meshes_.push_back(Mesh::cube(ctx, 1.0f, 1.0f, 1.0f));
-    named_.emplace("cube", 0);
     meshes_.push_back(Mesh::sphere(ctx, 1.0f, 1.0f, 1.0f));
-    named_.emplace("sphere", 1);
     meshes_.push_back(Mesh::capsule(ctx, 1.0f, 1.0f, 1.0f));
-    named_.emplace("capsule", 2);
+    for (std::size_t i = 0; i < cinder::Scene::DrawList::PRIMITIVES.size(); ++i) {
+        named_.emplace(cinder::Scene::DrawList::PRIMITIVES[i], static_cast<int>(i));
+    }
 }
 
 int MeshPass::meshNamed(std::string_view name) const {

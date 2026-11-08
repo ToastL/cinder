@@ -19,12 +19,27 @@ EditorShell::EditorShell(cinder::Core::Engine& engine, ModuleHost& modules, Pack
       app_(platform_, fonts_, Panels::editorTheme()),
       toolbar_(session_, history_, selection_, packager, modules, document_, app_),
       view_(session_, selection_, history_, engine, app_), outliner_(selection_, history_, engine.scene(), app_),
-      details_(selection_, history_, engine.scene(), app_), console_(app_) {
+      details_(selection_, history_, engine.scene(), app_), console_(app_), content_(catalog_, app_) {
     document_.setOnSwitched([this] {
         view_.sceneChanged();
         outliner_.sceneChanged();
         details_.rebuild();
+        catalog_.refresh();
     });
+    ContentActions content;
+    content.openScene = [this](const std::filesystem::path& path) { toolbar_.requestOpenScene(path); };
+    content.confirm = [this](std::string title, std::string message, std::string confirm, std::function<void()> action) {
+        toolbar_.confirm(std::move(title), std::move(message), std::move(confirm), std::move(action));
+    };
+    content.reveal = [this](const std::string& path) {
+        tabs_.activateTab("Content");
+        content_.reveal(path);
+    };
+    content.openPath = [this] { return document_.path(); };
+    content.enabled = [this] { return session_.state() == PlaySession::State::Edit && !toolbar_.prompting(); };
+    content_.setActions(content);
+    view_.setContentActions(content);
+    details_.setContentActions(std::move(content));
     PrefabActions prefabs;
     prefabs.save = [this](int actor) { toolbar_.requestSavePrefab(actor); };
     prefabs.apply = [this](int actor) { document_.applyPrefab(actor); };
@@ -33,7 +48,7 @@ EditorShell::EditorShell(cinder::Core::Engine& engine, ModuleHost& modules, Pack
     prefabs.enabled = [this] { return session_.state() == PlaySession::State::Edit && !toolbar_.prompting(); };
     outliner_.setPrefabActions(prefabs);
     details_.setPrefabActions(std::move(prefabs));
-    app_.setRoot(Panels::editorLayout(toolbar_, view_, outliner_, details_, console_, tabs_));
+    app_.setRoot(Panels::editorLayout(toolbar_, view_, outliner_, details_, console_, content_, tabs_));
     engine.renderer().setUiPaint([this](cinder::UI::ElementList& list) {
         const std::vector<cinder::Platform::InputEvent> events = engine_.input().takeEvents();
         app_.processEvents(events);
@@ -42,6 +57,7 @@ EditorShell::EditorShell(cinder::Core::Engine& engine, ModuleHost& modules, Pack
         outliner_.update();
         details_.update();
         console_.update();
+        content_.update();
         app_.paint(list);
         view_.afterPaint();
     });

@@ -45,7 +45,7 @@ std::optional<float> hitMarker(const PickView& view, const Ray& ray, const glm::
     return glm::dot(position - ray.origin, ray.direction);
 }
 
-void visit(Actor& actor, const PickView& view, const Ray& ray, Hits& hits) {
+void visit(Actor& actor, const PickView& view, const Ray& ray, Hits& hits, bool markers = true) {
     if (actor.destroyed() || !actor.isEnabled()) return;
 
     for (Component* component : actor.components()) {
@@ -56,7 +56,7 @@ void visit(Actor& actor, const PickView& view, const Ray& ray, Hits& hits) {
             distance = hitCube(ray, part->transform().world());
         } else if (auto* sprite = dynamic_cast<SpriteComponent*>(component)) {
             distance = hitSprite(ray, sprite->transform().world(), sprite->size());
-        } else if (auto* camera = dynamic_cast<CameraComponent*>(component)) {
+        } else if (auto* camera = dynamic_cast<CameraComponent*>(component); camera != nullptr && markers) {
             distance = hitMarker(view, ray, camera->transform().worldPosition());
         }
 
@@ -66,7 +66,7 @@ void visit(Actor& actor, const PickView& view, const Ray& ray, Hits& hits) {
         }
     }
 
-    for (Actor* child : actor.attachedActors()) visit(*child, view, ray, hits);
+    for (Actor* child : actor.attachedActors()) visit(*child, view, ray, hits, markers);
 }
 
 }
@@ -142,6 +142,35 @@ Component* pick(cinder::Scene::Scene& scene, const PickView& view) {
     Hits hits;
     for (Actor* root : scene.roots()) visit(*root, view, ray, hits);
     return hits.nearest;
+}
+
+std::optional<float> hitPlane(const Ray& ray, const glm::vec3& normal) {
+    const float facing = glm::dot(ray.direction, normal);
+    if (std::abs(facing) < PARALLEL) return std::nullopt;
+    const float distance = -glm::dot(ray.origin, normal) / facing;
+    if (distance < 0.0f) return std::nullopt;
+    return distance;
+}
+
+DropPoint dropPoint(cinder::Scene::Scene& scene, const PickView& view, bool flat) {
+    const Ray ray = rayThrough(view.viewProjection, view.point, view.size);
+    Hits hits;
+    for (Actor* root : scene.roots()) visit(*root, view, ray, hits, false);
+    DropPoint point;
+    if (hits.nearest != nullptr) {
+        point.onto = hits.nearest;
+        point.position = ray.origin + ray.direction * hits.distance;
+        return point;
+    }
+    const glm::vec3 ground = flat ? glm::vec3(0.0f, 0.0f, 1.0f) : glm::vec3(0.0f, 1.0f, 0.0f);
+    const std::optional<float> distance = hitPlane(ray, ground);
+    if (distance && *distance <= MAX_DROP_DISTANCE) {
+        point.position = ray.origin + ray.direction * *distance;
+        point.ground = true;
+        return point;
+    }
+    point.position = ray.origin + ray.direction * FALLBACK_DROP_DISTANCE;
+    return point;
 }
 
 }

@@ -24,9 +24,20 @@ struct PickView {
     glm::vec2 size{1.0f};
 };
 
+struct DropPoint {
+    glm::vec3 position{0.0f};
+    cinder::Scene::Component* onto = nullptr;
+    bool ground = false;
+};
+
+constexpr float MAX_DROP_DISTANCE = 1000.0f;
+constexpr float FALLBACK_DROP_DISTANCE = 10.0f;
+
 Ray rayThrough(const glm::mat4& viewProjection, glm::vec2 point, glm::vec2 size);
 std::optional<float> hitCube(const Ray& ray, const glm::mat4& world);
 std::optional<float> hitSprite(const Ray& ray, const glm::mat4& world, glm::vec2 size);
+std::optional<float> hitPlane(const Ray& ray, const glm::vec3& normal);
 cinder::Scene::Component* pick(cinder::Scene::Scene& scene, const PickView& view);
+DropPoint dropPoint(cinder::Scene::Scene& scene, const PickView& view, bool flat);
 
 }

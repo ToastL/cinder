@@ -322,9 +322,26 @@ void Toolbar::buildPrompts() {
             })
             .onCancel(dismiss);
 
+    const auto dismissConfirm = [this] {
+        prompting_ = Prompt::None;
+        confirmAction_ = nullptr;
+    };
+    std::vector<DialogChoice> confirmation;
+    confirmation.push_back({[this] { return confirmLabel_; }, [this] {
+                                prompting_ = Prompt::None;
+                                if (std::function<void()> action = std::exchange(confirmAction_, nullptr)) action();
+                            }, true, {}});
+    confirmation.push_back({"Cancel", dismissConfirm, false, {}});
+    confirmPrompt_ = make<Dialog>()
+            .visibility([this] { return prompting_ == Prompt::Confirm ? Visibility::Visible : Visibility::Collapsed; })
+            .title([this] { return confirmTitle_; })
+            .message([this] { return confirmMessage_; })
+            .choices(std::move(confirmation))
+            .onCancel(dismissConfirm);
+
     prompt_ = make<Overlay>().visibility([this] { return prompting() ? Visibility::Visible : Visibility::Collapsed; })
             + Overlay::slot()[unsavedPrompt_] + Overlay::slot()[packagingPrompt_] + Overlay::slot()[openPrompt_]
-            + Overlay::slot()[saveAsPrompt_] + Overlay::slot()[savePrefabPrompt_];
+            + Overlay::slot()[saveAsPrompt_] + Overlay::slot()[savePrefabPrompt_] + Overlay::slot()[confirmPrompt_];
 }
 
 void Toolbar::update() {
@@ -356,6 +373,7 @@ std::shared_ptr<Widget> Toolbar::promptFocus() const {
         case Prompt::OpenScene: return openPrompt_->focusTarget();
         case Prompt::SaveAs: return saveAsPrompt_->focusTarget();
         case Prompt::SavePrefab: return savePrefabPrompt_->focusTarget();
+        case Prompt::Confirm: return confirmPrompt_;
     }
     return nullptr;
 }
@@ -406,6 +424,20 @@ void Toolbar::requestSavePrefab(int actor) {
     prefabSource_ = actor;
     savePrefabPrompt_->show("Prefabs/" + stem + std::string(SceneDocument::PREFAB_EXTENSION));
     open(Prompt::SavePrefab);
+}
+
+void Toolbar::requestOpenScene(const std::filesystem::path& path) {
+    if (!editing() || prompting()) return;
+    guard("before opening " + SceneDocument::nameOf(path) + "?", [this, path] { document_.requestOpen(path); });
+}
+
+void Toolbar::confirm(std::string title, std::string message, std::string confirmLabel, std::function<void()> action) {
+    if (prompting()) return;
+    confirmTitle_ = std::move(title);
+    confirmMessage_ = std::move(message);
+    confirmLabel_ = std::move(confirmLabel);
+    confirmAction_ = std::move(action);
+    open(Prompt::Confirm);
 }
 
 void Toolbar::open(Prompt prompt) {

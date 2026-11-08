@@ -1,6 +1,7 @@
 #include "Dev/SceneDocument.hpp"
 
 #include "Components/Actors.hpp"
+#include "Dev/AssetCatalog.hpp"
 #include "Dev/History.hpp"
 #include "Dev/Selection.hpp"
 #include "Platform/Assets.hpp"
@@ -16,32 +17,13 @@
 
 #include <algorithm>
 #include <exception>
-#include <initializer_list>
 #include <system_error>
 #include <utility>
 
 namespace cinder::Dev {
 namespace {
 
-std::filesystem::path contentRoot() { return cinder::Platform::projectRoot() / "Content"; }
-
-std::vector<std::string> listFiles(std::initializer_list<std::string_view> extensions) {
-    std::vector<std::string> files;
-    const std::filesystem::path root = contentRoot();
-    std::error_code error;
-    if (!std::filesystem::is_directory(root, error)) return files;
-
-    for (std::filesystem::recursive_directory_iterator it(
-                 root, std::filesystem::directory_options::skip_permission_denied, error), end;
-         !error && it != end; it.increment(error)) {
-        const std::string extension = it->path().extension().string();
-        if (std::find(extensions.begin(), extensions.end(), extension) == extensions.end()) continue;
-        if (!it->is_regular_file(error)) continue;
-        files.push_back(it->path().lexically_relative(root).generic_string());
-    }
-    std::sort(files.begin(), files.end());
-    return files;
-}
+std::filesystem::path contentRoot() { return AssetCatalog::root(); }
 
 }
 
@@ -191,9 +173,11 @@ std::string SceneDocument::nameOf(const std::filesystem::path& path) {
     return relative.generic_string();
 }
 
-std::vector<std::string> SceneDocument::listScenes() { return listFiles({EXTENSION, PREFAB_EXTENSION}); }
+std::vector<std::string> SceneDocument::listScenes() {
+    return AssetCatalog::scan({AssetKind::Scene, AssetKind::Prefab});
+}
 
-std::vector<std::string> SceneDocument::listPrefabs() { return listFiles({PREFAB_EXTENSION}); }
+std::vector<std::string> SceneDocument::listPrefabs() { return AssetCatalog::scan({AssetKind::Prefab}); }
 
 SceneDocument::Resolved SceneDocument::resolve(std::string_view name, std::string_view extension) {
     Resolved resolved;

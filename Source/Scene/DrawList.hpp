@@ -6,6 +6,7 @@
 #include <glm/vec2.hpp>
 #include <glm/vec4.hpp>
 
+#include <array>
 #include <string_view>
 
 namespace cinder::Scene {
@@ -13,6 +14,7 @@ namespace cinder::Scene {
 class DrawList {
 public:
     static constexpr int WHITE = 0;
+    static constexpr std::array<std::string_view, 3> PRIMITIVES = {"cube", "sphere", "capsule"};
 
     virtual ~DrawList() = default;
 

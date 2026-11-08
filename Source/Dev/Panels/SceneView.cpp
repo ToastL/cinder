@@ -1,6 +1,10 @@
 #include "Dev/Panels/SceneView.hpp"
 
+#include "Components/CameraComponent.hpp"
+#include "Components/SpriteComponent.hpp"
+#include "Components/StaticMeshComponent.hpp"
 #include "Core/Engine.hpp"
+#include "Dev/AssetDragDrop.hpp"
 #include "Dev/GizmoLines.hpp"
 #include "Dev/History.hpp"
 #include "Dev/Picking.hpp"
@@ -10,6 +14,11 @@
 #include "Scene/Actor.hpp"
 #include "Scene/SceneComponent.hpp"
 #include "Scene/Scene.hpp"
+#include "Scene/Transform.hpp"
+#include "Serial/Prefab.hpp"
+#include "Platform/Assets.hpp"
+#include "Platform/Log.hpp"
+#include "Reflect/Reflect.hpp"
 #include "UI/Core/ElementList.hpp"
 #include "UI/Framework/Application.hpp"
 #include "UI/Widgets/Border.hpp"
@@ -22,6 +31,8 @@
 
 #include <algorithm>
 #include <cmath>
+#include <exception>
+#include <filesystem>
 #include <string>
 
 namespace cinder::Dev::Panels {
@@ -55,6 +66,18 @@ bool flyKey(int key) {
 
 Color colorOf(glm::u8vec4 color) { return Color::srgb(color.r, color.g, color.b, color.a); }
 
+const cinder::Reflect::PropDef* textureProp(cinder::Scene::Component* component) {
+    if (component == nullptr) return nullptr;
+    if (dynamic_cast<cinder::Components::SpriteComponent*>(component) == nullptr
+        && dynamic_cast<cinder::Components::StaticMeshComponent*>(component) == nullptr) {
+        return nullptr;
+    }
+    for (const cinder::Reflect::PropDef& def : component->propList()) {
+        if (def.hint() == cinder::Reflect::PropHint::Texture) return &def;
+    }
+    return nullptr;
+}
+
 }
 
 class SceneView::Client final : public ViewportClient {
@@ -82,6 +105,11 @@ public:
     Reply onMouseWheel(const Geometry&, const PointerEvent& event) override { return view_.wheel(event); }
     Reply onKeyDown(const Geometry&, const KeyEvent& event) override { return view_.keyDown(event); }
     void onMouseCaptureLost() override { view_.captureLost(); }
+    void onDragLeave(const DragDropEvent&) override { view_.dragLeave(); }
+    Reply onDragOver(const Geometry& geometry, const DragDropEvent& event) override {
+        return view_.dragOver(geometry, event);
+    }
+    Reply onDrop(const Geometry& geometry, const DragDropEvent& event) override { return view_.drop(geometry, event); }
 
 private:
     SceneView& view_;
@@ -273,6 +301,9 @@ int SceneView::paint(const Geometry& geometry, ElementList& list, int layer) {
     GizmoStrokes strokes;
     frustumStrokes(strokes, sceneCameras(scene), canvas);
     colliderStrokes(strokes, scene, canvas);
+    if (dropTarget_) {
+        if (cinder::Scene::Object* target = scene.byId(*dropTarget_)) selectionStrokes(strokes, *target, canvas);
+    }
     if (cinder::Scene::Object* selected = selection_.resolve(scene)) {
         selectionStrokes(strokes, *selected, canvas);
         if (const std::optional<Gizmo> found = gizmo()) {
@@ -363,6 +394,73 @@ Reply SceneView::keyDown(const KeyEvent& event) {
         return Reply::handled();
     }
     return flyKey(event.key) ? Reply::handled() : Reply::unhandled();
+}
+
+bool SceneView::flatScene() {
+    const std::vector<cinder::Components::CameraComponent*> cameras = sceneCameras(engine_.scene());
+    return !cameras.empty()
+           && cameras.back()->projection() == cinder::Components::CameraComponent::Projection::Orthographic;
+}
+
+Reply SceneView::dragOver(const Geometry& geometry, const DragDropEvent& event) {
+    dropTarget_.reset();
+    const auto* asset = dynamic_cast<const AssetDragDrop*>(event.operation.get());
+    if (asset == nullptr || !editing() || !camera_.seeded()) return Reply::unhandled();
+    switch (asset->kind()) {
+        case AssetKind::Prefab:
+        case AssetKind::Scene:
+            return Reply::handled();
+        case AssetKind::Texture: {
+            const PickView view{camera_.camera().viewProjection(), geometry.local(event.position), extent_};
+            cinder::Scene::Component* hit = pick(engine_.scene(), view);
+            if (textureProp(hit) == nullptr) return Reply::unhandled();
+            dropTarget_ = hit->id();
+            return Reply::handled();
+        }
+        default:
+            return Reply::unhandled();
+    }
+}
+
+Reply SceneView::drop(const Geometry& geometry, const DragDropEvent& event) {
+    dropTarget_.reset();
+    const auto* asset = dynamic_cast<const AssetDragDrop*>(event.operation.get());
+    if (asset == nullptr || !editing() || !camera_.seeded()) return Reply::unhandled();
+    const PickView view{camera_.camera().viewProjection(), geometry.local(event.position), extent_};
+    cinder::Scene::Scene& scene = engine_.scene();
+    switch (asset->kind()) {
+        case AssetKind::Prefab: {
+            const DropPoint point = dropPoint(scene, view, flatScene());
+            history_.touch("Add " + std::filesystem::path(asset->path()).stem().string(), selection_.id());
+            cinder::Scene::Actor* actor = cinder::Serial::Prefab::instantiate(scene, asset->path(), nullptr);
+            if (actor == nullptr) return Reply::handled();
+            if (cinder::Scene::Transform* transform = actor->transform()) {
+                transform->setPosition(point.position.x, point.position.y, point.position.z);
+            }
+            selection_.select(actor->id(), true);
+            app_.setFocus(viewport_);
+            return Reply::handled();
+        }
+        case AssetKind::Texture: {
+            cinder::Scene::Component* hit = pick(scene, view);
+            const cinder::Reflect::PropDef* prop = textureProp(hit);
+            if (prop == nullptr) return Reply::unhandled();
+            history_.touch("Set Texture of " + hit->owner()->name(), selection_.id());
+            prop->writeText(hit->propTarget(), asset->path());
+            return Reply::handled();
+        }
+        case AssetKind::Scene:
+            if (content_.openScene) {
+                try {
+                    content_.openScene(cinder::Platform::contentPath(asset->path()));
+                } catch (const std::exception& error) {
+                    cinder::Platform::logError("[content] %s\n", error.what());
+                }
+            }
+            return Reply::handled();
+        default:
+            return Reply::unhandled();
+    }
 }
 
 void SceneView::captureLost() {

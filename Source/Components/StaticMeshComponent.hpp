@@ -31,8 +31,8 @@ public:
     }
 
     CINDER_COMPONENT(StaticMeshComponent, cinder::Scene::SceneComponent) {
-        CINDER_PROP(mesh_);
-        CINDER_PROP(texture_);
+        CINDER_PROP_MESH(mesh_);
+        CINDER_PROP_TEXTURE(texture_);
     }
 
 private:

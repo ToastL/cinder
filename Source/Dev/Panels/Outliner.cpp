@@ -1,5 +1,6 @@
 #include "Dev/Panels/Outliner.hpp"
 
+#include "Dev/AssetDragDrop.hpp"
 #include "Dev/History.hpp"
 #include "Dev/SceneDocument.hpp"
 #include "Dev/Selection.hpp"
@@ -73,6 +74,10 @@ Outliner::Outliner(Selection& selection, History& history, cinder::Scene::Scene&
             })
             .onCanAcceptDrop([this](const DragDropEvent& event, std::optional<ItemId> item,
                                     DropZone) -> std::optional<DropZone> {
+                if (AssetDragDrop::carried(event, AssetKind::Prefab) != nullptr) {
+                    if (!item) return DropZone::Onto;
+                    return scene_.actor(static_cast<int>(*item)) != nullptr ? std::optional(DropZone::Onto) : std::nullopt;
+                }
                 const auto* carried = dynamic_cast<const ItemDragDrop*>(event.operation.get());
                 if (carried == nullptr || carried->items().empty()) return std::nullopt;
                 Actor* dragged = scene_.actor(static_cast<int>(carried->items().front()));
@@ -82,6 +87,10 @@ Outliner::Outliner(Selection& selection, History& history, cinder::Scene::Scene&
                 return DropZone::Onto;
             })
             .onAcceptDrop([this](const DragDropEvent& event, std::optional<ItemId> item, DropZone) {
+                if (const AssetDragDrop* prefab = AssetDragDrop::carried(event, AssetKind::Prefab)) {
+                    place(prefab->path(), item ? std::optional<int>(static_cast<int>(*item)) : std::nullopt);
+                    return;
+                }
                 const auto* carried = dynamic_cast<const ItemDragDrop*>(event.operation.get());
                 if (carried == nullptr || carried->items().empty()) return;
                 attach(static_cast<int>(carried->items().front()),

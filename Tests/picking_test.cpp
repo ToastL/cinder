@@ -196,3 +196,54 @@ TEST_CASE("a pick reports the component that was hit, which may not be the root"
     mesh->setEnabled(false);
     CHECK(world.hitAt(CENTRE) == nullptr);
 }
+
+namespace {
+
+void look(World& world, const glm::mat4& placement) {
+    cinder::Scene::View view = world.camera.view();
+    view.world = placement;
+    world.camera.setView(view);
+}
+
+cinder::Dev::DropPoint dropAt(World& world, bool flat) {
+    return cinder::Dev::dropPoint(world.scene, PickView{world.camera.viewProjection(), CENTRE, SIZE}, flat);
+}
+
+}
+
+TEST_CASE("a drop lands on the surface under the cursor, ignoring camera markers") {
+    World world;
+    Actor* box = world.add("StaticMeshActor", -5.0f);
+    world.add("CameraActor", -3.0f);
+    const cinder::Dev::DropPoint point = dropAt(world, false);
+    CHECK(point.onto == box->rootComponent());
+    CHECK_FALSE(point.ground);
+    CHECK(point.position.z == doctest::Approx(-4.5f));
+}
+
+TEST_CASE("a drop that misses everything lands on the ground plane, z = 0 for a flat scene and y = 0 otherwise") {
+    World world;
+    look(world, glm::translate(glm::mat4(1.0f), glm::vec3(1.0f, 2.0f, 10.0f)));
+    const cinder::Dev::DropPoint flat = dropAt(world, true);
+    CHECK(flat.ground);
+    CHECK(flat.onto == nullptr);
+    CHECK(flat.position.x == doctest::Approx(1.0f));
+    CHECK(flat.position.y == doctest::Approx(2.0f));
+    CHECK(flat.position.z == doctest::Approx(0.0f).epsilon(1e-4));
+
+    look(world, glm::translate(glm::mat4(1.0f), glm::vec3(3.0f, 5.0f, 0.0f))
+                        * glm::rotate(glm::mat4(1.0f), glm::radians(-90.0f), glm::vec3(1.0f, 0.0f, 0.0f)));
+    const cinder::Dev::DropPoint ground = dropAt(world, false);
+    CHECK(ground.ground);
+    CHECK(ground.position.x == doctest::Approx(3.0f));
+    CHECK(ground.position.y == doctest::Approx(0.0f).epsilon(1e-4));
+    CHECK(ground.position.z == doctest::Approx(0.0f).epsilon(1e-3));
+}
+
+TEST_CASE("a drop with no surface and no ground in front of it lands a fixed distance along the ray") {
+    World world;
+    const cinder::Dev::DropPoint point = dropAt(world, false);
+    CHECK_FALSE(point.ground);
+    CHECK(point.onto == nullptr);
+    CHECK(point.position.z == doctest::Approx(-0.1f - cinder::Dev::FALLBACK_DROP_DISTANCE));
+}

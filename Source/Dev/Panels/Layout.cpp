@@ -1,6 +1,7 @@
 #include "Dev/Panels/Layout.hpp"
 
 #include "Dev/Panels/Console.hpp"
+#include "Dev/Panels/ContentBrowser.hpp"
 #include "Dev/Panels/Outliner.hpp"
 #include "Dev/Panels/Details.hpp"
 #include "Dev/Panels/SceneView.hpp"
@@ -16,16 +17,17 @@ namespace cinder::Dev::Panels {
 using namespace cinder::UI;
 
 std::shared_ptr<Widget> editorLayout(Toolbar& toolbar, SceneView& scene, Outliner& outliner, Details& details,
-                                     Console& console, TabManager& tabs) {
+                                     Console& console, ContentBrowser& content, TabManager& tabs) {
     tabs.registerTab("Scene", "Scene", [&scene] { return scene.widget(); }, false);
     tabs.registerTab("Outliner", "Outliner", [&outliner] { return outliner.widget(); });
     tabs.registerTab("Details", "Details", [&details] { return details.widget(); });
     tabs.registerTab("Console", "Console", [&console] { return console.widget(); });
+    tabs.registerTab("Content", "Content", [&content] { return content.widget(); });
     std::shared_ptr<Widget> area = tabs.restore(TabManager::split(
             Orientation::Horizontal,
             {TabManager::stack({"Outliner"}, 1.0f),
              TabManager::split(Orientation::Vertical,
-                               {TabManager::stack({"Scene"}, 3.0f), TabManager::stack({"Console"}, 1.0f)}, 4.0f),
+                               {TabManager::stack({"Scene"}, 3.0f), TabManager::stack({"Content", "Console"}, 1.4f)}, 4.0f),
              TabManager::stack({"Details"}, 1.4f)}));
     toolbar.setWindowMenu([&tabs](MenuBuilder& menu) { tabs.fillWindowMenu(menu); });
 

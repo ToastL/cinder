@@ -30,6 +30,10 @@ public:
     virtual void onMouseEnter(const Geometry& geometry, const PointerEvent& event) {}
     virtual void onMouseLeave(const PointerEvent& event) {}
     virtual void onMouseCaptureLost() {}
+    virtual void onDragEnter(const Geometry& geometry, const DragDropEvent& event) {}
+    virtual void onDragLeave(const DragDropEvent& event) {}
+    virtual Reply onDragOver(const Geometry& geometry, const DragDropEvent& event) { return Reply::unhandled(); }
+    virtual Reply onDrop(const Geometry& geometry, const DragDropEvent& event) { return Reply::unhandled(); }
     virtual Reply onKeyDown(const Geometry& geometry, const KeyEvent& event) { return Reply::unhandled(); }
     virtual Reply onKeyUp(const Geometry& geometry, const KeyEvent& event) { return Reply::unhandled(); }
     virtual Reply onKeyChar(const Geometry& geometry, const CharEvent& event) { return Reply::unhandled(); }
@@ -65,6 +69,10 @@ public:
     void onMouseEnter(const Geometry& geometry, const PointerEvent& event) override;
     void onMouseLeave(const PointerEvent& event) override;
     void onMouseCaptureLost() override;
+    void onDragEnter(const Geometry& geometry, const DragDropEvent& event) override;
+    void onDragLeave(const DragDropEvent& event) override;
+    Reply onDragOver(const Geometry& geometry, const DragDropEvent& event) override;
+    Reply onDrop(const Geometry& geometry, const DragDropEvent& event) override;
     Reply onKeyDown(const Geometry& geometry, const KeyEvent& event) override;
     Reply onKeyUp(const Geometry& geometry, const KeyEvent& event) override;
     Reply onKeyChar(const Geometry& geometry, const CharEvent& event) override;

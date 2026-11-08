@@ -1,6 +1,7 @@
 #include "Components/Actors.hpp"
 #include "Core/Engine.hpp"
 #include "Core/GameLoop.hpp"
+#include "Dev/AssetCatalog.hpp"
 #include "Dev/EditorShell.hpp"
 #include "Dev/History.hpp"
 #include "Dev/Manipulator.hpp"
@@ -9,6 +10,7 @@
 #include "Dev/PlaySession.hpp"
 #include "Dev/SceneDocument.hpp"
 #include "Dev/Selection.hpp"
+#include "Dev/Panels/ContentBrowser.hpp"
 #include "Dev/Panels/Outliner.hpp"
 #include "Dev/Panels/SceneView.hpp"
 #include "Dev/Panels/Toolbar.hpp"
@@ -22,6 +24,7 @@
 #include "UI/Docking/DockTab.hpp"
 #include "UI/Docking/TabManager.hpp"
 #include "UI/Framework/Application.hpp"
+#include "UI/Widgets/TileView.hpp"
 #include "UI/Widgets/TreeView.hpp"
 
 #include <GLFW/glfw3.h>
@@ -113,8 +116,14 @@ void exercise() {
     using cinder::Serial::SceneCodec;
 
     const auto output = std::filesystem::path(CINDER_BINARY_DIR) / "graphics-smoke";
-    std::filesystem::create_directories(output);
-    cinder::Platform::setProjectRoot(std::filesystem::path(CINDER_SOURCE_DIR) / "Samples/sandbox3d");
+    const auto project = output / "project";
+    std::filesystem::remove_all(project);
+    std::filesystem::create_directories(project / "Content" / "Prefabs");
+    cinder::Platform::writeTextFile(project / "Content" / "Prefabs" / "crate.prefab",
+                                    "version 6\nactors {\n    StaticMeshActor {\n        id 1\n        name \"Crate\"\n"
+                                    "        components {\n            StaticMeshComponent {\n                id 2\n"
+                                    "            }\n        }\n    }\n}\n");
+    cinder::Platform::setProjectRoot(project);
     cinder::Core::ProjectConfig config("Cinder graphics smoke", 1100, 700, "", 60);
     cinder::Core::Engine engine(config);
     auto& scene = engine.scene();
@@ -268,6 +277,32 @@ void exercise() {
     require(SceneCodec::save(scene) == edited, "Reopening the saved scene did not restore it");
     require(document.path() == output / "saved.scene" && !history.dirty(), "Reopening did not adopt the file");
 
+    Panels::ContentBrowser& content = shell.content();
+    require(tabs.isActive("Content"), "The Content Browser is not showing");
+    content.navigate("Prefabs");
+    frames(2);
+    const std::shared_ptr<cinder::UI::Tile> tile =
+            content.tiles()->tileFor(cinder::Dev::AssetCatalog::idOf("Prefabs/crate.prefab"));
+    require(tile != nullptr, "The Content Browser has no tile for the prefab");
+    const std::size_t actors = scene.roots().size();
+    const glm::vec2 from = centerOf(app, tile);
+    driver.move(from);
+    driver.press();
+    driver.move(from + glm::vec2(14.0f, 6.0f));
+    frames(1);
+    require(app.dragDrop() != nullptr, "Dragging a prefab tile did not start a drag");
+    driver.move(centerOf(app, view.viewport()));
+    frames(1);
+    driver.release();
+    frames(2);
+    require(scene.roots().size() == actors + 1, "Dropping a prefab in the Scene view did not place it");
+    const cinder::Scene::Actor* instance = selection.actor(scene);
+    require(instance != nullptr && instance->prefab() == "Prefabs/crate.prefab", "The placed prefab is not selected");
+    require(history.dirty(), "Placing a prefab was not recorded");
+    driver.chord(keys::letter('z'));
+    frames(2);
+    require(scene.roots().size() == actors, "Undo did not remove the placed prefab");
+
     const std::shared_ptr<cinder::UI::TabStack> stack = tabs.stackWidget(tabs.stackOf("Console"));
     require(stack != nullptr, "The docked layout lost the console's stack");
     const glm::vec2 consoleTab = centerOf(app, stack->tabWidget("Console"));
@@ -280,7 +315,8 @@ void exercise() {
     driver.release();
     frames(2);
     require(tabs.isOpen("Console"), "Re-docking the console closed it");
-    require(tabs.stackCount() == 3, "Re-docking the console did not join the Scene stack");
+    require(tabs.stackOf("Console") == tabs.stackOf("Scene"), "Re-docking the console did not join the Scene stack");
+    require(tabs.stackCount() == 4, "Re-docking the console took the Content Browser's stack with it");
 
     for (int width : {900, 1200, 1100}) {
         glfwSetWindowSize(engine.window().handle(), width, 700);

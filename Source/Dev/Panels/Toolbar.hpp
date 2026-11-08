@@ -50,6 +50,8 @@ public:
     void requestOpen();
     void requestSaveAs();
     void requestSavePrefab(int actor);
+    void requestOpenScene(const std::filesystem::path& path);
+    void confirm(std::string title, std::string message, std::string confirmLabel, std::function<void()> action);
     bool closeConfirmed() const { return closeConfirmed_; }
     bool prompting() const { return prompting_ != Prompt::None; }
 
@@ -65,7 +67,7 @@ public:
     static const cinder::UI::Command& compile();
 
 private:
-    enum class Prompt : std::uint8_t { None, Unsaved, Packaging, OpenScene, SaveAs, SavePrefab };
+    enum class Prompt : std::uint8_t { None, Unsaved, Packaging, OpenScene, SaveAs, SavePrefab, Confirm };
 
     struct Pending {
         std::string verb;
@@ -100,6 +102,11 @@ private:
     std::shared_ptr<OpenSceneDialog> openPrompt_;
     std::shared_ptr<SaveSceneDialog> saveAsPrompt_;
     std::shared_ptr<SaveSceneDialog> savePrefabPrompt_;
+    std::shared_ptr<cinder::UI::Widget> confirmPrompt_;
+    std::string confirmTitle_;
+    std::string confirmMessage_;
+    std::string confirmLabel_;
+    std::function<void()> confirmAction_;
     int prefabSource_ = 0;
     std::function<void(cinder::UI::MenuBuilder&)> windowMenu_;
     Prompt prompting_ = Prompt::None;

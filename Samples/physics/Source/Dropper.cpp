@@ -8,7 +8,7 @@ public:
         CINDER_PROP(interval_);
         CINDER_PROP(lifetime_);
         CINDER_PROP(spread_);
-        CINDER_PROP(prefab_);
+        CINDER_PROP_PREFAB(prefab_);
     }
 
     void beginPlay() override {

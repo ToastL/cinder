@@ -1,10 +1,12 @@
 #pragma once
 
+#include "Dev/AssetCatalog.hpp"
 #include "Dev/History.hpp"
 #include "Dev/PlaySession.hpp"
 #include "Dev/SceneDocument.hpp"
 #include "Dev/Selection.hpp"
 #include "Dev/Panels/Console.hpp"
+#include "Dev/Panels/ContentBrowser.hpp"
 #include "Dev/Panels/Outliner.hpp"
 #include "Dev/Panels/Details.hpp"
 #include "Dev/Panels/SceneView.hpp"
@@ -44,6 +46,8 @@ public:
     Panels::Outliner& outliner() { return outliner_; }
     Panels::Details& details() { return details_; }
     Panels::Console& console() { return console_; }
+    Panels::ContentBrowser& content() { return content_; }
+    AssetCatalog& catalog() { return catalog_; }
     cinder::UI::TabManager& tabs() { return tabs_; }
 
 private:
@@ -53,6 +57,7 @@ private:
     Selection selection_;
     History history_;
     SceneDocument document_;
+    AssetCatalog catalog_;
     cinder::Text::FontSet fonts_;
     cinder::UI::WindowPlatform platform_;
     cinder::UI::Application app_;
@@ -61,6 +66,7 @@ private:
     Panels::Outliner outliner_;
     Panels::Details details_;
     Panels::Console console_;
+    Panels::ContentBrowser content_;
     cinder::UI::TabManager tabs_;
 };
 

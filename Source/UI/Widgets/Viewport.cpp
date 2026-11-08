@@ -49,6 +49,22 @@ void Viewport::onMouseCaptureLost() {
     if (client_) client_->onMouseCaptureLost();
 }
 
+void Viewport::onDragEnter(const Geometry& geometry, const DragDropEvent& event) {
+    if (client_) client_->onDragEnter(geometry, event);
+}
+
+void Viewport::onDragLeave(const DragDropEvent& event) {
+    if (client_) client_->onDragLeave(event);
+}
+
+Reply Viewport::onDragOver(const Geometry& geometry, const DragDropEvent& event) {
+    return client_ ? client_->onDragOver(geometry, event) : Reply::unhandled();
+}
+
+Reply Viewport::onDrop(const Geometry& geometry, const DragDropEvent& event) {
+    return client_ ? client_->onDrop(geometry, event) : Reply::unhandled();
+}
+
 Reply Viewport::onKeyDown(const Geometry& geometry, const KeyEvent& event) {
     return client_ ? client_->onKeyDown(geometry, event) : Reply::unhandled();
 }

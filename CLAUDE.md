@@ -80,9 +80,11 @@ DYLD_LIBRARY_PATH=/opt/homebrew/lib $B/graphics_smoke
 
 It runs the editor's own UI and drives it with injected input: it clicks an actor in the Outliner, drags
 a move gizmo in the Scene view, undoes and redoes with ⌘Z, saves a scene, plays and stops with ⌘P,
-cycles Play/Pause/Step/Resume/Stop and a game-side quit, re-docks the console onto the Scene
-stack, resizes the window and scene targets, and captures both the window and the composited view. Its
-output stays in `Intermediate/macOS/<Config>/graphics-smoke/`; it never saves over a sample project.
+cycles Play/Pause/Step/Resume/Stop and a game-side quit, drags a prefab tile from the Content Browser
+into the Scene view and undoes it, re-docks the console onto the Scene stack, resizes the window and
+scene targets, and captures both the window and the composited view. Its output — and the throwaway
+project it opens, whose one prefab is engine-only — stays in `Intermediate/macOS/<Config>/graphics-smoke/`;
+it never saves over a sample project.
 On other platforms omit the Apple-specific library path.
 
 ```bash
@@ -91,7 +93,7 @@ DYLD_LIBRARY_PATH=/opt/homebrew/lib $B/editor Samples/sandbox2d
 
 `editor` is the **dev build** — the same engine plus the editor UI, which is our own (see *The UI
 framework*): one window of docked tabs, the Outliner on the left, the Scene view in the middle with
-the console under it and Details on the right, over a toolbar carrying the File, Edit, Window, Play and
+the Content Browser and the console under it and Details on the right, over a toolbar carrying the File, Edit, Window, Play and
 Platforms menus. Drag a tab to another stack's middle or edge to re-dock it, close it, and reopen it from
 the Window menu. It opens a project in **Edit mode**: the scene is loaded and drawn, and no game code
 runs. Play/Pause/Step/Stop are on the toolbar and on ⌘P, ⌘⇧P and ⌘⌥P; ⌘N, ⌘O, ⌘S and ⌘⇧S start, open,
@@ -986,6 +988,14 @@ click expands or calls `onMouseButtonDoubleClick`; a right press selects and ope
 `onContextMenuOpening` at the pointer; arrow keys move the selection, expand and collapse, and
 `reveal` expands an item's ancestors and scrolls it into view.
 
+**A `TileView` is the same idea laid out as a grid**, for the Content Browser: it takes `itemsSource`,
+fits as many `tileSize` columns as the width allows, realizes only the rows in view and keeps a
+visible item's tile across frames. It shares the tree's `ItemId`, `SelectInfo` and `ItemDragDrop`; a
+press selects and arms a drag, a double click or Enter activates, the arrows move by a tile or a row,
+and a drop lands on a tile or on the empty space, with no above or below zones. `UI::DropTarget` wraps
+any widget as a drop zone with an accept test, outlined in `Color.Primary` while an acceptable drag
+hovers it.
+
 **Drag and drop is the `Application`'s, like popups.** `Reply::beginDragDrop(operation)` from
 `onDragDetected` starts it; while it runs, moves route `onDragEnter`/`onDragOver`/`onDragLeave` to the
 widgets under the pointer and the release routes `onDrop`, with the operation's `decorator()` painted
@@ -1067,8 +1077,17 @@ selects with `reveal`, so the Outliner expands the actor's ancestors and scrolls
 clears the selection. A press on a gizmo handle comes first: it drags the handle, and its release never
 picks — see *Transform gizmos*.
 
+**The Scene view takes drops from the Content Browser**, in Edit mode only, because the drop is placed
+through the editor camera. `ViewportClient` gains the four drag hooks and `Viewport` forwards them. A
+**prefab** is instantiated at the root at `Dev/Picking`'s `dropPoint`, as one undo step, and selected:
+the point on the nearest mesh or sprite under the cursor, camera markers skipped; else where the ray
+meets the ground — `z = 0` when the scene's camera is orthographic, `y = 0` otherwise — within
+`MAX_DROP_DISTANCE`; else `FALLBACK_DROP_DISTANCE` along the ray. A **texture** is written through the
+`PropHint::Texture` prop of the sprite or mesh under the cursor, which gets the selection outline while
+the drag hovers it. A **scene** opens, guarded like File → Open.
+
 `Dev/Panels/Layout` builds the default dock layout — the Outliner left, the Scene view in the middle
-with the console under it, Details right — as a `TabManager` layout of splits and stacks, and hands
+with the Content Browser and the console stacked under it, Details right — as a `TabManager` layout of splits and stacks, and hands
 the toolbar the Window menu that reopens a closed tab.
 
 ### The editor camera
@@ -1247,8 +1266,44 @@ popup for a name and a type. Every attribute number is edited as a float, intege
 saved `40` to `40.5`. Writes go through `Actor::setAttribute`, so an edit during Play fires the game's
 changed signals.
 
+An **asset field** is what a string prop declared with `CINDER_PROP_TEXTURE`, `CINDER_PROP_MESH` or
+`CINDER_PROP_PREFAB` gets in place of a text box: a combo showing the file's stem, or None, whose menu
+lists every asset of that kind under `Content/` — the primitives in `DrawList::PRIMITIVES`, for a mesh —
+with the current one checked; a **Browse** button that reveals it in the Content Browser; and a
+`UI::DropTarget` that takes a dragged tile of the matching kind. The value is still the path relative to
+`Content/`, written through `PropDef::writeText`, so the scene file, `propChanged` and undo are unchanged.
+
 Every edit either panel or a gizmo makes is undoable and marks the scene dirty — see *Undo, redo and unsaved
 changes*.
+
+### The Content Browser
+
+`Dev/Panels/ContentBrowser` is the "Content" tab, stacked with the console: a folder `TreeView` beside a
+`TileView` of the open folder's subfolders then its files, under a header of breadcrumbs, a "+" with New
+Folder and a search box that turns the grid into a flat list of every file whose name matches. A texture
+tile shows the texture itself through a `Brush` image, which `UiRenderer` loads by content path; other
+kinds get a rounded swatch coloured by kind with the extension on it. A double click or Enter opens a
+folder, or a scene or prefab through `Toolbar::requestOpenScene`, which is File → Open's guard. Its
+context menus offer Open, Show in Finder (`open -R`, `xdg-open` on the parent elsewhere), Copy Path, New
+Folder and **Delete…**, and Delete or Backspace delete the selected tile. Delete asks first through
+`Toolbar::confirm`, a generic Delete / Cancel `Dialog` in the prompt overlay, removes a folder with
+everything in it, is outside History, and refuses the open scene, a folder holding it, and anything
+outside `Content/`. **Rename and move are left out on purpose**: a scene names an asset by its path, so
+either would break every reference until GUIDs exist. Dragging a tile other than a folder carries a
+`Dev/AssetDragDrop` — a path and an `AssetKind` — which the Scene view, the Outliner and Details' asset
+fields accept; a prefab dropped on an Outliner row is placed attached to that actor, and below the rows
+at the root, through `Outliner::place`.
+
+It knows nothing of the toolbar or the shell: they reach it through `Dev/ContentActions`, callbacks
+`EditorShell` fills — `openScene`, `confirm`, `reveal`, `openPath` and `enabled`, which is Edit mode with
+no prompt open — the pattern `PrefabActions` set, and the Scene view and Details take the same struct.
+
+`Dev/AssetCatalog` is the scan under it, with no UI: every folder and file under `Content/`, hidden ones
+skipped, each with an `AssetKind` from its extension and an id that is the FNV-1a hash of its path, so a
+tile, a tree row, the selection and the expansion survive a rescan. `refresh` rescans and bumps
+`revision` only when the listing changed; `poll`, which the panel calls every frame, rescans at most once
+a `POLL_INTERVAL`, which is how files added outside the editor appear. `SceneDocument::listScenes` and
+`listPrefabs` are `AssetCatalog::scan` over the same walk.
 
 ### Undo, redo and unsaved changes
 
@@ -1471,7 +1526,9 @@ CINDER_COMPONENT(CameraComponent, cinder::Scene::SceneComponent) {
 
 `CINDER_PROP_R` adds a clamp range, `CINDER_PROP_S` a range and a drag step, and `CINDER_PROP_COLOR`
 marks a `vec3`/`vec4` as a colour through `PropHint`, and `CINDER_PROP_ANGLE` marks radians to show in
-degrees. Only Details reads the step and the hint; neither changes how a prop is written or saved, and
+degrees. `CINDER_PROP_TEXTURE`, `CINDER_PROP_MESH` and `CINDER_PROP_PREFAB` mark a string as naming an
+asset, which Details edits with an asset field and the Scene view's texture drop looks for. Only
+Details reads the step and the hint; neither changes how a prop is written or saved, and
 neither a colour nor an angle is clamped.
 
 **A reference is a prop too.** `Scene::Ref<T>` holds an actor's or a component's id and nothing else, and

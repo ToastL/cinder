@@ -1,5 +1,6 @@
 #pragma once
 
+#include "Dev/ContentActions.hpp"
 #include "Dev/PrefabActions.hpp"
 #include "Reflect/PropDef.hpp"
 #include "UI/Core/Widget.hpp"
@@ -43,6 +44,7 @@ public:
     void update();
     void rebuild();
     void setPrefabActions(PrefabActions actions) { prefabs_ = std::move(actions); }
+    void setContentActions(ContentActions actions) { content_ = std::move(actions); }
 
 private:
     cinder::Scene::Actor* actor() const;
@@ -62,6 +64,7 @@ private:
     std::shared_ptr<cinder::UI::Widget> editorFor(const cinder::Reflect::PropDef& def, Target target);
     std::shared_ptr<cinder::UI::Widget> colorEditorFor(const cinder::Reflect::PropDef& def, Target target);
     std::shared_ptr<cinder::UI::Widget> refEditorFor(const cinder::Reflect::PropDef& def, Target target);
+    std::shared_ptr<cinder::UI::Widget> assetEditorFor(const cinder::Reflect::PropDef& def, Target target);
     cinder::Scene::Object* referenced(const cinder::Reflect::PropDef& def, Target target) const;
     std::string referenceLabel(const cinder::Scene::Object* object) const;
 
@@ -91,6 +94,7 @@ private:
     std::string newKind_ = "Number";
     std::string link_;
     PrefabActions prefabs_;
+    ContentActions content_;
 };
 
 }

@@ -35,8 +35,8 @@ view, the editor camera, the Outliner, Details, picking, undo and transform gizm
 
 - [x] The editor's UI is our own — see *UI framework*. `editor` is the dev build on the `Dev` module;
       `player` never links it, and `cbt test`'s `shipping` check runs `nm` over it.
-- [x] Docking layout: the Scene view, Outliner, Details and Console as tabs in splits, with
-      drag-to-redock and a Window menu; the asset browser docks into it when it lands.
+- [x] Docking layout: the Scene view, Outliner, Details, Console and Content Browser as tabs in
+      splits, with drag-to-redock and a Window menu.
 - [x] **Scene view** — `Dev/Panels/SceneView`. The target is sized to the panel through
       `Renderer::setViewportSize` and drawn as an opaque image element, and `engine.mousePosition()`
       is relative to the panel's top-left.
@@ -53,7 +53,9 @@ view, the editor camera, the Outliner, Details, picking, undo and transform gizm
 - [x] Details: an actor-reference widget — a combo of the objects a `Ref` accepts, a Pick eyedropper
       that takes the next Scene view or Outliner click, and Go to select the target
 - [ ] Details: a filter in the reference menu, and an id or path beside duplicate names
-- [ ] Details: an asset-reference widget for texture, mesh and prefab names
+- [x] Details: an asset-reference widget — `CINDER_PROP_TEXTURE`, `_MESH` and `_PREFAB` give a
+      string prop a combo of the matching assets (the primitives, for a mesh), a Browse button that
+      reveals it in the Content Browser, and a drop target for a dragged tile
 - [ ] Details: rename, reorder and reattach components by dragging, and set the root
 - [x] **Gizmos** — `Dev/Manipulator` moves along world or local axes and planes, rotates on gimbal
       rings that each turn one Euler angle, and scales along local axes or uniformly; ⌘ snaps and
@@ -268,7 +270,16 @@ includes `Scene`, `Reflect` or `Gfx` — the reflection-driven Details panel liv
       runtime HLSL path behind a debug flag would restore the edit-and-restart loop — and it would
       have to compile to whichever format the live backend loads, not just SPIR-V.
 - [ ] Mesh import
-- [ ] Asset browser panel with thumbnails
+- [x] **Content Browser** — `Dev/Panels/ContentBrowser` over `Dev/AssetCatalog`: a folder tree beside
+      a virtualized `UI::TileView`, breadcrumbs, a recursive search, New Folder, Show in Finder, Copy
+      Path and a confirmed Delete. Tiles drag into the Scene view (a prefab placed under the cursor,
+      a texture onto the sprite or mesh under it), onto an Outliner row and into Details' asset fields
+- [ ] Content Browser: rename and move — wait for GUIDs, because both break every scene naming the path
+- [ ] Content Browser: rendered thumbnails for prefabs, scenes and meshes — textures show themselves
+      today, stretched to a square, and every texture a tile shows stays loaded, since `Assets` never
+      frees
+- [ ] Content Browser: watch `Content/` instead of rescanning it once a second
+- [ ] Content Browser: multi-select tiles, and drag several at once
 
 ## Gameplay systems
 
