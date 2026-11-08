@@ -60,6 +60,7 @@ Reply Button::onMouseUp(const Geometry& geometry, const PointerEvent& event) {
     if (event.button != cinder::Platform::buttons::LEFT) return Reply::unhandled();
     const bool clicked = pressed_ && geometry.contains(event.position);
     pressed_ = false;
+    if (clicked && hasMouseCapture()) Application::get().releaseCapture();
     Reply reply = clicked ? click() : Reply::handled();
     if (!reply.isHandled()) reply = Reply::handled();
     return reply.releaseMouseCapture();
