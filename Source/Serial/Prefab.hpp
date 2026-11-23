@@ -20,6 +20,8 @@ public:
     static const cinder::Scene::Actor* rootOf(const cinder::Scene::Object& object);
     static const cinder::Scene::Object* baseline(const cinder::Scene::Scene& scene,
                                                  const cinder::Scene::Object& object);
+    static const void* propBaseline(const cinder::Scene::Scene& scene,
+                                    const cinder::Scene::Object& object, bool transform);
     static bool missing(const cinder::Scene::Scene& scene, const cinder::Scene::Actor& root);
 
     static std::string refusal(cinder::Scene::Scene& scene, const cinder::Scene::Actor& actor,

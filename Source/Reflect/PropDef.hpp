@@ -74,5 +74,7 @@ private:
 using PropList = std::vector<PropDef>;
 
 void copyProps(const PropList& defs, const void* from, void* to);
+void copyProp(const PropDef& def, const void* from, void* to);
+bool sameProp(const PropDef& def, const void* a, const void* b);
 
 }

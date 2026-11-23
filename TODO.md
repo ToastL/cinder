@@ -218,7 +218,11 @@ never includes `Scene`, `Reflect` or `Gfx` — the reflection-driven Details pan
       refuses it
 - [ ] Prefabs: Apply as an undo step — it writes the file, saves the scene and drops the history
       today
-- [ ] Prefabs: mark overridden props in Details, with a revert per prop
+- [x] Prefabs: mark overridden props in Details, with a revert per prop — `Reflect::sameProp`
+      against `Prefab::propBaseline` lights a bar in `Color.Primary` beside the row and offers
+      "Revert to prefab" on right-click; the revert goes through `PropDef` and `History::touch`, so
+      it undoes like any other edit. Ref props are skipped (a per-instance id mismatch is not an
+      override).
 - [ ] Prefabs: an instance cannot reattach the components the prefab supplies
 - [ ] Tags — one class driving every actor carrying a tag, like Unreal's actor tags
 - [ ] Attach to a named component or socket of the parent actor — attachment is always to the

@@ -91,6 +91,14 @@ const Object* Prefab::baseline(const Scene& scene, const Object& object) {
     return source != nullptr ? source->scene()->byId(object.prefabId()) : nullptr;
 }
 
+const void* Prefab::propBaseline(const Scene& scene, const Object& object, bool transform) {
+    const Object* source = baseline(scene, object);
+    if (source == nullptr) return nullptr;
+    if (!transform) return source->propTarget();
+    const auto* placed = dynamic_cast<const cinder::Scene::SceneComponent*>(source);
+    return placed != nullptr ? static_cast<const void*>(&placed->transform()) : nullptr;
+}
+
 bool Prefab::missing(const Scene& scene, const Actor& root) { return cached(scene, root.prefab()) == nullptr; }
 
 std::string Prefab::refusal(Scene& scene, const Actor& actor, std::string_view path) {

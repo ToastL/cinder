@@ -33,6 +33,7 @@ namespace cinder::Dev::Panels {
 class Details {
 public:
     using Target = std::function<void*()>;
+    using Baseline = std::function<const void*()>;
 
     Details(Selection& selection, History& history, cinder::Scene::Scene& scene, cinder::UI::Application& app);
 
@@ -58,7 +59,10 @@ private:
     std::shared_ptr<cinder::UI::Widget> addComponentMenu(int actor);
     void addComponent(int actor, const std::string& className);
     void removeComponent(int component);
-    std::shared_ptr<cinder::UI::Widget> rows(const cinder::Reflect::PropList& defs, Target target);
+    std::shared_ptr<cinder::UI::Widget> rows(const cinder::Reflect::PropList& defs, Target target,
+                                             Baseline baseline = {});
+    std::shared_ptr<cinder::UI::Widget> propertyRow(const cinder::Reflect::PropDef& def, Target target,
+                                                    Baseline baseline);
     std::shared_ptr<cinder::UI::Widget> row(std::string label, std::shared_ptr<cinder::UI::Widget> editor,
                                             std::shared_ptr<cinder::UI::Widget> trailing = nullptr);
     std::shared_ptr<cinder::UI::Widget> editorFor(const cinder::Reflect::PropDef& def, Target target);

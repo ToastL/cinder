@@ -6,25 +6,52 @@
 
 namespace cinder::Reflect {
 
-void copyProps(const PropList& defs, const void* from, void* to) {
+void copyProp(const PropDef& def, const void* from, void* to) {
     float values[4]{};
-    for (const PropDef& def : defs) {
-        switch (def.type()) {
-            case PropType::Bool:
-                def.writeBool(to, def.readBool(from));
-                break;
-            case PropType::Int:
-            case PropType::Ref:
-                def.writeInt(to, def.readInt(from));
-                break;
-            case PropType::String:
-            case PropType::Enum:
-                def.writeText(to, def.readText(from));
-                break;
-            default:
-                def.read(from, values);
-                def.write(to, values);
-                break;
+    switch (def.type()) {
+        case PropType::Bool:
+            def.writeBool(to, def.readBool(from));
+            break;
+        case PropType::Int:
+        case PropType::Ref:
+            def.writeInt(to, def.readInt(from));
+            break;
+        case PropType::String:
+        case PropType::Enum:
+            def.writeText(to, def.readText(from));
+            break;
+        default:
+            def.read(from, values);
+            def.write(to, values);
+            break;
+    }
+}
+
+void copyProps(const PropList& defs, const void* from, void* to) {
+    for (const PropDef& def : defs) copyProp(def, from, to);
+}
+
+bool sameProp(const PropDef& def, const void* a, const void* b) {
+    if (a == nullptr || b == nullptr) return a == b;
+    switch (def.type()) {
+        case PropType::Bool:
+            return def.readBool(a) == def.readBool(b);
+        case PropType::Int:
+        case PropType::Ref:
+            return def.readInt(a) == def.readInt(b);
+        case PropType::String:
+        case PropType::Enum:
+            return def.readText(a) == def.readText(b);
+        default: {
+            float va[4]{};
+            float vb[4]{};
+            def.read(a, va);
+            def.read(b, vb);
+            const int count = def.arity();
+            for (int i = 0; i < count; ++i) {
+                if (va[i] != vb[i]) return false;
+            }
+            return true;
         }
     }
 }

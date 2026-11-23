@@ -408,13 +408,52 @@ std::shared_ptr<Widget> Details::editorFor(const PropDef& def, Target target) {
     }
 }
 
-std::shared_ptr<Widget> Details::rows(const PropList& defs, Target target) {
+std::shared_ptr<Widget> Details::rows(const PropList& defs, Target target, Baseline baseline) {
     auto list = make<VerticalBox>();
     for (const PropDef& def : defs) {
         list + VerticalBox::slot().autoHeight().padding(Margin(0.0f, 0.0f, 0.0f, 3.0f))
-                       [row(std::string(def.label()), editorFor(def, target))];
+                       [propertyRow(def, target, baseline)];
     }
     return list;
+}
+
+std::shared_ptr<Widget> Details::propertyRow(const PropDef& def, Target target, Baseline baseline) {
+    const PropDef* prop = &def;
+    auto body = row(std::string(def.label()), editorFor(def, target));
+    if (!baseline || def.type() == cinder::Reflect::PropType::Ref) return body;
+    auto overridden = [prop, target, baseline] {
+        const void* ref = baseline();
+        void* at = target();
+        return ref != nullptr && at != nullptr && !cinder::Reflect::sameProp(*prop, at, ref);
+    };
+    auto marker = make<SizeBox>()
+            .widthOverride(3.0f)
+            [make<Border>()
+                    .padding(Margin(0.0f))
+                    .brush(Attribute<Brush>([overridden] {
+                        return overridden() ? Brush::color(Application::get().theme().color("Color.Primary"))
+                                            : Brush::none();
+                    }))];
+    auto laid = make<HorizontalBox>()
+            + HorizontalBox::slot().autoWidth().padding(Margin(0.0f, 1.0f, 4.0f, 1.0f))[marker]
+            + HorizontalBox::slot().fill(1.0f)[body];
+    return make<Border>()
+            .padding(Margin(0.0f))
+            .onMouseDown([this, prop, target, baseline, overridden](const Geometry&,
+                                                                    const PointerEvent& event) {
+                if (event.button != cinder::Platform::buttons::RIGHT) return Reply::unhandled();
+                if (!overridden()) return Reply::unhandled();
+                MenuBuilder menu;
+                menu.entry("Revert to prefab", [this, prop, target, baseline] {
+                    const void* ref = baseline();
+                    void* at = target();
+                    if (ref == nullptr || at == nullptr) return;
+                    touched();
+                    cinder::Reflect::copyProp(*prop, ref, at);
+                });
+                showContextMenu(menu.build(), event.position);
+                return Reply::handled();
+            })[laid];
 }
 
 std::shared_ptr<Widget> Details::attributeEditor(int id, const std::string& name) {
@@ -721,6 +760,10 @@ std::shared_ptr<Widget> Details::body(Actor& owner) {
     const int id = owner.id();
     const std::string type(scene_.types().nameOf(owner));
     const Target self = [this, id]() -> void* { return targetOf(id, false); };
+    const Baseline selfBaseline = [this, id]() -> const void* {
+        const cinder::Scene::Object* object = scene_.byId(id);
+        return object != nullptr ? cinder::Serial::Prefab::propBaseline(scene_, *object, false) : nullptr;
+    };
 
     auto column = make<VerticalBox>()
             + VerticalBox::slot().autoHeight()
@@ -753,7 +796,7 @@ std::shared_ptr<Widget> Details::body(Actor& owner) {
                      [make<ExpandableArea>()
                               .areaTitle(type.empty() ? "Actor" : type)
                               .padding(Margin(6.0f, 6.0f))
-                              .bodyContent(rows(owner.propList(), self))];
+                              .bodyContent(rows(owner.propList(), self, selfBaseline))];
     column + VerticalBox::slot().autoHeight().padding(Margin(0.0f, 0.0f, 0.0f, 4.0f))
                      [make<ExpandableArea>()
                               .areaTitle("Components")
@@ -765,20 +808,29 @@ std::shared_ptr<Widget> Details::body(Actor& owner) {
         const std::string componentType(scene_.types().nameOf(*component));
         if (component->asSceneComponent() != nullptr) {
             const Target transform = [this, componentId]() -> void* { return targetOf(componentId, true); };
+            const Baseline transformBaseline = [this, componentId]() -> const void* {
+                const cinder::Scene::Object* object = scene_.byId(componentId);
+                return object != nullptr ? cinder::Serial::Prefab::propBaseline(scene_, *object, true) : nullptr;
+            };
             column + VerticalBox::slot().autoHeight().padding(Margin(0.0f, 0.0f, 0.0f, 4.0f))
                              [make<ExpandableArea>()
                                       .areaTitle("Transform")
                                       .padding(Margin(6.0f, 6.0f))
-                                      .bodyContent(rows(cinder::Reflect::props<cinder::Scene::Transform>(), transform))];
+                                      .bodyContent(rows(cinder::Reflect::props<cinder::Scene::Transform>(), transform,
+                                                        transformBaseline))];
         }
         const Target props = [this, componentId]() -> void* { return targetOf(componentId, false); };
+        const Baseline propsBaseline = [this, componentId]() -> const void* {
+            const cinder::Scene::Object* object = scene_.byId(componentId);
+            return object != nullptr ? cinder::Serial::Prefab::propBaseline(scene_, *object, false) : nullptr;
+        };
         const std::string title = component->name() == componentType ? componentType
                                                                      : component->name() + " (" + componentType + ")";
         column + VerticalBox::slot().autoHeight().padding(Margin(0.0f, 0.0f, 0.0f, 4.0f))
                          [make<ExpandableArea>()
                                   .areaTitle(title.empty() ? "Component" : title)
                                   .padding(Margin(6.0f, 6.0f))
-                                  .bodyContent(rows(component->propList(), props))];
+                                  .bodyContent(rows(component->propList(), props, propsBaseline))];
     }
 
     column + VerticalBox::slot().autoHeight()

@@ -9,6 +9,8 @@
 #include "Dev/Selection.hpp"
 #include "Platform/Assets.hpp"
 #include "Platform/Files.hpp"
+#include "Reflect/PropDef.hpp"
+#include "Reflect/Reflect.hpp"
 #include "Scene/PrefabCache.hpp"
 #include "Scene/Ref.hpp"
 #include "Scene/Transform.hpp"
@@ -361,6 +363,64 @@ TEST_CASE("the template cache follows the file and is dropped with the registry"
 
     p.types.add<Aim>("Aim");
     CHECK(p.types.prefabs().find(BOX) == nullptr);
+}
+
+TEST_CASE("Prefab::propBaseline finds the archetype's prop target and reverts a per-prop override") {
+    Project p;
+    Actor* box = p.place();
+    REQUIRE(box != nullptr);
+    Aim* aim = aimOf(box);
+    REQUIRE(aim != nullptr);
+    CHECK(aim->speed_ == 2.0f);
+
+    const void* base = cinder::Serial::Prefab::propBaseline(p.scene, *aim, false);
+    REQUIRE(base != nullptr);
+
+    const cinder::Reflect::PropDef* speedDef = nullptr;
+    for (const cinder::Reflect::PropDef& def : aim->propList()) {
+        if (def.name() == "speed") speedDef = &def;
+    }
+    REQUIRE(speedDef != nullptr);
+
+    CHECK(cinder::Reflect::sameProp(*speedDef, aim->propTarget(), base));
+    aim->speed_ = 7.0f;
+    CHECK_FALSE(cinder::Reflect::sameProp(*speedDef, aim->propTarget(), base));
+
+    cinder::Reflect::copyProp(*speedDef, base, aim->propTarget());
+    CHECK(aim->speed_ == 2.0f);
+    CHECK(cinder::Reflect::sameProp(*speedDef, aim->propTarget(), base));
+}
+
+TEST_CASE("Prefab::propBaseline is null for an object the prefab did not supply") {
+    Project p;
+    Actor* box = p.place();
+    REQUIRE(box != nullptr);
+    Component* extra = p.scene.addComponent(*box, "SceneComponent");
+    REQUIRE(extra != nullptr);
+    CHECK(extra->prefabId() == 0);
+    CHECK(cinder::Serial::Prefab::propBaseline(p.scene, *extra, false) == nullptr);
+    CHECK(cinder::Serial::Prefab::propBaseline(p.scene, *extra, true) == nullptr);
+}
+
+TEST_CASE("Prefab::propBaseline returns a SceneComponent's archetype transform") {
+    Project p;
+    Actor* box = p.place();
+    REQUIRE(box != nullptr);
+    SceneComponent* placed = box->rootComponent();
+    REQUIRE(placed != nullptr);
+    placed->transform().setPosition(5.0f, 0.0f, 0.0f);
+
+    const void* base = cinder::Serial::Prefab::propBaseline(p.scene, *placed, true);
+    REQUIRE(base != nullptr);
+
+    const cinder::Reflect::PropDef* positionDef = nullptr;
+    for (const cinder::Reflect::PropDef& def : cinder::Reflect::props<cinder::Scene::Transform>()) {
+        if (def.name() == "position") positionDef = &def;
+    }
+    REQUIRE(positionDef != nullptr);
+    CHECK_FALSE(cinder::Reflect::sameProp(*positionDef, &placed->transform(), base));
+    cinder::Reflect::copyProp(*positionDef, base, &placed->transform());
+    CHECK(placed->transform().position() == glm::vec3(0.0f));
 }
 
 TEST_CASE("undo restores an instance override and its link") {
