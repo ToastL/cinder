@@ -38,9 +38,16 @@ public:
     const std::shared_ptr<cinder::UI::TreeView>& tree() const { return tree_; }
 
     void update();
-    void sceneChanged() { tree_->collapseAll(); }
+    void sceneChanged() {
+        tree_->collapseAll();
+        cancelRename();
+    }
     void setPrefabActions(PrefabActions actions) { prefabs_ = std::move(actions); }
     std::optional<int> selectedActor() const;
+
+    void beginRename(int id);
+    void cancelRename();
+    std::optional<int> renaming() const { return renaming_; }
 
 private:
     std::vector<cinder::UI::ItemId> roots() const;
@@ -54,9 +61,12 @@ private:
 
     void insert(const std::string& className, std::optional<int> parent);
     void place(const std::string& prefab, std::optional<int> parent);
-    void duplicate(int id);
-    void remove(int id);
+    void duplicate(const std::vector<int>& ids);
+    void remove(const std::vector<int>& ids);
     void attach(int id, std::optional<int> parent);
+    bool handleRowClick(cinder::UI::ItemId item, const cinder::UI::PointerEvent& event);
+    std::vector<int> selectedActors() const;
+    std::vector<int> removableSelection() const;
 
     Selection& selection_;
     History& history_;
@@ -65,6 +75,10 @@ private:
     std::shared_ptr<cinder::UI::Widget> widget_;
     std::shared_ptr<cinder::UI::TreeView> tree_;
     std::string filter_;
+    std::optional<int> renaming_;
+    std::weak_ptr<cinder::UI::Widget> renameField_;
+    bool focusRename_ = false;
+    bool refreshPending_ = false;
     PrefabActions prefabs_;
 };
 

@@ -26,7 +26,9 @@ and a hot-reload test compiles real game C++.
 - [x] **Outliner** — `Dev/Panels/Outliner`, a virtualized tree over actor ids: filter, "+" to spawn,
       right-click to add/duplicate/delete, drag to attach. `Dev/Selection` holds an id, so the
       selection survives Play and Stop.
-- [ ] Outliner: multi-select, inline rename, copy and paste
+- [x] Outliner: multi-select (Shift-click range, ⌘/Ctrl-click toggle) and inline rename (F2 or the
+      context menu); Delete and Duplicate act on every selected actor as one history step.
+- [ ] Outliner: copy and paste
 - [ ] Outliner: folders as an editor label on actors, the way Unreal's are — the old `Folder` node went
       with the node tree
 - [x] **Details** — `Dev/Panels/Details` shows one actor: props, components with add and remove, the

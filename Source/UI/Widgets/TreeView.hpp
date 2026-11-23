@@ -80,6 +80,7 @@ public:
     using GenerateRow = std::function<std::shared_ptr<Widget>(ItemId)>;
     using OnSelectionChanged = std::function<void(std::optional<ItemId>, SelectInfo)>;
     using OnItem = std::function<void(ItemId)>;
+    using OnItemClick = std::function<bool(ItemId, const PointerEvent&)>;
     using OnExpansionChanged = std::function<void(ItemId, bool)>;
     using ContextMenu = std::function<std::shared_ptr<Widget>(std::optional<ItemId>)>;
     using DragFrom = std::function<std::shared_ptr<DragDropOperation>(ItemId)>;
@@ -96,6 +97,7 @@ public:
         UI_EVENT(ParentOf, onGetParent)
         UI_EVENT(GenerateRow, onGenerateRow)
         UI_EVENT(OnSelectionChanged, onSelectionChanged)
+        UI_EVENT(OnItemClick, onItemClicked)
         UI_EVENT(OnItem, onMouseButtonDoubleClick)
         UI_EVENT(OnExpansionChanged, onExpansionChanged)
         UI_EVENT(ContextMenu, onContextMenuOpening)
@@ -135,6 +137,7 @@ public:
     std::size_t visibleCount() const { return flat_.size(); }
     std::size_t realizedCount() const { return realized_.size(); }
     std::optional<ItemId> itemAt(std::size_t index) const;
+    std::size_t indexOf(ItemId item) const;
     const std::shared_ptr<TableRow>& rowFor(ItemId item) const;
     std::optional<DropZone> dropZoneFor(ItemId item) const;
 
@@ -179,7 +182,6 @@ private:
     void flatten();
     void gather(ItemId item, int depth);
     void realize(const Geometry& geometry);
-    std::size_t indexOf(ItemId item) const;
     std::optional<ItemId> itemAtPoint(const Geometry& geometry, glm::vec2 point, float* fraction = nullptr) const;
     void moveSelection(int delta);
     void notify(std::optional<ItemId> item, SelectInfo how);
@@ -189,6 +191,7 @@ private:
     ParentOf parent_;
     GenerateRow generate_;
     OnSelectionChanged onSelection_;
+    OnItemClick onItemClick_;
     OnItem onDoubleClick_;
     OnExpansionChanged onExpansion_;
     ContextMenu onContextMenu_;

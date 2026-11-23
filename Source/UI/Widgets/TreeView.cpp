@@ -139,6 +139,7 @@ void TreeView::construct(const Args& args) {
     parent_ = args.onGetParent_;
     generate_ = args.onGenerateRow_;
     onSelection_ = args.onSelectionChanged_;
+    onItemClick_ = args.onItemClicked_;
     onDoubleClick_ = args.onMouseButtonDoubleClick_;
     onExpansion_ = args.onExpansionChanged_;
     onContextMenu_ = args.onContextMenuOpening_;
@@ -204,6 +205,11 @@ void TreeView::clearSelection(SelectInfo how) {
 
 void TreeView::clickRow(ItemId item, const PointerEvent& event) {
     if (mode_ == SelectionMode::None) return;
+    if (onItemClick_ && onItemClick_(item, event)) {
+        anchor_ = item;
+        requestScrollIntoView(item);
+        return;
+    }
     if (mode_ == SelectionMode::Multi && !selectedGetter_) {
         if (event.primary()) {
             const auto found = std::find(selected_.begin(), selected_.end(), item);
@@ -256,16 +262,16 @@ void TreeView::reveal(ItemId item) {
     requestScrollIntoView(item);
 }
 
+std::optional<ItemId> TreeView::itemAt(std::size_t index) const {
+    if (index >= flat_.size()) return std::nullopt;
+    return flat_[index].item;
+}
+
 std::size_t TreeView::indexOf(ItemId item) const {
     for (std::size_t i = 0; i < flat_.size(); ++i) {
         if (flat_[i].item == item) return i;
     }
     return flat_.size();
-}
-
-std::optional<ItemId> TreeView::itemAt(std::size_t index) const {
-    if (index >= flat_.size()) return std::nullopt;
-    return flat_[index].item;
 }
 
 const std::shared_ptr<TableRow>& TreeView::rowFor(ItemId item) const {

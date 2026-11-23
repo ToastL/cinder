@@ -72,6 +72,7 @@ constexpr int PAGE_DOWN = 267;
 constexpr int HOME = 268;
 constexpr int END = 269;
 constexpr int F1 = 290;
+constexpr int F2 = 291;
 constexpr int KEYPAD_ENTER = 335;
 constexpr int LEFT_SHIFT = 340;
 constexpr int LEFT_CONTROL = 341;

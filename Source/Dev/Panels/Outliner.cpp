@@ -55,7 +55,18 @@ Outliner::Outliner(Selection& selection, History& history, cinder::Scene::Scene&
             .onGetChildren([this](ItemId item) { return childrenOf(item); })
             .onGetParent([this](ItemId item) { return parentOf(item); })
             .onGenerateRow([this](ItemId item) { return rowFor(item); })
-            .isItemSelected([this](ItemId item) { return selectedActor() == static_cast<int>(item); })
+            .isItemSelected([this](ItemId item) {
+                const int target = static_cast<int>(item);
+                for (int id : selection_.ids()) {
+                    const cinder::Scene::Object* object = scene_.byId(id);
+                    if (const auto* actor = dynamic_cast<const Actor*>(object)) {
+                        if (actor->id() == target) return true;
+                    } else if (const auto* component = dynamic_cast<const cinder::Scene::Component*>(object)) {
+                        if (component->owner() != nullptr && component->owner()->id() == target) return true;
+                    }
+                }
+                return false;
+            })
             .onSelectionChanged([this](std::optional<ItemId> item, SelectInfo) {
                 if (selection_.pick().armed()) {
                     Actor* offered = item ? scene_.actor(static_cast<int>(*item)) : nullptr;
@@ -66,11 +77,28 @@ Outliner::Outliner(Selection& selection, History& history, cinder::Scene::Scene&
                 if (item) selection_.select(static_cast<int>(*item));
                 else selection_.clear();
             })
+            .onItemClicked([this](ItemId item, const PointerEvent& event) {
+                return handleRowClick(item, event);
+            })
             .onContextMenuOpening([this](std::optional<ItemId> item) { return contextMenu(item); })
             .onDragDetected([this](ItemId item) -> std::shared_ptr<DragDropOperation> {
                 Actor* actor = scene_.actor(static_cast<int>(item));
                 if (actor == nullptr || actor->prefabOwned()) return nullptr;
-                return std::make_shared<ItemDragDrop>(std::vector<ItemId>{item}, actor->name());
+                std::vector<ItemId> items;
+                std::string label = actor->name();
+                if (selection_.isSelected(actor->id())) {
+                    const std::vector<int> picked = removableSelection();
+                    items.reserve(picked.size());
+                    items.push_back(static_cast<ItemId>(actor->id()));
+                    for (int id : picked) {
+                        if (id == actor->id()) continue;
+                        items.push_back(static_cast<ItemId>(id));
+                    }
+                    if (items.size() > 1) label = std::to_string(items.size()) + " actors";
+                } else {
+                    items.push_back(item);
+                }
+                return std::make_shared<ItemDragDrop>(std::move(items), std::move(label));
             })
             .onCanAcceptDrop([this](const DragDropEvent& event, std::optional<ItemId> item,
                                     DropZone) -> std::optional<DropZone> {
@@ -97,8 +125,13 @@ Outliner::Outliner(Selection& selection, History& history, cinder::Scene::Scene&
                          item ? std::optional<int>(static_cast<int>(*item)) : std::nullopt);
             })
             .onKeyDownHandler([this](const KeyEvent& event) {
+                if (event.key == keys::F2) {
+                    if (const std::optional<int> id = selectedActor()) beginRename(*id);
+                    return true;
+                }
                 if (event.key != keys::DELETE_KEY && event.key != keys::BACKSPACE) return false;
-                if (const std::optional<int> selected = selectedActor()) remove(*selected);
+                const std::vector<int> ids = removableSelection();
+                if (!ids.empty()) remove(ids);
                 return true;
             });
 
@@ -182,6 +215,34 @@ std::shared_ptr<Widget> Outliner::rowFor(ItemId item) {
         const bool linked = !actor->prefab().empty() && selectedActor() != id;
         return linked ? theme.color("Color.Primary") : theme.color("Color.Foreground");
     };
+    if (renaming_ == id) {
+        std::shared_ptr<TextField> field;
+        const Actor* actor = scene_.actor(id);
+        const std::string original = actor != nullptr ? actor->name() : std::string();
+        auto editor = make<TextField>()
+                              .assign(field)
+                              .text(original)
+                              .selectAllOnFocus(true)
+                              .revertOnEscape(true)
+                              .onTextCommitted([this, id](const std::string& text, TextCommit how) {
+                                  if (renaming_ != id) return;
+                                  Actor* target = scene_.actor(id);
+                                  if (target != nullptr && how == TextCommit::Enter) {
+                                      std::string next = text;
+                                      if (!next.empty() && next != target->name()) {
+                                          history_.touch("Rename " + target->name(), selection_.id());
+                                          target->setName(std::move(next));
+                                      }
+                                  }
+                                  renaming_.reset();
+                                  renameField_.reset();
+                                  refreshPending_ = true;
+                              });
+        std::shared_ptr<Widget> row = editor;
+        renameField_ = field;
+        focusRename_ = true;
+        return row;
+    }
     return make<HorizontalBox>()
            + HorizontalBox::slot().autoWidth().vAlign(VAlign::Center)
                  [make<Label>()
@@ -225,8 +286,28 @@ std::shared_ptr<Widget> Outliner::contextMenu(std::optional<ItemId> item) {
     MenuBuilder menu;
     menu.subMenu("Add Actor", [this, id](MenuBuilder& insertions) { addInsertEntries(insertions, id); });
     if (id) {
-        menu.entry("Duplicate", [this, id] { duplicate(*id); })
-                .entry("Delete", [this, id] { remove(*id); })
+        const std::vector<int> group = removableSelection();
+        const bool many = group.size() > 1 && selection_.isSelected(*id);
+        const std::string suffix = many ? " (" + std::to_string(group.size()) + ")" : std::string();
+        menu.entry("Duplicate" + suffix, [this, id, group, many] {
+                    if (many) duplicate(group);
+                    else duplicate(std::vector<int>{*id});
+                })
+                .enabledIf([this, id, group, many] {
+                    if (many) return !group.empty();
+                    const Actor* actor = scene_.actor(*id);
+                    return actor != nullptr && !actor->prefabOwned();
+                });
+        menu.entry("Delete" + suffix, [this, id, group, many] {
+                    if (many) remove(group);
+                    else remove(std::vector<int>{*id});
+                })
+                .enabledIf([this, id, group, many] {
+                    if (many) return !group.empty();
+                    const Actor* actor = scene_.actor(*id);
+                    return actor != nullptr && !actor->prefabOwned();
+                });
+        menu.entry("Rename", [this, id] { beginRename(*id); })
                 .enabledIf([this, id] {
                     const Actor* actor = scene_.actor(*id);
                     return actor != nullptr && !actor->prefabOwned();
@@ -274,18 +355,35 @@ void Outliner::place(const std::string& prefab, std::optional<int> parent) {
     }
 }
 
-void Outliner::duplicate(int id) {
-    Actor* actor = scene_.actor(id);
-    if (actor == nullptr) return;
-    history_.touch("Duplicate " + actor->name(), selection_.id());
-    if (Actor* copy = scene_.clone(*actor, actor->attachParent())) selection_.select(copy->id(), true);
+void Outliner::duplicate(const std::vector<int>& ids) {
+    if (ids.empty()) return;
+    const Actor* first = scene_.actor(ids.front());
+    if (first == nullptr) return;
+    const std::string label = ids.size() == 1 ? "Duplicate " + first->name()
+                                              : "Duplicate " + std::to_string(ids.size()) + " actors";
+    history_.touch(label, selection_.id());
+    std::vector<int> copies;
+    copies.reserve(ids.size());
+    for (int id : ids) {
+        Actor* actor = scene_.actor(id);
+        if (actor == nullptr || actor->prefabOwned()) continue;
+        if (Actor* copy = scene_.clone(*actor, actor->attachParent())) copies.push_back(copy->id());
+    }
+    if (!copies.empty()) selection_.setMany(copies, copies.front(), true);
 }
 
-void Outliner::remove(int id) {
-    Actor* actor = scene_.actor(id);
-    if (actor == nullptr || actor->prefabOwned()) return;
-    history_.touch("Delete " + actor->name(), selection_.id());
-    scene_.destroyNow(actor);
+void Outliner::remove(const std::vector<int>& ids) {
+    if (ids.empty()) return;
+    const Actor* first = scene_.actor(ids.front());
+    const std::string label = ids.size() == 1 && first != nullptr
+                                      ? "Delete " + first->name()
+                                      : "Delete " + std::to_string(ids.size()) + " actors";
+    history_.touch(label, selection_.id());
+    for (int id : ids) {
+        Actor* actor = scene_.actor(id);
+        if (actor == nullptr || actor->prefabOwned()) continue;
+        scene_.destroyNow(actor);
+    }
     selection_.clear();
 }
 
@@ -300,9 +398,81 @@ void Outliner::attach(int id, std::optional<int> parent) {
 }
 
 void Outliner::update() {
+    if (refreshPending_) {
+        refreshPending_ = false;
+        tree_->refresh();
+    }
+    if (renaming_ && scene_.actor(*renaming_) == nullptr) cancelRename();
+    if (focusRename_) {
+        if (std::shared_ptr<Widget> field = renameField_.lock()) {
+            app_.setFocus(field);
+            focusRename_ = false;
+        }
+    }
     if (!selection_.revealing()) return;
     if (const std::optional<int> id = selectedActor()) tree_->reveal(static_cast<ItemId>(*id));
     selection_.revealed();
+}
+
+void Outliner::beginRename(int id) {
+    const Actor* actor = scene_.actor(id);
+    if (actor == nullptr || actor->prefabOwned()) return;
+    if (renaming_ == id) return;
+    renaming_ = id;
+    renameField_.reset();
+    focusRename_ = true;
+    tree_->refresh();
+    tree_->requestScrollIntoView(static_cast<ItemId>(id));
+}
+
+void Outliner::cancelRename() {
+    if (!renaming_) return;
+    renaming_.reset();
+    renameField_.reset();
+    focusRename_ = false;
+    tree_->refresh();
+}
+
+std::vector<int> Outliner::selectedActors() const {
+    std::vector<int> out;
+    for (int id : selection_.ids()) {
+        if (scene_.actor(id) != nullptr) out.push_back(id);
+    }
+    return out;
+}
+
+std::vector<int> Outliner::removableSelection() const {
+    std::vector<int> out;
+    for (int id : selection_.ids()) {
+        const Actor* actor = scene_.actor(id);
+        if (actor != nullptr && !actor->prefabOwned()) out.push_back(id);
+    }
+    return out;
+}
+
+bool Outliner::handleRowClick(ItemId item, const PointerEvent& event) {
+    if (selection_.pick().armed()) return false;
+    const int id = static_cast<int>(item);
+    if (event.shift() && selection_.id()) {
+        const std::size_t anchor = tree_->indexOf(static_cast<ItemId>(*selection_.id()));
+        const std::size_t target = tree_->indexOf(item);
+        if (anchor < tree_->visibleCount() && target < tree_->visibleCount()) {
+            const std::size_t lo = std::min(anchor, target);
+            const std::size_t hi = std::max(anchor, target);
+            std::vector<int> range;
+            range.reserve(hi - lo + 1);
+            for (std::size_t i = lo; i <= hi; ++i) {
+                if (const std::optional<ItemId> at = tree_->itemAt(i)) range.push_back(static_cast<int>(*at));
+            }
+            selection_.setMany(range, *selection_.id());
+            return true;
+        }
+    }
+    if (event.primary()) {
+        selection_.toggle(id);
+        return true;
+    }
+    return false;
 }
 
 }

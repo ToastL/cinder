@@ -93,6 +93,124 @@ TEST_CASE("the Outliner lists the actors, selects a row and deletes the selectio
     CHECK(world.history.canUndo());
 }
 
+TEST_CASE("Shift-click extends the Outliner selection over the visible range and Delete removes them all") {
+    World world;
+    Harness ui(nullptr);
+    Outliner outliner(world.selection, world.history, world.scene, ui.app);
+    ui.app.setTheme(cinder::Dev::Panels::editorTheme());
+    ui.app.setRoot(outliner.widget());
+    ui.size = {320.0f, 400.0f};
+    ui.frame();
+
+    const std::shared_ptr<TreeView> tree = outliner.tree();
+    const auto boxId = world.node("Box").id();
+    const auto propsId = world.node("Props").id();
+
+    const Rect box = ui.rectOf(tree->rowFor(static_cast<ItemId>(boxId)));
+    ui.click(box.center().x, box.center().y);
+    CHECK(world.selection.id() == boxId);
+
+    const Rect props = ui.rectOf(tree->rowFor(static_cast<ItemId>(propsId)));
+    ui.move(props.center().x, props.center().y);
+    ui.mods = cinder::Platform::modifiers::SHIFT;
+    ui.press();
+    ui.release();
+    ui.mods = 0;
+    ui.frame();
+    CHECK(world.selection.id() == boxId);
+    CHECK(world.selection.size() == 2);
+    CHECK(world.selection.isSelected(propsId));
+
+    ui.key(keys::DELETE_KEY);
+    ui.frame();
+    CHECK(world.scene.find("Box") == nullptr);
+    CHECK(world.scene.find("Props") == nullptr);
+    world.history.settle(false);
+    CHECK(world.history.canUndo());
+    CHECK(world.history.undoLabel() == "Delete 2 actors");
+}
+
+TEST_CASE("Ctrl-click toggles an Outliner row into and out of the selection") {
+    World world;
+    Harness ui(nullptr);
+    Outliner outliner(world.selection, world.history, world.scene, ui.app);
+    ui.app.setTheme(cinder::Dev::Panels::editorTheme());
+    ui.app.setRoot(outliner.widget());
+    ui.size = {320.0f, 400.0f};
+    ui.frame();
+
+    const std::shared_ptr<TreeView> tree = outliner.tree();
+    const auto boxId = world.node("Box").id();
+    const auto propsId = world.node("Props").id();
+
+    const Rect box = ui.rectOf(tree->rowFor(static_cast<ItemId>(boxId)));
+    ui.click(box.center().x, box.center().y);
+    const Rect props = ui.rectOf(tree->rowFor(static_cast<ItemId>(propsId)));
+    ui.move(props.center().x, props.center().y);
+    ui.mods = cinder::Platform::modifiers::PRIMARY;
+    ui.press();
+    ui.release();
+    ui.frame();
+    CHECK(world.selection.size() == 2);
+    CHECK(world.selection.isSelected(boxId));
+    CHECK(world.selection.isSelected(propsId));
+
+    ui.press();
+    ui.release();
+    ui.mods = 0;
+    ui.frame();
+    CHECK(world.selection.size() == 1);
+    CHECK(world.selection.isSelected(boxId));
+}
+
+TEST_CASE("F2 in the Outliner starts an inline rename that commits through History on Enter") {
+    World world;
+    Harness ui(nullptr);
+    Outliner outliner(world.selection, world.history, world.scene, ui.app);
+    ui.app.setTheme(cinder::Dev::Panels::editorTheme());
+    ui.app.setRoot(outliner.widget());
+    ui.size = {320.0f, 400.0f};
+    ui.frame();
+
+    const std::shared_ptr<TreeView> tree = outliner.tree();
+    const auto boxId = world.node("Box").id();
+    const Rect box = ui.rectOf(tree->rowFor(static_cast<ItemId>(boxId)));
+    ui.click(box.center().x, box.center().y);
+    ui.key(keys::F2);
+    outliner.update();
+    ui.frame();
+    REQUIRE(outliner.renaming() == boxId);
+    outliner.update();
+    ui.frame();
+
+    const std::shared_ptr<TableRow>& row = tree->rowFor(static_cast<ItemId>(boxId));
+    REQUIRE(row);
+    std::shared_ptr<TextField> field;
+    std::function<void(Widget*)> walk = [&](Widget* widget) {
+        if (widget == nullptr || field) return;
+        if (auto* f = dynamic_cast<TextField*>(widget)) {
+            field = std::dynamic_pointer_cast<TextField>(f->shared_from_this());
+            return;
+        }
+        for (int i = 0; i < widget->childCount(); ++i) walk(widget->childAt(i));
+    };
+    walk(row.get());
+    REQUIRE(field);
+    CHECK(ui.app.focused() == field);
+
+    field->setText("Crate");
+    ui.key(keys::ENTER);
+    outliner.update();
+    ui.frame();
+    const Actor* renamed = world.scene.actor(boxId);
+    REQUIRE(renamed != nullptr);
+    CHECK(renamed->name() == "Crate");
+    CHECK_FALSE(outliner.renaming().has_value());
+    world.history.settle(false);
+    CHECK(world.history.canUndo());
+    CHECK(world.history.undoLabel() == "Rename Box");
+}
+
 TEST_CASE("the Outliner's filter flattens the tree to what matches") {
     World world;
     Harness ui(nullptr);
