@@ -28,7 +28,10 @@ and a hot-reload test compiles real game C++.
       selection survives Play and Stop.
 - [x] Outliner: multi-select (Shift-click range, ⌘/Ctrl-click toggle) and inline rename (F2 or the
       context menu); Delete and Duplicate act on every selected actor as one history step.
-- [ ] Outliner: copy and paste
+- [x] Outliner: copy, cut and paste (⌘C/⌘X/⌘V and the context menu). Copy writes a
+      `cinder-clipboard` payload through `UI::PlatformHooks::setClipboard`; paste parses it through
+      `SceneCodec::loadFragment` and inserts the actors as siblings of the primary selection (or at
+      the root with none), as one history step.
 - [ ] Outliner: folders as an editor label on actors, the way Unreal's are — the old `Folder` node went
       with the node tree
 - [x] **Details** — `Dev/Panels/Details` shows one actor: props, components with add and remove, the

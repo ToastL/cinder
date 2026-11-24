@@ -63,6 +63,10 @@ private:
     void place(const std::string& prefab, std::optional<int> parent);
     void duplicate(const std::vector<int>& ids);
     void remove(const std::vector<int>& ids);
+    void copy(const std::vector<int>& ids);
+    void cut(const std::vector<int>& ids);
+    void paste();
+    bool clipboardHasActors() const;
     void attach(int id, std::optional<int> parent);
     bool handleRowClick(cinder::UI::ItemId item, const cinder::UI::PointerEvent& event);
     std::vector<int> selectedActors() const;

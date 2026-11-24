@@ -142,10 +142,61 @@ const Actor* SceneCodec::prefab(cinder::Scene::ClassRegistry& types, std::string
 std::string SceneCodec::savePrefab(Scene& scene, const Actor& root, const std::map<int, int>& ids) {
     TextSave archive;
     SceneCodec codec(scene);
-    codec.only_ = &root;
+    codec.only_.push_back(&root);
     codec.remap_ = &ids;
     codec.walk(archive);
     return archive.text();
+}
+
+namespace {
+
+void collectIds(const Actor& actor, int& next, std::map<int, int>& ids) {
+    if (actor.destroyed()) return;
+    ids.emplace(actor.id(), ++next);
+    for (const cinder::Scene::Component* component : actor.components()) {
+        if (!component->destroyed()) ids.emplace(component->id(), ++next);
+    }
+    for (const Actor* child : actor.attachedActors()) collectIds(*child, next, ids);
+}
+
+}
+
+std::string SceneCodec::saveFragment(Scene& scene, std::span<const Actor* const> roots) {
+    std::map<int, int> ids;
+    int next = 0;
+    for (const Actor* root : roots) {
+        if (root != nullptr) collectIds(*root, next, ids);
+    }
+    TextSave archive;
+    SceneCodec codec(scene);
+    codec.only_.assign(roots.begin(), roots.end());
+    codec.remap_ = &ids;
+    codec.walk(archive);
+    return archive.text();
+}
+
+std::vector<Actor*> SceneCodec::loadFragment(const std::string& source, Scene& scene, Actor* parent) {
+    TextLoad archive = TextLoad::parse(source);
+
+    const int version = archive.integer("version", 0, 0);
+    if (version < OLDEST || version > VERSION) {
+        throw std::runtime_error("scene version " + std::to_string(version)
+                                 + " is not supported (this build reads "
+                                 + std::to_string(OLDEST) + " to " + std::to_string(VERSION) + ")");
+    }
+
+    SceneCodec codec(scene);
+    codec.fragment_ = true;
+    codec.fragmentParent_ = parent;
+    codec.walk(archive);
+    codec.finish();
+
+    std::vector<Actor*> roots;
+    roots.reserve(codec.fragmentRoots_.size());
+    for (int id : codec.fragmentRoots_) {
+        if (Actor* actor = scene.actor(id)) roots.push_back(actor);
+    }
+    return roots;
 }
 
 void SceneCodec::revert(Scene& scene, const Actor& root) {
@@ -158,8 +209,14 @@ void SceneCodec::revert(Scene& scene, const Actor& root) {
 
 void SceneCodec::walk(Archive& ar) {
     ar.integer("version", VERSION, 0);
-    if (only_ != nullptr) {
-        actors(ar, {const_cast<Actor*>(only_)}, nullptr, nullptr);
+    if (fragment_) {
+        std::vector<Actor*> empty;
+        actors(ar, empty, nullptr, nullptr);
+    } else if (!only_.empty()) {
+        std::vector<Actor*> list;
+        list.reserve(only_.size());
+        for (const Actor* root : only_) list.push_back(const_cast<Actor*>(root));
+        actors(ar, list, nullptr, nullptr);
     } else {
         actors(ar, scene_.roots(), nullptr, nullptr);
     }
@@ -224,7 +281,7 @@ bool SceneCodec::usable(int id, const Pending& pending) const {
         return false;
     }
     if (scene_.byId(id) != nullptr || pending.claimed.count(id) != 0) {
-        cinder::Platform::logError("[serial] duplicate id %d\n", id);
+        if (!fragment_) cinder::Platform::logError("[serial] duplicate id %d\n", id);
         return false;
     }
     return true;
@@ -376,7 +433,10 @@ void SceneCodec::actor(Archive& ar, Actor* existing, std::string_view type, Acto
         PropRec merged = origin != nullptr ? origin->attributes() : PropRec{};
         for (auto& [key, value] : accepted(attributes, id == NO_ID ? 0 : id)) merged.insert_or_assign(key, value);
         target->loadAttributes(std::move(merged));
-        target = scene_.insert(std::move(created), parent, wanted, pending.hints);
+        Actor* attachParent = fragment_ && parent == nullptr ? fragmentParent_ : parent;
+        const bool topLevelFragment = fragment_ && parent == nullptr;
+        target = scene_.insert(std::move(created), attachParent, wanted, pending.hints);
+        if (topLevelFragment) fragmentRoots_.push_back(target->id());
         if (id != NO_ID) fileIds_.emplace(id, target);
         for (const auto& [component, fileId] : pending.fileIds) fileIds_.emplace(fileId, component);
         if (refScope != nullptr) {

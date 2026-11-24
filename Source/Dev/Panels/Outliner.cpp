@@ -2,9 +2,11 @@
 
 #include "Dev/AssetDragDrop.hpp"
 #include "Dev/History.hpp"
+#include "Dev/Panels/OutlinerClipboard.hpp"
 #include "Dev/SceneDocument.hpp"
 #include "Dev/Selection.hpp"
 #include "Dev/Panels/EditorStyle.hpp"
+#include "Platform/Log.hpp"
 #include "Reflect/Reflect.hpp"
 #include "Scene/Actor.hpp"
 #include "Scene/ClassRegistry.hpp"
@@ -128,6 +130,20 @@ Outliner::Outliner(Selection& selection, History& history, cinder::Scene::Scene&
                 if (event.key == keys::F2) {
                     if (const std::optional<int> id = selectedActor()) beginRename(*id);
                     return true;
+                }
+                if (event.primary()) {
+                    if (event.key == keys::letter('c')) {
+                        copy(removableSelection());
+                        return true;
+                    }
+                    if (event.key == keys::letter('x')) {
+                        cut(removableSelection());
+                        return true;
+                    }
+                    if (event.key == keys::letter('v')) {
+                        paste();
+                        return true;
+                    }
                 }
                 if (event.key != keys::DELETE_KEY && event.key != keys::BACKSPACE) return false;
                 const std::vector<int> ids = removableSelection();
@@ -285,6 +301,10 @@ std::shared_ptr<Widget> Outliner::contextMenu(std::optional<ItemId> item) {
     const std::optional<int> id = item ? std::optional<int>(static_cast<int>(*item)) : std::nullopt;
     MenuBuilder menu;
     menu.subMenu("Add Actor", [this, id](MenuBuilder& insertions) { addInsertEntries(insertions, id); });
+    if (!id) {
+        menu.separator();
+        menu.entry("Paste", [this] { paste(); }).enabledIf([this] { return clipboardHasActors(); });
+    }
     if (id) {
         const std::vector<int> group = removableSelection();
         const bool many = group.size() > 1 && selection_.isSelected(*id);
@@ -312,6 +332,27 @@ std::shared_ptr<Widget> Outliner::contextMenu(std::optional<ItemId> item) {
                     const Actor* actor = scene_.actor(*id);
                     return actor != nullptr && !actor->prefabOwned();
                 });
+        menu.separator();
+        menu.entry("Copy" + suffix, [this, id, group, many] {
+                    if (many) copy(group);
+                    else copy(std::vector<int>{*id});
+                })
+                .enabledIf([this, id, group, many] {
+                    if (many) return !group.empty();
+                    const Actor* actor = scene_.actor(*id);
+                    return actor != nullptr && !actor->prefabOwned();
+                });
+        menu.entry("Cut" + suffix, [this, id, group, many] {
+                    if (many) cut(group);
+                    else cut(std::vector<int>{*id});
+                })
+                .enabledIf([this, id, group, many] {
+                    if (many) return !group.empty();
+                    const Actor* actor = scene_.actor(*id);
+                    return actor != nullptr && !actor->prefabOwned();
+                });
+        menu.entry("Paste", [this] { paste(); })
+                .enabledIf([this] { return clipboardHasActors(); });
         const Actor* actor = scene_.actor(*id);
         if (actor != nullptr && prefabs_.enabled) {
             const auto enabled = [this] { return prefabs_.available(); };
@@ -385,6 +426,54 @@ void Outliner::remove(const std::vector<int>& ids) {
         scene_.destroyNow(actor);
     }
     selection_.clear();
+}
+
+void Outliner::copy(const std::vector<int>& ids) {
+    std::vector<const cinder::Scene::Actor*> roots;
+    roots.reserve(ids.size());
+    for (int id : ids) {
+        const Actor* actor = scene_.actor(id);
+        if (actor != nullptr && !actor->prefabOwned()) roots.push_back(actor);
+    }
+    if (roots.empty()) return;
+    app_.platform().setClipboard(OutlinerClipboard::encode(scene_, roots));
+}
+
+void Outliner::cut(const std::vector<int>& ids) {
+    std::vector<const cinder::Scene::Actor*> roots;
+    roots.reserve(ids.size());
+    for (int id : ids) {
+        const Actor* actor = scene_.actor(id);
+        if (actor != nullptr && !actor->prefabOwned()) roots.push_back(actor);
+    }
+    if (roots.empty()) return;
+    app_.platform().setClipboard(OutlinerClipboard::encode(scene_, roots));
+    const std::string label = roots.size() == 1 ? "Cut " + roots.front()->name()
+                                                : "Cut " + std::to_string(roots.size()) + " actors";
+    history_.touch(label, selection_.id());
+    for (const Actor* actor : roots) scene_.destroyNow(const_cast<Actor*>(actor));
+    selection_.clear();
+}
+
+void Outliner::paste() {
+    const std::string text = app_.platform().clipboard();
+    if (!OutlinerClipboard::recognizes(text)) return;
+    const std::optional<int> anchor = selectedActor();
+    Actor* parent = nullptr;
+    if (anchor) {
+        if (Actor* target = scene_.actor(*anchor)) parent = target->attachParent();
+    }
+    history_.touch("Paste", selection_.id());
+    const std::vector<Actor*> pasted = OutlinerClipboard::decode(text, scene_, parent);
+    if (pasted.empty()) return;
+    std::vector<int> ids;
+    ids.reserve(pasted.size());
+    for (Actor* actor : pasted) ids.push_back(actor->id());
+    selection_.setMany(ids, ids.front(), true);
+}
+
+bool Outliner::clipboardHasActors() const {
+    return OutlinerClipboard::recognizes(app_.platform().clipboard());
 }
 
 void Outliner::attach(int id, std::optional<int> parent) {

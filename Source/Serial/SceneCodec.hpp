@@ -8,6 +8,7 @@
 #include <map>
 #include <memory>
 #include <set>
+#include <span>
 #include <string>
 #include <string_view>
 #include <utility>
@@ -40,6 +41,11 @@ public:
     static const cinder::Scene::Actor* prefab(cinder::Scene::ClassRegistry& types, std::string_view path);
     static std::string savePrefab(cinder::Scene::Scene& scene, const cinder::Scene::Actor& root,
                                   const std::map<int, int>& ids);
+    static std::string saveFragment(cinder::Scene::Scene& scene,
+                                    std::span<const cinder::Scene::Actor* const> roots);
+    static std::vector<cinder::Scene::Actor*> loadFragment(const std::string& source,
+                                                           cinder::Scene::Scene& scene,
+                                                           cinder::Scene::Actor* parent);
     static void revert(cinder::Scene::Scene& scene, const cinder::Scene::Actor& root);
 
 private:
@@ -108,9 +114,12 @@ private:
     std::deque<Instance> instances_;
     std::vector<Deferred> deferred_;
     std::map<std::string, const cinder::Scene::Scene*, std::less<>> opened_;
-    const cinder::Scene::Actor* only_ = nullptr;
+    std::vector<const cinder::Scene::Actor*> only_;
     const cinder::Scene::Actor* revert_ = nullptr;
     const std::map<int, int>* remap_ = nullptr;
+    cinder::Scene::Actor* fragmentParent_ = nullptr;
+    bool fragment_ = false;
+    std::vector<int> fragmentRoots_;
 };
 
 }
