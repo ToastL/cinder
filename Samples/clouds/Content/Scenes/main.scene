@@ -1,0 +1,25 @@
+version 6
+actors {
+    CameraActor {
+        id 1
+        name "Camera"
+        components {
+            CameraComponent {
+                id 2
+                position 0 3 10
+                rotation -0.17 0 0
+                fov 70
+                clearColor 0.05 0.06 0.09 1
+            }
+        }
+    }
+    StaticMeshActor {
+        id 3
+        name "Cube"
+        components {
+            StaticMeshComponent {
+                id 4
+            }
+        }
+    }
+}
