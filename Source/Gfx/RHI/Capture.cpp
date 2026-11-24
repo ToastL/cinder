@@ -1,9 +1,7 @@
 #include "Gfx/RHI/Capture.hpp"
 
+#include "Gfx/RHI/Png.hpp"
 #include "Platform/Log.hpp"
-
-#define STB_IMAGE_WRITE_IMPLEMENTATION
-#include <stb_image_write.h>
 
 #include <algorithm>
 #include <cstring>
@@ -30,9 +28,7 @@ bool writeCapture(const std::string& path, uint32_t width, uint32_t height, cons
         for (std::size_t i = 0; i < pixels.size(); i += 4) std::swap(pixels[i], pixels[i + 2]);
     }
 
-    const int written = stbi_write_png(path.c_str(), static_cast<int>(width), static_cast<int>(height),
-                                       BYTES_PER_PIXEL, pixels.data(), static_cast<int>(packed));
-    if (written == 0) {
+    if (!writePng(path, width, height, pixels.data())) {
         cinder::Platform::logError("[capture] could not write %s\n", path.c_str());
         return false;
     }
