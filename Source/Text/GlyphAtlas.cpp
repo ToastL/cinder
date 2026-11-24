@@ -1,10 +1,7 @@
 #include "Text/GlyphAtlas.hpp"
 
 #include "Text/Font.hpp"
-
-#define STBRP_STATIC
-#define STB_RECT_PACK_IMPLEMENTATION
-#include <stb_rect_pack.h>
+#include "Text/RectPack.hpp"
 
 #include <algorithm>
 #include <cmath>
@@ -21,15 +18,17 @@ constexpr float SIZE_STEPS = 4.0f;
 
 struct GlyphAtlas::Page {
     std::vector<std::uint8_t> pixels;
-    std::vector<stbrp_node> nodes;
-    stbrp_context packer{};
+    RectPacker packer;
     std::optional<AtlasRect> dirty;
 
-    Page() : pixels(static_cast<std::size_t>(PAGE_SIZE) * PAGE_SIZE, 0), nodes(PAGE_SIZE) { reset(); }
+    Page()
+        : pixels(static_cast<std::size_t>(PAGE_SIZE) * PAGE_SIZE, 0),
+          packer(PAGE_SIZE, PAGE_SIZE),
+          dirty(AtlasRect{0, 0, PAGE_SIZE, PAGE_SIZE}) {}
 
     void reset() {
         std::fill(pixels.begin(), pixels.end(), std::uint8_t{0});
-        stbrp_init_target(&packer, PAGE_SIZE, PAGE_SIZE, nodes.data(), static_cast<int>(nodes.size()));
+        packer.reset();
         dirty = AtlasRect{0, 0, PAGE_SIZE, PAGE_SIZE};
     }
 };
@@ -76,12 +75,9 @@ std::optional<AtlasRect> GlyphAtlas::place(int width, int height, int& page) {
 
     for (std::size_t index = 0; index <= pages_.size(); ++index) {
         if (index == pages_.size()) pages_.push_back(std::make_unique<Page>());
-        stbrp_rect rect{};
-        rect.w = paddedWidth;
-        rect.h = paddedHeight;
-        if (stbrp_pack_rects(&pages_[index]->packer, &rect, 1) != 0 && rect.was_packed != 0) {
+        if (std::optional<PackedRect> placed = pages_[index]->packer.pack(paddedWidth, paddedHeight)) {
             page = static_cast<int>(index);
-            return AtlasRect{rect.x + PADDING, rect.y + PADDING, width, height};
+            return AtlasRect{placed->x + PADDING, placed->y + PADDING, width, height};
         }
     }
     return std::nullopt;
