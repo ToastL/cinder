@@ -35,14 +35,20 @@ Presenter::Presenter(const cinder::Gfx::RHI::Ctx& ctx, cinder::Platform::Window&
 }
 
 void Presenter::createRenderPasses() {
-    scenePass_ = renderPasses::scene(ctx_, swapchain_->format());
+    scenePass_ = renderPasses::scene(ctx_, sceneFormat());
+    overlayPass_ = renderPasses::overlay(ctx_, sceneFormat());
+    resolvePass_ = renderPasses::resolve(ctx_, swapchain_->format());
     presentPass_ = renderPasses::present(ctx_, swapchain_->format());
 }
 
 void Presenter::destroyRenderPasses() {
     if (presentPass_ != VK_NULL_HANDLE) vkDestroyRenderPass(ctx_.device(), presentPass_, nullptr);
+    if (resolvePass_ != VK_NULL_HANDLE) vkDestroyRenderPass(ctx_.device(), resolvePass_, nullptr);
+    if (overlayPass_ != VK_NULL_HANDLE) vkDestroyRenderPass(ctx_.device(), overlayPass_, nullptr);
     if (scenePass_ != VK_NULL_HANDLE) vkDestroyRenderPass(ctx_.device(), scenePass_, nullptr);
     presentPass_ = VK_NULL_HANDLE;
+    resolvePass_ = VK_NULL_HANDLE;
+    overlayPass_ = VK_NULL_HANDLE;
     scenePass_ = VK_NULL_HANDLE;
 }
 
@@ -67,14 +73,26 @@ void Presenter::measureScale() {
 
 Format Presenter::colorFormat() const { return swapchain_->format(); }
 
+Format Presenter::sceneFormat() const { return Format::RGBA16Sfloat; }
+
+Format Presenter::formatFor(PassKind pass) const {
+    return pass == PassKind::Present || pass == PassKind::Resolve ? swapchain_->format() : sceneFormat();
+}
+
 VkRenderPass Presenter::renderPass(PassKind pass) const {
-    return pass == PassKind::Scene ? scenePass_ : presentPass_;
+    switch (pass) {
+        case PassKind::Scene: return scenePass_;
+        case PassKind::Overlay: return overlayPass_;
+        case PassKind::Resolve: return resolvePass_;
+        case PassKind::Present: default: return presentPass_;
+    }
 }
 
 glm::uvec2 Presenter::extent() const { return {swapchain_->width(), swapchain_->height()}; }
 
 std::unique_ptr<RenderTarget> Presenter::createTarget(glm::uvec2 size) const {
-    return std::make_unique<RenderTarget>(ctx_, scenePass_, swapchain_->format(), size.x, size.y);
+    return std::make_unique<RenderTarget>(ctx_, scenePass_, resolvePass_, sceneFormat(), swapchain_->format(),
+                                          size.x, size.y);
 }
 
 std::optional<Frame> Presenter::begin() {
@@ -126,6 +144,30 @@ void Presenter::beginScenePass(Frame& frame, const RenderTarget& target, float r
     info.renderArea.extent = {target.width(), target.height()};
     info.clearValueCount = 2;
     info.pClearValues = clears;
+
+    vkCmdBeginRenderPass(unwrap(frame.commands), &info, VK_SUBPASS_CONTENTS_INLINE);
+}
+
+void Presenter::beginOverlayPass(Frame& frame, const RenderTarget& target) {
+    VkRenderPassBeginInfo info{};
+    info.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+    info.renderPass = overlayPass_;
+    info.framebuffer = target.overlayFramebuffer();
+    info.renderArea.offset = {0, 0};
+    info.renderArea.extent = {target.width(), target.height()};
+    info.clearValueCount = 0;
+
+    vkCmdBeginRenderPass(unwrap(frame.commands), &info, VK_SUBPASS_CONTENTS_INLINE);
+}
+
+void Presenter::beginResolvePass(Frame& frame, const RenderTarget& target) {
+    VkRenderPassBeginInfo info{};
+    info.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+    info.renderPass = resolvePass_;
+    info.framebuffer = target.resolveFramebuffer();
+    info.renderArea.offset = {0, 0};
+    info.renderArea.extent = {target.width(), target.height()};
+    info.clearValueCount = 0;
 
     vkCmdBeginRenderPass(unwrap(frame.commands), &info, VK_SUBPASS_CONTENTS_INLINE);
 }
@@ -239,17 +281,17 @@ void Presenter::captureTarget(const RenderTarget& target, const std::string& pat
 
     VkCommandBuffer cmd = ctx.beginSingleTime();
 
-    images::barrier(cmd, target.image(), VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+    images::barrier(cmd, target.resolvedImage(), VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
                     VK_ACCESS_SHADER_READ_BIT, VK_ACCESS_TRANSFER_READ_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
                     VK_PIPELINE_STAGE_TRANSFER_BIT);
 
     VkBufferImageCopy copy{};
     copy.imageSubresource = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, 1};
     copy.imageExtent = {width, height, 1};
-    vkCmdCopyImageToBuffer(cmd, target.image(), VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+    vkCmdCopyImageToBuffer(cmd, target.resolvedImage(), VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
                            staging.handle(), 1, &copy);
 
-    images::barrier(cmd, target.image(), VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+    images::barrier(cmd, target.resolvedImage(), VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
                     VK_ACCESS_TRANSFER_READ_BIT, VK_ACCESS_SHADER_READ_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT,
                     VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT);
 

@@ -41,6 +41,8 @@ int RendererDrawList::meshHandle(std::string_view name) {
 
 void RendererDrawList::background(float r, float g, float b) { renderer_.setClearColor(r, g, b); }
 
+void RendererDrawList::exposure(float exposure) { renderer_.setExposure(exposure); }
+
 void RendererDrawList::sprite(int texture, const glm::mat4& model, glm::vec2 size,
                               const glm::vec4& color) {
     sprite_.draw(texture, model, size, color);

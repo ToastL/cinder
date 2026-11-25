@@ -48,6 +48,8 @@ public:
 
     const cinder::Gfx::RHI::Ctx& ctx() const { return ctx_; }
     Format colorFormat() const;
+    Format sceneFormat() const;
+    Format formatFor(PassKind pass) const;
     VkRenderPass renderPass(PassKind pass) const;
     glm::uvec2 extent() const;
     float pixelsPerPoint() const { return pixelsPerPoint_; }
@@ -56,6 +58,8 @@ public:
 
     std::optional<Frame> begin();
     void beginScenePass(Frame& frame, const RenderTarget& target, float r, float g, float b);
+    void beginOverlayPass(Frame& frame, const RenderTarget& target);
+    void beginResolvePass(Frame& frame, const RenderTarget& target);
     void beginPresentPass(Frame& frame, float r, float g, float b);
     void endPass(Frame& frame);
     void end(Frame& frame);
@@ -79,6 +83,8 @@ private:
     std::unique_ptr<cinder::Gfx::VK::FrameSync> sync_;
     std::vector<VkCommandBuffer> commandBuffers_;
     VkRenderPass scenePass_ = VK_NULL_HANDLE;
+    VkRenderPass overlayPass_ = VK_NULL_HANDLE;
+    VkRenderPass resolvePass_ = VK_NULL_HANDLE;
     VkRenderPass presentPass_ = VK_NULL_HANDLE;
 
     std::function<void(bool)> recreated_;

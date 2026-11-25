@@ -23,6 +23,7 @@ struct PipelineDesc {
     ShaderStages pushConstantStages = ShaderStages::Vertex;
     std::uint32_t vertexStride = 0;
     std::vector<VertexAttribute> attributes;
+    std::uint32_t textureSlots = 1;
     bool depthTest = false;
     bool depthWrite = false;
     bool blend = false;

@@ -11,6 +11,8 @@ namespace cinder::Gfx::VK {
 namespace renderPasses {
 
 VkRenderPass scene(const RHI::Ctx& ctx, RHI::Format colorFormat);
+VkRenderPass overlay(const RHI::Ctx& ctx, RHI::Format colorFormat);
+VkRenderPass resolve(const RHI::Ctx& ctx, RHI::Format colorFormat);
 VkRenderPass present(const RHI::Ctx& ctx, RHI::Format colorFormat);
 
 }

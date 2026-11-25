@@ -1,0 +1,57 @@
+version 6
+actors {
+    CameraActor {
+        id 1
+        name "Camera"
+        components {
+            CameraComponent {
+                id 2
+                position 0 3 10
+                rotation -0.17 0 0
+                fov 70
+                clearColor 0.05 0.06 0.09 1
+                exposure 0.5
+            }
+        }
+    }
+    Actor {
+        id 3
+        name "Sky"
+        components {
+            SkyComponent {
+                id 4
+            }
+        }
+    }
+    Actor {
+        id 5
+        name "Cloud"
+        components {
+            CloudComponent {
+                id 6
+            }
+        }
+    }
+    StaticMeshActor {
+        id 7
+        name "Ground"
+        components {
+            StaticMeshComponent {
+                id 8
+                position 0 -1 0
+                scale 60 0.5 60
+            }
+        }
+    }
+    StaticMeshActor {
+        id 9
+        name "Occluder"
+        components {
+            StaticMeshComponent {
+                id 10
+                position 2.5 2.5 6
+                scale 1.5 2 1.5
+            }
+        }
+    }
+}

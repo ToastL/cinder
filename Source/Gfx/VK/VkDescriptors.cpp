@@ -34,16 +34,16 @@ VkDescriptorSet allocate(const RHI::Ctx& ctx, VkDescriptorPool pool, VkDescripto
 }
 
 void writeCombinedImageSampler(const RHI::Ctx& ctx, VkDescriptorSet set,
-                               VkImageView view, VkSampler sampler) {
+                               VkImageView view, VkSampler sampler, VkImageLayout layout, uint32_t binding) {
     VkDescriptorImageInfo image{};
-    image.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+    image.imageLayout = layout;
     image.imageView = view;
     image.sampler = sampler;
 
     VkWriteDescriptorSet write{};
     write.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
     write.dstSet = set;
-    write.dstBinding = 0;
+    write.dstBinding = binding;
     write.dstArrayElement = 0;
     write.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
     write.descriptorCount = 1;

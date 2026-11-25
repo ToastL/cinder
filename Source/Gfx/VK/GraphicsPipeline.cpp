@@ -28,8 +28,12 @@ void GraphicsPipeline::push(Commands cmd, ShaderStages stages, uint32_t size,
 }
 
 void GraphicsPipeline::bindTexture(Commands cmd, TextureBinding texture) const {
+    bindTexture(cmd, 0, texture);
+}
+
+void GraphicsPipeline::bindTexture(Commands cmd, uint32_t slot, TextureBinding texture) const {
     const VkDescriptorSet set = unwrap(texture);
-    vkCmdBindDescriptorSets(unwrap(cmd), VK_PIPELINE_BIND_POINT_GRAPHICS, layout_, 0, 1, &set, 0, nullptr);
+    vkCmdBindDescriptorSets(unwrap(cmd), VK_PIPELINE_BIND_POINT_GRAPHICS, layout_, slot, 1, &set, 0, nullptr);
 }
 
 GraphicsPipeline::~GraphicsPipeline() {

@@ -22,6 +22,7 @@ public:
     virtual int meshHandle(std::string_view name) = 0;
 
     virtual void background(float r, float g, float b) = 0;
+    virtual void exposure(float exposure) = 0;
 
     virtual void sprite(int texture, const glm::mat4& model, glm::vec2 size, const glm::vec4& color) = 0;
 

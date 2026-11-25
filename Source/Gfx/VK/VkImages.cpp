@@ -29,6 +29,30 @@ Allocated create(const RHI::Ctx& ctx, VkFormat format, uint32_t width, uint32_t 
     return out;
 }
 
+Allocated create3D(const RHI::Ctx& ctx, VkFormat format, uint32_t width, uint32_t height,
+                   uint32_t depth, VkImageUsageFlags usage) {
+    VkImageCreateInfo info{};
+    info.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
+    info.imageType = VK_IMAGE_TYPE_3D;
+    info.format = format;
+    info.extent = {width, height, depth};
+    info.mipLevels = 1;
+    info.arrayLayers = 1;
+    info.samples = VK_SAMPLE_COUNT_1_BIT;
+    info.tiling = VK_IMAGE_TILING_OPTIMAL;
+    info.usage = usage;
+    info.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+    info.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+
+    VmaAllocationCreateInfo alloc{};
+    alloc.usage = VMA_MEMORY_USAGE_AUTO;
+
+    Allocated out;
+    check(vmaCreateImage(ctx.allocator(), &info, &alloc, &out.image, &out.allocation, nullptr),
+          "vmaCreateImage 3D");
+    return out;
+}
+
 VkImageView view(const RHI::Ctx& ctx, VkImage image, VkFormat format, VkImageAspectFlags aspect) {
     VkImageViewCreateInfo info{};
     info.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
@@ -46,14 +70,35 @@ VkImageView view(const RHI::Ctx& ctx, VkImage image, VkFormat format, VkImageAsp
     return handle;
 }
 
+VkImageView view3D(const RHI::Ctx& ctx, VkImage image, VkFormat format, VkImageAspectFlags aspect) {
+    VkImageViewCreateInfo info{};
+    info.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+    info.image = image;
+    info.viewType = VK_IMAGE_VIEW_TYPE_3D;
+    info.format = format;
+    info.subresourceRange.aspectMask = aspect;
+    info.subresourceRange.baseMipLevel = 0;
+    info.subresourceRange.levelCount = 1;
+    info.subresourceRange.baseArrayLayer = 0;
+    info.subresourceRange.layerCount = 1;
+
+    VkImageView handle = VK_NULL_HANDLE;
+    check(vkCreateImageView(ctx.device(), &info, nullptr, &handle), "vkCreateImageView 3D");
+    return handle;
+}
+
 VkSampler sampler(const RHI::Ctx& ctx, VkFilter filter) {
+    return sampler(ctx, filter, VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE);
+}
+
+VkSampler sampler(const RHI::Ctx& ctx, VkFilter filter, VkSamplerAddressMode address) {
     VkSamplerCreateInfo info{};
     info.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
     info.magFilter = filter;
     info.minFilter = filter;
-    info.addressModeU = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
-    info.addressModeV = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
-    info.addressModeW = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+    info.addressModeU = address;
+    info.addressModeV = address;
+    info.addressModeW = address;
     info.anisotropyEnable = VK_FALSE;
     info.borderColor = VK_BORDER_COLOR_INT_OPAQUE_BLACK;
     info.unnormalizedCoordinates = VK_FALSE;

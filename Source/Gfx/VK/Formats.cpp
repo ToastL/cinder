@@ -18,6 +18,7 @@ constexpr Pair TABLE[] = {
     {Format::RGBA8Unorm, VK_FORMAT_R8G8B8A8_UNORM},
     {Format::ABGR8SrgbPack32, VK_FORMAT_A8B8G8R8_SRGB_PACK32},
     {Format::R8Unorm, VK_FORMAT_R8_UNORM},
+    {Format::RGBA16Sfloat, VK_FORMAT_R16G16B16A16_SFLOAT},
     {Format::D32Sfloat, VK_FORMAT_D32_SFLOAT},
     {Format::D32SfloatS8Uint, VK_FORMAT_D32_SFLOAT_S8_UINT},
     {Format::D24UnormS8Uint, VK_FORMAT_D24_UNORM_S8_UINT},

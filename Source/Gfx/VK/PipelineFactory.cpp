@@ -8,6 +8,7 @@
 #include "Gfx/VK/Ctx.hpp"
 #include "Gfx/VK/VkUtil.hpp"
 
+#include <stdexcept>
 #include <utility>
 #include <vector>
 
@@ -60,9 +61,12 @@ std::unique_ptr<GraphicsPipeline> createPipeline(const Presenter& presenter,
 
     VkPipelineLayoutCreateInfo layoutInfo{};
     layoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-    layoutInfo.setLayoutCount = 1;
-    const VkDescriptorSetLayout setLayout = ctx.textureLayout();
-    layoutInfo.pSetLayouts = &setLayout;
+    const uint32_t slots = desc.textureSlots == 0 ? 1 : desc.textureSlots;
+    if (slots > MAX_TEXTURE_SLOTS) throw std::runtime_error("pipeline asks for too many texture slots");
+    std::vector<VkDescriptorSetLayout> setLayouts;
+    for (uint32_t slot = 0; slot < slots; ++slot) setLayouts.push_back(ctx.textureLayout(slot));
+    layoutInfo.setLayoutCount = static_cast<uint32_t>(setLayouts.size());
+    layoutInfo.pSetLayouts = setLayouts.data();
     if (desc.pushConstantBytes > 0) {
         layoutInfo.pushConstantRangeCount = 1;
         layoutInfo.pPushConstantRanges = &push;

@@ -78,6 +78,7 @@ struct NullDraws : DrawList {
     int textureHandle(std::string_view path) override { return WHITE; }
     int meshHandle(std::string_view name) override { return 0; }
     void background(float r, float g, float b) override {}
+    void exposure(float exposure) override {}
     void sprite(int texture, const glm::mat4& model, glm::vec2 size, const glm::vec4& color) override {}
     void mesh(int mesh, int texture, const glm::mat4& model) override {}
     void camera(const cinder::Scene::View& view) override {}

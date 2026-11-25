@@ -18,6 +18,7 @@ cinder::Scene::View CameraComponent::view() {
 
 void CameraComponent::onRender(float alpha, cinder::Scene::DrawList& draws) {
     draws.background(clearColor_.r, clearColor_.g, clearColor_.b);
+    draws.exposure(exposure_);
     cinder::Scene::View seen = view();
     seen.world = transform().interpolated(alpha);
     draws.camera(seen);

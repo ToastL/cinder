@@ -7,4 +7,5 @@
 #include "Gfx/VK/RenderTarget.hpp"
 #include "Gfx/VK/Texture.hpp"
 #include "Gfx/VK/TexturePool.hpp"
+#include "Gfx/VK/VolumeTexture.hpp"
 #include "Gfx/VK/Ctx.hpp"

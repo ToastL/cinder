@@ -5,6 +5,8 @@
 #include "Components/CameraComponent.hpp"
 #include "Components/SpriteComponent.hpp"
 #include "Components/StaticMeshComponent.hpp"
+#include "Gfx/RHI/Fwd.hpp"
+#include "Gfx/RHI/Handles.hpp"
 #include "Physics/ColliderComponent.hpp"
 #include "Physics/RigidBodyComponent.hpp"
 #include "Physics/World.hpp"
@@ -19,10 +21,13 @@
 
 #include <glm/glm.hpp>
 
+#include <functional>
 #include <optional>
 #include <string_view>
 
 namespace cinder::Core { class Engine; }
+
+namespace cinder::Gfx { class OffscreenPass; }
 
 namespace cinder::Game {
 
@@ -64,5 +69,20 @@ std::optional<cinder::Physics::RayHit> raycast(glm::vec3 origin, glm::vec3 direc
 
 float random();
 float random(float low, float high);
+
+using PostPaintFn = std::function<void(cinder::Gfx::RHI::Commands cmd, uint32_t frameInFlight,
+                                       const glm::mat4& viewProjection)>;
+void setPostPaint(PostPaintFn paint);
+
+using OverlayPaintFn = std::function<void(cinder::Gfx::RHI::Commands cmd, uint32_t frameInFlight,
+                                          const glm::mat4& viewProjection,
+                                          cinder::Gfx::RHI::TextureBinding depth)>;
+void setOverlayPaint(OverlayPaintFn paint);
+
+using OffscreenPaintFn = std::function<void(cinder::Gfx::OffscreenPass& pass)>;
+void setOffscreenPaint(OffscreenPaintFn paint);
+
+const cinder::Gfx::RHI::Presenter& presenter();
+glm::vec3 cameraWorldPosition();
 
 }

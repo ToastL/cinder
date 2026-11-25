@@ -12,6 +12,7 @@ enum class Format : std::uint8_t {
     RGBA8Unorm,
     ABGR8SrgbPack32,
     R8Unorm,
+    RGBA16Sfloat,
     D32Sfloat,
     D32SfloatS8Uint,
     D24UnormS8Uint,
@@ -23,8 +24,12 @@ enum class VertexFormat : std::uint8_t {
     Float4,
 };
 
+constexpr std::uint32_t MAX_TEXTURE_SLOTS = 4;
+
 enum class PassKind : std::uint8_t {
     Scene,
+    Overlay,
+    Resolve,
     Present,
 };
 
@@ -44,6 +49,21 @@ enum class BufferUsage : std::uint8_t {
 enum class SamplerFilter : std::uint8_t {
     Nearest,
     Linear,
+};
+
+enum class SamplerAddress : std::uint8_t {
+    ClampToEdge,
+    Repeat,
+};
+
+enum class TextureType : std::uint8_t {
+    Tex2D,
+    Tex3D,
+};
+
+struct SamplerDesc {
+    SamplerFilter filter = SamplerFilter::Linear;
+    SamplerAddress address = SamplerAddress::ClampToEdge;
 };
 
 enum class Winding : std::uint8_t {

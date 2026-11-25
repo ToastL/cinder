@@ -69,7 +69,9 @@ private:
     std::vector<std::filesystem::path> sourcesOf(const Module& module) const;
     std::vector<std::string> compileFlags(const std::string& name, const TargetInfo& info, bool positionIndependent,
                                           const std::vector<std::string>& extraDefines);
-    void planShaders(std::vector<Action>& actions, std::vector<std::filesystem::path>& outputs);
+    void planShaders(std::vector<Action>& actions, std::vector<std::filesystem::path>& outputs,
+                     const std::filesystem::path& source, const std::filesystem::path& out,
+                     const std::filesystem::path& moduleCache);
     const std::string& buildId() const;
     std::string computeBuildId() const;
     TargetInfo info(const std::string& target, const std::string& id) const;

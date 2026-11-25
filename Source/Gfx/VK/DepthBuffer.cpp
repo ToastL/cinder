@@ -8,7 +8,8 @@ namespace cinder::Gfx::VK {
 
 DepthBuffer::DepthBuffer(const RHI::Ctx& ctx, VkFormat format, uint32_t width, uint32_t height)
     : ctx_(ctx) {
-    image_ = images::create(ctx, format, width, height, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT);
+    image_ = images::create(ctx, format, width, height,
+                            VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT);
     view_ = images::view(ctx, image_.image, format, VK_IMAGE_ASPECT_DEPTH_BIT);
 }
 

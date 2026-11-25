@@ -31,6 +31,11 @@ PipelineBuilder& PipelineBuilder::attribute(std::uint32_t location, VertexFormat
     return *this;
 }
 
+PipelineBuilder& PipelineBuilder::textureSlots(std::uint32_t count) {
+    desc_.textureSlots = count;
+    return *this;
+}
+
 PipelineBuilder& PipelineBuilder::depthTest() {
     desc_.depthTest = true;
     desc_.depthWrite = true;

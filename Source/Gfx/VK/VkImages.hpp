@@ -17,8 +17,12 @@ namespace images {
 
 Allocated create(const RHI::Ctx& ctx, VkFormat format, uint32_t width, uint32_t height,
                  VkImageUsageFlags usage);
+Allocated create3D(const RHI::Ctx& ctx, VkFormat format, uint32_t width, uint32_t height,
+                   uint32_t depth, VkImageUsageFlags usage);
 VkImageView view(const RHI::Ctx& ctx, VkImage image, VkFormat format, VkImageAspectFlags aspect);
+VkImageView view3D(const RHI::Ctx& ctx, VkImage image, VkFormat format, VkImageAspectFlags aspect);
 VkSampler sampler(const RHI::Ctx& ctx, VkFilter filter);
+VkSampler sampler(const RHI::Ctx& ctx, VkFilter filter, VkSamplerAddressMode address);
 void barrier(VkCommandBuffer cmd, VkImage image, VkImageLayout from, VkImageLayout to, VkAccessFlags srcAccess,
              VkAccessFlags dstAccess, VkPipelineStageFlags srcStage, VkPipelineStageFlags dstStage);
 VkFramebuffer framebuffer(const RHI::Ctx& ctx, VkRenderPass renderPass,

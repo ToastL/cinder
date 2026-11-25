@@ -4,22 +4,29 @@
 #include "Gfx/MTL/Ctx.hpp"
 #include "Gfx/MTL/MetalUtil.hpp"
 #include "Gfx/MTL/Texture.hpp"
+#include "Gfx/MTL/VolumeTexture.hpp"
 
 #include <stdexcept>
 
 namespace cinder::Gfx::RHI {
 
 TexturePool::TexturePool(const Ctx& ctx, std::uint32_t maxSets, SamplerFilter filter)
+    : TexturePool(ctx, maxSets, SamplerDesc{filter, SamplerAddress::ClampToEdge}) {}
+
+TexturePool::TexturePool(const Ctx& ctx, std::uint32_t maxSets, SamplerDesc samplerDesc)
     : maxSets_(maxSets) {
     id<MTLDevice> device = cinder::Gfx::MTL::bridge<id<MTLDevice>>(ctx.device());
     MTLSamplerDescriptor* desc = [[MTLSamplerDescriptor alloc] init];
-    const MTLSamplerMinMagFilter metalFilter = filter == SamplerFilter::Nearest
+    const MTLSamplerMinMagFilter metalFilter = samplerDesc.filter == SamplerFilter::Nearest
             ? MTLSamplerMinMagFilterNearest : MTLSamplerMinMagFilterLinear;
+    const MTLSamplerAddressMode metalAddress = samplerDesc.address == SamplerAddress::Repeat
+            ? MTLSamplerAddressModeRepeat : MTLSamplerAddressModeClampToEdge;
     desc.minFilter = metalFilter;
     desc.magFilter = metalFilter;
     desc.mipFilter = MTLSamplerMipFilterNotMipmapped;
-    desc.sAddressMode = MTLSamplerAddressModeClampToEdge;
-    desc.tAddressMode = MTLSamplerAddressModeClampToEdge;
+    desc.sAddressMode = metalAddress;
+    desc.tAddressMode = metalAddress;
+    desc.rAddressMode = metalAddress;
     id<MTLSamplerState> sampler = [device newSamplerStateWithDescriptor:desc];
     if (sampler == nil) throw cinder::Gfx::MTL::error("Could not create Metal sampler");
     sampler_ = cinder::Gfx::MTL::retain(sampler);
@@ -36,7 +43,9 @@ TextureBinding TexturePool::bind(void* texture) {
     return result;
 }
 
-TextureBinding TexturePool::bind(const Texture& texture) { return bind(texture.handle()); }
+TextureBinding TexturePool::bind(const Texture& texture, std::uint32_t) { return bind(texture.handle()); }
+
+TextureBinding TexturePool::bind(const VolumeTexture& volume, std::uint32_t) { return bind(volume.handle()); }
 
 TexturePool::~TexturePool() {
     bindings_.clear();

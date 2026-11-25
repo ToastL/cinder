@@ -13,6 +13,7 @@ std::filesystem::path enginePath(std::string_view relative);
 
 const std::filesystem::path& shaderRoot();
 std::filesystem::path shaderPath(std::string_view relative);
+std::filesystem::path projectShaderRoot();
 
 void setProjectRoot(const std::filesystem::path& root);
 const std::filesystem::path& projectRoot();

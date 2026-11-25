@@ -52,6 +52,10 @@ public:
 
     const Ctx& ctx() const { return ctx_; }
     Format colorFormat() const { return Format::BGRA8Srgb; }
+    Format sceneFormat() const { return Format::RGBA16Sfloat; }
+    Format formatFor(PassKind pass) const {
+        return pass == PassKind::Present || pass == PassKind::Resolve ? colorFormat() : sceneFormat();
+    }
     glm::uvec2 extent() const;
     float pixelsPerPoint() const { return pixelsPerPoint_; }
 
@@ -59,6 +63,8 @@ public:
 
     std::optional<Frame> begin();
     void beginScenePass(Frame& frame, const RenderTarget& target, float r, float g, float b);
+    void beginOverlayPass(Frame& frame, const RenderTarget& target);
+    void beginResolvePass(Frame& frame, const RenderTarget& target);
     void beginPresentPass(Frame& frame, float r, float g, float b);
     void endPass(Frame& frame);
     void end(Frame& frame);
