@@ -14,6 +14,7 @@ std::uint64_t pixelFormat(cinder::Gfx::RHI::Format format) {
         case Format::RGBA8Unorm: return MTLPixelFormatRGBA8Unorm;
         case Format::ABGR8SrgbPack32: return MTLPixelFormatRGBA8Unorm_sRGB;
         case Format::R8Unorm: return MTLPixelFormatR8Unorm;
+        case Format::RGBA16Sfloat: return MTLPixelFormatRGBA16Float;
         case Format::D32Sfloat: return MTLPixelFormatDepth32Float;
         case Format::D32SfloatS8Uint: return MTLPixelFormatDepth32Float_Stencil8;
         case Format::D24UnormS8Uint: return MTLPixelFormatDepth24Unorm_Stencil8;

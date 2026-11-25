@@ -499,7 +499,7 @@ real change — `sameAttribute` counts `2` and `2.0` as equal — and `loadAttri
 | `SceneComponent` | component | — | a transform and nothing else |
 | `StaticMeshComponent` | scene component | `mesh`, `texture` | |
 | `SpriteComponent` | scene component | `texture`, `size`, `color` | a quad in its local XY plane |
-| `CameraComponent` | scene component | `projection`, `fov`, clip planes, `zoom`, `clearColor`, `virtualSize` | `projection` is all that makes a scene 2D |
+| `CameraComponent` | scene component | `projection`, `fov`, clip planes, `zoom`, `clearColor`, `virtualSize`, `exposure` | `projection` is all that makes a scene 2D |
 | `RigidBodyComponent` | component | `motion`, `mass`, `gravityScale`, damping, `velocity`, `planar` | physics moves its actor's root; lives in `Physics` |
 | `ColliderComponent` | scene component | `shape`, `size`, `friction`, `restitution` | a shape of its nearest body; see *Physics* |
 
@@ -659,15 +659,31 @@ Save is disabled during Play: the scene on screen is the running game, not the d
 Both backends present with vsync (FIFO on Vulkan), meshes cull back faces, and the mesh shader lights
 through the cofactor of the model matrix, so a non-uniformly scaled mesh keeps correct normals. The **scene pass** (color + depth) draws
 an ordered `vector<unique_ptr<DrawPass>>` — `MeshPass` first, then `SpritePass` — into a
-`RenderTarget`, and ends in `SHADER_READ_ONLY_OPTIMAL`. The **present pass** draws one fullscreen
-triangle (`CompositePipeline`) sampling that target into the swapchain framebuffer.
+`RenderTarget`, and ends in `SHADER_READ_ONLY_OPTIMAL`. The **resolve pass** tonemaps it into the
+target's resolved image, and the **present pass** draws one fullscreen triangle (`CompositePipeline`)
+sampling that into the swapchain framebuffer.
 
 `RenderTarget` is a VMA color image + `DepthBuffer` + framebuffer, plus its own sampler, 1-set
 descriptor pool and descriptor set — deliberately *not* routed through `Assets`, whose pool has no
 `FREE_DESCRIPTOR_SET` flag and would leak a set per resize. There is one target **per frame in
 flight**; a single one would be cleared by frame N+1 while frame N's composite still sampled it.
-`FrameTargets` owns the collection. The target uses `swapchain.format()` (sRGB) so the encode/decode round trip is identity; a UNORM
-target would visibly brighten everything.
+`FrameTargets` owns the collection.
+
+**The scene target is HDR** — `RGBA16Sfloat`, linear, unclamped — and a **resolve pass** turns it
+into the picture everything else reads. Each `RenderTarget` also holds a *resolved* image in the
+swapchain's format, and after the scene and overlay passes `ResolvePipeline` draws one fullscreen
+triangle (`Shaders/resolve.hlsl`) into it: the HDR value times the camera's `exposure`, passed through
+unchanged up to a shoulder of 0.75 and rolled off exponentially toward 1 above it, then a vignette.
+Lit diffuse surfaces keep their values and only HDR sources such as a sun disc are compressed. The
+composite, the Scene view's image (`resolvedBinding`) and `--capture` all read the resolved image, so
+the player, the editor and a capture show the same frame and none of them knows the target is HDR.
+`binding()` is the HDR image, for a pass that needs scene light rather than the picture.
+`PassKind::Resolve` names the pass: its format is the swapchain's and it has no depth. On Vulkan it is
+its own `VkRenderPass`, `DONT_CARE` in, `SHADER_READ_ONLY_OPTIMAL` out, with the same `0 -> EXTERNAL`
+dependency as the scene pass; a swapchain format change rebuilds it with the resolve and composite
+pipelines. `CameraComponent::exposure` reaches the renderer through `DrawList::exposure` every frame,
+like the clear colour. A later pass that reads the scene depth should `Load` it at `SV_Position.xy`
+rather than sample at a UV derived from NDC, so no Y convention is involved.
 
 **The target follows the window unless the host embeds it.** `setViewportSize(w, h)`, in window
 points, detaches it: both targets are rebuilt at `w × h` times the framebuffer scale, the cameras are

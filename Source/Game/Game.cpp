@@ -123,4 +123,12 @@ float random() { return std::uniform_real_distribution<float>(0.0f, 1.0f)(genera
 
 float random(float low, float high) { return std::uniform_real_distribution<float>(low, high)(generator()); }
 
+void setPostPaint(PostPaintFn paint) { engine().renderer().setPostPaint(std::move(paint)); }
+
+void setOverlayPaint(OverlayPaintFn paint) { engine().renderer().setOverlayPaint(std::move(paint)); }
+
+const cinder::Gfx::RHI::Presenter& presenter() { return engine().renderer().presenter(); }
+
+glm::vec3 cameraWorldPosition() { return engine().renderer().cameraWorldPosition(); }
+
 }

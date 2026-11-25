@@ -17,6 +17,7 @@ public:
     PipelineBuilder& pushConstants(std::uint32_t bytes, ShaderStages stages = ShaderStages::Vertex);
     PipelineBuilder& vertexStride(std::uint32_t stride);
     PipelineBuilder& attribute(std::uint32_t location, VertexFormat format, std::uint32_t offset);
+    PipelineBuilder& textureSlots(std::uint32_t count);
     PipelineBuilder& depthTest();
     PipelineBuilder& depthRead();
     PipelineBuilder& alphaBlend();

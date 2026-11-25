@@ -247,8 +247,11 @@ std::vector<std::string> Builder::compileFlags(const std::string& name, const Ta
     return flags;
 }
 
-void Builder::planShaders(std::vector<Action>& actions, std::vector<std::filesystem::path>& outputs) {
-    const std::filesystem::path out = binaries() / "Shaders";
+void Builder::planShaders(std::vector<Action>& actions, std::vector<std::filesystem::path>& outputs,
+                          const std::filesystem::path& source, const std::filesystem::path& out,
+                          const std::filesystem::path& moduleCache) {
+    std::error_code sourceError;
+    if (!std::filesystem::is_directory(source, sourceError)) return;
     const std::string dxc = findTool("dxc", "DXC");
     if (dxc.empty()) throw std::runtime_error("dxc not found; install the LunarG Vulkan SDK, put dxc on PATH or set DXC");
     const auto has = [&](const char* format) {
@@ -270,12 +273,17 @@ void Builder::planShaders(std::vector<Action>& actions, std::vector<std::filesys
     }
 
     std::vector<std::filesystem::path> programs;
-    for (const auto& entry : std::filesystem::directory_iterator(options_.root / "Shaders")) {
+    std::vector<std::filesystem::path> headers;
+    for (const auto& entry : std::filesystem::directory_iterator(source)) {
         if (entry.path().extension() == ".hlsl") programs.push_back(entry.path());
+        if (entry.path().extension() == ".hlsli") headers.push_back(entry.path());
     }
     std::sort(programs.begin(), programs.end());
+    std::sort(headers.begin(), headers.end());
     for (const std::filesystem::path& source : programs) {
         const std::string name = source.stem().string();
+        std::vector<std::filesystem::path> inputs{source};
+        inputs.insert(inputs.end(), headers.begin(), headers.end());
         std::vector<std::filesystem::path> airs;
         for (const std::string stage : {"vs", "ps"}) {
             const std::string entry = stage == "vs" ? "VSMain" : "PSMain";
@@ -283,13 +291,13 @@ void Builder::planShaders(std::vector<Action>& actions, std::vector<std::filesys
             actions.push_back(Action{"dxc spirv " + name + "." + stage,
                                      {dxc, "-spirv", "-fspv-target-env=vulkan1.2", "-T", stage + "_6_0", "-E", entry,
                                       source.string(), "-Fo", spv.string()},
-                                     {}, {source}, {spv}, {}, {}});
+                                     {}, inputs, {spv}, {}, {}});
             outputs.push_back(spv);
             if (has("dxil")) {
                 const std::filesystem::path dxil = out / (name + "." + stage + ".dxil");
                 actions.push_back(Action{"dxc dxil " + name + "." + stage,
                                          {dxc, "-T", stage + "_6_0", "-E", entry, source.string(), "-Fo", dxil.string()},
-                                         {}, {source}, {dxil}, {}, {}});
+                                         {}, inputs, {dxil}, {}, {}});
                 outputs.push_back(dxil);
             }
             if (!has("msl")) continue;
@@ -308,7 +316,7 @@ void Builder::planShaders(std::vector<Action>& actions, std::vector<std::filesys
             const std::filesystem::path air = out / (name + "." + stage + ".air");
             actions.push_back(Action{"metal " + name + "." + stage,
                                      {"xcrun", "metal", "-std=macos-metal2.3",
-                                      "-fmodules-cache-path=" + (intermediate() / "MetalModuleCache").string(), "-c", msl.string(),
+                                      "-fmodules-cache-path=" + moduleCache.string(), "-c", msl.string(),
                                       "-o", air.string()},
                                      {}, {msl}, {air}, {}, {}});
             airs.push_back(air);
@@ -395,9 +403,10 @@ void Builder::planRules(const std::string& name, const TargetRules& target, cons
     }
 
     std::vector<std::filesystem::path> linkInputs = objects;
-    if (!game && std::find(modules.begin(), modules.end(), "Gfx") != modules.end() && shaderPlanned_.insert("shaders").second) {
+    if (!game && std::find(modules.begin(), modules.end(), "Gfx") != modules.end() && shaderPlanned_.insert("engine").second) {
         std::vector<std::filesystem::path> shaderOutputs;
-        planShaders(actions, shaderOutputs);
+        planShaders(actions, shaderOutputs, options_.root / "Shaders", binaries() / "Shaders",
+                    intermediate() / "MetalModuleCache");
     }
 
     const std::string output = target.outputName_.empty() ? name : target.outputName_;
@@ -522,6 +531,10 @@ bool Builder::buildGame(const std::filesystem::path& project, std::filesystem::p
     for (const std::string& module : modules) target.modules_.push_back(module);
     std::vector<Action> actions;
     planRules(name, target, info(name, engineId), actions, Placement{objects, library, entry, engineId});
+
+    std::vector<std::filesystem::path> projectShaderOutputs;
+    planShaders(actions, projectShaderOutputs, project / "Shaders", project / "Saved" / "Shaders",
+                objects / "MetalModuleCache");
 
     writeCompileCommands(project / "compile_commands.json", project, actions);
 

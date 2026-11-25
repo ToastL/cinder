@@ -119,7 +119,7 @@ Frame& Frame::operator=(Frame&& other) noexcept {
 }
 
 std::unique_ptr<RenderTarget> Presenter::createTarget(glm::uvec2 size) const {
-    return std::make_unique<RenderTarget>(ctx_, colorFormat(), size.x, size.y);
+    return std::make_unique<RenderTarget>(ctx_, sceneFormat(), colorFormat(), size.x, size.y);
 }
 
 std::optional<Frame> Presenter::begin() {
@@ -170,10 +170,36 @@ void Presenter::beginScenePass(Frame& frame, const RenderTarget& target, float r
     pass.colorAttachments[0].clearColor = MTLClearColorMake(r, g, b, 1.0);
     pass.depthAttachment.texture = cinder::Gfx::MTL::bridge<id<MTLTexture>>(target.depth());
     pass.depthAttachment.loadAction = MTLLoadActionClear;
-    pass.depthAttachment.storeAction = MTLStoreActionDontCare;
+    pass.depthAttachment.storeAction = MTLStoreActionStore;
     pass.depthAttachment.clearDepth = 1.0;
     id<MTLRenderCommandEncoder> encoder = [buffer renderCommandEncoderWithDescriptor:pass];
     if (encoder == nil) throw cinder::Gfx::MTL::error("Could not begin Metal scene pass");
+    frame.state->encoder = cinder::Gfx::MTL::retain(encoder);
+}
+
+void Presenter::beginOverlayPass(Frame& frame, const RenderTarget& target) {
+    id<MTLCommandBuffer> buffer =
+            cinder::Gfx::MTL::bridge<id<MTLCommandBuffer>>(frame.commandBuffer);
+    MTLRenderPassDescriptor* pass = [MTLRenderPassDescriptor renderPassDescriptor];
+    pass.colorAttachments[0].texture =
+            cinder::Gfx::MTL::bridge<id<MTLTexture>>(target.color());
+    pass.colorAttachments[0].loadAction = MTLLoadActionLoad;
+    pass.colorAttachments[0].storeAction = MTLStoreActionStore;
+    id<MTLRenderCommandEncoder> encoder = [buffer renderCommandEncoderWithDescriptor:pass];
+    if (encoder == nil) throw cinder::Gfx::MTL::error("Could not begin Metal overlay pass");
+    frame.state->encoder = cinder::Gfx::MTL::retain(encoder);
+}
+
+void Presenter::beginResolvePass(Frame& frame, const RenderTarget& target) {
+    id<MTLCommandBuffer> buffer =
+            cinder::Gfx::MTL::bridge<id<MTLCommandBuffer>>(frame.commandBuffer);
+    MTLRenderPassDescriptor* pass = [MTLRenderPassDescriptor renderPassDescriptor];
+    pass.colorAttachments[0].texture =
+            cinder::Gfx::MTL::bridge<id<MTLTexture>>(target.resolved());
+    pass.colorAttachments[0].loadAction = MTLLoadActionDontCare;
+    pass.colorAttachments[0].storeAction = MTLStoreActionStore;
+    id<MTLRenderCommandEncoder> encoder = [buffer renderCommandEncoderWithDescriptor:pass];
+    if (encoder == nil) throw cinder::Gfx::MTL::error("Could not begin Metal resolve pass");
     frame.state->encoder = cinder::Gfx::MTL::retain(encoder);
 }
 
@@ -248,7 +274,7 @@ void Presenter::capture(void* textureHandle, std::uint32_t width, std::uint32_t 
 }
 
 void Presenter::captureTarget(const RenderTarget& target, const std::string& path) const {
-    capture(target.color(), target.width(), target.height(), path);
+    capture(target.resolved(), target.width(), target.height(), path);
 }
 
 Presenter::~Presenter() {

@@ -19,6 +19,7 @@ public:
     float zoom() const { return zoom_; }
     const glm::vec4& clearColor() const { return clearColor_; }
     const glm::vec2& virtualSize() const { return virtualSize_; }
+    float exposure() const { return exposure_; }
 
     CameraComponent& setProjection(Projection projection) { projection_ = projection; return *this; }
     CameraComponent& setFov(float degrees) { fov_ = degrees; return *this; }
@@ -32,6 +33,7 @@ public:
         virtualSize_ = glm::vec2(width, height);
         return *this;
     }
+    CameraComponent& setExposure(float exposure) { exposure_ = exposure; return *this; }
 
     cinder::Scene::View view();
 
@@ -45,6 +47,7 @@ public:
         CINDER_PROP_R(zoom_, 0.05f, 20.0f);
         CINDER_PROP_COLOR(clearColor_);
         CINDER_PROP(virtualSize_);
+        CINDER_PROP_S(exposure_, 0.1f, 8.0f, 0.05f);
     }
 
 private:
@@ -55,6 +58,7 @@ private:
     float zoom_ = 1.0f;
     glm::vec4 clearColor_{0.02f, 0.02f, 0.05f, 1.0f};
     glm::vec2 virtualSize_{0.0f, 0.0f};
+    float exposure_ = 1.0f;
 };
 
 }

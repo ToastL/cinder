@@ -119,7 +119,19 @@ const std::filesystem::path& shaderRoot() {
     return shaders;
 }
 
-std::filesystem::path shaderPath(std::string_view relative) { return under(shaderRoot(), relative); }
+std::filesystem::path projectShaderRoot() {
+    if (project.empty()) return {};
+    return project / "Saved" / "Shaders";
+}
+
+std::filesystem::path shaderPath(std::string_view relative) {
+    if (!project.empty()) {
+        const std::filesystem::path candidate = projectShaderRoot() / std::filesystem::path(relative);
+        std::error_code error;
+        if (std::filesystem::exists(candidate, error)) return candidate;
+    }
+    return under(shaderRoot(), relative);
+}
 
 void setProjectRoot(const std::filesystem::path& root) { project = std::filesystem::absolute(root); }
 

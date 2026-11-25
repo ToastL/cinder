@@ -13,10 +13,12 @@ namespace cinder::Gfx::RHI {
 
 class Ctx;
 class Texture;
+class VolumeTexture;
 
 class TexturePool {
 public:
     TexturePool(const Ctx& ctx, std::uint32_t maxSets, SamplerFilter filter);
+    TexturePool(const Ctx& ctx, std::uint32_t maxSets, SamplerDesc sampler);
     ~TexturePool();
 
     TexturePool(const TexturePool&) = delete;
@@ -24,6 +26,7 @@ public:
 
     TextureBinding bind(void* texture);
     TextureBinding bind(const Texture& texture);
+    TextureBinding bind(const VolumeTexture& volume);
 
 private:
     std::uint32_t maxSets_ = 0;

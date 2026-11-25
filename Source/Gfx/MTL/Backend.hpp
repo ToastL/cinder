@@ -8,3 +8,4 @@
 #include "Gfx/MTL/RenderTarget.hpp"
 #include "Gfx/MTL/Texture.hpp"
 #include "Gfx/MTL/TexturePool.hpp"
+#include "Gfx/MTL/VolumeTexture.hpp"

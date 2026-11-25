@@ -21,7 +21,10 @@ using cinder::Gfx::RHI::Ctx;
 Renderer::Renderer(const Ctx& ctx, cinder::Platform::Window& window) : ctx_(ctx), window_(window) {
     presenter_ = std::make_unique<cinder::Gfx::RHI::Presenter>(ctx, window, FRAMES_IN_FLIGHT);
     presenter_->onRecreated([this](bool formatChanged) {
-        if (formatChanged) ui_->rebuild();
+        if (formatChanged) {
+            ui_->rebuild();
+            createPipelines();
+        }
         createTargets();
         resizeCameras();
     });
@@ -30,7 +33,7 @@ Renderer::Renderer(const Ctx& ctx, cinder::Platform::Window& window) : ctx_(ctx)
     assets_ = std::make_unique<Assets>(ctx);
     spritePipeline_ = std::make_unique<cinder::Gfx::Pass::SpritePipeline>(*presenter_);
     meshPipeline_ = std::make_unique<cinder::Gfx::Pass::MeshPipeline>(*presenter_);
-    compositePipeline_ = std::make_unique<CompositePipeline>(*presenter_);
+    createPipelines();
     ui_ = std::make_unique<UiRenderer>(ctx, *assets_, *presenter_, FRAMES_IN_FLIGHT);
 
     auto meshPass = std::make_unique<cinder::Gfx::Pass::MeshPass>(ctx, *assets_, *meshPipeline_);
@@ -55,6 +58,11 @@ glm::uvec2 Renderer::targetExtent() const {
         return static_cast<uint32_t>(std::max(1L, std::lround(static_cast<float>(points) * scale)));
     };
     return {pixels(viewportWidth_), pixels(viewportHeight_)};
+}
+
+void Renderer::createPipelines() {
+    resolvePipeline_ = std::make_unique<ResolvePipeline>(*presenter_);
+    compositePipeline_ = std::make_unique<CompositePipeline>(*presenter_);
 }
 
 void Renderer::createTargets() {
@@ -116,16 +124,31 @@ void Renderer::drawFrame() {
     cinder::Gfx::RHI::viewport(frame->commands, target.width(), target.height());
     cinder::Gfx::RHI::scissor(frame->commands, 0, 0, target.width(), target.height());
     const glm::mat4& viewProjection = override_ ? override_->viewProjection() : camera_.viewProjection();
+    if (postPaint_) postPaint_(frame->commands, frame->index, viewProjection);
     for (const std::unique_ptr<DrawPass>& pass : passes_) {
         pass->record(frame->commands, frame->index, viewProjection);
     }
     presenter_->endPass(*frame);
 
+    if (overlayPaint_) {
+        presenter_->beginOverlayPass(*frame, target);
+        cinder::Gfx::RHI::viewport(frame->commands, target.width(), target.height());
+        cinder::Gfx::RHI::scissor(frame->commands, 0, 0, target.width(), target.height());
+        overlayPaint_(frame->commands, frame->index, viewProjection, target.depthBinding());
+        presenter_->endPass(*frame);
+    }
+
+    presenter_->beginResolvePass(*frame, target);
+    cinder::Gfx::RHI::viewport(frame->commands, target.width(), target.height());
+    cinder::Gfx::RHI::scissor(frame->commands, 0, 0, target.width(), target.height());
+    resolvePipeline_->draw(frame->commands, target.binding(), exposure_);
+    presenter_->endPass(*frame);
+
     presenter_->beginPresentPass(*frame, clearR_, clearG_, clearB_);
     cinder::Gfx::RHI::viewport(frame->commands, window.x, window.y);
     cinder::Gfx::RHI::scissor(frame->commands, 0, 0, window.x, window.y);
-    if (!embedded()) compositePipeline_->draw(frame->commands, target.binding());
-    ui_->record(frame->commands, frame->index, window, target.binding());
+    if (!embedded()) compositePipeline_->draw(frame->commands, target.resolvedBinding());
+    ui_->record(frame->commands, frame->index, window, target.resolvedBinding());
     presenter_->endPass(*frame);
 
     presenter_->end(*frame);
@@ -142,6 +165,11 @@ void Renderer::requestWindowCapture(const std::string& path) {
 }
 
 cinder::Scene::DrawList& Renderer::draws() { return *draws_; }
+
+glm::vec3 Renderer::cameraWorldPosition() const {
+    const glm::mat4& world = override_ ? override_->view().world : camera_.view().world;
+    return glm::vec3(world[3]);
+}
 
 Renderer::~Renderer() { ctx_.waitIdle(); }
 

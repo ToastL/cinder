@@ -77,16 +77,20 @@ void GraphicsPipeline::push(Commands cmd, ShaderStages stages, std::uint32_t siz
 }
 
 void GraphicsPipeline::bindTexture(Commands cmd, TextureBinding texture) const {
+    bindTexture(cmd, 0, texture);
+}
+
+void GraphicsPipeline::bindTexture(Commands cmd, std::uint32_t slot, TextureBinding texture) const {
     auto* value = unwrap(texture);
     if (value == nullptr) return;
     auto& state = unwrap(cmd);
     id<MTLRenderCommandEncoder> encoder =
             cinder::Gfx::MTL::bridge<id<MTLRenderCommandEncoder>>(state.encoder);
     [encoder setFragmentTexture:cinder::Gfx::MTL::bridge<id<MTLTexture>>(value->texture)
-                        atIndex:cinder::Gfx::MTL::TEXTURE_SLOT];
+                        atIndex:cinder::Gfx::MTL::TEXTURE_SLOT + slot];
     [encoder setFragmentSamplerState:
                      cinder::Gfx::MTL::bridge<id<MTLSamplerState>>(value->sampler)
-                                 atIndex:cinder::Gfx::MTL::TEXTURE_SLOT];
+                                 atIndex:cinder::Gfx::MTL::TEXTURE_SLOT + slot];
 }
 
 GraphicsPipeline::~GraphicsPipeline() {

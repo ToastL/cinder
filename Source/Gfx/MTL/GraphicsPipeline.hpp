@@ -24,6 +24,7 @@ public:
     void push(Commands cmd, std::uint32_t offset, const glm::mat4& value) const;
     void push(Commands cmd, ShaderStages stages, std::uint32_t size, const void* data) const;
     void bindTexture(Commands cmd, TextureBinding texture) const;
+    void bindTexture(Commands cmd, std::uint32_t slot, TextureBinding texture) const;
 
 private:
     void updatePushConstants(Commands cmd, ShaderStages stages) const;

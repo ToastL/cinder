@@ -7,7 +7,7 @@
 
 namespace cinder::Gfx::RHI {
 
-class Texture; class Ctx; }
+class Texture; class VolumeTexture; class Ctx; }
 
 namespace cinder::Gfx::RHI {
 
@@ -16,6 +16,7 @@ namespace cinder::Gfx::RHI {
 class TexturePool {
 public:
     TexturePool(const cinder::Gfx::RHI::Ctx& ctx, uint32_t maxSets, SamplerFilter filter);
+    TexturePool(const cinder::Gfx::RHI::Ctx& ctx, uint32_t maxSets, SamplerDesc sampler);
     ~TexturePool();
 
     TexturePool(const TexturePool&) = delete;
@@ -23,6 +24,7 @@ public:
 
     TextureBinding bind(VkImageView view) const;
     TextureBinding bind(const Texture& texture) const;
+    TextureBinding bind(const VolumeTexture& volume) const;
 
 private:
     const cinder::Gfx::RHI::Ctx& ctx_;

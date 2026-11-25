@@ -59,7 +59,7 @@ std::unique_ptr<GraphicsPipeline> createPipeline(const Presenter& presenter,
     pipeline.vertexFunction = vertex;
     pipeline.fragmentFunction = fragment;
     pipeline.colorAttachments[0].pixelFormat = static_cast<MTLPixelFormat>(
-            cinder::Gfx::MTL::pixelFormat(presenter.colorFormat()));
+            cinder::Gfx::MTL::pixelFormat(presenter.formatFor(desc.pass)));
 
     if (desc.vertexStride > 0) {
         MTLVertexDescriptor* vertices = [[MTLVertexDescriptor alloc] init];

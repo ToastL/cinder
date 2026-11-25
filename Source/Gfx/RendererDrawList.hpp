@@ -25,6 +25,7 @@ public:
     int meshHandle(std::string_view name) override;
 
     void background(float r, float g, float b) override;
+    void exposure(float exposure) override;
 
     void sprite(int texture, const glm::mat4& model, glm::vec2 size, const glm::vec4& color) override;
 

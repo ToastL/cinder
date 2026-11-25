@@ -60,9 +60,10 @@ std::unique_ptr<GraphicsPipeline> createPipeline(const Presenter& presenter,
 
     VkPipelineLayoutCreateInfo layoutInfo{};
     layoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-    layoutInfo.setLayoutCount = 1;
-    const VkDescriptorSetLayout setLayout = ctx.textureLayout();
-    layoutInfo.pSetLayouts = &setLayout;
+    const std::vector<VkDescriptorSetLayout> setLayouts(
+            desc.textureSlots == 0 ? 1 : desc.textureSlots, ctx.textureLayout());
+    layoutInfo.setLayoutCount = static_cast<uint32_t>(setLayouts.size());
+    layoutInfo.pSetLayouts = setLayouts.data();
     if (desc.pushConstantBytes > 0) {
         layoutInfo.pushConstantRangeCount = 1;
         layoutInfo.pPushConstantRanges = &push;

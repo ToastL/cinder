@@ -17,6 +17,7 @@ public:
     static VkFormat chooseFormat(VkPhysicalDevice physicalDevice);
 
     VkImageView view() const { return view_; }
+    VkImage image() const { return image_.image; }
 
 private:
     const RHI::Ctx& ctx_;
