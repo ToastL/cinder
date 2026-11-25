@@ -21,9 +21,14 @@ public:
     float sunYaw() const { return sunYaw_; }
     float sunPitch() const { return sunPitch_; }
 
+    void onRender(float alpha, cinder::Scene::DrawList& draws) override;
+
 private:
+    void createPipeline();
+
     float sunYaw_ = -45.0f;
     float sunPitch_ = 25.0f;
 
+    const cinder::Gfx::RHI::Ctx* ctx_ = nullptr;
     std::unique_ptr<cinder::Gfx::RHI::GraphicsPipeline> pipeline_;
 };

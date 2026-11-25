@@ -5,6 +5,7 @@
 #include "Gfx/VK/TexturePool.hpp"
 #include "Gfx/VK/VkImages.hpp"
 
+#include <array>
 #include <memory>
 
 namespace cinder::Gfx::RHI {
@@ -23,7 +24,7 @@ public:
     VkFramebuffer resolveFramebuffer() const { return resolveFramebuffer_; }
     VkImage resolvedImage() const { return resolved_.image; }
     VkImage depthImage() const { return depth_->image(); }
-    TextureBinding binding() const { return binding_; }
+    TextureBinding binding(uint32_t slot = 0) const { return bindings_[slot]; }
     TextureBinding depthBinding() const { return depthBinding_; }
     TextureBinding resolvedBinding() const { return resolvedBinding_; }
     uint32_t width() const { return width_; }
@@ -44,7 +45,7 @@ private:
     std::unique_ptr<TexturePool> pool_;
     std::unique_ptr<TexturePool> depthPool_;
     std::unique_ptr<TexturePool> resolvedPool_;
-    TextureBinding binding_;
+    std::array<TextureBinding, MAX_TEXTURE_SLOTS> bindings_;
     TextureBinding depthBinding_;
     TextureBinding resolvedBinding_;
     uint32_t width_ = 0;

@@ -43,9 +43,9 @@ TextureBinding TexturePool::bind(void* texture) {
     return result;
 }
 
-TextureBinding TexturePool::bind(const Texture& texture) { return bind(texture.handle()); }
+TextureBinding TexturePool::bind(const Texture& texture, std::uint32_t) { return bind(texture.handle()); }
 
-TextureBinding TexturePool::bind(const VolumeTexture& volume) { return bind(volume.handle()); }
+TextureBinding TexturePool::bind(const VolumeTexture& volume, std::uint32_t) { return bind(volume.handle()); }
 
 TexturePool::~TexturePool() {
     bindings_.clear();

@@ -23,7 +23,7 @@ public:
     void* color() const { return color_; }
     void* depth() const { return depth_; }
     void* resolved() const { return resolved_; }
-    TextureBinding binding() const { return binding_; }
+    TextureBinding binding(std::uint32_t = 0) const { return binding_; }
     TextureBinding depthBinding() const { return depthBinding_; }
     TextureBinding resolvedBinding() const { return resolvedBinding_; }
     std::uint32_t width() const { return width_; }

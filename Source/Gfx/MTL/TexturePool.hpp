@@ -25,8 +25,8 @@ public:
     TexturePool& operator=(const TexturePool&) = delete;
 
     TextureBinding bind(void* texture);
-    TextureBinding bind(const Texture& texture);
-    TextureBinding bind(const VolumeTexture& volume);
+    TextureBinding bind(const Texture& texture, std::uint32_t slot = 0);
+    TextureBinding bind(const VolumeTexture& volume, std::uint32_t slot = 0);
 
 private:
     std::uint32_t maxSets_ = 0;

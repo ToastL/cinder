@@ -25,21 +25,29 @@ struct Push {
 
 static_assert(sizeof(Push) == PUSH_CONSTANT_BYTES, "sky Push layout drift");
 
+SkyComponent* active = nullptr;
+
 }
 
-SkyComponent::SkyComponent() {
-    pipeline_ = cinder::Gfx::RHI::PipelineBuilder(cinder::Game::presenter(),
-                                                   cinder::Gfx::RHI::PassKind::Scene)
+SkyComponent::SkyComponent() = default;
+
+void SkyComponent::onRender(float, cinder::Scene::DrawList&) {
+    if (!pipeline_) createPipeline();
+}
+
+void SkyComponent::createPipeline() {
+    const cinder::Gfx::RHI::Presenter& presenter = cinder::Game::presenter();
+    ctx_ = &presenter.ctx();
+    pipeline_ = cinder::Gfx::RHI::PipelineBuilder(presenter, cinder::Gfx::RHI::PassKind::Scene)
                         .shader("sky")
                         .pushConstants(PUSH_CONSTANT_BYTES, cinder::Gfx::RHI::ShaderStages::Fragment)
                         .build();
 
-    cinder::Gfx::RHI::GraphicsPipeline* pipeline = pipeline_.get();
-    SkyComponent* self = this;
-    cinder::Game::setPostPaint([pipeline, self](cinder::Gfx::RHI::Commands cmd, std::uint32_t,
-                                                const glm::mat4& viewProjection) {
-        const float yaw = self->sunYaw_ * DEG_TO_RAD;
-        const float pitch = self->sunPitch_ * DEG_TO_RAD;
+    active = this;
+    cinder::Game::setPostPaint([this](cinder::Gfx::RHI::Commands cmd, std::uint32_t,
+                                      const glm::mat4& viewProjection) {
+        const float yaw = sunYaw_ * DEG_TO_RAD;
+        const float pitch = sunPitch_ * DEG_TO_RAD;
         const glm::vec3 sun(std::cos(pitch) * std::cos(yaw),
                             std::sin(pitch),
                             std::cos(pitch) * std::sin(yaw));
@@ -48,12 +56,17 @@ SkyComponent::SkyComponent() {
         push.invViewProj = glm::inverse(viewProjection);
         push.sunDir = glm::vec4(sun, 0.0f);
 
-        pipeline->bind(cmd);
-        pipeline->push(cmd, cinder::Gfx::RHI::ShaderStages::Fragment, sizeof(Push), &push);
+        pipeline_->bind(cmd);
+        pipeline_->push(cmd, cinder::Gfx::RHI::ShaderStages::Fragment, sizeof(Push), &push);
         cinder::Gfx::RHI::draw(cmd, FULLSCREEN_TRIANGLE_VERTICES);
     });
 }
 
-SkyComponent::~SkyComponent() { cinder::Game::setPostPaint(nullptr); }
+SkyComponent::~SkyComponent() {
+    if (ctx_ != nullptr) ctx_->waitIdle();
+    if (active != this) return;
+    cinder::Game::setPostPaint(nullptr);
+    active = nullptr;
+}
 
 CINDER_REGISTER(SkyComponent);

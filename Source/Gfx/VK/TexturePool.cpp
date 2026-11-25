@@ -27,18 +27,18 @@ TexturePool::TexturePool(const cinder::Gfx::RHI::Ctx& ctx, uint32_t maxSets,
     sampler_ = images::sampler(ctx, filter, address);
 }
 
-TextureBinding TexturePool::bind(VkImageView view) const {
-    const VkDescriptorSet set = descriptors::allocate(ctx_, pool_, ctx_.textureLayout());
-    descriptors::writeCombinedImageSampler(ctx_, set, view, sampler_);
+TextureBinding TexturePool::bind(VkImageView view, VkImageLayout layout, uint32_t slot) const {
+    const VkDescriptorSet set = descriptors::allocate(ctx_, pool_, ctx_.textureLayout(slot));
+    descriptors::writeCombinedImageSampler(ctx_, set, view, sampler_, layout, slot);
     return binding(set);
 }
 
-TextureBinding TexturePool::bind(const Texture& texture) const {
-    return bind(texture.view());
+TextureBinding TexturePool::bind(const Texture& texture, uint32_t slot) const {
+    return bind(texture.view(), VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, slot);
 }
 
-TextureBinding TexturePool::bind(const VolumeTexture& volume) const {
-    return bind(volume.view());
+TextureBinding TexturePool::bind(const VolumeTexture& volume, uint32_t slot) const {
+    return bind(volume.view(), VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, slot);
 }
 
 TexturePool::~TexturePool() {

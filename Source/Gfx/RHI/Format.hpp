@@ -24,6 +24,8 @@ enum class VertexFormat : std::uint8_t {
     Float4,
 };
 
+constexpr std::uint32_t MAX_TEXTURE_SLOTS = 4;
+
 enum class PassKind : std::uint8_t {
     Scene,
     Overlay,

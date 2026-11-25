@@ -130,6 +130,12 @@ void Renderer::drawFrame() {
     }
     presenter_->endPass(*frame);
 
+    if (offscreenPaint_) {
+        OffscreenPass pass(*presenter_, *frame, viewProjection, target.depthBinding(),
+                           {target.width(), target.height()});
+        offscreenPaint_(pass);
+    }
+
     if (overlayPaint_) {
         presenter_->beginOverlayPass(*frame, target);
         cinder::Gfx::RHI::viewport(frame->commands, target.width(), target.height());

@@ -22,9 +22,10 @@ public:
     TexturePool(const TexturePool&) = delete;
     TexturePool& operator=(const TexturePool&) = delete;
 
-    TextureBinding bind(VkImageView view) const;
-    TextureBinding bind(const Texture& texture) const;
-    TextureBinding bind(const VolumeTexture& volume) const;
+    TextureBinding bind(VkImageView view, VkImageLayout layout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                        uint32_t slot = 0) const;
+    TextureBinding bind(const Texture& texture, uint32_t slot = 0) const;
+    TextureBinding bind(const VolumeTexture& volume, uint32_t slot = 0) const;
 
 private:
     const cinder::Gfx::RHI::Ctx& ctx_;

@@ -29,8 +29,6 @@ actors {
         components {
             CloudComponent {
                 id 6
-                position 0 3 0
-                scale 8 5 6
             }
         }
     }

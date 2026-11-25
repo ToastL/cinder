@@ -210,7 +210,12 @@ One HLSL source serves every target: bindings, varyings and vertex inputs carry 
 `[[vk::binding]]` and `[[vk::location]]` **alongside** `register(t0)`/`register(s0)`/`register(b0)`,
 and DXC ignores whichever set does not apply. Textures are `[[vk::combinedImageSampler]]` pairs, so
 the Vulkan descriptor layouts are combined image samplers, while D3D and Metal see the separate SRV
-and sampler they want. Push constants are `[[vk::push_constant]] ConstantBuffer<Push>`, which is a
+and sampler they want. **Texture slot N is declared `[[vk::binding(N, N)]]` with `register(tN)` and
+`register(sN)`**: on Vulkan a slot is descriptor set N, whose layout (`Ctx::textureLayout(N)`) holds
+binding N, and on Metal `--msl-decoration-binding` makes N the texture and sampler index. That is why
+`TexturePool::bind` and `RenderTarget::binding` take the slot — a Vulkan set is allocated for one slot
+and binds only there — while Metal ignores it and picks the index at draw time. Up to
+`MAX_TEXTURE_SLOTS` (4) per pipeline. Push constants are `[[vk::push_constant]] ConstantBuffer<Push>`, which is a
 push-constant block in SPIR-V and cbuffer `b0` everywhere else. Matrices stay HLSL's default
 `column_major`, which is glm's memory layout, applied as `mul(matrix, vector)`. Editing a shader
 needs a rebuild, not just a restart. DXC is not on Homebrew; install the LunarG Vulkan SDK if it is
@@ -244,6 +249,10 @@ DYLD_LIBRARY_PATH=/opt/homebrew/lib ./Binaries/macOS/Development/editor Samples/
 
 That assumes a `--backend vk` build. **Do this whenever touching the renderer.** Without it you are running unvalidated — it has already
 caught a missing `TRANSFER_SRC_BIT` that no test would have.
+
+With the layer loaded, the `Samples/clouds` cloud draws do not appear and nothing is reported; without
+it they draw as on Metal. Judge that sample's picture from a run without the layer, and its errors from
+a run with it.
 
 ## Layout
 
@@ -695,7 +704,18 @@ new one. `player` never calls it and composites exactly as before.
 
 The scene pass carries a second subpass dependency (`0 -> EXTERNAL`, color-write -> fragment-read)
 that orders the composite's sample after the scene's writes. Any new pass that reads a previous
-pass's output needs the same treatment.
+pass's output needs the same treatment. Its first dependency waits on the fragment shader as well,
+because a target the previous frame sampled — a history buffer — may be the one this pass writes.
+
+Game code draws with three hooks on `Renderer`, each forwarded by `Game/Game`. `setPostPaint` runs
+inside the scene pass before the `DrawPass`es, `setOffscreenPaint` runs between the scene pass and the
+overlay pass, and `setOverlayPaint` runs in the overlay pass, which loads the scene target and has the
+scene depth as a texture. The offscreen hook is handed a `Gfx/OffscreenPass` — the frame's commands,
+frame-in-flight index, view-projection, scene depth and scene size — whose `begin(target)` and `end()`
+run a scene-format pass, cleared, on any `RenderTarget` the game made with `Presenter::createTarget`.
+That is how a game renders at a resolution of its own and composites the result in the overlay pass;
+`Samples/clouds` marches its clouds at half resolution that way, one pixel in four per frame, and
+reprojects the rest from a history target.
 
 `DrawPass` (`beginFrame` / `record`) is the extension point. It is named `DrawPass`, not `RenderPass`,
 so that `renderPass` unambiguously means a `VkRenderPass`. A new pass means: implement the interface and

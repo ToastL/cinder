@@ -27,6 +27,8 @@
 
 namespace cinder::Core { class Engine; }
 
+namespace cinder::Gfx { class OffscreenPass; }
+
 namespace cinder::Game {
 
 cinder::Core::Engine& engine();
@@ -76,6 +78,9 @@ using OverlayPaintFn = std::function<void(cinder::Gfx::RHI::Commands cmd, uint32
                                           const glm::mat4& viewProjection,
                                           cinder::Gfx::RHI::TextureBinding depth)>;
 void setOverlayPaint(OverlayPaintFn paint);
+
+using OffscreenPaintFn = std::function<void(cinder::Gfx::OffscreenPass& pass)>;
+void setOffscreenPaint(OffscreenPaintFn paint);
 
 const cinder::Gfx::RHI::Presenter& presenter();
 glm::vec3 cameraWorldPosition();

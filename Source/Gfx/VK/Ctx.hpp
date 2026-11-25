@@ -6,6 +6,8 @@
 
 #include <vk_mem_alloc.h>
 
+#include <array>
+
 namespace cinder::Platform { class Window; }
 
 namespace cinder::Gfx::RHI {
@@ -24,7 +26,7 @@ public:
     VkQueue presentQueue() const { return presentQueue_; }
     VkSurfaceKHR surface() const { return surface_; }
     VkCommandPool commandPool() const { return commandPool_; }
-    VkDescriptorSetLayout textureLayout() const { return textureLayout_; }
+    VkDescriptorSetLayout textureLayout(uint32_t slot = 0) const { return textureLayouts_[slot]; }
     RHI::Format depthFormat() const { return depthFormat_; }
     VmaAllocator allocator() const { return allocator_; }
     uint32_t graphicsFamily() const { return static_cast<uint32_t>(graphicsFamily_); }
@@ -43,7 +45,7 @@ private:
     bool findQueueFamilies(VkPhysicalDevice candidate);
     void createLogicalDevice();
     void createCommandPool();
-    void createTextureLayout();
+    void createTextureLayouts();
     void chooseDepthFormat();
     void createAllocator();
 
@@ -58,7 +60,7 @@ private:
     int graphicsFamily_ = -1;
     int presentFamily_ = -1;
     VkCommandPool commandPool_ = VK_NULL_HANDLE;
-    VkDescriptorSetLayout textureLayout_ = VK_NULL_HANDLE;
+    std::array<VkDescriptorSetLayout, MAX_TEXTURE_SLOTS> textureLayouts_{};
     RHI::Format depthFormat_ = RHI::Format::Undefined;
     VmaAllocator allocator_ = VK_NULL_HANDLE;
 };

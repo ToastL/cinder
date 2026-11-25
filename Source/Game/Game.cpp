@@ -127,6 +127,8 @@ void setPostPaint(PostPaintFn paint) { engine().renderer().setPostPaint(std::mov
 
 void setOverlayPaint(OverlayPaintFn paint) { engine().renderer().setOverlayPaint(std::move(paint)); }
 
+void setOffscreenPaint(OffscreenPaintFn paint) { engine().renderer().setOffscreenPaint(std::move(paint)); }
+
 const cinder::Gfx::RHI::Presenter& presenter() { return engine().renderer().presenter(); }
 
 glm::vec3 cameraWorldPosition() { return engine().renderer().cameraWorldPosition(); }

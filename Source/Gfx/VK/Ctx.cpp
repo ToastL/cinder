@@ -90,7 +90,7 @@ Ctx::Ctx(cinder::Platform::Window& window) {
     pickPhysicalDevice();
     createLogicalDevice();
     createCommandPool();
-    createTextureLayout();
+    createTextureLayouts();
     chooseDepthFormat();
     createAllocator();
 }
@@ -263,20 +263,22 @@ void Ctx::chooseDepthFormat() {
     depthFormat_ = RHI::fromVk(DepthBuffer::chooseFormat(physicalDevice_));
 }
 
-void Ctx::createTextureLayout() {
-    VkDescriptorSetLayoutBinding binding{};
-    binding.binding = 0;
-    binding.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-    binding.descriptorCount = 1;
-    binding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+void Ctx::createTextureLayouts() {
+    for (uint32_t slot = 0; slot < MAX_TEXTURE_SLOTS; ++slot) {
+        VkDescriptorSetLayoutBinding binding{};
+        binding.binding = slot;
+        binding.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+        binding.descriptorCount = 1;
+        binding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
 
-    VkDescriptorSetLayoutCreateInfo info{};
-    info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
-    info.bindingCount = 1;
-    info.pBindings = &binding;
+        VkDescriptorSetLayoutCreateInfo info{};
+        info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+        info.bindingCount = 1;
+        info.pBindings = &binding;
 
-    check(vkCreateDescriptorSetLayout(device_, &info, nullptr, &textureLayout_),
-          "vkCreateDescriptorSetLayout");
+        check(vkCreateDescriptorSetLayout(device_, &info, nullptr, &textureLayouts_[slot]),
+              "vkCreateDescriptorSetLayout");
+    }
 }
 
 void Ctx::createCommandPool() {
@@ -340,8 +342,8 @@ void Ctx::endSingleTime(VkCommandBuffer cmd) const {
 
 Ctx::~Ctx() {
     if (allocator_ != VK_NULL_HANDLE) vmaDestroyAllocator(allocator_);
-    if (textureLayout_ != VK_NULL_HANDLE) {
-        vkDestroyDescriptorSetLayout(device_, textureLayout_, nullptr);
+    for (VkDescriptorSetLayout layout : textureLayouts_) {
+        if (layout != VK_NULL_HANDLE) vkDestroyDescriptorSetLayout(device_, layout, nullptr);
     }
     if (commandPool_ != VK_NULL_HANDLE) vkDestroyCommandPool(device_, commandPool_, nullptr);
     if (device_ != VK_NULL_HANDLE) vkDestroyDevice(device_, nullptr);

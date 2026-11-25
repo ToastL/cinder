@@ -5,6 +5,7 @@
 
 #include "Gfx/CompositePipeline.hpp"
 #include "Gfx/FrameTargets.hpp"
+#include "Gfx/OffscreenPass.hpp"
 #include "Gfx/ResolvePipeline.hpp"
 #include "Gfx/UiRenderer.hpp"
 #include "Gfx/Asset/Assets.hpp"
@@ -67,6 +68,9 @@ public:
                                            const glm::mat4& viewProjection)>;
     void setPostPaint(PostPaintFn paint) { postPaint_ = std::move(paint); }
 
+    using OffscreenPaintFn = std::function<void(OffscreenPass& pass)>;
+    void setOffscreenPaint(OffscreenPaintFn paint) { offscreenPaint_ = std::move(paint); }
+
     using OverlayPaintFn = std::function<void(cinder::Gfx::RHI::Commands cmd, uint32_t frameInFlight,
                                               const glm::mat4& viewProjection,
                                               cinder::Gfx::RHI::TextureBinding depth)>;
@@ -100,6 +104,7 @@ private:
     std::unique_ptr<cinder::Scene::DrawList> draws_;
     std::function<void(cinder::UI::ElementList&)> uiPaint_;
     PostPaintFn postPaint_;
+    OffscreenPaintFn offscreenPaint_;
     OverlayPaintFn overlayPaint_;
     cinder::UI::ElementList uiElements_;
 

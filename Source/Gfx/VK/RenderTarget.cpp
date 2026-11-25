@@ -36,10 +36,12 @@ RenderTarget::RenderTarget(const RHI::Ctx& ctx, VkRenderPass scenePass, VkRender
     resolvedView_ = images::view(ctx, resolved_.image, resolved, VK_IMAGE_ASPECT_COLOR_BIT);
     resolveFramebuffer_ = images::framebuffer(ctx, resolvePass, &resolvedView_, 1, width, height);
 
-    pool_ = std::make_unique<TexturePool>(ctx, 1, SamplerFilter::Linear);
-    binding_ = pool_->bind(view_);
+    pool_ = std::make_unique<TexturePool>(ctx, MAX_TEXTURE_SLOTS, SamplerFilter::Linear);
+    for (uint32_t slot = 0; slot < MAX_TEXTURE_SLOTS; ++slot) {
+        bindings_[slot] = pool_->bind(view_, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, slot);
+    }
     depthPool_ = std::make_unique<TexturePool>(ctx, 1, SamplerFilter::Nearest);
-    depthBinding_ = depthPool_->bind(depth_->view());
+    depthBinding_ = depthPool_->bind(depth_->view(), VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL);
     resolvedPool_ = std::make_unique<TexturePool>(ctx, 1, SamplerFilter::Linear);
     resolvedBinding_ = resolvedPool_->bind(resolvedView_);
 }
