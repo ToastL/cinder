@@ -137,11 +137,10 @@ at the root for clangd, including `cbt`'s own sources and the rule files. Both a
 regenerate them when files are added. `cbt clean` deletes one configuration's `Binaries/` and
 `Intermediate/`.
 
-The third-party code is vendored in `Source/ThirdParty/` — glfw, glm, VMA, stb, Vulkan-Headers,
-doctest, FreeType and HarfBuzz, each with its licence, a `.Build.cpp`, and a row in
-`Source/ThirdParty/README.md` giving its version. Nothing is fetched and nothing needs installing:
-FreeType is built with zlib, bzip2, PNG, Brotli and HarfBuzz switched off, so it never finds Homebrew's
-copies, and HarfBuzz is compiled from its single-file `src/harfbuzz.cc`.
+The third-party code is vendored in `Source/ThirdParty/` — glfw, glm, VMA, Vulkan-Headers and
+doctest, each with its licence, a `.Build.cpp`, and a row in `Source/ThirdParty/README.md` giving its
+version. Nothing is fetched and nothing needs installing. Fonts and PNGs are read by our own code:
+`Text/TrueType` and `Gfx/RHI/Png`.
 The shader compilers are the exception: they are *build tools*, taken from `DXC` and `SPIRV_CROSS`
 when set, else found in `$VULKAN_SDK/bin`, then on `PATH`. Xcode builds with a minimal `PATH`, so
 `cbt generate xcode` records the `PATH` it ran with into each target's command as `--path`;
@@ -926,6 +925,21 @@ root for its desired size bottom-up (`Widget::prepass`), arranges children top-d
 paint builds the `HitTester`, so input always routes against what was last drawn. Everything in
 `Text` and `UI` runs headlessly: `Tests/ui_harness.hpp` drives a real `Application` with a
 `HeadlessPlatform` clock and clipboard.
+
+**Text is our own, too — no FreeType, no HarfBuzz.** `Text/TrueType` reads a `glyf` font straight from
+its bytes: `cmap` formats 12 and 4, `hhea`/`OS/2` metrics the way FreeType chose them, `hmtx`
+advances, simple and composite outlines, and GPOS `kern` pair adjustment (PairPos formats 1 and 2, the
+first subtable covering the left glyph decides, lookups summed). Every read is bounds-checked: a
+malformed font fails to load with the path in the message, and a bad glyph or kerning table at draw
+time yields nothing rather than throwing. `Text/Rasterizer` fills an outline by signed-area
+accumulation — exact coverage, quads flattened by their deviation, `min(|area|, 1)` so overlapping
+contours fill solid — into a bitmap whose box is the control box rounded out, the bearing convention
+FreeType used. `shape` maps **one glyph per codepoint** and adds each pair's kerning to the left
+glyph's advance, where HarfBuzz put it, so its advances match HarfBuzz's exactly on the shipped fonts.
+What that leaves out on purpose: GSUB (no `fi` ligature — which also keeps a caret from landing
+inside a glyph), mark positioning, right-to-left and complex scripts, `CFF` outlines, and hinting —
+glyphs are unhinted, so at 1x cap and x-height edges are slightly softer than FreeType's light
+autohint drew them; at 2x it does not show. `TODO.md` tracks each.
 
 Widgets are built with `UI::make<T>()`, which returns the widget's `Args`; chained setters fill them,
 `[child]` sets the content, `+ T::slot()` adds a slot, and the `Args` convert to `std::shared_ptr<T>`

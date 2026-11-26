@@ -1,6 +1,7 @@
 #include <doctest/doctest.h>
 
 #include "Platform/Assets.hpp"
+#include "Platform/Files.hpp"
 #include "Text/Font.hpp"
 #include "Text/FontSet.hpp"
 #include "Text/GlyphAtlas.hpp"
@@ -9,6 +10,8 @@
 #include <algorithm>
 #include <cstdint>
 #include <optional>
+#include <stdexcept>
+#include <vector>
 
 using cinder::Text::AtlasGlyph;
 using cinder::Text::AtlasRect;
@@ -80,6 +83,53 @@ TEST_CASE("a rasterized glyph has coverage and a bearing above the baseline") {
     CHECK(bitmap.height > 10);
     CHECK(bitmap.bearing.y < 0.0f);
     CHECK(*std::max_element(bitmap.coverage.begin(), bitmap.coverage.end()) == 255);
+}
+
+TEST_CASE("shaping maps one glyph per character, so fi is not a ligature") {
+    const ShapedText shaped = shape(regular(), "fi", 16.0f);
+    REQUIRE(shaped.glyphs.size() == 2);
+    CHECK(shaped.glyphs[0].glyph == regular().glyphIndex(U'f'));
+    CHECK(shaped.glyphs[1].glyph == regular().glyphIndex(U'i'));
+}
+
+TEST_CASE("character lookup covers both cmap formats and misses map to glyph zero") {
+    const Font& mono = fonts().get(FontStyle::Mono);
+    CHECK(regular().glyphIndex(U'A') != 0);
+    CHECK(mono.glyphIndex(U'A') != 0);
+    CHECK(regular().glyphIndex(U'A') != regular().glyphIndex(U'B'));
+    CHECK(regular().glyphIndex(U'\U0001F600') == 0);
+    CHECK(mono.glyphIndex(U'\U0001F600') == 0);
+    CHECK(mono.glyphIndex(U'￿') == 0);
+}
+
+TEST_CASE("a font without GPOS kerning kerns nothing") {
+    const Font& mono = fonts().get(FontStyle::Mono);
+    CHECK(mono.kerning(mono.glyphIndex(U'A'), mono.glyphIndex(U'V')) == 0.0f);
+    CHECK(regular().kerning(regular().glyphIndex(U'A'), regular().glyphIndex(U'V')) < 0.0f);
+}
+
+TEST_CASE("a composite glyph draws its accent above the base letter") {
+    const cinder::Text::GlyphBitmap e = regular().rasterize(regular().glyphIndex(U'e'), 32.0f);
+    const cinder::Text::GlyphBitmap acute = regular().rasterize(regular().glyphIndex(U'é'), 32.0f);
+    CHECK(acute.height > e.height + 3);
+    CHECK(acute.bearing.y < e.bearing.y - 3.0f);
+    CHECK(acute.bearing.y + static_cast<float>(acute.height) == doctest::Approx(e.bearing.y + static_cast<float>(e.height)));
+}
+
+TEST_CASE("a counter stays open, so O is empty in the middle and solid on its ring") {
+    const cinder::Text::GlyphBitmap o = regular().rasterize(regular().glyphIndex(U'O'), 48.0f);
+    REQUIRE(o.width > 20);
+    const auto at = [&](int x, int y) { return o.coverage[static_cast<std::size_t>(y * o.width + x)]; };
+    CHECK(at(o.width / 2, o.height / 2) == 0);
+    CHECK(at(1, o.height / 2) == 255);
+    CHECK(at(o.width / 2, 1) == 255);
+}
+
+TEST_CASE("truncated font bytes are rejected as malformed") {
+    const std::vector<std::uint8_t> whole = cinder::Platform::readBinaryFile(
+        cinder::Platform::enginePath("Content/Fonts/Roboto-Regular.ttf"));
+    CHECK_THROWS_AS(Font(std::vector<std::uint8_t>(whole.begin(), whole.begin() + 100)), std::runtime_error);
+    CHECK_THROWS_AS(Font(std::vector<std::uint8_t>{}), std::runtime_error);
 }
 
 TEST_CASE("the atlas caches a glyph per size, marks what it wrote, and skips blank glyphs") {

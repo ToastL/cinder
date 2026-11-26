@@ -1,10 +1,11 @@
 ---
 type: meta
-last-update: 2026-11-06
+last-update: 2026-11-26
 ---
 
 What landed when, from git history. Newest first.
 
+- **2026-11-26** — FreeType and HarfBuzz removed: [[Text shaping]] on our own TrueType reader and rasterizer ([[Decision - Own text stack]]). `Source/ThirdParty/` went from 23 MB to 7.5 MB.
 - **2026-11-06** — Branch `cpp-gameplay`: C++ game code ([[Game code]]), hot reload, placeholders, signals and timers, packaging in C++ (`packager`, Development/Shipping). [[Decision - C++ game code]]. Then CMake replaced by [[cbt]] ([[Decision - Own build tool]]), dependencies vendored in `Source/ThirdParty/`, and the repo root reshaped like a project (`Source/`, `Content/`, `Shaders/`, `Samples/`, `Tests/`) — `2adb2ea`.
 - **2026-09-26** — [[Editor packager]]: the Platforms menu packages the open project. On `platform-hosts`: windowing moved behind `platform::Host` ([[Platform hosts]]). Decisions: [[Decision - Native macOS editor]] layout, [[Decision - Windows deferred]], [[Decision - No CI for now]].
 - **2026-09-25** — Metal autorelease-pool leak fixed in `Presenter` (see [[Verification recipes]]). Drag and drop and input handling. PR #5 (`switch-backend`) merged.

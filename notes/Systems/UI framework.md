@@ -4,7 +4,7 @@ status: live
 layer: "text, ui/core, ui/framework, ui/widgets, ui/docking"
 source: "Source/text/, Source/ui/"
 started: 2026-09-22
-last-update: 2026-09-25
+last-update: 2026-11-26
 ---
 
 ## About
@@ -31,5 +31,6 @@ DYLD_LIBRARY_PATH=/opt/homebrew/lib ./Binaries/macOS/Development/ui_gallery --fr
 - [ ] Project browser — [[Decision - Project browser deferred]]
 
 ## Notes
+- 2026-11-26: Text no longer uses FreeType or HarfBuzz; see [[Text shaping]].
 - 2026-09-22/23: Built in two days, then ImGui deleted.
 - On macOS the editor is moving to SwiftUI ([[macOS editor]]); this UI stays the game UI and the Linux editor.

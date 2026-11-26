@@ -158,8 +158,12 @@ a GPU-free batcher turns into vertices; input routed along the widget path with 
 mouse capture; a `Theme` of named styles; docking; menus and shortcuts from a `CommandList`. `UI`
 never includes `Scene`, `Reflect` or `Gfx` — the reflection-driven Details panel lives in `Dev`.
 
-- [x] **Text** — `Text/` on FreeType and HarfBuzz: load, shape, measure, rasterize into CPU atlas
-      pages, map carets. Tests headlessly. Roboto and Roboto Mono ship in `Content/Fonts/`.
+- [x] **Text** — `Text/` on our own TrueType reader and rasterizer: load, shape with GPOS kerning,
+      measure, rasterize into CPU atlas pages, map carets. Tests headlessly. Roboto and Roboto Mono
+      ship in `Content/Fonts/`. FreeType and HarfBuzz removed 2026-11-26.
+- [ ] **Text: what the reader leaves out** — GSUB (ligatures, `ccmp`), mark positioning, RTL and
+      complex scripts, `CFF` outlines. And optionally an x-height snap — scale vertically so the
+      x-height lands on a whole pixel — if 1x text needs to be crisper without hinting.
 - [x] **UI renderer** — `Gfx/UiRenderer` records in the present pass after the composite. Rounded
       rectangles and borders as an SDF, anti-aliased lines and convex fills, images including the
       scene target drawn opaque, glyphs from R8 atlas pages. `ui_gallery` shows all of it.
