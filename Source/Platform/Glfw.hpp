@@ -9,6 +9,7 @@ public:
     static void pollEvents();
     static void waitEvents();
     static double time();
+    static void* vulkanEntry();
 };
 
 class GlfwSession {

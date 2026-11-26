@@ -3,7 +3,7 @@
 #include "Gfx/RHI/Format.hpp"
 #include "Gfx/RHI/Handles.hpp"
 
-#include <volk.h>
+#include "Gfx/VK/Loader.hpp"
 
 #include <vk_mem_alloc.h>
 

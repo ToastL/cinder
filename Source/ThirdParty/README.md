@@ -8,7 +8,6 @@ fetched at build time, and none of these libraries' own build systems is used.
 | `glfw/` | GLFW | 3.4 | https://github.com/glfw/glfw | zlib (`LICENSE.md`) |
 | `glm/` | GLM | 1.0.1 | https://github.com/g-truc/glm | MIT (`copying.txt`) |
 | `vulkan-headers/` | Vulkan-Headers, C headers only | vulkan-sdk-1.4.357.0 | https://github.com/KhronosGroup/Vulkan-Headers | Apache-2.0 / MIT (`LICENSE.md`, `LICENSES/`) |
-| `volk/` | volk | vulkan-sdk-1.4.357.0 | https://github.com/zeux/volk | MIT (`LICENSE.md`) |
 | `vma/` | Vulkan Memory Allocator | v3.3.0 | https://github.com/GPUOpen-LibrariesAndSDKs/VulkanMemoryAllocator | MIT (`LICENSE.txt`) |
 | `doctest/` | doctest | v2.5.3 | https://github.com/doctest/doctest | MIT (`LICENSE.txt`) |
 | `freetype/` | FreeType, `include/` and `src/` | VER-2-14-3 | https://github.com/freetype/freetype | FTL or GPLv2 (`LICENSE.TXT`) |

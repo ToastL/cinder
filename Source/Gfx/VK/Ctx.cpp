@@ -3,6 +3,7 @@
 #include "Gfx/VK/DepthBuffer.hpp"
 #include "Gfx/VK/Formats.hpp"
 #include "Gfx/VK/VkUtil.hpp"
+#include "Platform/Glfw.hpp"
 #include "Platform/Log.hpp"
 #include "Platform/Window.hpp"
 
@@ -77,6 +78,7 @@ VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(VkDebugUtilsMessageSeverityFlagBits
 }
 
 Ctx::Ctx(cinder::Platform::Window& window) {
+    loadGlobal(reinterpret_cast<PFN_vkGetInstanceProcAddr>(cinder::Platform::Glfw::vulkanEntry()));
     const std::vector<std::string> available = instanceExtensions();
     validation_ = layerAvailable(VALIDATION_LAYER)
             && has(available, VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
@@ -157,7 +159,7 @@ void Ctx::createInstance() {
     if (instance_ == VK_NULL_HANDLE) {
         check(vkCreateInstance(&info, nullptr, &instance_), "vkCreateInstance");
     }
-    volkLoadInstance(instance_);
+    loadInstance(instance_);
 }
 
 void Ctx::createDebugMessenger() {
@@ -253,7 +255,7 @@ void Ctx::createLogicalDevice() {
     info.pEnabledFeatures = &features;
 
     check(vkCreateDevice(physicalDevice_, &info, nullptr, &device_), "vkCreateDevice");
-    volkLoadDevice(device_);
+    loadDevice(device_);
 
     vkGetDeviceQueue(device_, static_cast<uint32_t>(graphicsFamily_), 0, &graphicsQueue_);
     vkGetDeviceQueue(device_, static_cast<uint32_t>(presentFamily_), 0, &presentQueue_);

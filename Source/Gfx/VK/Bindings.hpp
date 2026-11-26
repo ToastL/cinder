@@ -2,7 +2,7 @@
 
 #include "Gfx/RHI/Handles.hpp"
 
-#include <volk.h>
+#include "Gfx/VK/Loader.hpp"
 
 #include <cstdint>
 

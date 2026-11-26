@@ -10,6 +10,6 @@ CINDER_MODULE("Platform", [](cbt::ModuleRules& m, const cbt::TargetInfo& t) {
         m.publicDefines({"CINDER_BACKEND_MTL", "GLFW_EXPOSE_NATIVE_COCOA"});
     } else {
         m.publicDefines({"CINDER_BACKEND_VK"});
-        m.privateDependencies({"volk"});
+        m.privateDependencies({"vulkan-headers"});
     }
 });
