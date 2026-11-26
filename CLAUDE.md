@@ -137,7 +137,7 @@ at the root for clangd, including `cbt`'s own sources and the rule files. Both a
 regenerate them when files are added. `cbt clean` deletes one configuration's `Binaries/` and
 `Intermediate/`.
 
-The third-party code is vendored in `Source/ThirdParty/` — glfw, glm, VMA, stb, volk, Vulkan-Headers,
+The third-party code is vendored in `Source/ThirdParty/` — glfw, glm, VMA, stb, Vulkan-Headers,
 doctest, FreeType and HarfBuzz, each with its licence, a `.Build.cpp`, and a row in
 `Source/ThirdParty/README.md` giving its version. Nothing is fetched and nothing needs installing:
 FreeType is built with zlib, bzip2, PNG, Brotli and HarfBuzz switched off, so it never finds Homebrew's
@@ -233,10 +233,13 @@ or `step`. `GameLoop` is the shared part.
 ## Vulkan on Apple Silicon
 
 Two separate failures share one root cause: **Homebrew's `/opt/homebrew/lib` is not on the dyld
-default search path, and both volk and the Vulkan loader `dlopen` by leaf name.**
+default search path, and the Vulkan loader `dlopen`s by leaf name.**
 
-- `volkInitialize()` fails because volk hardcodes `/usr/local/lib`, the Intel prefix. `Glfw::acquire`
-  walks its own candidate list and falls back to `volkInitializeCustom`.
+- A leaf-name `dlopen("libvulkan.1.dylib")` finds nothing, so `Glfw::acquire` walks `LOADER_CANDIDATES`
+  — the leaf names, then the Homebrew and `/usr/local` prefixes, then MoltenVK — and hands the first
+  `vkGetInstanceProcAddr` it finds to GLFW. `Gfx/VK/Loader` reads it through `Glfw::vulkanEntry()` and
+  loads the global, instance and device functions as hidden global pointers, so call sites name `vkFoo`
+  directly. There is no volk.
 - The validation layer *enumerates* but `vkCreateInstance` returns `VK_ERROR_LAYER_NOT_PRESENT`,
   because the layer manifest's `library_path` is a bare `libVkLayer_khronos_validation.dylib`.
   `RHI::Ctx` retries without the layer and prints a notice.
@@ -360,7 +363,7 @@ falls back to compiling the `.metal` source at runtime when it is absent.
 is one line — `#include "Gfx/<backend>/Backend.hpp"`. Everything above the backend includes only that,
 so no first-party source names a backend. The layer check scans `Source/` only, so the generated header
 is invisible to it and the checked graph stays a strict DAG. **Nothing outside a backend directory names a
-Vulkan or Metal type**, and the one `<volk.h>` left outside it is `Platform/Glfw.cpp`'s loader bootstrap,
+Vulkan or Metal type**, and the one `<vulkan/vulkan_core.h>` left outside it is `Platform/Glfw.cpp`'s loader bootstrap,
 guarded by `CINDER_BACKEND_VK` — loader setup is the one place outside `Gfx/` that names a backend,
 because it runs before `Gfx` exists. `Gfx/Asset` is what you draw with (`Assets` and `Mesh`; `Texture` lives in the backend, since almost all of it is staging, barriers and copies),
 `Gfx/Pass` is how you draw it (`DrawPass` and its implementations, their pipelines, and `ViewCamera`), and

@@ -1,6 +1,6 @@
 #pragma once
 
-#include <volk.h>
+#include "Gfx/VK/Loader.hpp"
 
 namespace cinder::Gfx::RHI { class Ctx; }
 

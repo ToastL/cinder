@@ -2,7 +2,7 @@
 
 #include "Gfx/RHI/Format.hpp"
 
-#include <volk.h>
+#include "Gfx/VK/Loader.hpp"
 
 namespace cinder::Gfx::RHI {
 

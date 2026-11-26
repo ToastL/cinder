@@ -3,7 +3,7 @@
 #include "Platform/Log.hpp"
 
 #if defined(CINDER_BACKEND_VK)
-#include <volk.h>
+#include <vulkan/vulkan_core.h>
 #endif
 
 #include <GLFW/glfw3.h>
@@ -20,6 +20,8 @@ namespace {
 int owners = 0;
 
 #if defined(CINDER_BACKEND_VK)
+
+PFN_vkGetInstanceProcAddr vulkanLoader = nullptr;
 
 #if defined(__APPLE__)
 constexpr const char* LOADER_CANDIDATES[] = {
@@ -65,14 +67,12 @@ PFN_vkGetInstanceProcAddr findLoader() {
 }
 
 void initVulkan() {
-    if (volkInitialize() == VK_SUCCESS) return;
-
-    PFN_vkGetInstanceProcAddr entry = findLoader();
-    if (entry == nullptr) {
+    if (vulkanLoader != nullptr) return;
+    vulkanLoader = findLoader();
+    if (vulkanLoader == nullptr) {
         throw std::runtime_error(
                 "No Vulkan loader found (install the Vulkan SDK, or `brew install vulkan-loader molten-vk`)");
     }
-    volkInitializeCustom(entry);
 }
 
 #endif
@@ -86,7 +86,7 @@ void Glfw::acquire() {
 #if defined(CINDER_BACKEND_VK)
         initVulkan();
         glfwSetErrorCallback(errorCallback);
-        glfwInitVulkanLoader(vkGetInstanceProcAddr);
+        glfwInitVulkanLoader(vulkanLoader);
         if (!glfwInit()) throw std::runtime_error("Failed to init GLFW");
         if (!glfwVulkanSupported()) throw std::runtime_error("No Vulkan loader found");
 #else
@@ -111,5 +111,13 @@ void Glfw::pollEvents() { glfwPollEvents(); }
 void Glfw::waitEvents() { glfwWaitEvents(); }
 
 double Glfw::time() { return glfwGetTime(); }
+
+void* Glfw::vulkanEntry() {
+#if defined(CINDER_BACKEND_VK)
+    return reinterpret_cast<void*>(vulkanLoader);
+#else
+    return nullptr;
+#endif
+}
 
 }
